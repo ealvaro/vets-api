@@ -20,12 +20,12 @@
       :file_path: "claims_evidence_api/search/default"
 
 # BID Awards
-- :name: "BID Awards"
+- :name: "BEP Awards"
   :base_uri: "bid-api-test.dev.bip.va.gov:443"
   :endpoints:
     - :method: :get
       :path: "/api/v1/awards/pension/*"
-      :file_path: "bid/awards/pension/"
+      :file_path: "bep/awards/pension/"
       :cache_multiple_responses:
         :uid_location: url
         :uid_locator: '\/api\/v1\/awards\/pension\/(.+)'

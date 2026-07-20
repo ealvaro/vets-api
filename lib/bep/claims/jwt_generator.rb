@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-module BID
-  module Awards
-    # Encoder to be used with BID Awards service
+module BEP
+  module Claims
+    # Encoder to be used with BEP Claims service
     # @see https://www.jwt.io/introduction#when-to-use-json-web-tokens
     class JwtGenerator
       # expiration period
@@ -12,7 +12,7 @@ module BID
       ALGORITHM = 'HS256'
 
       # Issuer assigned
-      ISSUER = 'bip-va-gov'
+      ISSUER = 'vets-api'
 
       # VBMS user logged in to the application; if no user interaction needs to be a system user
       USER_ID = 'VAGOVSYSACCT'
@@ -57,7 +57,7 @@ module BID
 
       # retrieve the secret from settings
       def private_key
-        Settings.bid.awards.jwt_secret
+        Settings.bep.claims.jwt_secret
       end
     end
   end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/model'
-require 'bid/awards/service'
+require 'bep/awards/service'
 
 # Form profile for VA 686c-674v2
 # This class handles prefilling form data for 686c-674v2,
@@ -90,12 +90,12 @@ class FormProfiles::VA686c674v2 < FormProfile
 
   ##
   # Retrieves net worth limit from settings
-  # Previously retrieved per request from BID Awards API call but moved to AWS Parameter Store
+  # Previously retrieved per request from BEP Awards API call but moved to AWS Parameter Store
   # Net worth limit value updated every November
   #
   # @return [Integer, nil] net worth limit
   def net_worth_limit
-    Settings.bid.awards.net_worth_limit.to_i
+    Settings.bep.awards.net_worth_limit.to_i
   end
 
   ##
@@ -157,10 +157,10 @@ class FormProfiles::VA686c674v2 < FormProfile
     @dependent_service ||= BGS::DependentService.new(user)
   end
 
-  # Returns the BID Awards pension service instance
-  # @return [BID::Awards::Service] service for retrieving pension award information
+  # Returns the BEP Awards pension service instance
+  # @return [BEP::Awards::Service] service for retrieving pension award information
   def pension_award_service
-    @pension_award_service ||= BID::Awards::Service.new(user)
+    @pension_award_service ||= BEP::Awards::Service.new(user)
   end
 
   # Returns the dependents monitor instance for logging

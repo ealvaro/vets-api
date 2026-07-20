@@ -9,7 +9,7 @@ upstream_groups:
   BGS::DependencyVerificationService: "BEP (Benefits Enterprise Platform)"
   BGS::DependentService: "BEP (Benefits Enterprise Platform)"
   BGS::PaymentService: "BEP (Benefits Enterprise Platform)"
-  BID::Awards::Service: "BID"
+  BEP::Awards::Service: "BEP"
   Caseflow::Service: "Caseflow"
   Ccra::ReferralService: "VAOS"
   Chip::Service: "CHIP (Check-in)"

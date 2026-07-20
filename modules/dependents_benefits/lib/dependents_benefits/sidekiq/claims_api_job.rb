@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'dependents_benefits/sidekiq/dependent_submission_job'
-require 'bid/claims/service'
+require 'bep/claims/service'
 require 'bgs/vnp_veteran'
 require 'bgs/vnp_relationships'
 require 'bgs/vnp_benefit_claim'

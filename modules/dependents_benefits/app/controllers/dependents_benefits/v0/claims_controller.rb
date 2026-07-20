@@ -11,7 +11,7 @@ require 'claims_evidence_api/uploader'
 require 'digital_forms_api/service/submissions'
 require 'pdf_utilities/pdf_stamper'
 
-require 'bid/persons/service'
+require 'bep/persons/service'
 
 module DependentsBenefits
   module V0
@@ -246,7 +246,7 @@ module DependentsBenefits
         monitor.track_info_event('Fetching last verified dates',
                                  action: 'fetch_dlv.start')
 
-        service = BID::Persons::Service.new(current_user)
+        service = BEP::Persons::Service.new(current_user)
         response = service.get_relationships(current_user.participant_id)
 
         if response.success?

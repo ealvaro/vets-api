@@ -1820,7 +1820,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -1851,7 +1851,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -1883,7 +1883,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -1897,7 +1897,7 @@ RSpec.describe FormProfile, type: :model do
                 error = StandardError.new('awards pension error')
                 VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                  allow_playback_repeats: true) do
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_raise(error)
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_raise(error)
                   monitor = instance_double(Dependents::Monitor)
                   allow(Dependents::Monitor).to receive(:new).and_return(monitor)
                   allow(monitor).to receive(:track_event)
@@ -2072,7 +2072,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -2103,7 +2103,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -2135,7 +2135,7 @@ RSpec.describe FormProfile, type: :model do
                       }
                     }
                   }
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                     OpenStruct.new(body: mock_response_body)
                   )
 
@@ -2149,7 +2149,7 @@ RSpec.describe FormProfile, type: :model do
                 error = StandardError.new('awards pension error')
                 VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                  allow_playback_repeats: true) do
-                  allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_raise(error)
+                  allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_raise(error)
                   monitor = instance_double(Dependents::Monitor)
                   allow(Dependents::Monitor).to receive(:new).and_return(monitor)
                   allow(monitor).to receive(:track_event)
@@ -2302,8 +2302,8 @@ RSpec.describe FormProfile, type: :model do
                 allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
                 allow(dependent_service).to receive(:get_dependents).and_return({ persons: [] })
 
-                # Mock BID awards service
-                allow_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_return(
+                # Mock BEP awards service
+                allow_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_return(
                   OpenStruct.new(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } })
                 )
               end

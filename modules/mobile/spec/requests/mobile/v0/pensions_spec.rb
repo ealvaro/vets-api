@@ -9,7 +9,7 @@ RSpec.describe 'Mobile::V0::Pensions', type: :request do
 
   describe 'GET /mobile/v0/pensions' do
     it 'responds to GET #index' do
-      VCR.use_cassette('bid/awards/get_awards_pension') do
+      VCR.use_cassette('bep/awards/get_awards_pension') do
         get '/mobile/v0/pensions', headers: sis_headers
       end
 
@@ -32,7 +32,7 @@ RSpec.describe 'Mobile::V0::Pensions', type: :request do
         sis_user.user_account_uuid = user_account.id
         sis_user.save!
 
-        VCR.use_cassette('bid/awards/get_awards_pension') do
+        VCR.use_cassette('bep/awards/get_awards_pension') do
           get '/mobile/v0/pensions', headers: sis_headers
         end
         SchemaContract::ValidationJob.drain
@@ -42,7 +42,7 @@ RSpec.describe 'Mobile::V0::Pensions', type: :request do
 
     context 'when upstream service returns error' do
       it 'returns error' do
-        allow_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_return(false)
+        allow_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_return(false)
         get '/mobile/v0/pensions', headers: sis_headers
 
         error = { 'errors' => [{ 'title' => 'Bad Gateway',

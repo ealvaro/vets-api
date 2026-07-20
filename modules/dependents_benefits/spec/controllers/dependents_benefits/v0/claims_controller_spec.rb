@@ -76,7 +76,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     end
 
     context 'with the last verified date feature flag on' do
-      let(:persons_service) { double('BID::Persons::Service') }
+      let(:persons_service) { double('BEP::Persons::Service') }
       let(:persons_response) do
         OpenStruct.new(
           success?: true,
@@ -98,7 +98,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:enable_date_last_verified_for_dependents).and_return(true)
-        allow(BID::Persons::Service).to receive(:new).and_return(persons_service)
+        allow(BEP::Persons::Service).to receive(:new).and_return(persons_service)
         allow(persons_service).to receive(:get_relationships).with(user.participant_id).and_return(persons_response)
       end
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'bid/configuration'
+require 'bep/configuration'
 require 'common/client/base'
 
-module BID
+module BEP
   class Service < Common::Client::Base
     include Common::Client::Concerns::Monitoring
 

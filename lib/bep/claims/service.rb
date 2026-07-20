@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-require 'bid/claims/configuration'
-require 'bid/service'
+require 'bep/claims/configuration'
+require 'bep/service'
 require 'common/client/base'
 
-# module for BID service
-module BID
-  # Claims module containing configuration and service classes for BID Claims functionality
+# module for BEP service
+module BEP
+  # Claims module containing configuration and service classes for BEP Claims functionality
   module Claims
-    # Service class for interacting with BID Claims API
-    class Service < BID::Service
-      configuration BID::Claims::Configuration
+    # Service class for interacting with BEP Claims API
+    class Service < BEP::Service
+      configuration BEP::Claims::Configuration
 
       # StatsD key prefix for metrics tracking
-      STATSD_KEY_PREFIX = 'api.bid.claims'
+      STATSD_KEY_PREFIX = 'api.bep.claims'
 
       def initialize
         super(nil)
@@ -49,7 +49,7 @@ module BID
       # @return [Hash] headers hash including authorization token
       def request_headers
         {
-          Authorization: "Bearer #{BID::Claims::JwtGenerator.encode_jwt}",
+          Authorization: "Bearer #{BEP::Claims::JwtGenerator.encode_jwt}",
           'Content-Type': 'application/json'
         }
       end

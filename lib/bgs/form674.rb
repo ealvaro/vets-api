@@ -8,7 +8,7 @@ require_relative 'vnp_benefit_claim'
 require_relative 'vnp_relationships'
 require_relative 'vnp_veteran'
 require_relative 'dependent_higher_ed_attendance'
-require_relative '../bid/awards/service'
+require_relative '../bep/awards/service'
 
 module BGS
   class Form674
@@ -151,7 +151,7 @@ module BGS
         receiving_pension = false
 
         if Flipper.enabled?(:dependents_pension_check)
-          pension_response = bid_service.get_awards_pension
+          pension_response = bep_service.get_awards_pension
           receiving_pension = pension_response.body['awards_pension']['is_in_receipt_of_pension']
         end
 
@@ -174,8 +174,8 @@ module BGS
       BGS::Service.new(@user)
     end
 
-    def bid_service
-      BID::Awards::Service.new(@user)
+    def bep_service
+      BEP::Awards::Service.new(@user)
     end
 
     def stats_key

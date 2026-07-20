@@ -50,8 +50,9 @@ require 'ccra/configuration'
 # --- Added by breakers audit (lib/**/configuration.rb candidates) ---
 require 'apps/configuration'
 require 'benefits_intake_service/configuration'
-require 'bid/awards/configuration'
-require 'bid/persons/configuration'
+require 'bep/awards/configuration'
+require 'bep/claims/configuration'
+require 'bep/persons/configuration'
 require 'chip/configuration'
 require 'contention_classification/configuration'
 require 'decision_review/utilities/pdf_validation/configuration'
@@ -100,7 +101,7 @@ Rails.application.reloader.to_prepare do
   # --- Added by breakers audit (lib/**/configuration.rb candidates) ---
   # NOTE: the following classes were intentionally NOT added -- see PR/ticket
   # for disposition:
-  #   - BID::Configuration                              (abstract base; see BID::Awards / BID::Persons below)
+  #   - BEP::Configuration                              (abstract base; see BEP::Awards / BEP::Persons below)
   #   - EVSS::Configuration                              (abstract base; concrete subclasses registered individually)
   #   - Salesforce::Configuration                        (abstract base; already-registered subclass)
   #   - VAProfile::Configuration                         (abstract base; concrete subclasses registered individually)
@@ -153,8 +154,9 @@ Rails.application.reloader.to_prepare do
     Ccra::Configuration.instance.breakers_service,
     Apps::Configuration.instance.breakers_service,
     BenefitsIntakeService::Configuration.instance.breakers_service,
-    BID::Awards::Configuration.instance.breakers_service,
-    BID::Persons::Configuration.instance.breakers_service,
+    BEP::Awards::Configuration.instance.breakers_service,
+    BEP::Claims::Configuration.instance.breakers_service,
+    BEP::Persons::Configuration.instance.breakers_service,
     Chip::Configuration.instance.breakers_service,
     ContentionClassification::Configuration.instance.breakers_service,
     DecisionReview::PdfValidation::Configuration.instance.breakers_service,

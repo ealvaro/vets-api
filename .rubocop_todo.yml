@@ -109,7 +109,7 @@ Lint/MissingSuper:
     - 'app/models/bgs_dependents/veteran.rb'
     - 'app/sidekiq/evss/disability_compensation_form/form8940_document.rb'
     - 'lib/apps/client.rb'
-    - 'lib/bid/service.rb'
+    - 'lib/bep/service.rb'
     - 'lib/carma/models/attachment.rb'
     - 'lib/carma/models/attachments.rb'
     - 'lib/carma/models/caregiver.rb'

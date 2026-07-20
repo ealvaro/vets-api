@@ -1,20 +1,20 @@
 # frozen_string_literal: true
 
-require 'bid/awards/configuration'
-require 'bid/service'
+require 'bep/awards/configuration'
+require 'bep/service'
 require 'common/client/base'
 
-# module for BID service
-module BID
-  # Awards module containing configuration and service classes for BID Awards functionality
+# module for BEP service
+module BEP
+  # Awards module containing configuration and service classes for BEP Awards functionality
   module Awards
-    # Service class for interacting with BID Awards API
+    # Service class for interacting with BEP Awards API
     # Handles pension award data retrieval for veterans
-    class Service < BID::Service
-      configuration BID::Awards::Configuration
+    class Service < BEP::Service
+      configuration BEP::Awards::Configuration
 
       # StatsD key prefix for metrics tracking
-      STATSD_KEY_PREFIX = 'api.bid.awards'
+      STATSD_KEY_PREFIX = 'api.bep.awards'
 
       # Retrieves pension awards information for the current user
       # @return [Faraday::Response] the HTTP response containing pension award data
@@ -30,7 +30,7 @@ module BID
       end
 
       # This method will retrieve a list of current award events for the user
-      # Mock response is defined in: spec/lib/bid/awards/support/current_awards_response.rb (RSpec shared context)
+      # Mock response is defined in: spec/lib/bep/awards/support/current_awards_response.rb (RSpec shared context)
       def get_current_awards
         with_monitoring do
           perform(
@@ -48,13 +48,13 @@ module BID
       # @return [Hash] headers hash including authorization token
       def request_headers
         {
-          Authorization: "Bearer #{BID::Awards::JwtGenerator.encode_jwt}"
+          Authorization: "Bearer #{BEP::Awards::JwtGenerator.encode_jwt}"
         }
       end
 
       def participant_id
         @user.participant_id.presence || raise(StandardError,
-                                               'BID Awards Service requires a participant_id for the user')
+                                               'BEP Awards Service requires a participant_id for the user')
       end
 
       def current_awards_endpoint

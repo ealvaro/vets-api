@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'bid/persons/service'
+require 'bep/persons/service'
 
-RSpec.describe BID::Persons::Service do
+RSpec.describe BEP::Persons::Service do
   let(:user) { create(:evss_user, :loa3) }
-  let(:service) { BID::Persons::Service.new(user) }
+  let(:service) { BEP::Persons::Service.new(user) }
   let(:participant_id) { '600293960' }
 
   describe '#get_relationships' do
     context 'fetching a list of relationships' do
       it 'successfully receives a relationships object' do
-        VCR.use_cassette('bid/persons/get_relationships') do
+        VCR.use_cassette('bep/persons/get_relationships') do
           response = service.get_relationships(participant_id)
 
           expect(response.status).to eq(200)

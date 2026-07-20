@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'bid/claims/service'
+require 'bep/claims/service'
 
-RSpec.describe BID::Claims::Service do
-  let(:service) { BID::Claims::Service.new }
+RSpec.describe BEP::Claims::Service do
+  let(:service) { BEP::Claims::Service.new }
 
   describe '#create_claim' do
     let(:create_params) do
@@ -28,7 +28,7 @@ RSpec.describe BID::Claims::Service do
     end
 
     it 'successfully calls the api' do
-      VCR.use_cassette('bid/claims/create_claim') do
+      VCR.use_cassette('bep/claims/create_claim') do
         response = service.create_claim(create_params)
 
         expect(response.status).to eq(201)
@@ -59,7 +59,7 @@ RSpec.describe BID::Claims::Service do
     end
 
     it 'successfully calls the api' do
-      VCR.use_cassette('bid/claims/create_contention') do
+      VCR.use_cassette('bep/claims/create_contention') do
         response = service.create_contention(claim_id, contention_params)
 
         expect(response.status).to eq(201)

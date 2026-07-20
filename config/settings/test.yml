@@ -72,6 +72,20 @@ benefits_intake_service:
     secret_access_key: ~
   enabled: true
   url: ~
+bep:
+  awards:
+    base_url: https://fake_url.com
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
+    mock: true
+    net_worth_limit: '163699'
+  claims:
+    base_url: https://fake_url.com
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
+    mock: true
+  persons:
+    base_url: https://fake_url.com
+    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
+    mock: true
 betamocks:
   cache_dir: ~
   enabled: true
@@ -88,20 +102,6 @@ bgs:
   mock_responses: false
   ssl_verify_mode: peer
   url: https://fwdproxy-dev.vfs.va.gov:4447
-bid:
-  awards:
-    base_url: https://fake_url.com
-    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
-    mock: true
-    net_worth_limit: '163699'
-  claims:
-    base_url: https://fake_url.com
-    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
-    mock: true
-  persons:
-    base_url: https://fake_url.com
-    jwt_secret: abcd1234abcd1234abcd1234abcd1234abcd1234
-    mock: true
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo

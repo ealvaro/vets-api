@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'bid/awards/service'
+require 'bep/awards/service'
 
 module Mobile
   module V0
@@ -18,7 +18,7 @@ module Mobile
       private
 
       def pension_award_service
-        @pension_award_service ||= BID::Awards::Service.new(current_user)
+        @pension_award_service ||= BEP::Awards::Service.new(current_user)
       end
 
       def validate_response_schema(user, response, contract_name)

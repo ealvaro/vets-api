@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'vets/model'
-require 'bid/awards/service'
+require 'bep/awards/service'
 require 'dependents_benefits/helper'
 
 module DependentsBenefits
@@ -105,12 +105,12 @@ module DependentsBenefits
 
     ##
     # Retrieves net worth limit from settings
-    # Previously retrieved per request from BID Awards API call but moved to AWS Parameter Store
+    # Previously retrieved per request from BEP Awards API call but moved to AWS Parameter Store
     # Net worth limit value updated every November
     #
     # @return [Integer, nil] net worth limit
     def net_worth_limit
-      Settings.bid.awards.net_worth_limit.to_i
+      Settings.bep.awards.net_worth_limit.to_i
     end
 
     ##
@@ -193,12 +193,12 @@ module DependentsBenefits
     end
 
     ##
-    # Returns a BID awards service instance for the current user
+    # Returns a BEP awards service instance for the current user
     # Used to retrieve pension award information
     #
-    # @return [BID::Awards::Service] Service for retrieving pension award data
+    # @return [BEP::Awards::Service] Service for retrieving pension award data
     def pension_award_service
-      @pension_award_service ||= BID::Awards::Service.new(user)
+      @pension_award_service ||= BEP::Awards::Service.new(user)
     end
 
     ##

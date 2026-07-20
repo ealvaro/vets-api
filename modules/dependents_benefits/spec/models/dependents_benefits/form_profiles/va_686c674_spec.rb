@@ -239,19 +239,19 @@ RSpec.describe FormProfile, type: :model do
             let(:user) { create(:evss_user, :loa3) }
             let(:form_profile) { FormProfiles::VA686c674v2.new(user:, form_id: '686C-674-V2') }
             let(:mock_award_response) { OpenStruct.new(body: {}) }
-            let(:bid_service) { double('BID::Awards::Service', get_current_awards: mock_award_response) }
+            let(:bid_service) { double('BEP::Awards::Service', get_current_awards: mock_award_response) }
             let(:monitor) { instance_double(DependentsBenefits::Monitor) }
 
             before do
               allow(Rails.logger).to receive(:warn)
-              allow(BID::Awards::Service).to receive(:new).with(user).and_return(bid_service)
+              allow(BEP::Awards::Service).to receive(:new).with(user).and_return(bid_service)
               allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
               allow(monitor).to receive(:track_warning_event)
             end
 
-            it 'prefills net worth limit with value from BID Awards settings' do
+            it 'prefills net worth limit with value from BEP Awards settings' do
               prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
-              expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(Settings.bid.awards.net_worth_limit.to_i)
+              expect(prefilled_data['nonPrefill']['netWorthLimit']).to eq(Settings.bep.awards.net_worth_limit.to_i)
             end
 
             context 'for IP award line type with effective date in past' do
@@ -338,7 +338,7 @@ RSpec.describe FormProfile, type: :model do
               end
             end
 
-            it 'prefills -1 when bid awards service returns an error' do
+            it 'prefills -1 when bep awards service returns an error' do
               allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
               allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
 
@@ -492,7 +492,7 @@ RSpec.describe FormProfile, type: :model do
                     }
                   }
                 }
-                allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_return(
+                allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_return(
                   OpenStruct.new(body: mock_response_body)
                 )
 
@@ -516,14 +516,14 @@ RSpec.describe FormProfile, type: :model do
               end
             end
 
-            it 'prefills -1 when bid awards service returns an error' do
+            it 'prefills -1 when bep awards service returns an error' do
               allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
               allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
 
               error = StandardError.new('awards pension error')
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                allow_playback_repeats: true) do
-                allow_any_instance_of(BID::Awards::Service).to receive(:get_current_awards).and_raise(error)
+                allow_any_instance_of(BEP::Awards::Service).to receive(:get_current_awards).and_raise(error)
 
                 expect(Rails.logger).to receive(:warn).with('Failed to retrieve awards pension data for awards',
                                                             anything)

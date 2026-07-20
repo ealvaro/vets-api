@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-module BID
+module BEP
   module Persons
-    # Encoder to be used with BID Persons service
+    # Encoder to be used with BEP Persons service
     # @see https://www.jwt.io/introduction#when-to-use-json-web-tokens
     class JwtGenerator
       # expiration period
@@ -57,7 +57,7 @@ module BID
 
       # retrieve the secret from settings
       def private_key
-        Settings.bid.persons.jwt_secret
+        Settings.bep.persons.jwt_secret
       end
     end
   end

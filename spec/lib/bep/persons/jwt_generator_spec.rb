@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'bid/persons/jwt_generator'
+require 'bep/persons/jwt_generator'
 
-RSpec.describe BID::Persons::JwtGenerator do
+RSpec.describe BEP::Persons::JwtGenerator do
   describe '#encode_jwt' do
     it 'returns a token with required fields' do
-      encoded_jwt = BID::Persons::JwtGenerator.encode_jwt
-      decoded_jwt = JWT.decode(encoded_jwt, Settings.bid.persons.jwt_secret, true, {
+      encoded_jwt = BEP::Persons::JwtGenerator.encode_jwt
+      decoded_jwt = JWT.decode(encoded_jwt, Settings.bep.persons.jwt_secret, true, {
                                  typ: 'JWT',
                                  alg: 'HS256'
                                }).first

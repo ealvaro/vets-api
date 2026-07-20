@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-shared_context 'BID Awards CurrentAwardsResponse' do
+shared_context 'BEP Awards CurrentAwardsResponse' do
   let(:mock_response_body) do
     {
       'award' => {

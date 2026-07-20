@@ -64,7 +64,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
       let(:parent_claim) { create(:dependents_claim) }
       let(:form_data) { parent_claim.parsed_form }
       let(:bgs_service_stub) { double('BGS::Service') }
-      let(:bid_awards_stub) { double('BID::Awards::Service') }
+      let(:bep_awards_stub) { double('BEP::Awards::Service') }
 
       before do
         saved_claim.destroy!
@@ -99,8 +99,8 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
                                                                                  status_type_code: '444'
                                                                                }
                                                                              })
-        allow(BID::Awards::Service).to receive(:new).and_return(bid_awards_stub)
-        allow(bid_awards_stub).to receive(:get_awards_pension).and_return(
+        allow(BEP::Awards::Service).to receive(:new).and_return(bep_awards_stub)
+        allow(bep_awards_stub).to receive(:get_awards_pension).and_return(
           OpenStruct.new({ body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } } })
         )
       end

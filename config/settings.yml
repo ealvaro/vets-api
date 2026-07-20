@@ -73,6 +73,20 @@ benefits_intake_service:
     secret_access_key: ~
   enabled: true
   url: <%= ENV['benefits_intake_service__url'] %>
+bep:
+  awards:
+    base_url: <%= ENV['bid__awards__base_url'] %>
+    jwt_secret: <%= ENV['bid__awards__jwt_secret'] %>
+    mock: <%= ENV['bid__awards__mock'] %>
+    net_worth_limit: <%= ENV['bid__awards__net_worth_limit'] %>
+  claims:
+    base_url: <%= ENV['bid__claims__base_url'] %>
+    jwt_secret: <%= ENV['bid__claims__jwt_secret'] %>
+    mock: <%= ENV['bid__claims__mock'] %>
+  persons:
+    base_url: <%= ENV['bid__persons__base_url'] %>
+    jwt_secret: <%= ENV['bid__persons__jwt_secret'] %>
+    mock: <%= ENV['bid__persons__mock'] %>
 betamocks:
   cache_dir: <%= ENV['betamocks__cache_dir'] %>
   enabled: <%= ENV['betamocks__enabled'] %>
@@ -89,20 +103,6 @@ bgs:
   mock_responses: <%= ENV['bgs__mock_responses'] %>
   ssl_verify_mode: <%= ENV['bgs__ssl_verify_mode'] %>
   url: <%= ENV['bgs__url'] %>
-bid:
-  awards:
-    base_url: <%= ENV['bid__awards__base_url'] %>
-    jwt_secret: <%= ENV['bid__awards__jwt_secret'] %>
-    mock: <%= ENV['bid__awards__mock'] %>
-    net_worth_limit: <%= ENV['bid__awards__net_worth_limit'] %>
-  claims:
-    base_url: <%= ENV['bid__claims__base_url'] %>
-    jwt_secret: <%= ENV['bid__claims__jwt_secret'] %>
-    mock: <%= ENV['bid__claims__mock'] %>
-  persons:
-    base_url: <%= ENV['bid__persons__base_url'] %>
-    jwt_secret: <%= ENV['bid__persons__jwt_secret'] %>
-    mock: <%= ENV['bid__persons__mock'] %>
 binaries:
   clamdscan: "/usr/bin/clamdscan"
   pdfinfo: pdfinfo

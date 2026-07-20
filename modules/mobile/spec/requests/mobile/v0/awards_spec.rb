@@ -13,7 +13,7 @@ RSpec.describe 'Mobile::V0::Awards', type: :request do
   describe 'GET /mobile/v0/awards' do
     it 'responds to GET #index' do
       VCR.use_cassette('bgs/awards_service/get_awards') do
-        VCR.use_cassette('bid/awards/get_awards_pension') do
+        VCR.use_cassette('bep/awards/get_awards_pension') do
           get '/mobile/v0/awards', headers: sis_headers
         end
       end

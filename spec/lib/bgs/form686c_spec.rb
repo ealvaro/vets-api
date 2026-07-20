@@ -24,7 +24,7 @@ RSpec.describe BGS::Form686c do
         # @TODO: may want to return something else
         it 'returns a hash with proc information' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect(subject).to include(
                   :jrn_dt,
@@ -41,7 +41,7 @@ RSpec.describe BGS::Form686c do
 
         it 'calls all methods in flow' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               expect_any_instance_of(BGS::Service).to receive(:create_proc).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:create_proc_form).and_call_original
               expect_any_instance_of(BGS::VnpVeteran).to receive(:create).and_call_original
@@ -52,7 +52,7 @@ RSpec.describe BGS::Form686c do
               expect_any_instance_of(BGS::VnpBenefitClaim).to receive(:update).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:update_proc).with('3831475',
                                                                                  { proc_state: 'MANUAL_VAGOV' })
-              expect_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_call_original
+              expect_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:create_note).with(
                 '600210032',
                 'Claim set to manual by VA.gov: This application needs manual review because a 686 was submitted ' \
@@ -88,11 +88,11 @@ RSpec.describe BGS::Form686c do
 
         it 'submits a manual claim with pension enabled' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect(Flipper).to receive(:enabled?).with(:dependents_removal_check).and_return(true)
                 expect(Flipper).to receive(:enabled?).with(:dependents_pension_check).and_return(true)
-                expect_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_call_original
+                expect_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_call_original
 
                 BGS::Form686c.new(user_struct, saved_claim).submit(payload)
               end
@@ -106,7 +106,7 @@ RSpec.describe BGS::Form686c do
 
         it 'submits a manual claim with the correct BGS note' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect_any_instance_of(BGS::Service).to receive(:update_proc).with('3831475',
                                                                                    { proc_state: 'MANUAL_VAGOV' })
@@ -129,7 +129,7 @@ RSpec.describe BGS::Form686c do
 
         it 'calls the methods to transfer data but not create claims' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               expect_any_instance_of(BGS::Service).to receive(:create_proc).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:create_proc_form).and_call_original
               expect_any_instance_of(BGS::VnpVeteran).to receive(:create).and_call_original
@@ -156,7 +156,7 @@ RSpec.describe BGS::Form686c do
         # @TODO: may want to return something else
         it 'returns a hash with proc information' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect(subject).to include(
                   :jrn_dt,
@@ -173,7 +173,7 @@ RSpec.describe BGS::Form686c do
 
         it 'calls all methods in flow' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               expect_any_instance_of(BGS::Service).to receive(:create_proc).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:create_proc_form).and_call_original
               expect_any_instance_of(BGS::VnpVeteran).to receive(:create).and_call_original
@@ -184,7 +184,7 @@ RSpec.describe BGS::Form686c do
               expect_any_instance_of(BGS::VnpBenefitClaim).to receive(:update).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:update_proc).with('3831475',
                                                                                  { proc_state: 'MANUAL_VAGOV' })
-              expect_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_call_original
+              expect_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_call_original
               expect_any_instance_of(BGS::Service).to receive(:create_note).with(
                 '600210032',
                 'Claim set to manual by VA.gov: This application needs manual review because a 686 was submitted ' \
@@ -220,11 +220,11 @@ RSpec.describe BGS::Form686c do
 
         it 'submits a manual claim with pension enabled' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect(Flipper).to receive(:enabled?).with(:dependents_removal_check).and_return(true)
                 expect(Flipper).to receive(:enabled?).with(:dependents_pension_check).and_return(true)
-                expect_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_call_original
+                expect_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_call_original
 
                 BGS::Form686c.new(user_object, saved_claim).submit(payload)
               end
@@ -238,7 +238,7 @@ RSpec.describe BGS::Form686c do
 
         it 'submits a manual claim with the correct BGS note' do
           VCR.use_cassette('bgs/form686c/submit') do
-            VCR.use_cassette('bid/awards/get_awards_pension') do
+            VCR.use_cassette('bep/awards/get_awards_pension') do
               VCR.use_cassette('bgs/service/create_note') do
                 expect_any_instance_of(BGS::Service).to receive(:update_proc).with('3831475',
                                                                                    { proc_state: 'MANUAL_VAGOV' })
@@ -259,7 +259,7 @@ RSpec.describe BGS::Form686c do
 
   describe '#set_claim_type' do
     let(:form686c) { BGS::Form686c.new(user_struct, saved_claim) }
-    let(:bid_service) { instance_double(BID::Awards::Service) }
+    let(:bid_service) { instance_double(BEP::Awards::Service) }
     let(:selectable_options) do
       {
         'report_child18_or_older_is_not_attending_school' => false,
@@ -273,7 +273,7 @@ RSpec.describe BGS::Form686c do
     end
 
     before do
-      allow(form686c).to receive(:bid_service).and_return(bid_service)
+      allow(form686c).to receive(:bep_service).and_return(bid_service)
       allow(bid_service).to receive(:get_awards_pension).and_return(
         double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } })
       )

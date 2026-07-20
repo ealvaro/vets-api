@@ -20,7 +20,7 @@ RSpec.describe BGS::Form674 do
     # @TODO: may want to return something else
     it 'returns a hash with proc information' do
       VCR.use_cassette('bgs/form674/submit') do
-        VCR.use_cassette('bid/awards/get_awards_pension') do
+        VCR.use_cassette('bep/awards/get_awards_pension') do
           VCR.use_cassette('bgs/service/create_note') do
             modify_dependents = BGS::Form674.new(user_struct, saved_claim).submit(all_flows_v2_payload)
 
@@ -54,10 +54,10 @@ RSpec.describe BGS::Form674 do
 
     it 'submits a manual claim with pension' do
       VCR.use_cassette('bgs/form674/submit') do
-        VCR.use_cassette('bid/awards/get_awards_pension') do
+        VCR.use_cassette('bep/awards/get_awards_pension') do
           VCR.use_cassette('bgs/service/create_note') do
             allow(Flipper).to receive(:enabled?).with(:dependents_pension_check).and_return(true)
-            expect_any_instance_of(BID::Awards::Service).to receive(:get_awards_pension).and_call_original
+            expect_any_instance_of(BEP::Awards::Service).to receive(:get_awards_pension).and_call_original
 
             BGS::Form674.new(user_struct, saved_claim).submit(all_flows_v2_payload)
           end

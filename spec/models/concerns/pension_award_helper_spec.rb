@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'bid/awards/service'
+require 'bep/awards/service'
 
 RSpec.describe PensionAwardHelper, type: :model do
   # Create a test class that includes the concern but doesn't implement the abstract methods
@@ -17,7 +17,7 @@ RSpec.describe PensionAwardHelper, type: :model do
       include PensionAwardHelper
 
       def pension_award_service
-        @pension_award_service ||= BID::Awards::Service.new(nil)
+        @pension_award_service ||= BEP::Awards::Service.new(nil)
       end
 
       def track_pension_award_error(error)
@@ -49,7 +49,7 @@ RSpec.describe PensionAwardHelper, type: :model do
           include PensionAwardHelper
 
           def pension_award_service
-            service = instance_double(BID::Awards::Service)
+            service = instance_double(BEP::Awards::Service)
             allow(service).to receive(:get_current_awards).and_raise(StandardError.new('service error'))
             service
           end
@@ -70,7 +70,7 @@ RSpec.describe PensionAwardHelper, type: :model do
   end
 
   describe 'pension award functionality' do
-    let(:mock_service) { instance_double(BID::Awards::Service) }
+    let(:mock_service) { instance_double(BEP::Awards::Service) }
     let(:complete_instance) { test_class_with_methods.new }
 
     before do

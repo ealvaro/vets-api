@@ -2,21 +2,21 @@
 
 require 'rails_helper'
 
-require 'bid/awards/service'
+require 'bep/awards/service'
 require 'dependents_benefits/claim_behavior/vbms_information'
 
 RSpec.describe DependentsBenefits::ClaimBehavior::VBMSInformation do
   let(:claim) { create(:dependents_claim) }
   let(:parsed_form) { claim.parsed_form }
   let(:user) { double('User', participant_id: 'participant_id') }
-  let(:bid_service) { double('BID::Awards::Service', get_awards_pension: awards_response) }
+  let(:bid_service) { double('BEP::Awards::Service', get_awards_pension: awards_response) }
   let(:awards_response) { double('response', body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } }) }
 
   before do
     allow(Flipper).to receive(:enabled?).with(:dependents_removal_check).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:dependents_pension_check).and_return(true)
 
-    allow(BID::Awards::Service).to receive(:new).and_return(bid_service)
+    allow(BEP::Awards::Service).to receive(:new).and_return(bid_service)
 
     allow(claim).to receive(:parsed_form).and_return(parsed_form)
   end
