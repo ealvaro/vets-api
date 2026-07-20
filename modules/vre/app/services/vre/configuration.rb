@@ -2,6 +2,9 @@
 
 module VRE
   class Configuration < ::Common::Client::Configuration::REST
+    self.open_timeout = 60
+    self.read_timeout = 60
+
     def connection
       @conn ||= Faraday.new(base_path, headers: base_request_headers, request: request_options) do |faraday|
         faraday.use(:breakers, service_name:)
