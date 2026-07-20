@@ -9,10 +9,10 @@ require 'claims_api/v2/form526_establishment_service/service'
 module ClaimsApi
   module FesService
     class Base
-      def initialize(request = nil, use_mock: nil)
+      def initialize(request = nil)
         @request = request
         @auth_headers = {}
-        @use_mock = use_mock.nil? ? Rails.env.test? : use_mock
+        @use_mock = Settings.claims_api.fes.mock_claims || false
       end
 
       #  rubocop:disable Style/OptionalBooleanParameter
@@ -79,6 +79,8 @@ module ClaimsApi
       end
 
       def headers
+        return @auth_headers if @use_mock # no sense in getting a token if the target request is mocked
+
         @auth_headers.merge!({
                                Authorization: "Bearer #{access_token}",
                                'content-type': 'application/json; charset=UTF-8'

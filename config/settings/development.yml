@@ -240,7 +240,8 @@ claims_api:
         aud_claim_url: https://deptva-eval.okta.com/oauth2/ausi3ui83fLa68IJv2p7/v1/token
         client_id: ~
         secret_key: "/srv/vets-api/secret/claims_api_fes_ccg_secret.key"
-    service_url: ~
+    mock_claims: true
+    service_url: https://fakedomainandsubdomain.com
     ssl: false
     token_host: https://qa.lighthouse.va.gov
     use_mocks: true

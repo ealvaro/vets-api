@@ -157,6 +157,7 @@ describe ClaimsApi::DisabilityCompensation::Form526EstablishmentService do
     context 'using the FES Service' do
       before do
         allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_enable_FES).and_return(true)
+        stub_claims_fes_api_auth_token
       end
 
       it 'has a upload method that returns a claim id' do

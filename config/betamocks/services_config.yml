@@ -569,6 +569,25 @@
       :uid_location: header
       :uid_locator: 'va_eauth_pnid'
 
+# Form526 Establishment Service
+- :name: 'Form526 Establishment Service'
+  :base_uri: <%= "#{URI(Settings.claims_api.fes.service_url).host}:#{URI(Settings.claims_api.fes.service_url).port}" %>
+  :endpoints:
+  - :method: :post
+    :path: "/form526-establishment-service/v1/submit"
+    :file_path: "form526_establishment_service/disability_form/form526"
+    :symbolize_response: true
+    :cache_multiple_responses:
+      :uid_location: header
+      :uid_locator: 'va_eauth_pnid'
+  - :method: :post
+    :path: "/form526-establishment-service/v1/validate"
+    :file_path: "form526_establishment_service/disability_form/form526_validate"
+    :symbolize_response: true
+    :cache_multiple_responses:
+      :uid_location: header
+      :uid_locator: 'va_eauth_pnid'
+
 # MVI
 - :name: 'MVI'
   :base_uri: <%= "#{URI(IdentitySettings.mvi.url).host}:#{URI(IdentitySettings.mvi.url).port}" %>

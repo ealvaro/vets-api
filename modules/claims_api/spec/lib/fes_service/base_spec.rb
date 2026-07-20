@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative '../../rails_helper'
 require 'fes_service/base'
 
 describe ClaimsApi::FesService::Base do
@@ -63,6 +64,10 @@ describe ClaimsApi::FesService::Base do
   end
   let(:async) { true }
   let(:not_async) { false }
+
+  before do
+    stub_claims_fes_api_auth_token
+  end
 
   describe '#validate' do
     context 'successful validation' do
@@ -150,8 +155,7 @@ describe ClaimsApi::FesService::Base do
         allow_any_instance_of(ClaimsApi::V2::Form526EstablishmentService::Service)
           .to receive(:get_auth_token).and_return(token_value)
 
-        service_non_mock = described_class.new(use_mock: false)
-        result = service_non_mock.send(:access_token)
+        result = service.send(:access_token)
 
         expect(result).to eq(token_value)
       end
@@ -162,19 +166,45 @@ describe ClaimsApi::FesService::Base do
         allow_any_instance_of(ClaimsApi::V2::Form526EstablishmentService::Service)
           .to receive(:get_auth_token).and_return(nil)
 
-        service_non_mock = described_class.new(use_mock: false)
-
-        expect { service_non_mock.send(:access_token) }
+        expect { service.send(:access_token) }
           .to raise_error(StandardError, 'FES auth token missing')
       end
     end
 
-    context 'when use_mock is true' do
+    context 'when mocked is true' do
       it 'returns fake_token without calling auth service' do
-        service_mock = described_class.new(use_mock: true)
-        result = service_mock.send(:access_token)
+        with_settings(Settings.claims_api.fes, mock_claims: true) do
+          result = service.send(:access_token)
 
-        expect(result).to eq('fake_token')
+          expect(result).to eq('fake_token')
+        end
+      end
+    end
+  end
+
+  describe 'mocking' do
+    context 'when Settings.claims_api.fes.mock_claims is true' do
+      it 'returns @auth_headers unchanged, without adding an Authorization header' do
+        with_settings(Settings.claims_api.fes, mock_claims: true) do
+          service.instance_variable_set(:@auth_headers, fes_auth_headers)
+
+          result = service.send(:headers)
+
+          expect(result).to eq(fes_auth_headers)
+          expect(result).not_to have_key(:Authorization)
+          expect(result).not_to have_key('Authorization')
+        end
+      end
+
+      it 'does not call the FES auth token service' do
+        with_settings(Settings.claims_api.fes, mock_claims: true) do
+          expect_any_instance_of(ClaimsApi::V2::Form526EstablishmentService::Service)
+            .not_to receive(:get_auth_token)
+
+          service.instance_variable_set(:@auth_headers, fes_auth_headers)
+
+          service.send(:headers)
+        end
       end
     end
   end

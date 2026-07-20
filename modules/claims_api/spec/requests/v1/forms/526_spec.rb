@@ -1752,6 +1752,7 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
         context 'flipper sends to FES' do
           before do
             allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(true)
+            stub_claims_fes_api_auth_token
           end
 
           it 'returns a successful response when valid' do

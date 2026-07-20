@@ -10,7 +10,7 @@ RSpec.describe ClaimsApi::V1::Form526EstablishmentUpload, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    stub_claims_api_auth_token
+    stub_claims_fes_api_auth_token
   end
 
   let(:user) { create(:user, :loa3) }
