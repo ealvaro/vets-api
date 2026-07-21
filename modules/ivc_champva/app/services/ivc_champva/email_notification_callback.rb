@@ -22,12 +22,14 @@ module IvcChampva
       when 'delivered'
         # success
         StatsD.increment('api.vanotify.notifications.delivered')
+        monitor.log_silent_failure_avoided(ac)
       when 'permanent-failure'
         # delivery failed
-        # possibly log error or increment metric and use the optional metadata - notification.callback_metadata
         StatsD.increment('api.vanotify.notifications.permanent_failure')
         Rails.logger.error(notification_id: notification.notification_id, source: notification.source_location,
                            status: notification.status, status_reason: notification.status_reason)
+        # No confirmation reached the applicant - feed the ZSF alerting/dashboard pipeline
+        monitor.log_silent_failure(ac)
       when 'temporary-failure'
         # the api will continue attempting to deliver - success is still possible
         StatsD.increment('api.vanotify.notifications.temporary_failure')

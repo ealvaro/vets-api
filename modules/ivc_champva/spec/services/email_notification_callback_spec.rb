@@ -25,6 +25,8 @@ RSpec.describe IvcChampva::EmailNotificationCallback do
   before do
     allow(IvcChampva::Monitor).to receive(:new).and_return(monitor)
     allow(monitor).to receive(:track_email_sent)
+    allow(monitor).to receive(:log_silent_failure)
+    allow(monitor).to receive(:log_silent_failure_avoided)
     allow(StatsD).to receive(:increment)
     allow(Rails.logger).to receive(:error)
   end
@@ -49,6 +51,13 @@ RSpec.describe IvcChampva::EmailNotificationCallback do
         )
         described_class.call(notification)
       end
+
+      it 'logs silent failure avoided' do
+        expect(monitor).to receive(:log_silent_failure_avoided).with(
+          notification.callback_metadata['additional_context']
+        )
+        described_class.call(notification)
+      end
     end
 
     context 'when status is permanent-failure' do
@@ -67,6 +76,13 @@ RSpec.describe IvcChampva::EmailNotificationCallback do
           source: 'test_location',
           status: 'permanent-failure',
           status_reason: 'test_reason'
+        )
+        described_class.call(notification)
+      end
+
+      it 'logs silent failure' do
+        expect(monitor).to receive(:log_silent_failure).with(
+          notification.callback_metadata['additional_context']
         )
         described_class.call(notification)
       end
