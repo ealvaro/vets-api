@@ -22,13 +22,17 @@ module SimpleFormsApi
           'TRUCK' => 'TRUCK'
         }.freeze
 
-        def effective_address(form)
+        def planned_address(form)
           planned = form.data['planned_mailing_address']
           if truthy?(form.data['active_duty']) && planned.is_a?(Hash) && planned.values.any? { |v| !v.to_s.empty? }
             planned
           else
-            form.data['current_mailing_address'] || {}
+            {}
           end
+        end
+
+        def current_address(form)
+          form.data['current_mailing_address'] || {}
         end
 
         def normalize_ssn(ssn)

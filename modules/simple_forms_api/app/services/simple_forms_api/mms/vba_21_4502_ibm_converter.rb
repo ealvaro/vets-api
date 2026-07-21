@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require_relative 'vba_21_4502_ibm_converter/helpers'
+require_relative 'vba_21_4502_ibm_converter/unused_fields'
 
 module SimpleFormsApi
   module Mms
     module VBA214502IbmConverter
       extend Helpers
+      extend UnusedFields
 
       FORM_TYPE_LABEL = 'VA FORM 21-4502, AUG 2024'
 
@@ -29,12 +31,19 @@ module SimpleFormsApi
         'EMAIL' => ->(form) { form.data['email'] || '' },
         'AGREE_ELECTRONIC_CORR' => ->(form) { bool_to_checkbox(form.data['electronic_correspondence']) },
 
-        'CURRENT_ADDRESS_LINE1' => ->(form) { effective_address(form)['street'] || '' },
-        'CURRENT_ADDRESS_LINE2' => ->(form) { effective_address(form)['street2'] || '' },
-        'CURRENT_ADDRESS_CITY' => ->(form) { effective_address(form)['city'] || '' },
-        'CURRENT_ADDRESS_STATE' => ->(form) { effective_address(form)['state'] || '' },
-        'CURRENT_ADDRESS_COUNTRY' => ->(form) { effective_address(form)['country'] || '' },
-        'CURRENT_ADDRESS_ZIP5' => ->(form) { normalize_zip(effective_address(form)['postal_code']) },
+        'CURRENT_ADDRESS_LINE1' => ->(form) { current_address(form)['street'] || '' },
+        'CURRENT_ADDRESS_LINE2' => ->(form) { current_address(form)['street2'] || '' },
+        'CURRENT_ADDRESS_CITY' => ->(form) { current_address(form)['city'] || '' },
+        'CURRENT_ADDRESS_STATE' => ->(form) { current_address(form)['state'] || '' },
+        'CURRENT_ADDRESS_COUNTRY' => ->(form) { current_address(form)['country'] || '' },
+        'CURRENT_ADDRESS_ZIP5' => ->(form) { normalize_zip(current_address(form)['postal_code']) },
+
+        'PLANNED_ADDRESS_LINE1' => ->(form) { planned_address(form)['street'] || '' },
+        'PLANNED_ADDRESS_LINE2' => ->(form) { planned_address(form)['street2'] || '' },
+        'PLANNED_ADDRESS_CITY' => ->(form) { planned_address(form)['city'] || '' },
+        'PLANNED_ADDRESS_STATE' => ->(form) { planned_address(form)['state'] || '' },
+        'PLANNED_ADDRESS_COUNTRY' => ->(form) { planned_address(form)['country'] || '' },
+        'PLANNED_ADDRESS_ZIP5' => ->(form) { normalize_zip(planned_address(form)['postal_code']) },
 
         'BRANCH_OF_SERVICE_ARMY' => ->(form) { branch_checkbox(form, 'ARMY') },
         'BRANCH_OF_SERVICE_NAVY' => ->(form) { branch_checkbox(form, 'NAVY') },
@@ -80,7 +89,8 @@ module SimpleFormsApi
       }.freeze
 
       def self.convert(form)
-        MAPPINGS.transform_values { |proc| proc.call(form) }.sort.to_h
+        result = MAPPINGS.transform_values { |proc| proc.call(form) }
+        result.merge!(unused_fields).sort.to_h
       end
     end
   end

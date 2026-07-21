@@ -138,8 +138,9 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter do
           'country' => 'US'
         }
         result = described_class.convert(SimpleFormsApi::VBA214502.new(data))
-        expect(result['CURRENT_ADDRESS_LINE1']).to eq('456 Planned Rd')
-        expect(result['CURRENT_ADDRESS_CITY']).to eq('Plannedburg')
+        expect(result['PLANNED_ADDRESS_LINE1']).to eq('456 Planned Rd')
+        expect(result['CURRENT_ADDRESS_LINE1']).to eq('123 Main St')
+        expect(result['PLANNED_ADDRESS_CITY']).to eq('Plannedburg')
       end
 
       it 'falls back to current_mailing_address when active duty but planned is empty' do

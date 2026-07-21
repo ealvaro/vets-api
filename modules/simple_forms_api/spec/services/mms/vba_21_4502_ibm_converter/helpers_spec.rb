@@ -22,65 +22,60 @@ RSpec.describe SimpleFormsApi::Mms::VBA214502IbmConverter::Helpers do
     end
   end
 
-  describe '#effective_address' do
-    let(:current) { { 'street' => '1 Main', 'city' => 'Anytown', 'state' => 'VA', 'postal_code' => '22301' } }
-    let(:planned) { { 'street' => '2 Elm',  'city' => 'Othertown', 'state' => 'PA', 'postal_code' => '15201' } }
+  describe '#planned_address' do
+    let(:planned) { { 'street' => '2 Elm', 'city' => 'Othertown', 'state' => 'PA', 'postal_code' => '15201' } }
 
     context 'when active_duty is true and planned_mailing_address has values' do
       let(:data) do
         {
           'active_duty' => true,
-          'planned_mailing_address' => planned,
-          'current_mailing_address' => current
+          'planned_mailing_address' => planned
         }
       end
 
       it 'returns the planned address' do
-        expect(harness.effective_address(form)).to eq(planned)
+        expect(harness.planned_address(form)).to eq(planned)
       end
     end
 
-    context 'when active_duty is true but planned_mailing_address is all empty strings' do
-      let(:data) do
-        {
-          'active_duty' => true,
-          'planned_mailing_address' => { 'street' => '', 'city' => '' },
-          'current_mailing_address' => current
-        }
-      end
-
-      it 'falls back to current_mailing_address' do
-        expect(harness.effective_address(form)).to eq(current)
-      end
-    end
-
-    context 'when active_duty is true but planned_mailing_address is not a hash' do
-      let(:data) { { 'active_duty' => true, 'planned_mailing_address' => nil, 'current_mailing_address' => current } }
-
-      it 'falls back to current_mailing_address' do
-        expect(harness.effective_address(form)).to eq(current)
-      end
-    end
-
-    context 'when active_duty is false' do
+    context 'when active_duty is false, planned_mailing_address return a empty hash' do
       let(:data) do
         {
           'active_duty' => false,
-          'planned_mailing_address' => planned,
+          'planned_mailing_address' => planned
+        }
+      end
+
+      it 'returns the blank planned address' do
+        expect(harness.planned_address(form)).to eq({})
+      end
+    end
+  end
+
+  describe '#current_address' do
+    let(:current) { { 'street' => '1 Main', 'city' => 'Anytown', 'state' => 'VA', 'postal_code' => '22301' } }
+
+    context 'current_mailing_address has values' do
+      let(:data) do
+        {
           'current_mailing_address' => current
         }
       end
 
-      it 'returns current_mailing_address even when planned is populated' do
-        expect(harness.effective_address(form)).to eq(current)
+      it 'returns the current address' do
+        expect(harness.current_address(form)).to eq(current)
       end
     end
 
-    context 'when current_mailing_address is missing' do
-      let(:data) { { 'active_duty' => false } }
+    context 'current_mailing_address has no values' do
+      let(:data) do
+        {
+          'current_mailing_address' => {}
+        }
+      end
 
-      it 'returns an empty hash rather than nil' do
-        expect(harness.effective_address(form)).to eq({})
+      it 'returns a empty hash' do
+        expect(harness.current_address(form)).to eq({})
       end
     end
   end
