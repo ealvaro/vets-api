@@ -1292,6 +1292,7 @@ rakelib/ @software/va-platform-backend
 rakelib/breakers_outage.rake @software/va-platform-backend
 rakelib/config_settings.rake @software/va-platform-backend
 rakelib/connectivity.rake @software/octo-identity
+rakelib/credential_uuid_icn_lookup.rake @software/octo-identity
 rakelib/decision_review_repl.rb @software/vfs-authenticated-experience-backend
 rakelib/decision_reviews_recovered_failures_remediation.rake @software/benefits-decision-reviews-be
 rakelib/disability_compensation @software/disability-benefits
@@ -2006,6 +2007,7 @@ spec/policies/sign_in/ @software/octo-identity
 spec/policies/vet360_policy_spec.rb @software/vfs-authenticated-experience-backend
 spec/policies/vye_policy_spec.rb @software/govcio-vfep-codereviewers
 spec/rails_helper.rb @software/va-platform-backend
+spec/rakelib/credential_uuid_icn_lookup_spec.rb @software/octo-identity
 spec/rakelib/decision_reviews_recovered_failures_remediation_spec.rb @software/benefits-decision-reviews-be
 spec/rakelib/disability_compensation @software/disability-benefits
 spec/rakelib/fixtures @software/va-platform-backend
