@@ -29,8 +29,10 @@ module AskVAApi
       def filter_data(data)
         return [] if data[:Topics].blank?
 
+        parent_ids = data[:Topics].filter_map { |topic| topic[:ParentId] }.to_set
         topics = data[:Topics].select { |topic| topic[:ParentId] == @parent_id }
-        sort_by_rank_order_or_name(topics)
+        sorted = sort_by_rank_order_or_name(topics)
+        sorted.map { |topic| topic.merge(HasSubtopics: parent_ids.include?(topic[:Id])) }
       end
     end
   end

@@ -14,7 +14,8 @@ module AskVAApi
                  :rank_order,
                  :requires_authentication,
                  :topic_type,
-                 :contact_preferences
+                 :contact_preferences,
+                 :has_subtopics
     end
   end
 end

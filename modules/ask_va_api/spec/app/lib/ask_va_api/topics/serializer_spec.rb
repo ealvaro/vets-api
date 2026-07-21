@@ -14,7 +14,8 @@ RSpec.describe AskVAApi::Topics::Serializer do
       RankOrder: 0,
       DisplayName: 'Benefits for survivors and dependents',
       TopicType: 'Topic',
-      ContactPreferences: ['Email']
+      ContactPreferences: ['Email'],
+      HasSubtopics: true
     }
   end
   let(:topic) { AskVAApi::Topics::Entity.new(info) }
@@ -31,7 +32,8 @@ RSpec.describe AskVAApi::Topics::Serializer do
                 rank_order: info[:RankOrder],
                 requires_authentication: info[:RequiresAuthentication],
                 topic_type: info[:TopicType],
-                contact_preferences: info[:ContactPreferences]
+                contact_preferences: info[:ContactPreferences],
+                has_subtopics: info[:HasSubtopics]
               } } }
   end
 

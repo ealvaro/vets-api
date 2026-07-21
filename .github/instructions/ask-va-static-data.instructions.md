@@ -186,7 +186,77 @@ end
 
 **Why `**args` + `super`:** `get_resource` merges `entity_class:` into the options hash before calling `retriever_class.new(**options)`. Using `**args` captures `user_mock_data:` and `entity_class:` and forwards them to `BaseRetriever#initialize` via `super`.
 
+## Computed / Derived Fields (scan the full dataset, inject via a PascalCase key)
+
+### When to use
+When a resource attribute is **derived from the whole `Topics` dataset**, not just the filtered
+subset a retriever returns — e.g. `has_subtopics` (does any topic's `ParentId` equal this topic's
+`Id`?). The entity only sees a single item hash, so the computation must happen in the retriever,
+which is the only layer holding the full list.
+
+### Pattern
+Compute the derived value in `filter_data` **after** filtering/sorting, then `merge` it into each
+returned hash under a **PascalCase key** so the entity maps it exactly like a native CRM field.
+
+```ruby
+# retriever.rb
+def filter_data(data)
+  return [] if data[:Topics].blank?
+
+  # Build the lookup ONCE over the FULL dataset (O(1) membership, no N+1).
+  parent_ids = data[:Topics].filter_map { |topic| topic[:ParentId] }.to_set
+  topics = data[:Topics].select { |topic| topic[:ParentId] == @parent_id }
+  sorted = sort_by_rank_order_or_name(topics)
+  sorted.map { |topic| topic.merge(HasSubtopics: parent_ids.include?(topic[:Id])) }
+end
+```
+
+```ruby
+# entity.rb — read the computed key like any other CRM field
+attr_reader :id, :name, :has_subtopics # ...
+def initialize(info)
+  # ...
+  @has_subtopics = info[:HasSubtopics]
+end
+```
+
+```ruby
+# serializer.rb — add the snake_case attribute (olive_branch renders camelCase `hasSubtopics`)
+attributes :name, :has_subtopics # ...
+```
+
+### Anti-pattern
+```ruby
+# DON'T recompute per item — O(n^2) over the topic list.
+sorted.map { |t| t.merge(HasSubtopics: data[:Topics].any? { |x| x[:ParentId] == t[:Id] }) }
+
+# DON'T mutate the source hashes — the mock static_data is memoized (@static_data) and the CRM
+# cache may be shared; mutation leaks across calls. Use merge (returns new hashes).
+sorted.each { |t| t[:HasSubtopics] = parent_ids.include?(t[:Id]) }
+
+# DON'T compute in the entity/serializer — they only see one item, not the whole dataset.
+```
+
+### Why
+- The entity is a dumb 1:1 mapper of a single hash; only the retriever has the full list needed for
+  cross-item aggregates. Injecting under a PascalCase key (`:HasSubtopics`) keeps the entity's
+  `info[:Key]` convention uniform — computed fields look identical to CRM fields.
+- `merge` (not mutation) protects the memoized `@static_data` and the shared CRM cache from
+  cross-request leakage.
+- A `Set` + single pass keeps it O(n); recomputing per item is O(n²) on a ~167-item list. (ask-va#2553)
+
+### Testing computed fields
+- The **request spec `user_mock_data: true` path runs the real retriever over `static_data.json`**,
+  so it genuinely exercises the computation end-to-end. Assert both outcomes against known mock IDs
+  (e.g. topic `152b8586-…` has 5 children → `true`; topic `1b2b8586-…` has none → `false`).
+- A dedicated retriever unit `context` is ideal but often **can't be added**: the resource
+  `retriever_spec` modules sit near the RuboCop `Metrics/ModuleLength` limit (100). If adding a
+  context pushes it over, rely on the request-spec real-data coverage above plus the entity/
+  serializer specs (add the PascalCase key to their `info` and assert the snake_case attr) rather
+  than bloating the resource spec. (ask-va#2553)
+
 ## Data Source: CRM Cache
+
 
 Static data endpoints share the same CRM cache:
 - **Endpoint:** `'Topics'`

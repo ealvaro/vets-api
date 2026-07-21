@@ -102,7 +102,8 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
            'rank_order' => 0,
            'requires_authentication' => true,
            'topic_type' => 'Topic',
-           'contact_preferences' => ['Email'] } }
+           'contact_preferences' => ['Email'],
+           'has_subtopics' => false } }
     end
 
     context 'when successful' do
@@ -113,6 +114,12 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
       it 'returns topics data' do
         expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
         expect(response).to have_http_status(:ok)
+      end
+
+      it 'marks topics that have subtopics' do
+        work_study = JSON.parse(response.body)['data']
+                         .find { |t| t['id'] == '152b8586-e764-eb11-bb23-000d3a579c3f' }
+        expect(work_study['attributes']['has_subtopics']).to be(true)
       end
     end
 

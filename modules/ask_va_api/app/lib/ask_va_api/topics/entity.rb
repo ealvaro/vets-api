@@ -12,7 +12,8 @@ module AskVAApi
                   :rank_order,
                   :display_name,
                   :topic_type,
-                  :contact_preferences
+                  :contact_preferences,
+                  :has_subtopics
 
       def initialize(info)
         @id = info[:Id]
@@ -25,6 +26,7 @@ module AskVAApi
         @topic_type = info[:TopicType]
         @display_name = info[:DisplayName]
         @contact_preferences = info[:ContactPreferences]
+        @has_subtopics = info[:HasSubtopics]
       end
     end
   end
