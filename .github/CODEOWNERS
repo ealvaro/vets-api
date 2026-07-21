@@ -298,7 +298,9 @@ app/models/id_card_attributes.rb @software/va-platform-backend
 app/models/identifier_index.rb @software/vsa-debt-resolution
 app/models/in_progress_form.rb @software/vfs-authenticated-experience-backend @software/benefits-dependents-management
 app/models/intent_to_file_queue_exhaustion.rb @software/benefits-lifestage
+app/models/ivc_champva_applicant.rb @software/health-apps-backend
 app/models/ivc_champva_form.rb @software/health-apps-backend
+app/models/ivc_champva_sponsor.rb @software/health-apps-backend
 app/models/lcpe_redis.rb @software/govcio-vfep-codereviewers
 app/models/lighthouse @software/pension-and-burials
 app/models/lighthouse_document.rb @software/va-platform-backend
@@ -519,6 +521,7 @@ app/services/feature_toggles_service.rb @software/va-platform-backend
 app/services/form1010_ezr_attachments/file_type_validator.rb @software/health-apps-backend
 app/services/form1010cg/ @software/health-apps-backend
 app/services/hca/overrides_parser.rb @software/health-apps-backend
+app/services/ivc_champva @software/health-apps-backend
 app/services/identity @software/octo-identity
 app/services/idp @software/bio-huntridge
 app/services/idp.rb @software/bio-huntridge
@@ -1467,6 +1470,7 @@ spec/factories/iam_introspection_responses.rb @software/octo-identity
 spec/factories/iam_user_identities.rb @software/octo-identity
 spec/factories/iam_users.rb @software/octo-identity
 spec/factories/in_progress_forms @software/vfs-authenticated-experience-backend
+spec/factories/ivc_champva_applicants.rb @software/health-apps-backend
 spec/factories/ivc_champva_forms.rb @software/health-apps-backend
 spec/factories/lighthouse @software/vfs-facilities-frontend
 spec/factories/lighthouse_documents.rb @software/disability-benefits
@@ -2178,6 +2182,7 @@ spec/services/feature_toggles_service_spec.rb @software/va-platform-backend
 spec/services/form1010_ezr_attachments/file_type_validator_spec.rb @software/health-apps-backend
 spec/services/form1010cg @software/health-apps-backend
 spec/services/hca/overrides_parser_spec.rb @software/health-apps-backend
+spec/services/ivc_champva @software/health-apps-backend
 spec/services/identity @software/octo-identity
 spec/services/idp @software/bio-huntridge
 spec/services/idp_spec.rb @software/bio-huntridge
