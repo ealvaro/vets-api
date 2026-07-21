@@ -1323,13 +1323,6 @@ features:
     actor_type: user
     description: Enables digital submission of Appoint a Rep Form 21-22 for non-Veteran claimants
     enable_in_development: true
-  form2122_prefill_profile_data:
-    actor_type: user
-    description: >
-      For Appoint a Rep Form (21-22):
-      When enabled, uses newer prefill based on profile data with ability to update profile details.
-      When disabled, uses old method of prefilling from previously filled form data
-    enable_in_development: true
   representative_status_enabled:
     actor_type: cookie_id
     description: Enables Representative Status widget on Find a Representative frontend
