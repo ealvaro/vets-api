@@ -27,10 +27,13 @@ jobs:
           owner: software
           github-api-url: https://va.ghe.com/api/v3
 
+      - name: Persist Bundler credentials for all steps
+        run: |
+          echo "BUNDLE_VA__GHE__COM=x-access-token:${{ steps.app-token.outputs.token }}" >> $GITHUB_ENV
+          echo "BUNDLE_ENTERPRISE__CONTRIBSYS__COM=${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}" >> $GITHUB_ENV
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1
-        env:
-          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
           ruby-version: "3.3.6"
           bundler-cache: false
@@ -85,14 +88,10 @@ jobs:
           echo "TEST_DATABASE_URL=postgis://runner:@localhost:5432/vets_api_test" >> $GITHUB_ENV
 
       - name: Install Ruby dependencies
-        env:
-          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
-          BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
         run: |
           gem install bundler
-          # Configure bundler to not be in frozen mode and allow missing Sidekiq Enterprise gems
-          # This is expected - Sidekiq Enterprise requires a license that's not available in CI
-          bundle config set frozen false
+          # Configure bundler to run in frozen mode so it cannot modify Gemfile.lock
+          bundle config set frozen true
           bundle install --jobs 4 --retry 3
 
       - name: Setup configuration files
