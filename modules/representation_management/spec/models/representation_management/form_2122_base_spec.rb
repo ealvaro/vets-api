@@ -4,9 +4,45 @@ require 'rails_helper'
 
 RSpec.describe RepresentationManagement::Form2122Base, type: :model do
   describe 'validations' do
-    subject { described_class.new }
+    subject { described_class.new(**valid_veteran_attributes) }
 
-    subject_with_claimant = described_class.new(claimant_first_name: 'John')
+    let(:valid_veteran_attributes) do
+      {
+        veteran_first_name: 'John',
+        veteran_last_name: 'Veteran',
+        veteran_social_security_number: '123456789',
+        veteran_date_of_birth: '1980-12-31',
+        veteran_address_line1: '123 Main St',
+        veteran_city: 'Portland',
+        veteran_country: 'US',
+        veteran_state_code: 'OR',
+        veteran_zip_code: '97201'
+      }
+    end
+
+    let(:subject_with_claimant) do
+      described_class.new(
+        veteran_first_name: 'John',
+        veteran_last_name: 'Veteran',
+        veteran_social_security_number: '123456789',
+        veteran_date_of_birth: '1980-12-31',
+        veteran_address_line1: '123 Main St',
+        veteran_city: 'Portland',
+        veteran_country: 'US',
+        veteran_state_code: 'OR',
+        veteran_zip_code: '97201',
+        claimant_first_name: 'John',
+        claimant_last_name: 'Claimant',
+        claimant_date_of_birth: '1980-12-31',
+        claimant_relationship: 'Spouse',
+        claimant_address_line1: '456 Main St',
+        claimant_city: 'Portland',
+        claimant_country: 'US',
+        claimant_state_code: 'OR',
+        claimant_zip_code: '97201',
+        claimant_phone: '5555555555'
+      )
+    end
 
     it { expect(subject).to validate_presence_of(:veteran_first_name) }
     it { expect(subject).to validate_length_of(:veteran_first_name).is_at_most(12) }
@@ -66,6 +102,55 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
     it { expect(subject_with_claimant).to allow_value('1234567890').for(:claimant_phone) }
     it { expect(subject_with_claimant).not_to allow_value('123456789A').for(:claimant_phone) }
     it { expect(subject_with_claimant).not_to allow_value('123456789').for(:claimant_phone) }
+
+    describe 'conditional state/zip validations for international addresses' do
+      it 'does not require veteran_state_code or veteran_zip_code for international veteran addresses' do
+        form = described_class.new(
+          veteran_first_name: 'John',
+          veteran_last_name: 'Veteran',
+          veteran_social_security_number: '123456789',
+          veteran_date_of_birth: '1980-12-31',
+          veteran_address_line1: '123 Fake Veteran St',
+          veteran_city: 'London',
+          veteran_country: 'GB',
+          veteran_state_code: nil,
+          veteran_zip_code: nil
+        )
+
+        form.validate
+
+        expect(form.errors[:veteran_state_code]).to be_empty
+        expect(form.errors[:veteran_zip_code]).to be_empty
+        expect { form.veteran_state_code_truncated }.not_to raise_error
+        expect(form.veteran_state_code_truncated).to eq('')
+        expect { form.veteran_zip_code_expanded }.not_to raise_error
+        expect(form.veteran_zip_code_expanded).to eq(['', ''])
+      end
+
+      it 'does not require claimant_state_code or claimant_zip_code for international claimant addresses' do
+        form = described_class.new(
+          claimant_first_name: 'John',
+          claimant_last_name: 'Claimant',
+          claimant_date_of_birth: '1980-12-31',
+          claimant_relationship: 'Spouse',
+          claimant_address_line1: '123 Fake Claimant St',
+          claimant_city: 'London',
+          claimant_country: 'GB',
+          claimant_phone: '5555555555',
+          claimant_state_code: nil,
+          claimant_zip_code: nil
+        )
+
+        form.validate
+
+        expect(form.errors[:claimant_state_code]).to be_empty
+        expect(form.errors[:claimant_zip_code]).to be_empty
+        expect { form.claimant_state_code_truncated }.not_to raise_error
+        expect(form.claimant_state_code_truncated).to eq('')
+        expect { form.claimant_zip_code_expanded }.not_to raise_error
+        expect(form.claimant_zip_code_expanded).to eq(['', ''])
+      end
+    end
 
     describe 'representative_phone' do
       context 'when representative is an instance of AccreditedIndividual' do
@@ -137,6 +222,11 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
         subject.veteran_state_code = 'KS'
         expect(subject.veteran_state_code_truncated).to eq('KS')
       end
+
+      it 'returns an empty string when the state code is nil' do
+        subject.veteran_state_code = nil
+        expect(subject.veteran_state_code_truncated).to eq('')
+      end
     end
 
     describe 'claimant_state_code_truncated' do
@@ -148,6 +238,11 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       it 'does not truncate the state code if it is 2 characters' do
         subject.claimant_state_code = 'KS'
         expect(subject.claimant_state_code_truncated).to eq('KS')
+      end
+
+      it 'returns an empty string when the state code is nil' do
+        subject.claimant_state_code = nil
+        expect(subject.claimant_state_code_truncated).to eq('')
       end
     end
 
@@ -167,6 +262,12 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
         subject.veteran_zip_code = '123456'
         expect(subject.veteran_zip_code_expanded).to eq(%w[12345 6])
       end
+
+      it 'returns blank zip components when the zip code is nil' do
+        subject.veteran_zip_code = nil
+        subject.veteran_zip_code_suffix = nil
+        expect(subject.veteran_zip_code_expanded).to eq(['', ''])
+      end
     end
 
     describe 'claimant_zip_code_expanded' do
@@ -184,6 +285,12 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       it 'overflows zip/postal codes longer than 5 characters into the suffix' do
         subject.claimant_zip_code = '123456'
         expect(subject.claimant_zip_code_expanded).to eq(%w[12345 6])
+      end
+
+      it 'returns blank zip components when the zip code is nil' do
+        subject.claimant_zip_code = nil
+        subject.claimant_zip_code_suffix = nil
+        expect(subject.claimant_zip_code_expanded).to eq(['', ''])
       end
     end
 

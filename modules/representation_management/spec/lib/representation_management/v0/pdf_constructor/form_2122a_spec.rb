@@ -183,4 +183,33 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122a do
       expect(value_last).to eq('5555')
     end
   end
+
+  it 'handles blank state and zip fields for international addresses' do
+    international_data = RepresentationManagement::Form2122aData.new(
+      data.merge(
+        veteran_state_code: nil,
+        veteran_country: 'GB',
+        veteran_zip_code: nil,
+        veteran_zip_code_suffix: nil,
+        claimant_state_code: nil,
+        claimant_country: 'GB',
+        claimant_zip_code: nil,
+        claimant_zip_code_suffix: nil
+      )
+    )
+
+    Tempfile.create do |tempfile|
+      pdf_constructor = described_class.new(tempfile)
+
+      veteran_fields = pdf_constructor.send(:veteran_contact_details, international_data)
+      claimant_fields = pdf_constructor.send(:claimant_contact_details, international_data)
+
+      expect(veteran_fields[:'form1[0].#subform[0].MailingAddress_StateOrProvince[0]']).to eq('')
+      expect(veteran_fields[:'form1[0].#subform[0].MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[0]']).to eq('')
+      expect(veteran_fields[:'form1[0].#subform[0].MailingAddress_ZIPOrPostalCode_LastFourNumbers[0]']).to eq('')
+      expect(claimant_fields[:'form1[0].#subform[0].MailingAddress_StateOrProvince[1]']).to eq('')
+      expect(claimant_fields[:'form1[0].#subform[0].MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[1]']).to eq('')
+      expect(claimant_fields[:'form1[0].#subform[0].MailingAddress_ZIPOrPostalCode_LastFourNumbers[1]']).to eq('')
+    end
+  end
 end

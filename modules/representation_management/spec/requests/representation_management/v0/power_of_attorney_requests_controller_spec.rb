@@ -90,6 +90,52 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
 
             expect(parsed_response['data']['id']).to eq(poa_request.id)
           end
+
+          context 'with an international veteran address and no state/zip' do
+            before do
+              params[:power_of_attorney_request][:veteran][:address][:country] = 'GBR'
+              params[:power_of_attorney_request][:veteran][:address][:state_code] = nil
+              params[:power_of_attorney_request][:veteran][:address][:zip_code] = nil
+              params[:power_of_attorney_request][:veteran][:address][:zip_code_suffix] = nil
+            end
+
+            it 'responds with a 201/created status' do
+              post(base_path, params:)
+
+              expect(response).to have_http_status(:created)
+            end
+          end
+
+          context 'with an international claimant address and no state/zip' do
+            before do
+              params[:power_of_attorney_request][:claimant] = {
+                date_of_birth: '1980-12-31',
+                relationship: 'Spouse',
+                phone: '5555555555',
+                email: 'claimant@example.com',
+                name: {
+                  first: 'Jane',
+                  middle: 'Middle',
+                  last: 'Claimant'
+                },
+                address: {
+                  address_line1: '123 Fake Claimant St',
+                  address_line2: '',
+                  city: 'London',
+                  state_code: nil,
+                  country: 'GBR',
+                  zip_code: nil,
+                  zip_code_suffix: nil
+                }
+              }
+            end
+
+            it 'responds with a 201/created status' do
+              post(base_path, params:)
+
+              expect(response).to have_http_status(:created)
+            end
+          end
         end
 
         context 'when form validation fails' do

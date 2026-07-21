@@ -68,8 +68,12 @@ module RepresentationManagement
     validates :veteran_address_line2, length: { maximum: 5 }, if: -> { veteran_address_line2.present? }
     validates :veteran_city, presence: true, length: { maximum: 18 }
     validates :veteran_country, presence: true, length: { is: 2 }
-    validates :veteran_state_code, presence: true, length: { minimum: 2 }
-    validates :veteran_zip_code, presence: true, length: { minimum: 4 }
+
+    # State and zip code are only required for USA-based addresses (per VaProfile)
+    with_options if: -> { veteran_address_usa_based? } do
+      validates :veteran_state_code, presence: true, length: { minimum: 2 }
+      validates :veteran_zip_code, presence: true, length: { minimum: 4 }
+    end
 
     validates :veteran_phone, length: { is: 10 }, format: { with: TEN_DIGIT_NUMBER }, if: -> { veteran_phone.present? }
     validates :veteran_service_number,
@@ -89,10 +93,14 @@ module RepresentationManagement
       validates :claimant_address_line2, length: { maximum: 5 }
       validates :claimant_city, presence: true, length: { maximum: 18 }
       validates :claimant_country, presence: true, length: { is: 2 }
-      validates :claimant_state_code, presence: true, length: { minimum: 2 }
-      validates :claimant_zip_code, presence: true, length: { minimum: 4 }
 
       validates :claimant_phone, length: { is: 10 }, format: { with: TEN_DIGIT_NUMBER }
+    end
+
+    # State and zip code are only required for USA-based addresses (per VaProfile)
+    with_options if: -> { claimant_address_usa_based? } do
+      validates :claimant_state_code, presence: true, length: { minimum: 2 }
+      validates :claimant_zip_code, presence: true, length: { minimum: 4 }
     end
 
     def representative
@@ -119,30 +127,46 @@ module RepresentationManagement
     end
 
     def veteran_state_code_truncated
-      veteran_state_code[0..1]
+      veteran_state_code.to_s[0..1]
     end
 
     def claimant_state_code_truncated
-      claimant_state_code[0..1]
+      claimant_state_code.to_s[0..1]
     end
 
     def veteran_zip_code_expanded
-      if veteran_zip_code_suffix.blank?
-        [veteran_zip_code[0..4], veteran_zip_code[5..8]]
-      else
-        [veteran_zip_code[0..4], veteran_zip_code_suffix[0..3]]
-      end
+      expand_zip_code(veteran_zip_code, veteran_zip_code_suffix)
     end
 
     def claimant_zip_code_expanded
-      if claimant_zip_code_suffix.blank?
-        [claimant_zip_code[0..4], claimant_zip_code[5..8]]
-      else
-        [claimant_zip_code[0..4], claimant_zip_code_suffix[0..3]]
-      end
+      expand_zip_code(claimant_zip_code, claimant_zip_code_suffix)
+    end
+
+    def veteran_address_usa_based?
+      usa_country_code?(veteran_country)
+    end
+
+    def claimant_address_usa_based?
+      usa_country_code?(claimant_country)
     end
 
     private
+
+    def usa_country_code?(country_code)
+      # We should be dealing with alpha2 country codes here, but just in case, check for alpha3 as well.
+      %w[US USA].include?(country_code)
+    end
+
+    def expand_zip_code(zip_code, zip_code_suffix)
+      zip_code = zip_code.to_s
+      zip_code_suffix = zip_code_suffix.to_s
+
+      if zip_code_suffix.blank?
+        [zip_code[0..4].to_s, zip_code[5..8].to_s]
+      else
+        [zip_code[0..4].to_s, zip_code_suffix[0..3].to_s]
+      end
+    end
 
     def consent_limits_must_contain_valid_values
       return if consent_limits.blank? || (consent_limits.size == 1 && consent_limits.first.blank?)
