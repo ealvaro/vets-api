@@ -668,10 +668,10 @@ RSpec.describe SimpleFormsApi::VBA210788 do
       # Parseable
       expect(form.format_date_mm_dd_yyyy('1948-11-17')).to eq('11/17/1948')
       expect(form.format_date_mm_dd_yyyy('1948/11/17')).to eq('11/17/1948')
+      expect(form.format_date_mm_dd_yyyy('11/17/1948')).to eq('11/17/1948')
 
       # Not parseable
       expect(form.format_date_mm_dd_yyyy('11-17-1948')).to eq('')
-      expect(form.format_date_mm_dd_yyyy('11/17/1948')).to eq('')
       expect(form.format_date_mm_dd_yyyy('')).to eq('')
       expect(form.format_date_mm_dd_yyyy(12)).to eq('')
       expect(form.format_date_mm_dd_yyyy(true)).to eq('')

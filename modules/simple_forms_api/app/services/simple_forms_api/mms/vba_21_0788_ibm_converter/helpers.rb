@@ -3,59 +3,111 @@
 module SimpleFormsApi
   module Mms
     module VBA210788IbmConverter
-      module Helpers # rubocop:disable Metrics/ModuleLength
-        def relationship_checkbox_fields(form)
-          relationship = form.data['relationship'].to_s
+      # rubocop:disable Metrics/ModuleLength
+      module Helpers
+        # Box 13a — apportionment reason value => DD checkbox field.
+        REASON_FIELDS = {
+          'VETERAN_INCARCERATED' => 'veteran_incarcerated',
+          'VETERAN_INCARCERATED_FELONY' => 0,
+          'VETERAN_INCARCERATED_MISDEMEANOR' => 0,
+          'SURVIVING_SPOUSE_INCARCERATED' => 'spouse_or_child_incarcerated',
+          'SURVIVING_SPOUSE_OR_CHILD_INCARCERATED_FELONY' => 0,
+          'SURVIVING_SPOUSE_OR_CHILD_INCARCERATED_MISDEMEANOR' => 0,
+          'VETERAN_INCOMPETENT' => 'veteran_incompetent_no_fiduciary',
+          'VETERAN_IN_RECEIPT_OF_PENSION' => 'veteran_pension_care_facility',
+          # Field name below is verbatim from the data dictionary, including the
+          # space after PRIMARY and the OUTSUDE misspelling. Do not "fix" it.
+          'PRIMARY _BENEFICIARY_RESIDES_OUTSUDE_US' => 'enemy_territory_resident',
+          'VETERAN_DISAPPEARED' => 'veteran_disappeared'
+        }.freeze
 
-          RELATIONSHIP_CHECKBOXES.transform_values do |value|
-            relationship == value ? 1 : 0
+        def apportion_section(people_array, max)
+          fields = { 'VETERAN_STEP_CHILD_DATE' => [] }
+          if people_array.blank?
+            return fields.merge(
+              blank_people_array(max),
+              { 'VETERAN_STEP_CHILD_DATE' => '' }
+            )
           end
+
+          max.times do |i|
+            person = people_array[i]
+            if person.blank?
+              fields.merge!(blank_apportionment_person(i + 1))
+              next
+            end
+            fields.merge!(populate_apportionment_fields(person, i + 1))
+            if stepchild_has_left(person)
+              fields['VETERAN_STEP_CHILD_DATE'].append(format_iso_date(person['stepchild_departure_date']))
+            end
+          end
+          # move out date consolidation
+          fields['VETERAN_STEP_CHILD_DATE'] = fields['VETERAN_STEP_CHILD_DATE'].join(', ')
+          fields
         end
 
-        def other_relationship(form)
-          return '' unless form.data['relationship'].to_s == 'other'
-
-          # TODO: confirm key for the free-text "other" relationship value.
-          (form.data['other_relationship'] || form.data['relationship_other'] || '').to_s
-        end
-
-        def apportionee_fields(entry, index)
-          receipt = tri_state(entry['currently_in_receipt'])
-
+        def populate_apportionment_fields(person_hash, dd_index)
           {
-            "NAME_APPORTIONMENT_REQUESTED_#{index}" => apportionee_name(entry),
-            "APPORTION_SSN_#{index}" => normalize_ssn(entry['ssn']),
-            "APPORTION_RELATIONSHIP_TO_VETERAN_#{index}" => entry['relationship_to_veteran'] || '',
-            "APPORTION_CURRENTLY_IN RECEPIENT_YES_#{index}" => receipt == :yes ? 1 : 0,
-            "APPORTION_CURRENTLY_IN RECEPIENT_NO_#{index}" => receipt == :no ? 1 : 0
+            "NAME_APPORTIONMENT_REQUESTED_#{dd_index}" => person_hash['full_name'] || '',
+            "APPORTION_SSN_#{dd_index}" => normalize_ssn(person_hash['ssn']) || '',
+            "APPORTION_RELATIONSHIP_TO_VETERAN_#{dd_index}" => apportionment_relationship(person_hash),
+            "APPORTION_CURRENTLY_IN_RECEPIENT_YES_#{dd_index}" => person_hash['currently_receiving'] ? 1 : 0,
+            "APPORTION_CURRENTLY_IN_RECEPIENT_NO_#{dd_index}" => person_hash['currently_receiving'] ? 0 : 1
           }
         end
 
-        def apportionee_name(entry)
-          name = entry['full_name']
-          return (entry['name'] || '').to_s unless name.is_a?(Hash)
+        def apportionment_relationship(person)
+          return person['other_relationship_description'] || '' if person['relationship'] == 'other'
 
-          [name['last'], name['first'], name['middle']]
-            .reject { |part| part.to_s.empty? }
-            .join(', ')
+          person['relationship'] || ''
         end
 
-        def stepchild_yes_no_fields(form)
-          in_household = tri_state(form.data['stepchild_living_in_household'])
-          adopted = tri_state(form.data['legally_adopted'])
-
+        def blank_apportionment_person(dd_index)
           {
-            'VETERAN_STEP_CHILD_YES' => in_household == :yes ? 1 : 0,
-            'VETERAN_STEP_CHILD_NO' => in_household == :no ? 1 : 0,
-            'VETERAN_STEP_CHILD_ADOPTED_YES' => adopted == :yes ? 1 : 0,
-            'VETERAN_STEP_CHILD_ADOPTED_NO' => adopted == :no ? 1 : 0
+            "NAME_APPORTIONMENT_REQUESTED_#{dd_index}" => '',
+            "APPORTION_SSN_#{dd_index}" => '',
+            "APPORTION_RELATIONSHIP_TO_VETERAN_#{dd_index}" => '',
+            "APPORTION_CURRENTLY_IN_RECEPIENT_YES_#{dd_index}" => 0,
+            "APPORTION_CURRENTLY_IN_RECEPIENT_NO_#{dd_index}" => 0
           }
         end
 
-        def reason_checkbox_fields(form)
-          reason = form.data['apportionment_reason'].to_s
+        def blank_people_array(max)
+          Array(1..max).map { |i| blank_apportionment_person(i) }.reduce({}, :merge)
+        end
 
-          REASON_CHECKBOXES.transform_values { |value| reason == value ? 1 : 0 }
+        def stepchild_has_left(person)
+          person['is_stepchild'] == true &&
+            person['stepchild_lives_with_veteran'] == false &&
+            person['stepchild_departure_date'].present?
+        end
+
+        def reason_checkbox_fields(form_data)
+          # reason: veteran_incarcerated
+          #         spouse_or_child_incarcerated
+          #         veteran_incompetent_no_fiduciary
+          #         veteran_pension_care_facility
+          #         enemy_territory_resident
+          #         veteran_disappeared
+          # incarceration: { felony: false, misdemeanor: true }
+          reason = form_data['reason']
+          incarcerated = form_data['incarceration']
+
+          reason_map = REASON_FIELDS.transform_values { |value| reason == value ? 1 : 0 }
+          if reason == 'veteran_incarcerated'
+            reason_map['VETERAN_INCARCERATED_FELONY'] =
+              incarcerated && incarcerated['felony'] ? 1 : 0
+            reason_map['VETERAN_INCARCERATED_MISDEMEANOR'] =
+              incarcerated && incarcerated['misdemeanor'] ? 1 : 0
+          end
+          if reason == 'spouse_or_child_incarcerated'
+            reason_map['SURVIVING_SPOUSE_OR_CHILD_INCARCERATED_FELONY'] =
+              incarcerated && incarcerated['felony'] ? 1 : 0
+            reason_map['SURVIVING_SPOUSE_OR_CHILD_INCARCERATED_MISDEMEANOR'] =
+              incarcerated && incarcerated['misdemeanor'] ? 1 : 0
+          end
+
+          reason_map
         end
 
         # ---------- Names ----------
@@ -121,21 +173,6 @@ module SimpleFormsApi
           [value['area_code'], value['number']].compact.join.gsub(/\D/, '')
         end
 
-        def signature_checkbox(form)
-          sig = form.data['claimant_signature'] || form.data['statement_of_truth_signature']
-          return 0 if sig.nil? || sig.to_s.strip.empty?
-
-          1
-        end
-
-        def tri_state(value)
-          return :unset if value.nil? || value.to_s.strip.empty?
-          return :yes if value == true || value.to_s.match?(/\A(1|true|yes|y|t)\z/i)
-          return :no if value == false || value.to_s.match?(/\A(0|false|no|n|f)\z/i)
-
-          :unset
-        end
-
         def format_iso_date(value)
           return '' if value.nil? || value.to_s.empty?
 
@@ -147,13 +184,22 @@ module SimpleFormsApi
 
             format('%<m>02d/%<d>02d/%<y>04d', m: month.to_i, d: day.to_i, y: year.to_i)
           else
-            parsed = Date.parse(value.to_s)
+            str = value.to_s
+
+            parsed =
+              if str.match?(%r{\A\d{2}/\d{2}/\d{4}\z})
+                Date.strptime(str, '%m/%d/%Y')
+              else
+                Date.parse(str)
+              end
+
             format('%<m>02d/%<d>02d/%<y>04d', m: parsed.month, d: parsed.day, y: parsed.year)
           end
         rescue ArgumentError, TypeError
           ''
         end
-      end # rubocop:enable Metrics/ModuleLength
+      end
+      # rubocop:enable Metrics/ModuleLength
     end
   end
 end

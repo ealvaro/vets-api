@@ -1,54 +1,6 @@
 {
   "form_number": "21-0788",
   "va_file_number": "C12-345-678",
-  "claimant_full_name": {
-    "first": "Mary",
-    "middle": "Anne",
-    "last": "Doe"
-  },
-  "relationship": "spouse",
-  "apportionment_recipients": [
-    {
-      "full_name": "Booky B McBookWorm1",
-      "ssn": "123-12-2134",
-      "relationship": "child",
-      "currently_receiving": false,
-      "is_stepchild": true,
-      "stepchild_lives_with_veteran": true
-    },
-    {
-      "full_name": "Booky B McBookWorm3",
-      "ssn": "123-12-2134",
-      "relationship": "other",
-      "other_relationship_description": "Some Dude",
-      "currently_receiving": false,
-      "is_stepchild": false,
-      "stepchild_lives_with_veteran": true
-    },
-    {
-      "full_name": "Booky B McBookWorm2",
-      "ssn": "123-12-2134",
-      "relationship": "child",
-      "currently_receiving": false,
-      "is_stepchild": true,
-      "stepchild_lives_with_veteran": false,
-      "stepchild_departure_date": "2000-03-17"
-    }
-  ],
-  "apportionment_reason": "veteran_incarcerated_felony",
-  "facility_name": "FCI Cumberland",
-  "facility_address": {
-    "street": "14601 Burbridge Rd SE",
-    "city": "Cumberland",
-    "state": "MD",
-    "postal_code": "21502",
-    "country": "USA"
-  },
-  "remarks": "Requesting apportionment for minor children.",
-  "claimant_signature": "Mary Anne Doe",
-  "signature_date": "2026-04-16",
-  "legally_adopted": false,
-  "stepchild_living_in_household": false,
   "full_name": {
     "first": "Frank",
     "middle": "L",
@@ -60,20 +12,73 @@
   "email": "example@va.gov",
   "email_address": "example@va.gov",
   "relationship_to_veteran": "other",
-  "other_relationship_description": "",
+  "other_relationship_description": "Seperated Spouse",
   "preparer_is_veteran": false,
   "preparer": {
     "first": "Testy",
     "middle": "T",
     "last": "McTestFace"
   },
-  "statement_of_truth_signature": "Testy T McTestFace",
   "address": {
     "street": "1 test to the test st",
     "street2": "55",
     "city": "testville",
     "state": "TN",
-    "postalCode": "12345",
+    "postal_code": "12345",
     "country": "USA"
-  }
+  },
+  "apportionment_people": [
+    {
+      "full_name": "Booky B McBookWorm",
+      "ssn": "123-12-2134",
+      "relationship": "other",
+      "other_relationship_description": "accountant",
+      "currently_receiving": true,
+      "is_stepchild": true,
+      "stepchild_lives_with_veteran": true,
+      "stepchild_departure_date": "2000-03-18"
+    },
+    {
+      "full_name": "Test McTestFace",
+      "ssn": "123-12-2134",
+      "relationship": "spouse",
+      "other_relationship_description": "max length is not here3456",
+      "currently_receiving": false,
+      "is_stepchild": true,
+      "stepchild_lives_with_veteran": false,
+      "stepchild_departure_date": "2000-03-15"
+    },
+    {
+      "full_name": "Ashok Vadal",
+      "ssn": "123-12-2134",
+      "relationship": "child 18-23",
+      "other_relationship_description": "max length is hereeeeeeee",
+      "currently_receiving": false,
+      "is_stepchild": true,
+      "stepchild_lives_with_veteran": false,
+      "stepchild_departure_date": "2000-03-16"
+    },
+    {
+      "full_name": "Derfel Cadarn",
+      "ssn": "123-12-2134",
+      "relationship": "child under 18",
+      "other_relationship_description": "max length is hereeeeeeee",
+      "currently_receiving": false,
+      "is_stepchild": false,
+      "stepchild_lives_with_veteran": false,
+      "stepchild_departure_date": "2000-03-17"
+    }
+  ],
+  "stepchild_living_in_household": false,
+  "legally_adopted": false,
+  "reason": "veteran_incarcerated",
+  "incarceration": {
+    "felony": false,
+    "misdemeanor": true
+  },
+  "facility_name": "FCI Cumberland",
+  "facility_address": "14601 Burbridge Rd SE. Cumberland,MD 21502 USA",
+  "remarks": "Requesting apportionment for minor children.",
+  "statement_of_truth_signature": "Testy T McTestFace",
+  "signature_date": "2026-04-16"
 }

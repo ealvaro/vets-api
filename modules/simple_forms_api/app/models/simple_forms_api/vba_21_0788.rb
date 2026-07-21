@@ -184,10 +184,19 @@ module SimpleFormsApi
     end
 
     def format_date_mm_dd_yyyy(date_string = '')
-      # parsable_date?(date_string) ? Date.strptime(Date.parse(date_string.to_s).to_s).strftime('%m/%d/%Y') : ''
-      return '' unless date_string.is_a?(String) && date_string.match?(%r{\A\d{4}[-/]\d{2}[-/]\d{2}\z})
+      return '' unless date_string.is_a?(String)
 
-      format = date_string.include?('/') ? '%Y/%m/%d' : '%Y-%m-%d'
+      case date_string
+      when /\A\d{4}-\d{2}-\d{2}\z/
+        format = '%Y-%m-%d'
+      when %r{\A\d{4}/\d{2}/\d{2}\z}
+        format = '%Y/%m/%d'
+      when %r{\A\d{2}/\d{2}/\d{4}\z}
+        format = '%m/%d/%Y'
+      else
+        return ''
+      end
+
       Date.strptime(date_string, format).strftime('%m/%d/%Y')
     rescue ArgumentError
       ''
