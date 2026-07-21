@@ -27,7 +27,7 @@ GIT
 
 GIT
   remote: https://va.ghe.com/software/betamocks
-  revision: 88bda10e03c92a97067d2d4fecb89783c6de227f
+  revision: 4295b8ad5e1834416e282e7c10332963b71cda6e
   branch: master
   specs:
     betamocks (0.11.0)
