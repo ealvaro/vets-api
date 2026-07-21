@@ -4086,3 +4086,6 @@ features:
   va_dependents_stepchild_flow:
     actor_type: user
     description: If enabled, show the latest flow to add a stepchild through dependents form 686c-674
+  enable_prefill_update_530ez:
+    actor_type: user
+    description: Enables prefill update for 21p-530ez form
