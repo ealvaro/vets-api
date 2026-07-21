@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_170002) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_17_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -29,6 +29,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_170002) do
   create_enum "client_config_auth_method", ["pkce", "client_secret", "private_key_jwt"]
   create_enum "digital_forms_api_submission_status", ["pending", "accepted", "failed"]
   create_enum "form21a_document_submission_status", ["pending", "uploading", "succeeded", "failed_transient", "failed_permanent", "abandoned"]
+  create_enum "form21a_pilot_admission_status", ["started", "submitted"]
   create_enum "form21a_upload_failure_classification", ["transient", "permanent"]
   create_enum "itf_remediation_status", ["unprocessed"]
   create_enum "lighthouse_submission_status", ["pending", "submitted", "failure", "vbms", "manually"]
@@ -288,6 +289,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_170002) do
     t.string "veteran_icn"
     t.index ["needs_kms_rotation"], name: "index_appeals_api_supplemental_claims_on_needs_kms_rotation"
     t.index ["veteran_icn"], name: "index_appeals_api_supplemental_claims_on_veteran_icn"
+  end
+
+  create_table "ar_form21a_pilot_admissions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.enum "status", default: "started", null: false, enum_type: "form21a_pilot_admission_status"
+    t.datetime "submitted_at", comment: "set when the user submits"
+    t.datetime "updated_at", null: false
+    t.uuid "user_account_id", null: false, comment: "one admission per user, ever"
+    t.index ["created_at"], name: "index_ar_form21a_pilot_admissions_on_created_at"
+    t.index ["user_account_id"], name: "index_ar_form21a_pilot_admissions_on_user_account_id", unique: true
+    t.check_constraint "status <> 'submitted'::form21a_pilot_admission_status OR submitted_at IS NOT NULL", name: "check_ar_form21a_pilot_admissions_submitted_at_present"
   end
 
   create_table "ar_icn_temporary_identifiers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2456,6 +2468,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_170002) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "appeal_submissions", "user_accounts"
+  add_foreign_key "ar_form21a_pilot_admissions", "user_accounts"
   add_foreign_key "ar_power_of_attorney_forms", "ar_power_of_attorney_requests", column: "power_of_attorney_request_id"
   add_foreign_key "ar_power_of_attorney_request_decisions", "user_accounts", column: "creator_id"
   add_foreign_key "ar_power_of_attorney_request_notifications", "ar_power_of_attorney_requests", column: "power_of_attorney_request_id"
