@@ -32,7 +32,7 @@ jobs:
         env:
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
         with:
-          ruby-version: '3.3.6'
+          ruby-version: "3.3.6"
           bundler-cache: false
 
       - name: Install system dependencies
@@ -52,22 +52,22 @@ jobs:
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
           echo "deb http://apt.postgresql.org/pub/repos/apt/ noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
-          
+
           # Install PostgreSQL 15 and PostGIS 3 for PostgreSQL 15
           sudo apt-get install -y postgresql-15 postgresql-15-postgis-3 postgresql-15-postgis-3-scripts postgresql-client-15
-          
+
           # Remove any default PostgreSQL clusters and create PostgreSQL 15 cluster
           sudo systemctl stop postgresql || true
           sudo pg_dropcluster --stop 16 main || true
           sudo pg_dropcluster --stop 14 main || true
           sudo pg_createcluster 15 main --start
-          
+
           # Configure PostgreSQL 15 for development
           sudo -u postgres psql -p 5432 -c "ALTER USER postgres PASSWORD 'password';"
           sudo -u postgres createuser --superuser runner || true
           sudo -u postgres createdb vets_api_development -O runner || true
           sudo -u postgres createdb vets_api_test -O runner || true
-          
+
           # Enable PostGIS extension in PostgreSQL 15
           sudo -u postgres psql -p 5432 -d vets_api_development -c "CREATE EXTENSION IF NOT EXISTS postgis;"
           sudo -u postgres psql -p 5432 -d vets_api_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
@@ -87,6 +87,7 @@ jobs:
       - name: Install Ruby dependencies
         env:
           BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
+          BUNDLE_ENTERPRISE__CONTRIBSYS__COM: ${{ secrets.BUNDLE_ENTERPRISE__CONTRIBSYS__COM }}
         run: |
           gem install bundler
           # Configure bundler to not be in frozen mode and allow missing Sidekiq Enterprise gems
@@ -106,7 +107,7 @@ jobs:
         run: |
           # Setup development database
           RAILS_ENV=development bundle exec rails db:setup db:migrate || bundle exec rails db:create db:migrate
-          
+
           # Setup test database  
           RAILS_ENV=test bundle exec rails db:setup db:migrate || bundle exec rails db:create db:migrate
 
@@ -115,16 +116,16 @@ jobs:
           # Verify PostgreSQL version and connection  
           sudo -u postgres psql -p 5432 -c "SELECT version();"
           bundle exec rails runner "ActiveRecord::Base.connection.execute('SELECT 1')"
-          
+
           # Verify PostGIS extension
           bundle exec rails runner "puts ActiveRecord::Base.connection.execute('SELECT PostGIS_version()').first['postgis_version']"
-          
+
           # Verify Redis connection
           bundle exec rails runner "Rails.cache.write('test', 'ok'); puts Rails.cache.read('test')"
-          
+
           # Verify RuboCop is available
           bundle exec rubocop --version
-          
+
           # Verify RSpec is available
           bundle exec rspec --version
 
