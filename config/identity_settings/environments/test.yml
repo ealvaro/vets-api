@@ -1,3 +1,6 @@
+clear:
+  enabled: true
+
 mvi:
   url: http://www.example.com
 sign_in:

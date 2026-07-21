@@ -10,9 +10,11 @@ module SignIn
     class Service < Common::Client::Base
       configuration Configuration
 
-      def render_auth(state: SecureRandom.hex, operation: Constants::Auth::AUTHORIZE)
+      def render_auth(state: SecureRandom.hex,
+                      acr: { acr: Constants::Auth::CLEAR_IAL2 },
+                      operation: Constants::Auth::AUTHORIZE)
         Rails.logger.info(
-          "[SignIn][Clear][Service] Rendering auth, state: #{state}, operation: #{operation}"
+          "[SignIn][Clear][Service] Rendering auth, state: #{state}, acr: #{acr[:acr]}, operation: #{operation}"
         )
         code_verifier = SecureRandom.urlsafe_base64(64)
         CodeContainer.new(state:, code_verifier:).save!

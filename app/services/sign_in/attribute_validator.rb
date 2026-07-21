@@ -57,8 +57,8 @@ module SignIn
                                                                    address:,
                                                                    phone_number:,
                                                                    idme_uuid:,
-                                                                   clear_uuid:,
-                                                                   logingov_uuid:)
+                                                                   logingov_uuid:,
+                                                                   clear_uuid:)
       unless add_person_response.ok?
         handle_error('User MPI record cannot be created',
                      Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,

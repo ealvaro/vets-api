@@ -8,8 +8,8 @@ module Login
                    idme_uuid:,
                    logingov_uuid:,
                    icn:,
-                   credential_attributes_digest: nil,
-                   clear_uuid: nil)
+                   clear_uuid: nil,
+                   credential_attributes_digest: nil)
       @login_type = login_type
       @auth_broker = auth_broker
       @mhv_uuid = mhv_uuid

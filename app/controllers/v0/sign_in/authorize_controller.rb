@@ -60,6 +60,9 @@ module V0
         unless client_config(client_id).valid_credential_service_provider?(type)
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Type is not valid'
         end
+        if type == ::SignIn::Constants::Auth::CLEAR && !IdentitySettings.clear.enabled
+          raise ::SignIn::Errors::MalformedParamsError.new message: 'Type is not valid'
+        end
         unless ::SignIn::Constants::Auth::OPERATION_TYPES.include?(operation)
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Operation is not valid'
         end

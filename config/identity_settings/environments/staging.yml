@@ -1,3 +1,6 @@
+clear:
+  enabled: false
+
 idme:
   client_cert_path: /srv/vets-api/secret/sign-in-service-oauth-lowers.pem
   client_id: dde0b5b8bfc023a093830e64ef83f148

@@ -78,6 +78,7 @@ module SignIn
         mhv_icn: user_account.icn,
         idme_uuid: user_verification.idme_uuid || user_verification.backing_idme_uuid,
         logingov_uuid: user_verification.logingov_uuid,
+        clear_uuid: user_verification.clear_uuid,
         loa:,
         email: session.credential_email,
         authn_context:,
@@ -105,15 +106,17 @@ module SignIn
         user_is_verified? ? Constants::Auth::IDME_MHV_LOA3 : Constants::Auth::IDME_MHV_LOA1
       when Constants::Auth::LOGINGOV
         user_is_verified? ? Constants::Auth::LOGIN_GOV_IAL2 : Constants::Auth::LOGIN_GOV_IAL1
+      when Constants::Auth::CLEAR
+        user_is_verified? ? Constants::Auth::CLEAR_IAL2 : Constants::Auth::CLEAR_IAL1
       end
     end
 
     def multifactor
-      user_is_verified? && idme_or_logingov_service
+      user_is_verified? && idme_logingov_or_clear_service
     end
 
-    def idme_or_logingov_service
-      [Constants::Auth::IDME, Constants::Auth::LOGINGOV].include?(sign_in[:service_name])
+    def idme_logingov_or_clear_service
+      [Constants::Auth::IDME, Constants::Auth::LOGINGOV, Constants::Auth::CLEAR].include?(sign_in[:service_name])
     end
 
     def user_is_verified?

@@ -125,6 +125,7 @@ RSpec.describe SignIn::AuthSSO::SessionValidator do
         {
           idme_uuid: user_verification.idme_uuid,
           logingov_uuid: user_verification.logingov_uuid,
+          clear_uuid: user_verification.clear_uuid,
           credential_email: session.credential_email,
           mhv_credential_uuid: user_verification.mhv_uuid,
           first_name: session.user_attributes_hash[:first_name],
@@ -138,6 +139,15 @@ RSpec.describe SignIn::AuthSSO::SessionValidator do
 
       it 'returns the auth SSO user attributes' do
         expect(validator.perform).to eq(expected_attributes)
+      end
+
+      context 'and the credential is CLEAR' do
+        let(:credential_service_providers) { %w[idme logingov clear] }
+        let!(:user_verification) { create(:clear_user_verification, user_account:) }
+
+        it 'sets the session assurance level to IAL2' do
+          expect(validator.perform[:acr]).to eq(SignIn::Constants::Auth::IAL2)
+        end
       end
     end
   end

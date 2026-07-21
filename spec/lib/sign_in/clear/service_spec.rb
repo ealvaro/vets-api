@@ -22,7 +22,8 @@ describe SignIn::Clear::Service do
     let(:expected_authorization_page) { "#{base_path}/integrations/oauth2/auth" }
     let(:expected_scope) { CGI.escape('offline openid offline_access') }
     let(:expected_log) do
-      "[SignIn][Clear][Service] Rendering auth, state: #{state}, operation: #{SignIn::Constants::Auth::AUTHORIZE}"
+      "[SignIn][Clear][Service] Rendering auth, state: #{state}, acr: #{SignIn::Constants::Auth::CLEAR_IAL2}, " \
+        "operation: #{SignIn::Constants::Auth::AUTHORIZE}"
     end
     let(:code_verifier) { 'some-code-verifier' }
     let(:expected_code_challenge) do

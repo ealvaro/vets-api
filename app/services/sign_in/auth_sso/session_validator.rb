@@ -24,6 +24,7 @@ module SignIn
         {
           idme_uuid: user_verification.idme_uuid || user_verification.backing_idme_uuid,
           logingov_uuid: user_verification.logingov_uuid,
+          clear_uuid: user_verification.clear_uuid,
           credential_email: session.credential_email,
           mhv_credential_uuid: user_verification.mhv_uuid,
           first_name: session_user_attributes[:first_name],
@@ -79,7 +80,7 @@ module SignIn
       end
 
       def session_assurance_level
-        if user_verification.credential_type == Constants::Auth::LOGINGOV
+        if [Constants::Auth::LOGINGOV, Constants::Auth::CLEAR].include?(user_verification.credential_type)
           user_verification.verified? ? Constants::Auth::IAL2 : Constants::Auth::IAL1
         else
           user_verification.verified? ? Constants::Auth::LOA3 : Constants::Auth::LOA1

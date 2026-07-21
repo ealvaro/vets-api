@@ -306,6 +306,17 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
         it_behaves_like 'error response'
       end
 
+      context 'when type param is clear but clear is not enabled' do
+        let(:type_value) { 'clear' }
+        let(:type) { { type: type_value } }
+        let(:credential_service_providers) { %w[idme logingov clear] }
+        let(:expected_error) { 'Type is not valid' }
+
+        before { allow(IdentitySettings.clear).to receive(:enabled).and_return(false) }
+
+        it_behaves_like 'error response'
+      end
+
       shared_context 'a logingov authentication service interface' do
         context 'and acr param is not given' do
           let(:acr) { {} }

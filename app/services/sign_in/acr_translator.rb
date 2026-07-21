@@ -45,7 +45,7 @@ module SignIn
 
     def translate_clear_values
       case acr
-      when 'ial2'
+      when 'ial2', Constants::Auth::IAL2_PREFERRED, Constants::Auth::IAL2_REQUIRED, 'min'
         Constants::Auth::CLEAR_IAL2
       else
         invalid_acr!(type:)

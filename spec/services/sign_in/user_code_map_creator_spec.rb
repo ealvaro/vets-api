@@ -80,8 +80,8 @@ RSpec.describe SignIn::UserCodeMapCreator do
         auth_broker:,
         mhv_uuid: nil,
         idme_uuid: nil,
-        clear_uuid: nil,
         logingov_uuid:,
+        clear_uuid: nil,
         icn:,
         credential_attributes_digest:
       ).and_call_original
