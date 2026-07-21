@@ -55,7 +55,7 @@ module MyHealth
         else
           log_info('Attachment not S3-backed, using send_data')
           StatsD.increment("#{STATSD_KEY_PREFIX}.fallback", tags: ['reason:not_s3_backed'])
-          send_data(attachment_info[:body], filename: attachment_info[:filename])
+          send_data(attachment_info[:body], filename: utf8_filename(attachment_info[:filename]))
         end
       rescue => e
         Rails.logger.warn('Failed to get attachment info, falling back to legacy',
@@ -75,7 +75,7 @@ module MyHealth
         response = client.get_attachment(params[:message_id], params[:id])
         raise Common::Exceptions::RecordNotFound, params[:id] if response.blank?
 
-        send_data(response[:body], filename: response[:filename])
+        send_data(response[:body], filename: utf8_filename(response[:filename]))
       end
 
       ##
@@ -115,7 +115,22 @@ module MyHealth
       #
       def sanitize_filename(filename)
         # Allow: letters, numbers, spaces (literal only, not \s which includes \r\n), dots, hyphens, underscores
-        filename.to_s.gsub(/[^\w .-]/, '_').strip[0..255]
+        utf8_filename(filename).gsub(/[^\w .-]/, '_').strip[0..255]
+      end
+
+      ##
+      # Coerces a filename to a valid UTF-8 string.
+      #
+      # Faraday returns response headers (and thus filenames derived from them) as ASCII-8BIT.
+      # Passing an ASCII-8BIT filename containing non-ASCII bytes to send_data raises
+      # Encoding::CompatibilityError when Rails transliterates it for the Content-Disposition
+      # header (UTF-8 regexp vs ASCII-8BIT string). Coercing here makes both paths robust.
+      #
+      # @param filename [String] the original filename
+      # @return [String] a valid UTF-8 filename with invalid byte sequences scrubbed
+      #
+      def utf8_filename(filename)
+        filename.to_s.dup.force_encoding('UTF-8').scrub('_')
       end
     end
   end

@@ -59,6 +59,45 @@ RSpec.describe 'MyHealth::V1::Messaging::Messages::Attachments', type: :request 
         expect(response.body).to be_a(String)
       end
 
+      context 'when the attachment filename contains non-ASCII characters' do
+        # Regression: Faraday returns the content-disposition header as ASCII-8BIT, so a
+        # filename with non-ASCII bytes reached send_data and raised Encoding::CompatibilityError
+        # (UTF-8 regexp vs ASCII-8BIT string) during Content-Disposition transliteration.
+        it 'downloads via legacy send_data without an encoding error' do
+          binary_filename = 'résumé.pdf'.dup.force_encoding('ASCII-8BIT')
+          allow_any_instance_of(SM::Client).to receive(:get_attachment)
+            .and_return({ body: 'binary file content', filename: binary_filename })
+
+          expect do
+            get '/my_health/v1/messaging/messages/629999/attachments/629993'
+          end.not_to raise_error
+
+          expect(response).to be_successful
+          expect(response.body).to eq('binary file content')
+          expect(response.headers['Content-Disposition']).to include('filename')
+        end
+
+        it 'streams a non-S3 attachment with a non-ASCII filename when flag is enabled' do
+          allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_stream_via_revproxy,
+                                                    anything).and_return(true)
+          attachment_info = {
+            s3_url: nil,
+            mime_type: nil,
+            filename: 'café_note.png'.dup.force_encoding('ASCII-8BIT'),
+            body: 'binary file content'
+          }
+          allow_any_instance_of(SM::Client).to receive(:get_attachment_info)
+            .with('629999', '629993').and_return(attachment_info)
+
+          expect do
+            get '/my_health/v1/messaging/messages/629999/attachments/629993'
+          end.not_to raise_error
+
+          expect(response).to be_successful
+          expect(response.body).to eq('binary file content')
+        end
+      end
+
       context 'with X-Accel-Redirect feature flag enabled' do
         before do
           allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_stream_via_revproxy,
@@ -112,6 +151,28 @@ RSpec.describe 'MyHealth::V1::Messaging::Messages::Attachments', type: :request 
             expect(response.headers['Content-Disposition']).to match(/filename="test__X-Evil-Header_ injected__.pdf"/)
             expect(response.headers['Content-Disposition']).not_to include("\r")
             expect(response.headers['Content-Disposition']).not_to include("\n")
+          end
+
+          it 'handles an ASCII-8BIT filename with non-ASCII bytes without raising' do
+            s3_url = 'https://my-bucket.s3.us-gov-west-1.amazonaws.com/file.pdf'
+            attachment_info = {
+              s3_url:,
+              mime_type: 'application/pdf',
+              filename: 'résumé.pdf'.dup.force_encoding('ASCII-8BIT'),
+              body: nil
+            }
+
+            allow_any_instance_of(SM::Client).to receive(:get_attachment_info)
+              .with('629999', '629993')
+              .and_return(attachment_info)
+
+            expect do
+              get '/my_health/v1/messaging/messages/629999/attachments/629993'
+            end.not_to raise_error
+
+            expect(response).to have_http_status(:ok)
+            expect(response.headers['Content-Disposition']).to include('filename=')
+            expect(response.headers['Content-Disposition']).to include('.pdf')
           end
         end
 

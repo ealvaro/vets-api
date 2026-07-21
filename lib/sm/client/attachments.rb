@@ -33,13 +33,7 @@ module SM
           }
         else
           # Non-S3: direct binary response
-          filename = response.response_headers['content-disposition']&.gsub(CONTENT_DISPOSITION, '')&.gsub(/%22|"/, '')
-          {
-            s3_url: nil,
-            mime_type: nil,
-            filename:,
-            body: response.body
-          }
+          { s3_url: nil, mime_type: nil, filename: parse_content_disposition_filename(response), body: response.body }
         end
       end
 
@@ -84,6 +78,13 @@ module SM
       end
 
       private
+
+      # Faraday returns headers as ASCII-8BIT; coerce the content-disposition filename to valid UTF-8
+      # so send_data's Content-Disposition transliteration doesn't raise on non-ASCII bytes.
+      def parse_content_disposition_filename(response)
+        raw = response.response_headers['content-disposition']&.gsub(CONTENT_DISPOSITION, '')&.gsub(/%22|"/, '')
+        raw&.dup&.force_encoding('UTF-8')&.scrub('_')
+      end
 
       ##
       # Upload an attachment to S3 using a presigned URL

@@ -664,6 +664,51 @@ describe 'sm client' do
         end
       end
 
+      context 'when the content-disposition header is ASCII-8BIT with non-ASCII bytes' do
+        # Faraday returns response headers as ASCII-8BIT (binary). A filename containing
+        # non-ASCII bytes must be coerced to valid UTF-8 so downstream send_data ->
+        # Content-Disposition transliteration does not raise Encoding::CompatibilityError.
+        let(:disposition) { %(attachment; filename="résumé.pdf").dup.force_encoding('ASCII-8BIT') }
+        let(:mock_response) do
+          double('response',
+                 body: 'binary file content'.dup.force_encoding('ASCII-8BIT'),
+                 response_headers: { 'content-disposition' => disposition })
+        end
+
+        before do
+          allow(client).to receive(:perform).and_return(mock_response)
+        end
+
+        it 'coerces the filename to valid UTF-8' do
+          result = client.get_attachment_info(message_id, attachment_id)
+
+          expect(result[:filename]).to eq('résumé.pdf')
+          expect(result[:filename].encoding).to eq(Encoding::UTF_8)
+          expect(result[:filename]).to be_valid_encoding
+        end
+      end
+
+      context 'when the content-disposition header has invalid byte sequences' do
+        let(:disposition) { "attachment; filename=\"bad\xFFname.pdf\"".dup.force_encoding('ASCII-8BIT') }
+        let(:mock_response) do
+          double('response',
+                 body: 'binary file content'.dup.force_encoding('ASCII-8BIT'),
+                 response_headers: { 'content-disposition' => disposition })
+        end
+
+        before do
+          allow(client).to receive(:perform).and_return(mock_response)
+        end
+
+        it 'scrubs invalid bytes instead of raising' do
+          expect { client.get_attachment_info(message_id, attachment_id) }.not_to raise_error
+
+          result = client.get_attachment_info(message_id, attachment_id)
+          expect(result[:filename].encoding).to eq(Encoding::UTF_8)
+          expect(result[:filename]).to be_valid_encoding
+        end
+      end
+
       context 'when response body is malformed' do
         let(:mock_response) do
           double('response',
