@@ -21,3 +21,7 @@ nextOfKins: [ezr_data, nextOfKins]
 emergencyContacts: [ezr_data, emergencyContacts]
 nonPrefill:
   previousFinancialInfo: [ezr_data, previousFinancialInfo]
+lastEntryDate: [ezr_data, lastEntryDate]
+lastDischargeDate: [ezr_data, lastDischargeDate]
+lastServiceBranch: [ezr_data, lastServiceBranch]
+dischargeType: [ezr_data, dischargeType]

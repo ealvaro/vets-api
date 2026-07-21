@@ -16,8 +16,15 @@ RSpec.describe FormProfile, type: :model do
   end
 
   let(:user) do
-    build(:user, :loa3, :legacy_icn, idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef', suffix: 'Jr.',
-                                     address: build(:va_profile_address), vet360_id: '1')
+    build(
+      :user,
+      :loa3,
+      :legacy_icn,
+      idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef',
+      suffix: 'Jr.',
+      address: build(:va_profile_address),
+      vet360_id: '1'
+    )
   end
 
   let(:contact_info) { form_profile.send :initialize_contact_information }
@@ -1315,6 +1322,18 @@ RSpec.describe FormProfile, type: :model do
           allow(Flipper).to receive(:enabled?).and_call_original
           allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled,
                                                     instance_of(User)).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:ezr_service_history_enabled,
+                                                    instance_of(User)).and_return(true)
+          expect(form_profile.send(:initialize_va_profile_prefill_military_information)).to eq({})
+          allow_any_instance_of(FormProfile).to receive(:initialize_military_information).and_return(
+            instance_double(
+              VAProfile::Prefill::MilitaryInformation,
+              hca_last_service_branch: 'air force',
+              last_entry_date: '1992-08-26',
+              last_discharge_date: '2017-08-30',
+              discharge_type: 'honorable'
+            )
+          )
         end
 
         let(:v10_10_ezr_expected) do
@@ -2458,8 +2477,7 @@ RSpec.describe FormProfile, type: :model do
 
       context 'when Vet360 prefill is enabled' do
         let(:user) do
-          build(:user, :loa3, :legacy_icn, suffix: 'Jr.', address: build(:va_profile_address),
-                                           vet360_id: '1781151')
+          build(:user, :loa3, :legacy_icn, suffix: 'Jr.', address: build(:va_profile_address), vet360_id: '1781151')
         end
 
         before do

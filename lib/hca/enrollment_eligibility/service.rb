@@ -54,7 +54,7 @@ module HCA
 
       MEDICARE = 'Medicare'
 
-      def get_ezr_data(user)
+      def get_ezr_data(user, military_information = nil)
         response = with_monitoring do
           lookup_user_req(user.icn)
         end
@@ -69,6 +69,8 @@ module HCA
         ezr_data.merge!(spouse)
 
         add_contacts_to_ezr_data(ezr_data, response) if Flipper.enabled?(:ezr_emergency_contacts_enabled, user)
+
+        get_service_history(ezr_data, military_information) if Flipper.enabled?(:ezr_service_history_enabled, user)
 
         OpenStruct.new(ezr_data)
       end
@@ -122,6 +124,20 @@ module HCA
       # rubocop:enable Metrics/MethodLength
 
       private
+
+      def get_service_history(ezr_data, military_information)
+        return ezr_data unless military_information
+
+        data_to_merge = {
+          lastEntryDate: military_information.last_entry_date,
+          lastDischargeDate: military_information.last_discharge_date,
+          lastServiceBranch: military_information.hca_last_service_branch,
+          dischargeType: military_information.discharge_type
+        }
+        ezr_data.merge!(data_to_merge)
+
+        ezr_data
+      end
 
       def convert_insurance_hash(response, providers)
         strip_medicare(providers).merge(

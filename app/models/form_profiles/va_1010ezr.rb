@@ -15,7 +15,7 @@ class FormProfiles::VA1010ezr < FormProfile
   def ezr_data
     @ezr_data ||=
       begin
-        HCA::EnrollmentEligibility::Service.new.get_ezr_data(user)
+        HCA::EnrollmentEligibility::Service.new.get_ezr_data(user, @military_information)
       rescue => e
         Rails.logger.error(scrub_pii(e.message))
         OpenStruct.new

@@ -3,6 +3,9 @@
 require 'rails_helper'
 require 'hca/enrollment_eligibility/service'
 
+EMERGENCY_CONTACTS_KEYS = %w[nextOfKins emergencyContacts].freeze
+SERVICE_HISTORY_KEYS = %w[lastServiceBranch lastEntryDate lastDischargeDate dischargeType].freeze
+
 describe HCA::EnrollmentEligibility::Service do
   let(:user) do
     create(
@@ -27,6 +30,20 @@ describe HCA::EnrollmentEligibility::Service do
       data.delete('nonPrefill')
       data.merge('previousFinancialInfo' => financial_info)
     end
+    let(:veteran_data_without_service_history) { veteran_data.except(*SERVICE_HISTORY_KEYS) }
+    let(:veteran_data_without_contacts_or_service_history) do
+      veteran_data_without_service_history.except(*EMERGENCY_CONTACTS_KEYS)
+    end
+
+    let(:service_history) do
+      instance_double(
+        VAProfile::Prefill::MilitaryInformation,
+        hca_last_service_branch: 'air force',
+        last_entry_date: '1992-08-26',
+        last_discharge_date: '2017-08-30',
+        discharge_type: 'honorable'
+      )
+    end
 
     def expect_veteran_data_to_match(veteran_data)
       VCR.use_cassette(
@@ -35,29 +52,79 @@ describe HCA::EnrollmentEligibility::Service do
       ) do
         expect(
           described_class.new.get_ezr_data(
-            user
+            user,
+            service_history
           ).to_h.deep_stringify_keys
         ).to eq(veteran_data)
       end
     end
 
+    context 'ezr_service_history_enabled feature flag' do
+      context 'when disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:ezr_service_history_enabled, user).and_return(false)
+        end
+
+        it 'gets Veteran data without service history' do
+          expect_veteran_data_to_match(veteran_data_without_service_history)
+        end
+      end
+
+      context 'when enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:ezr_service_history_enabled, user).and_return(true)
+        end
+
+        context 'when VAProfile responds' do
+          it 'gets Veteran data with service history' do
+            expect_veteran_data_to_match(veteran_data)
+          end
+
+          context 'with service history data' do
+            let(:service_history) do
+              instance_double(
+                VAProfile::Prefill::MilitaryInformation,
+                hca_last_service_branch: 'air force',
+                last_entry_date: '1992-01-01',
+                last_discharge_date: '2000-01-01',
+                discharge_type: 'honorable'
+              )
+            end
+
+            it 'gets Veteran data with service history' do
+              latest_service_data = {
+                'lastServiceBranch' => 'air force',
+                'lastEntryDate' => '1992-01-01',
+                'lastDischargeDate' => '2000-01-01',
+                'dischargeType' => 'honorable'
+              }
+
+              expect_veteran_data_to_match(veteran_data.merge(latest_service_data))
+            end
+          end
+        end
+      end
+    end
+
     context "when 'ezr_emergency_contacts_enabled' flipper is disabled" do
       before do
-        allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:ezr_service_history_enabled, user).and_return(false)
       end
 
       it 'gets Veteran data without contacts and with providers and dependents' do
-        expect_veteran_data_to_match(veteran_data.except('nextOfKins', 'emergencyContacts'))
+        expect_veteran_data_to_match(veteran_data_without_contacts_or_service_history)
       end
     end
 
     context "when 'ezr_emergency_contacts_enabled' flipper is enabled" do
       before do
-        allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:ezr_emergency_contacts_enabled, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:ezr_service_history_enabled, user).and_return(false)
       end
 
       it 'gets Veteran data with contacts, providers and dependents' do
-        expect_veteran_data_to_match(veteran_data)
+        expect_veteran_data_to_match(veteran_data_without_service_history)
       end
     end
   end
