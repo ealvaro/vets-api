@@ -28,7 +28,11 @@ module OliveBranchMiddlewareExtension
 
   private
 
-  VA_KEY_REGEX = /("[^"]+VA[^"]*"):/
+  # Per-instance timeout exempts this linear regex from the global Regexp.timeout (1s)
+  # set by Rails 8.0 framework defaults. The pattern is not vulnerable to catastrophic
+  # backtracking, but scanning multi-MB clinical note JSON responses can exceed 1 second.
+  # Start high (20s) and lower after measuring actual durations in production.
+  VA_KEY_REGEX = Regexp.new('("[^"]+VA[^"]*"):', timeout: 20)
 
   # Non-mutating version: returns a new string with VA keys transformed
   def un_camel_va_keys(json)
@@ -37,9 +41,14 @@ module OliveBranchMiddlewareExtension
     # rubocop:disable Style/PerlBackrefs
     # gsub with a block explicitly sets backrefs correctly
     # https://ruby-doc.org/core-2.6.6/String.html#method-i-gsub
-    json.gsub(VA_KEY_REGEX) do
-      key = $1
-      "#{key.gsub('VA', 'Va')}:"
+    begin
+      json.gsub(VA_KEY_REGEX) do
+        key = $1
+        "#{key.gsub('VA', 'Va')}:"
+      end
+    rescue Regexp::TimeoutError
+      Rails.logger.warn('OliveBranchPatch: VA_KEY_REGEX timed out on large response body, returning untransformed JSON')
+      json
     end
     # rubocop:enable Style/PerlBackrefs
   end

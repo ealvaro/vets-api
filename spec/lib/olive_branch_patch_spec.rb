@@ -256,4 +256,34 @@ describe 'OliveBranchPatch', type: :request do
       end
     end
   end
+
+  describe 'VA_KEY_REGEX timeout handling' do
+    it 'has a per-instance timeout of 20 seconds' do
+      expect(OliveBranchMiddlewareExtension::VA_KEY_REGEX.timeout).to eq(20)
+    end
+
+    it 'handles large JSON payloads without timing out' do
+      # Simulate a multi-MB clinical notes response with many VA keys
+      entry = '{"yearVAFounded":1989,"someVADetail":"text content here with lots of narrative"}'
+      large_json = "{\"entries\":[#{([entry] * 5000).join(',')}]}"
+
+      middleware_instance = OliveBranch::Middleware.allocate
+      result = middleware_instance.send(:un_camel_va_keys, large_json)
+
+      expect(result).to include('yearVaFounded')
+      expect(result).not_to include('yearVAFounded')
+    end
+
+    it 'returns original JSON and logs a warning on Regexp::TimeoutError' do
+      middleware_instance = OliveBranch::Middleware.allocate
+      original_json = +'{"yearVAFounded":1989}'
+
+      allow(original_json).to receive(:gsub).with(OliveBranchMiddlewareExtension::VA_KEY_REGEX).and_raise(Regexp::TimeoutError)
+
+      expect(Rails.logger).to receive(:warn).with(/VA_KEY_REGEX timed out/)
+      result = middleware_instance.send(:un_camel_va_keys, original_json)
+
+      expect(result).to eq('{"yearVAFounded":1989}')
+    end
+  end
 end
