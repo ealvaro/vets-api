@@ -1,0 +1,14 @@
+type: object
+required:
+  - data
+  - errors
+  - metadata
+properties:
+  data:
+    type: array
+    items:
+      $ref: "./PactAssignment.yml"
+  errors:
+    type: object
+  metadata:
+    type: object

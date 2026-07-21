@@ -1,0 +1,34 @@
+type: object
+required:
+  - station_number
+  - provider_ien
+  - provider_name
+  - assignment_status
+  - team_name
+  - summary_text
+properties:
+  station_number:
+    type: integer
+    example: 123
+    description: VA station number for the assigned PACT team.
+  provider_ien:
+    type: integer
+    example: 35297
+    description: Internal entry number of the assigned provider.
+  provider_name:
+    type: string
+    example: "ISLAM,MOHAMMAD RAFIQ"
+    description: Name of the assigned provider.
+  assignment_status:
+    type: string
+    example: Pending
+    description: Status of the PACT team assignment.
+  team_name:
+    type: string
+    nullable: true
+    example: "Team 123"
+    description: Name of the assigned PACT team.
+  summary_text:
+    type: string
+    nullable: true
+    description: Summary text associated with the PACT team assignment.

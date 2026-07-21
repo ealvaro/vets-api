@@ -37,6 +37,7 @@ module SM
             parsed_presigned_s3_url ||
             parsed_aws_s3_attachment_meta ||
             parsed_crosswalk ||
+            parsed_pact_teams ||
             parsed_all_triage ||
             parsed_triage   ||
             preferences     ||
@@ -75,6 +76,12 @@ module SM
 
         def parsed_threads_object
           @parsed_json.is_a?(Array) && @parsed_json.each { |t| return false unless t.key?(:thread_id) }
+        end
+
+        def parsed_pact_teams
+          @parsed_json.is_a?(Array) && @parsed_json.each do |t|
+            return false unless t.key?(:station_number) && t.key?(:team_name)
+          end
         end
 
         def parsed_folders

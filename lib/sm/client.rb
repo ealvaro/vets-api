@@ -9,6 +9,7 @@ require 'sm/client/folders'
 require 'sm/client/message_drafts'
 require 'sm/client/messages'
 require 'sm/client/message_sending'
+require 'sm/client/pact'
 require 'sm/client/triage_teams'
 require 'vets/collection'
 require 'logging/helper/data_scrubber'
@@ -27,6 +28,7 @@ module SM
     include TriageTeams
     include Attachments
     include MessageStatus
+    include Pact
 
     configuration SM::Configuration
     client_session SM::ClientSession
