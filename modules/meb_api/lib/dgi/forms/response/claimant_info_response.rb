@@ -30,22 +30,31 @@ module MebApi
             service_data: response.body['service_data']
           }
 
-          if Flipper.enabled?(:meb_supplemental_coe)
-            coe_information = response.body['coe_information']
-            benefits = get_benefits(['CH35'], response.body['cs_claimant'], response.body['latest_ch33_eligibilites'],
-                                    coe_information)
-            attributes[:benefits] = benefits
-            attributes[:has_ch_35_original_claim_in_progress] = get_in_progress_flags('CH35', coe_information)
-            attributes[:has_ch_33_original_claim_in_progress] = get_in_progress_flags('CH33', coe_information)
-            attributes[:has_fry_original_claim_in_progress] = get_in_progress_flags('Fry', coe_information)
-            attributes[:has_toe_original_claim_in_progress] = get_in_progress_flags('Toe', coe_information)
-            attributes[:ch_35_received_date] = get_received_date('CH35', coe_information)
-            attributes[:ch_33_received_date] = get_received_date('CH33', coe_information)
-            attributes[:fry_received_date] = get_received_date('Fry', coe_information)
-            attributes[:toe_received_date] = get_received_date('Toe', coe_information)
-          end
+          attributes = add_supplemental_coe_attributes(response, attributes) if Flipper.enabled?(:meb_supplemental_coe)
 
           super(status, attributes)
+        end
+
+        private
+
+        def add_supplemental_coe_attributes(response, attributes)
+          non33_data = response.body['non33_eligibilities']
+          ch33_data = response.body['latest_ch33_eligibility']
+          in_progress_originals = response.body['submission_pending_review_information']
+          benefits = get_benefits(['CH35'], non33_data, ch33_data)
+
+          {
+            **attributes,
+            benefits:,
+            has_ch_35_original_claim_in_progress: get_in_progress_flags('CH35', in_progress_originals),
+            has_ch_33_original_claim_in_progress: get_in_progress_flags('CH33', in_progress_originals),
+            has_fry_original_claim_in_progress: get_in_progress_flags('Fry', in_progress_originals),
+            has_toe_original_claim_in_progress: get_in_progress_flags('Toe', in_progress_originals),
+            ch_35_received_date: get_received_date('CH35', in_progress_originals),
+            ch_33_received_date: get_received_date('CH33', in_progress_originals),
+            fry_received_date: get_received_date('Fry', in_progress_originals),
+            toe_received_date: get_received_date('Toe', in_progress_originals)
+          }
         end
       end
     end
