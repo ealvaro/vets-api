@@ -21,15 +21,6 @@ module AskVAApi
         render_result(@subtopics)
       end
 
-      def contents
-        get_resource('contents',
-                     user_mock_data: params[:user_mock_data],
-                     type: params[:type],
-                     parent_id: params[:parent_id])
-
-        render_result(@contents)
-      end
-
       private
 
       def get_resource(resource_type, options = {})

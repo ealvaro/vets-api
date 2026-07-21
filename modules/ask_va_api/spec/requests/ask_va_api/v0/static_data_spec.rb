@@ -169,47 +169,4 @@ RSpec.describe 'AskVAApi StaticData', type: :request do
                       'StandardError: StandardError'
     end
   end
-
-  describe 'GET #contents' do
-    let(:contents_path) { '/ask_va_api/v0/contents' }
-    let(:expected_hash) do
-      { 'id' => '75524deb-d864-eb11-bb24-000d3a579c45',
-        'type' => 'contents',
-        'attributes' =>
-         { 'name' => 'Education benefits and work study',
-           'allow_attachments' => true,
-           'description' => nil,
-           'display_name' => 'Education benefits and work study',
-           'parent_id' => nil,
-           'rank_order' => 1,
-           'requires_authentication' => true,
-           'topic_type' => 'Category',
-           'contact_preferences' => ['Email'] } }
-    end
-
-    context 'when successful' do
-      before do
-        get contents_path, params: { user_mock_data: true, type: 'category' }
-      end
-
-      it 'returns contents data' do
-        expect(JSON.parse(response.body)['data']).to include(a_hash_including(expected_hash))
-        expect(response).to have_http_status(:ok)
-      end
-    end
-
-    context 'when an error occurs' do
-      let(:error_message) { 'service error' }
-
-      before do
-        allow_any_instance_of(Crm::CacheData)
-          .to receive(:call)
-          .and_raise(StandardError)
-        get contents_path, params: { type: 'category' }
-      end
-
-      it_behaves_like 'common error handling', :unprocessable_entity, 'service_error',
-                      'StandardError: StandardError'
-    end
-  end
 end

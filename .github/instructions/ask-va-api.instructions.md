@@ -28,10 +28,10 @@ The CRM optionset data has **two independent consumers** — be careful not to c
 The controller uses a `get_resource` private method that dynamically resolves classes by convention:
 
 ```ruby
-# For resource_type 'contents':
-AskVAApi::Contents::Retriever  # fetches data
-AskVAApi::Contents::Serializer # serializes response
-AskVAApi::Contents::Entity     # data model
+# For resource_type 'categories':
+AskVAApi::Categories::Retriever  # fetches data
+AskVAApi::Categories::Serializer # serializes response
+AskVAApi::Categories::Entity     # data model
 ```
 
 Each endpoint needs an explicit public action method in the controller **and** the corresponding Retriever/Serializer/Entity classes. A route without both will fail at runtime.
@@ -43,7 +43,7 @@ When deprecating an endpoint (e.g., `announcements`, `optionset`), remove **all 
 1. **Route** — `config/routes.rb` (delete the `get` line)
 2. **Controller action** — `app/controllers/ask_va_api/v0/static_data_controller.rb` (delete the method)
 3. **Lib classes** — delete the entire directory `app/lib/ask_va_api/<resource>/` (entity.rb, retriever.rb, serializer.rb)
-4. **Mock data** — `config/locales/get_<resource>_mock_data.json`
+4. **Mock data** — delete `config/locales/get_<resource>_mock_data.json` **only if the resource has a dedicated mock file**. Some resources (e.g. the former `contents`, and `categories`/`topics`/`subtopics`) read the shared `config/locales/static_data.json` instead — do **not** delete that shared file.
 5. **Request spec block** — remove the `describe` block from `spec/requests/ask_va_api/v0/static_data_spec.rb`
 6. **Lib specs** — delete the entire directory `spec/app/lib/ask_va_api/<resource>/`
 7. **Grep check** — confirm zero remaining references to the resource name in `modules/ask_va_api/`

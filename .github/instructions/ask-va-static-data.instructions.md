@@ -1,5 +1,5 @@
 ---
-applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/contents/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
+applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controller.rb,modules/ask_va_api/app/lib/ask_va_api/base_retriever.rb,modules/ask_va_api/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/app/lib/ask_va_api/announcements/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/categories/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/topics/**/*,modules/ask_va_api/spec/app/lib/ask_va_api/subtopics/**/*,modules/ask_va_api/spec/requests/ask_va_api/v0/static_data_spec.rb,modules/ask_va_api/config/routes.rb"
 ---
 
 # Copilot Instructions for Ask VA API / Static Data
@@ -7,7 +7,7 @@ applyTo: "modules/ask_va_api/app/controllers/ask_va_api/v0/static_data_controlle
 **Path-Specific Instructions for the `ask_va_api` module's static data endpoints**
 
 These instructions automatically apply when working with:
-- **Controller:** `StaticDataController` — all static data endpoints (`/categories`, `/contents`, `/announcements`, etc.)
+- **Controller:** `StaticDataController` — all static data endpoints (`/categories`, `/topics`, `/subtopics`, `/announcements`, etc.)
 - **Retrievers/Entities/Serializers:** Classes under `app/lib/ask_va_api/{resource}/`
 - **Base class:** `BaseRetriever` — shared superclass for all retrievers
 - **Specs:** Request specs in `spec/requests/ask_va_api/v0/static_data_spec.rb` and unit specs under `spec/app/lib/ask_va_api/`
@@ -35,15 +35,17 @@ The resource name string (`'categories'`) is `.camelize`d to resolve class const
 
 **Anti-pattern:**
 ```ruby
-# DON'T reuse another resource's classes to avoid creating new ones.
-# This creates coupling that prevents clean removal later.
+# DON'T multiplex several resources behind one shared triad to avoid creating
+# new classes. This is exactly what the now-removed /contents endpoint did
+# (one Contents triad served categories/topics/subtopics via a `type:` param),
+# and the coupling is what makes clean removal hard.
 def categories
   get_resource('contents', user_mock_data: params[:user_mock_data], type: 'category')
   render_result(@contents)
 end
 ```
 
-**Why:** Each endpoint should have its own Retriever/Entity/Serializer triad so that deprecated endpoints (like `/contents`) can be fully removed without breaking newer endpoints.
+**Why:** Each endpoint should have its own Retriever/Entity/Serializer triad so that deprecated endpoints can be fully removed without breaking newer endpoints. Proven in software/ask-va#2429: the legacy multiplexed `/contents` endpoint (and its `Contents` triad) was deleted with zero impact on `/categories`, `/topics`, and `/subtopics` precisely because none of them shared classes with it.
 
 ---
 
@@ -93,7 +95,7 @@ end
 
 Key points:
 - Do **not** override `initialize` if you only need `user_mock_data:` and `entity_class:` — `BaseRetriever` provides these.
-- Override `initialize` only when the retriever needs additional keyword arguments (e.g., `Contents::Retriever` takes `type:` and `parent_id:`).
+- Override `initialize` only when the retriever needs additional keyword arguments (e.g., `Topics::Retriever` and `Subtopics::Retriever` take `parent_id:`).
 - `BaseRetriever#call` handles mapping raw data through `entity_class` and error rescue via `ErrorHandler`.
 
 ### Entity pattern
@@ -350,19 +352,19 @@ end
 
 ### Unit specs (retriever, entity, serializer)
 
-Each class in the triad should have its own spec file under `spec/app/lib/ask_va_api/{resource}/`. Follow the existing `contents/` or `categories/` specs as templates.
+Each class in the triad should have its own spec file under `spec/app/lib/ask_va_api/{resource}/`. Follow the existing `categories/`, `topics/`, or `subtopics/` specs as templates.
 
 ---
 
 ## Deprecation Context
 
-`/contents` is a multiplexed endpoint that serves categories, topics, and subtopics via a `type` query parameter. It is being replaced by dedicated endpoints (`/categories`, `/topics/:id/subtopics`, etc.) per issues #2170, #2414, #2415, #2428, #2429. Each new endpoint gets its own class triad so `/contents` and `Contents::*` can be fully removed later.
+The legacy `/contents` endpoint was a multiplexed route that served categories, topics, and subtopics via a `type` query parameter. It has been **removed** (software/ask-va#2429) and replaced by the dedicated `/categories`, `/categories/:id/topics`, and `/topics/:id/subtopics` endpoints (per issues #2170, #2414, #2415, #2428, #2429). Each dedicated endpoint has its own class triad, which is what allowed `/contents` and `Contents::*` to be deleted cleanly. When adding future static-data endpoints, keep this one-triad-per-resource rule so the same clean removal remains possible.
 
 ---
 
 ## Authentication: Static Data Endpoints Are Public
 
-`StaticDataController` declares `skip_before_action :authenticate`, so **all** static data endpoints (`/categories`, `/topics`, `/subtopics`, `/contents`, `/branch_of_service`) are served in **unauthenticated** request flows. The frontend hits these to populate the category/topic/subtopic pickers early in the Ask VA form, before sign-in.
+`StaticDataController` declares `skip_before_action :authenticate`, so **all** static data endpoints (`/categories`, `/topics`, `/subtopics`, `/branch_of_service`) are served in **unauthenticated** request flows. The frontend hits these to populate the category/topic/subtopic pickers early in the Ask VA form, before sign-in.
 
 ### Implication for feature flags gating these endpoints
 
