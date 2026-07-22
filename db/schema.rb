@@ -394,6 +394,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_160836) do
     t.index ["redacted_at"], name: "index_ar_power_of_attorney_requests_on_redacted_at"
   end
 
+  create_table "ar_representative_in_progress_forms", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_kms_key"
+    t.datetime "expires_at"
+    t.text "form_data_ciphertext"
+    t.string "form_id", null: false
+    t.json "metadata"
+    t.boolean "needs_kms_rotation", default: false, null: false
+    t.uuid "rep_user_account_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "veteran_icn", null: false
+    t.index ["form_id", "rep_user_account_id", "veteran_icn"], name: "index_ar_representative_in_progress_forms_on_composite_key", unique: true
+    t.index ["needs_kms_rotation"], name: "index_ar_rep_in_progress_forms_on_needs_kms_rotation"
+    t.index ["rep_user_account_id"], name: "index_ar_rep_in_progress_forms_on_rep_user_account_id"
+  end
+
   create_table "ar_saved_claim_claimant_representatives", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "accredited_individual_registration_number", null: false
     t.string "claimant_id", null: false
@@ -2493,6 +2509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_160836) do
   add_foreign_key "ar_power_of_attorney_request_resolutions", "ar_power_of_attorney_requests", column: "power_of_attorney_request_id"
   add_foreign_key "ar_power_of_attorney_request_withdrawals", "ar_power_of_attorney_requests", column: "superseding_power_of_attorney_request_id"
   add_foreign_key "ar_power_of_attorney_requests", "user_accounts", column: "claimant_id"
+  add_foreign_key "ar_representative_in_progress_forms", "user_accounts", column: "rep_user_account_id"
   add_foreign_key "ask_va_inquiry_submission_checkpoints", "ask_va_inquiry_submissions"
   add_foreign_key "async_transactions", "user_accounts"
   add_foreign_key "bgs_submission_attempts", "bgs_submissions"
