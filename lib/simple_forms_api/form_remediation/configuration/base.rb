@@ -82,7 +82,7 @@ module SimpleFormsApi
         # the namespace and class name
         def caller_class
           matches = caller_locations&.map { |location| location.path.match(%r{modules/.+/app/services/(.+)/(.+)\.rb}) }
-          return 'SimpleFormsApi::FormRemediation' if matches&.empty?
+          return 'SimpleFormsApi::FormRemediation' if matches && matches.empty?
 
           files = matches.compact.first&.captures
           return 'SimpleFormsApi::FormRemediation' unless files&.any?
