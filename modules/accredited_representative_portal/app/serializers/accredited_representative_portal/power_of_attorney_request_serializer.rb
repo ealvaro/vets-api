@@ -87,5 +87,37 @@ module AccreditedRepresentativePortal
 
       PowerOfAttorneyRequestPolicy.new(current_user, poa_request).can_accept?
     end
+
+    attribute :dependent_relationship_established, if: proc { |_, params|
+      params[:include_dependent_status]
+    } do |poa_request|
+      claimant_type = poa_request.claimant_type
+      form_data = poa_request.power_of_attorney_form&.parsed_data
+
+      if claimant_type == PowerOfAttorneyRequest::ClaimantTypes::DEPENDENT && form_data.present?
+        veteran = {
+          first_name: form_data.dig('veteran', 'name', 'first'),
+          last_name: form_data.dig('veteran', 'name', 'last'),
+          ssn: form_data.dig('veteran', 'ssn'),
+          birth_date: form_data.dig('veteran', 'dateOfBirth')
+        }
+        dependent = {
+          first_name: form_data.dig('claimant', 'name', 'first'),
+          last_name: form_data.dig('claimant', 'name', 'last'),
+          icn: poa_request.claimant&.icn,
+          birth_date: form_data.dig('claimant', 'dateOfBirth')
+        }
+
+        begin
+          DependentLookupService.new(veteran:).dependent_relationship_established?(dependent:)
+        rescue => e
+          Rails.logger.error('Failed to retrieve dependency establishment status.',
+                             error_class: e.class.name, error_message: e.message)
+          false
+        end
+      else
+        false
+      end
+    end
   end
 end

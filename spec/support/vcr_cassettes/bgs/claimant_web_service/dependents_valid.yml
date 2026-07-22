@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: "<BGS_BASE_URL>/ClaimantServiceBean/ClaimantWebService?WSDL"
+    uri: <BGS_BASE_URL>/ClaimantServiceBean/ClaimantWebService?WSDL
     body:
       encoding: US-ASCII
       string: ''
@@ -720,10 +720,11 @@ http_interactions:
         </port>
         </service>
         </definitions>
+    http_version: null
   recorded_at: Sat, 25 Apr 2020 01:11:06 GMT
 - request:
     method: post
-    uri: "<BGS_BASE_URL>/ClaimantServiceBean/ClaimantWebService"
+    uri: <BGS_BASE_URL>/ClaimantServiceBean/ClaimantWebService
     body:
       encoding: UTF-8
       string: |-
@@ -775,7 +776,8 @@ http_interactions:
       string: <?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
         xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><env:Header><work:WorkContext
         xmlns:work="http://oracle.com/weblogic/soap/workarea/">rO0ABXdUAB13ZWJsb2dpYy5hcHAuQ29ycG9yYXRlRGF0YUVBUgAAANYAAAAjd2VibG9naWMud29ya2FyZWEuU3RyaW5nV29ya0NvbnRleHQABjMuMS4xMAAA</work:WorkContext></env:Header><S:Body><ns0:findDependentsByPtcpntIdResponse
-        xmlns:ns0="http://services.share.benefits.vba.va.gov/"><return><numberOfRecords>2</numberOfRecords><persons><awardIndicator>Y</awardIndicator><dateOfBirth>01/02/1960</dateOfBirth><emailAddress>test@email.com</emailAddress><firstName>JANE</firstName><lastName>WEBB</lastName><middleName>M</middleName><ptcpntId>600140899</ptcpntId><relatedToVet>Y</relatedToVet><relationship>Spouse</relationship><ssn>222883214</ssn><veteranIndicator>N</veteranIndicator></persons><persons><awardIndicator>N</awardIndicator><dateOfBirth>02/04/2002</dateOfBirth><emailAddress>test@email.com</emailAddress><firstName>MARK</firstName><lastName>WEBB</lastName><proofOfDependency>N</proofOfDependency><ptcpntId>600280661</ptcpntId><relatedToVet>Y</relatedToVet><relationship>Child</relationship><veteranIndicator>N</veteranIndicator></persons><returnCode>SHAR
+        xmlns:ns0="http://services.share.benefits.vba.va.gov/"><return><numberOfRecords>2</numberOfRecords><persons><awardIndicator>Y</awardIndicator><cityOfBirth>DeLand</cityOfBirth><dateOfBirth>01/01/2015</dateOfBirth><emailAddress></emailAddress><firstName>JANE</firstName><lastName>MOORE</lastName><ptcpntId>601684665</ptcpntId><relatedToVet>Y</relatedToVet><relationship>Child</relationship><ssn>455874723</ssn><stateOfBirth>FL</stateOfBirth><veteranIndicator>N</veteranIndicator></persons><persons><awardIndicator>Y</awardIndicator><dateOfBirth>01/18/1996</dateOfBirth><emailAddress>vets.gov.user104@gmail.com</emailAddress><firstName>MILLY</firstName><lastName>LOW</lastName><proofOfDependency>N</proofOfDependency><ptcpntId>600849397</ptcpntId><relatedToVet>Y</relatedToVet><relationship>Spouse</relationship><ssn>202122939</ssn><ssnVerifyStatus>0</ssnVerifyStatus><veteranIndicator>N</veteranIndicator></persons><returnCode>SHAR
         9999</returnCode><returnMessage>Records found</returnMessage></return></ns0:findDependentsByPtcpntIdResponse></S:Body></S:Envelope>
+    http_version: null
   recorded_at: Sat, 25 Apr 2020 01:11:06 GMT
-recorded_with: VCR 6.4.0
+recorded_with: VCR 5.1.0

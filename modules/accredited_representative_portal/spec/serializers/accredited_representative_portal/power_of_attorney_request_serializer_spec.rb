@@ -161,5 +161,91 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer,
         end
       end
     end
+
+    describe ':dependent_relationship_established' do
+      context 'when include_dependent_status: true is passed as a param' do
+        let(:poa_request) { pending_individual_poa_request }
+        let(:data) { described_class.new(poa_request, params: { include_dependent_status: true }).serializable_hash }
+
+        it 'includes the attribute' do
+          expect(data).to have_key(:dependentRelationshipEstablished)
+        end
+      end
+
+      context 'when include_dependent_status: false is passed as a param' do
+        let(:poa_request) { pending_individual_poa_request }
+        let(:data) { described_class.new(poa_request, params: { include_dependent_status: false }).serializable_hash }
+
+        it 'does not include the attribute' do
+          expect(data).not_to have_key(:dependentRelationshipEstablished)
+        end
+      end
+
+      context 'when include_dependent_status is not passed as a param' do
+        let(:poa_request) { pending_individual_poa_request }
+        let(:data) { described_class.new(poa_request).serializable_hash }
+
+        it 'does not include the attribute' do
+          expect(data).not_to have_key(:dependentRelationshipEstablished)
+        end
+      end
+
+      context 'when the claimant is a dependent' do
+        let(:icn) { '0000000000V000000' }
+        let(:user_account) { create(:user_account, icn:) }
+        let(:poa_request) do
+          create(:power_of_attorney_request, :with_dependent_claimant, claimant: user_account)
+        end
+        let(:data) { described_class.new(poa_request, params: { include_dependent_status: true }).serializable_hash }
+        let(:dependent_service) { instance_double(AccreditedRepresentativePortal::DependentLookupService) }
+        let(:veteran) do
+          { first_name: 'John', last_name: 'Doe', ssn: '6789', birth_date: '1980-12-31' }
+        end
+        let(:dependent) do
+          { first_name: 'John', last_name: 'Doe', icn:, birth_date: '1980-12-31' }
+        end
+
+        it 'returns true when the DependentLookupService returns true' do
+          expect(AccreditedRepresentativePortal::DependentLookupService).to receive(:new)
+            .with(veteran:).and_return(dependent_service)
+          expect(dependent_service).to receive(:dependent_relationship_established?)
+            .with(dependent:).and_return(true)
+
+          expect(data[:dependentRelationshipEstablished]).to be true
+        end
+
+        it 'returns false when the DependentLookupService returns false' do
+          expect(AccreditedRepresentativePortal::DependentLookupService).to receive(:new)
+            .with(veteran:).and_return(dependent_service)
+          expect(dependent_service).to receive(:dependent_relationship_established?)
+            .with(dependent:).and_return(false)
+
+          expect(data[:dependentRelationshipEstablished]).to be false
+        end
+
+        it 'logs and returns false when the DependentLookupService returns an error' do
+          allow(AccreditedRepresentativePortal::DependentLookupService).to receive(:new).and_return(dependent_service)
+
+          expect(dependent_service).to receive(:dependent_relationship_established?)
+            .and_raise(ArgumentError, 'Arguments cannot be blank')
+          expect(Rails.logger).to receive(:error)
+            .with('Failed to retrieve dependency establishment status.',
+                  {
+                    error_class: 'ArgumentError',
+                    error_message: 'Arguments cannot be blank'
+                  })
+          expect(data[:dependentRelationshipEstablished]).to be false
+        end
+      end
+
+      context 'when the claimant is the Veteran' do
+        let(:poa_request) { pending_individual_poa_request }
+        let(:data) { described_class.new(poa_request, params: { include_dependent_status: true }).serializable_hash }
+
+        it 'returns false' do
+          expect(data[:dependentRelationshipEstablished]).to be false
+        end
+      end
+    end
   end
 end

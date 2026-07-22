@@ -23,7 +23,7 @@ module AccreditedRepresentativePortal
           tags: { 'poa_request.poa_codes' => poa_codes(poa_requests) }
         ) do |_span|
           serializer = PowerOfAttorneyRequestSerializer.new(
-            poa_requests, params: { current_user: }
+            poa_requests, params: { current_user:, include_dependent_status: false }
           )
           render json: {
             data: serializer.serializable_hash,
@@ -39,7 +39,7 @@ module AccreditedRepresentativePortal
           root_tags: { 'poa_request.poa_code' => poa_code }
         ) do |_span|
           serializer = PowerOfAttorneyRequestSerializer.new(
-            @poa_request, params: { current_user: }
+            @poa_request, params: { current_user:, include_dependent_status: true }
           )
           render json: serializer.serializable_hash, status: :ok
         end
