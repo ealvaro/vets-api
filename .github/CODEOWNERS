@@ -274,6 +274,7 @@ app/models/form_profiles/va_261880.rb @software/va-core-veteran-experiences
 app/models/form_profiles/va_526ez.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_686c674.rb @software/benefits-dependents-management
 app/models/form_profiles/va_686c674v2.rb @software/benefits-dependents-management
+app/models/form_profiles/vha_10_7959f_2.rb @software/health-apps-backend
 app/models/form_submission_attempt.rb @software/platform-va-product-forms @software/disability-benefits
 app/models/form_submission.rb @software/platform-va-product-forms @software/disability-benefits
 app/models/form1010_ezr_attachment.rb @software/vfs-authenticated-experience-backend
@@ -772,6 +773,7 @@ config/features.yml @software/va-platform-backend
 config/form_profile_mappings/0873.yml @software/vfs-virtual-agent-chatbot
 config/form_profile_mappings/10-10EZR.yml @software/health-apps-backend
 config/form_profile_mappings/10-7959C.yml @software/health-apps-backend
+config/form_profile_mappings/10-7959F-2.yml @software/health-apps-backend
 config/form_profile_mappings/10-8678.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/1010ez.yml @software/health-apps-backend
 config/form_profile_mappings/10182.yml @software/benefits-decision-reviews-be
@@ -1916,6 +1918,7 @@ spec/models/form_profiles/va214140_spec.rb @software/benefits-intake-pingwind
 spec/models/form_profiles/va214502_spec.rb @software/benefits-intake-pingwind
 spec/models/form_profiles/va526ez_spec.rb @software/disability-benefits
 spec/models/form_profiles/va8794_spec.rb @software/govcio-vfep-codereviewers
+spec/models/form_profiles/vha107959f2_spec.rb @software/health-apps-backend
 spec/models/form_submission_attempt_spec.rb @software/platform-va-product-forms @software/disability-benefits
 spec/models/form_submission_spec.rb @software/platform-va-product-forms @software/disability-benefits
 spec/models/form1010cg @software/health-apps-backend

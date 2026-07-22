@@ -2669,6 +2669,19 @@ RSpec.describe FormProfile, type: :model do
     end
   end
 
+  describe 'loading 10-7959F-2 form mappings' do
+    it "doesn't raise an IOError" do
+      expect { FormProfile.load_form_mapping('10-7959F-2') }.not_to raise_error
+    end
+
+    it 'loads the correct data' do
+      mapping_file = Rails.root.join('config', 'form_profile_mappings', '10-7959F-2.yml')
+      mappings = YAML.load_file(mapping_file)
+
+      expect(FormProfile.load_form_mapping('10-7959F-2')).to match(mappings)
+    end
+  end
+
   describe '.for with newly added form_upload forms' do
     %w[
       21-4170-UPLOAD

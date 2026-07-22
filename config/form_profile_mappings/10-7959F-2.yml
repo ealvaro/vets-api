@@ -1,0 +1,13 @@
+veteran:
+  full_name: [identity_information, full_name]
+  ssn: [identity_information, ssn]
+  date_of_birth: [identity_information, date_of_birth]
+  mailing_address:
+    street: [contact_information, address, street]
+    street2: [contact_information, address, street2]
+    city: [contact_information, address, city]
+    state: [contact_information, address, state]
+    country: [contact_information, address, country]
+    postal_code: [contact_information, address, postal_code]
+  phone_number: [contact_information, us_phone]
+  email_address: [contact_information, email]
