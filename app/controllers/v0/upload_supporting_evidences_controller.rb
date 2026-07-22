@@ -10,6 +10,7 @@ module V0
     service_tag 'disability-application'
 
     FORM_ATTACHMENT_MODEL = SupportingEvidenceAttachment
+    STATSD_KEY_PREFIX = 'api.form526.supporting_evidence'
 
     wrap_with_logging(
       :save_attachment_to_cloud!,
@@ -27,9 +28,17 @@ module V0
     def create
       super
 
-      return unless document_validation_enabled?
-      return if filtered_params[:attachment_id].blank?
+      unless document_validation_enabled?
+        StatsD.increment("#{STATSD_KEY_PREFIX}.upload", tags: ['validation:skipped_flipper_disabled'])
+        return
+      end
 
+      if filtered_params[:attachment_id].blank?
+        StatsD.increment("#{STATSD_KEY_PREFIX}.upload", tags: ['validation:skipped_no_attachment_id'])
+        return
+      end
+
+      StatsD.increment("#{STATSD_KEY_PREFIX}.upload", tags: ['validation:performed'])
       append_validation_result!
     end
 

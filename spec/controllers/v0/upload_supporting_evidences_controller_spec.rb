@@ -98,5 +98,89 @@ RSpec.describe V0::UploadSupportingEvidencesController, type: :controller do
         }
       )
     end
+
+    describe 'validation metrics tracking' do
+      before do
+        allow(StatsD).to receive(:increment)
+        expect_form_attachment_creation
+      end
+
+      context 'when validation is performed' do
+        let(:attachment_id) { 'L1839' }
+        let(:params) do
+          {
+            param_namespace => {
+              file_data: pdf_file,
+              attachment_id:
+            }
+          }
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_document_validation_enabled, anything)
+            .and_return(true)
+          allow_any_instance_of(DisabilityCompensation::Validators::DocumentValidator)
+            .to receive(:validate).and_return([])
+        end
+
+        it 'tracks validation performed metric' do
+          post(:create, params:)
+          expect(StatsD).to have_received(:increment).with(
+            'api.form526.supporting_evidence.upload',
+            tags: ['validation:performed']
+          )
+        end
+      end
+
+      context 'when validation is skipped due to flipper disabled' do
+        let(:params) do
+          {
+            param_namespace => {
+              file_data: pdf_file,
+              attachment_id: 'L1839'
+            }
+          }
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_document_validation_enabled, anything)
+            .and_return(false)
+        end
+
+        it 'tracks skipped flipper disabled metric' do
+          post(:create, params:)
+          expect(StatsD).to have_received(:increment).with(
+            'api.form526.supporting_evidence.upload',
+            tags: ['validation:skipped_flipper_disabled']
+          )
+        end
+      end
+
+      context 'when validation is skipped due to missing attachment_id' do
+        let(:params) do
+          {
+            param_namespace => {
+              file_data: pdf_file
+            }
+          }
+        end
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_document_validation_enabled, anything)
+            .and_return(true)
+        end
+
+        it 'tracks skipped no attachment_id metric' do
+          post(:create, params:)
+          expect(StatsD).to have_received(:increment).with(
+            'api.form526.supporting_evidence.upload',
+            tags: ['validation:skipped_no_attachment_id']
+          )
+        end
+      end
+    end
   end
 end

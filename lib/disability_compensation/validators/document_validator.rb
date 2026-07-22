@@ -12,6 +12,9 @@ module DisabilityCompensation
       # Maximum time (in seconds) allowed for OCR processing
       OCR_TIMEOUT = 60
 
+      # StatsD metric prefix for tracking validation outcomes
+      STATSD_KEY_PREFIX = 'api.form526.document_validation'
+
       # Values can be:
       #   - An Array of strings: uses default phrase-matching validation
       #   - A class responding to #validate(extracted_text): uses custom validation logic
@@ -29,12 +32,18 @@ module DisabilityCompensation
 
       def validate
         validator_config = SUPPORTED_ATTACHMENT_IDS[@attachment_id]
-        return [] unless validator_config
+        unless validator_config
+          track_metric('unsupported_attachment_id')
+          return []
+        end
 
         warnings = []
         extracted_text = Timeout.timeout(OCR_TIMEOUT) { perform_ocr }
         warnings << WRONG_FORM unless document_matches?(validator_config, extracted_text)
         log_warnings(warnings) if warnings.any?
+
+        outcome = warnings.empty? ? 'match' : 'mismatch'
+        track_metric(outcome)
         warnings
       rescue Timeout::Error
         log_timeout
@@ -52,6 +61,7 @@ module DisabilityCompensation
           { attachment_id: @attachment_id, in_progress_form_id: @in_progress_form_id,
             timeout_seconds: OCR_TIMEOUT }
         )
+        track_metric('timeout')
       end
 
       def log_error(error)
@@ -59,6 +69,19 @@ module DisabilityCompensation
           'DocumentValidator OCR validation failed',
           { attachment_id: @attachment_id, in_progress_form_id: @in_progress_form_id,
             error_class: error.class.name, error_message: error.message.to_s.truncate(200) }
+        )
+        track_metric('error')
+        [UNABLE_TO_VALIDATE]
+      end
+
+      def track_metric(outcome)
+        # Normalize attachment_id to prevent high-cardinality metrics from untrusted user input
+        # Only supported IDs are tagged; all others normalize to 'unsupported'
+        normalized_attachment_id = SUPPORTED_ATTACHMENT_IDS.key?(@attachment_id) ? @attachment_id : 'unsupported'
+
+        StatsD.increment(
+          "#{STATSD_KEY_PREFIX}.run",
+          tags: ["outcome:#{outcome}", "attachment_id:#{normalized_attachment_id}"]
         )
       end
 

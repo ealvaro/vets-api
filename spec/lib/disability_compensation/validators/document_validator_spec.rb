@@ -9,6 +9,10 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
   let(:file_path) { Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.pdf').to_s }
   let(:attachment_id) { 'L1839' }
 
+  before do
+    allow(StatsD).to receive(:increment)
+  end
+
   describe '#validate' do
     context 'when OCR text contains both expected phrases' do
       before do
@@ -18,6 +22,14 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
 
       it 'returns empty warnings array' do
         expect(subject.validate).to eq([])
+      end
+
+      it 'tracks match outcome metric' do
+        subject.validate
+        expect(StatsD).to have_received(:increment).with(
+          'api.form526.document_validation.run',
+          tags: ['outcome:match', 'attachment_id:L1839']
+        )
       end
     end
 
@@ -29,6 +41,14 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
 
       it 'returns wrong_form warning' do
         expect(subject.validate).to eq(['wrong_form'])
+      end
+
+      it 'tracks mismatch outcome metric' do
+        subject.validate
+        expect(StatsD).to have_received(:increment).with(
+          'api.form526.document_validation.run',
+          tags: ['outcome:mismatch', 'attachment_id:L1839']
+        )
       end
     end
 
@@ -59,6 +79,14 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
         )
         subject.validate
       end
+
+      it 'tracks error outcome metric' do
+        subject.validate
+        expect(StatsD).to have_received(:increment).with(
+          'api.form526.document_validation.run',
+          tags: ['outcome:error', 'attachment_id:L1839']
+        )
+      end
     end
 
     context 'when OCR extraction times out' do
@@ -77,6 +105,14 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
           hash_including(attachment_id: 'L1839', timeout_seconds: 0.01)
         )
         subject.validate
+      end
+
+      it 'tracks timeout outcome metric' do
+        subject.validate
+        expect(StatsD).to have_received(:increment).with(
+          'api.form526.document_validation.run',
+          tags: ['outcome:timeout', 'attachment_id:L1839']
+        )
       end
     end
 
@@ -117,6 +153,14 @@ RSpec.describe DisabilityCompensation::Validators::DocumentValidator do
       it 'returns empty warnings array without performing OCR' do
         expect_any_instance_of(described_class).not_to receive(:perform_ocr)
         expect(subject.validate).to eq([])
+      end
+
+      it 'tracks unsupported_attachment_id outcome with normalized attachment_id tag' do
+        subject.validate
+        expect(StatsD).to have_received(:increment).with(
+          'api.form526.document_validation.run',
+          tags: ['outcome:unsupported_attachment_id', 'attachment_id:unsupported']
+        )
       end
     end
 
