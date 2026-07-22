@@ -10,6 +10,7 @@ module Mobile
       include Sidekiq::Job
 
       STATSD_KEY_PREFIX = 'worker.mobile.v0.upload_survey_response'
+      DELETE_AFTER_UPLOAD_FEATURE = :mobile_survey_response_delete_after_upload
 
       sidekiq_options(retry: 5, unique_for: 1.day)
 
@@ -79,7 +80,7 @@ module Mobile
 
         raise UploadError, "SharePoint upload failed with status: #{response.status}" unless response.success?
 
-        Mobile::SurveyResponse.where(id: response_ids).delete_all
+        Mobile::SurveyResponse.where(id: response_ids).delete_all if Flipper.enabled?(DELETE_AFTER_UPLOAD_FEATURE)
         log_upload_success(survey_type, response, response_ids.size)
       end
 

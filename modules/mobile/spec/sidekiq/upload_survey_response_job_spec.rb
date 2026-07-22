@@ -7,6 +7,12 @@ require 'share_point/service'
 RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
   let(:service) { instance_double(SharePoint::Service) }
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(Mobile::V0::UploadSurveyResponseJob::DELETE_AFTER_UPLOAD_FEATURE)
+      .and_return(true)
+  end
+
   describe '.sidekiq_retries_exhausted_block' do
     it 'logs retries exhausted with job and error details' do
       block = described_class.sidekiq_retries_exhausted_block
@@ -116,6 +122,38 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
         # Verify only giveFeedback rows were deleted
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(0)
         expect(Mobile::SurveyResponse.where(survey_type: 'RxIntercept').count).to eq(1)
+      end
+    end
+
+    context 'when delete after upload feature is disabled' do
+      it 'uploads flattened CSV and does not delete rows' do
+        allow(Flipper).to receive(:enabled?)
+          .with(Mobile::V0::UploadSurveyResponseJob::DELETE_AFTER_UPLOAD_FEATURE)
+          .and_return(false)
+
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: SecureRandom.uuid,
+          survey_data: {
+            'q01' => {
+              'type' => 'free_response',
+              'label' => 'How was your experience?',
+              'value' => 'Great'
+            }
+          },
+          metadata: { 'os' => 'iOS' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv).and_return(response)
+
+        subject.perform
+
+        expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(1)
       end
     end
 

@@ -2327,6 +2327,10 @@ features:
     actor_type: user
     description: Use AccreditedIndividual and AccreditedOrganization models for mobile power of attorney lookups instead of Veteran::Service::Representative and Veteran::Service::Organization
     enable_in_development: false
+  mobile_survey_response_delete_after_upload:
+    actor_type: user
+    description: If enabled, mobile survey responses are deleted from the database after a successful SharePoint upload.
+    enable_in_development: false
   mobile_va_appointment_modality_alignment:
     actor_type: user
     description: Aligns va appointment modality mobile logic with web logic for OH appointments
