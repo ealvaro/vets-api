@@ -62,9 +62,8 @@ module UnifiedHealthData
         name = extract_name(resource)
         return nil if name.blank?
 
-        # Use recordedDate (date entered) to match V1 behavior. onsetDateTime is the
-        # clinical onset date, which can differ significantly (e.g. 23-year gap).
-        date_value = resource['recordedDate']
+        # Prefer recordedDate (date entered) to match V1 behavior
+        date_value = extract_allergy_date(resource)
 
         UnifiedHealthData::Allergy.new(
           id: resource['id'],
@@ -89,6 +88,19 @@ module UnifiedHealthData
       def active_status?(resource)
         clinical_status = resource.dig('clinicalStatus', 'coding', 0, 'code')
         clinical_status == 'active'
+      end
+
+      # Extracts the date from an allergy resource, falling back to onsetDateTime if recordedDate is missing
+      #
+      # @param resource [Hash] FHIR AllergyIntolerance resource
+      # @return [String, nil] The date value from recordedDate or onsetDateTime
+      def extract_allergy_date(resource)
+        date_value = resource['recordedDate'].presence
+        if date_value.blank?
+          date_value = resource['onsetDateTime'].presence
+          StatsD.increment('unified_health_data.allergy.replace_date_with_onset') if date_value.present?
+        end
+        date_value
       end
 
       def log_filtered_allergy(resource)

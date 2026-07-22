@@ -288,6 +288,79 @@ RSpec.describe 'AllergyAdapter' do
         }
       )
     end
+
+    it 'uses recordedDate when both recordedDate and onsetDateTime are present' do
+      allow(StatsD).to receive(:increment)
+
+      record = {
+        'resource' => {
+          'resourceType' => 'AllergyIntolerance',
+          'id' => 'allergy-with-both-dates',
+          'clinicalStatus' => {
+            'coding' => [{ 'code' => 'active' }]
+          },
+          'code' => {
+            'text' => 'Pollen'
+          },
+          'recordedDate' => '2023-05-01T00:00:00+00:00',
+          'onsetDateTime' => '2024-09-23T16:38:00+00:00'
+        }
+      }
+
+      parsed_allergy = adapter.parse_single_allergy(record)
+
+      expect(parsed_allergy).not_to be_nil
+      expect(parsed_allergy.date).to eq('2023-05-01T00:00:00+00:00')
+      expect(StatsD).not_to have_received(:increment).with('unified_health_data.allergy.replace_date_with_onset')
+    end
+
+    it 'falls back to onsetDateTime when recordedDate is blank' do
+      record = {
+        'resource' => {
+          'resourceType' => 'AllergyIntolerance',
+          'id' => 'allergy-with-onset-only',
+          'clinicalStatus' => {
+            'coding' => [{ 'code' => 'active' }]
+          },
+          'code' => {
+            'text' => 'Pollen'
+          },
+          'recordedDate' => '',
+          'onsetDateTime' => '2024-09-23T16:38:00+00:00'
+        }
+      }
+
+      parsed_allergy = adapter.parse_single_allergy(record)
+
+      expect(parsed_allergy).not_to be_nil
+      expect(parsed_allergy.date).to eq('2024-09-23T16:38:00+00:00')
+      expect(parsed_allergy.sort_date).to eq('2024-09-23T16:38:00+00:00')
+    end
+
+    it 'does not increment the fallback metric or return an empty string when both dates are blank' do
+      allow(StatsD).to receive(:increment)
+
+      record = {
+        'resource' => {
+          'resourceType' => 'AllergyIntolerance',
+          'id' => 'allergy-without-dates',
+          'clinicalStatus' => {
+            'coding' => [{ 'code' => 'active' }]
+          },
+          'code' => {
+            'text' => 'Pollen'
+          },
+          'recordedDate' => '',
+          'onsetDateTime' => ''
+        }
+      }
+
+      parsed_allergy = adapter.parse_single_allergy(record)
+
+      expect(parsed_allergy).not_to be_nil
+      expect(parsed_allergy.date).to be_nil
+      expect(StatsD).not_to have_received(:increment).with('unified_health_data.allergy.replace_date_with_onset')
+    end
   end
 
   describe 'filter diagnostic logging' do

@@ -4,16 +4,22 @@ module Mobile
   module V0
     module Adapters
       class AllergyIntolerance
+        include Mobile::V0::Concerns::AllergyDateResolvable
+
         def parse(allergies_info)
-          Array.wrap(allergies_info).sort_by { _1.dig('resource', 'recordedDate') || '3000-01-01' }.map do |allergy|
+          dated_allergies = Array.wrap(allergies_info).map do |allergy|
             allergy_info = allergy['resource']
+            [resolve_date(allergy_info), allergy_info]
+          end
+
+          dated_allergies.sort_by { |date, _| date || '3000-01-01' }.map do |date, allergy_info|
             Mobile::V0::AllergyIntolerance.new(
               id: allergy_info['id'],
               resourceType: allergy_info['resourceType'],
               type: allergy_info['type'],
               clinicalStatus: clinical_status(allergy_info['clinicalStatus']),
               code: code(allergy_info['code']),
-              recordedDate: allergy_info['recordedDate'],
+              recordedDate: date,
               patient: patient(allergy_info['patient']),
               recorder: recorder(allergy_info['recorder']),
               notes: notes(allergy_info['note']),
