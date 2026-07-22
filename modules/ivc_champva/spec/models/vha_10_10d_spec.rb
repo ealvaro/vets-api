@@ -71,6 +71,65 @@ RSpec.describe IvcChampva::VHA1010d do
     end
   end
 
+  describe '#metadata built from the JSON fixture (Pega payload)' do
+    let(:fixture_data) do
+      JSON.parse(
+        Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read
+      )
+    end
+    let(:known_uuid) { 'test-uuid-10-10d' }
+    let(:form) { described_class.new(fixture_data) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+      allow(SecureRandom).to receive(:uuid).and_return(known_uuid)
+    end
+
+    it 'produces the full metadata.json body from the fixture data' do
+      applicant_props = fixture_data['applicants'].map do |app|
+        { applicant_name: app['applicant_name'], applicant_dob: app['applicant_dob'] }.to_json
+      end
+
+      expect(form.metadata).to eq(
+        'veteranFirstName' => 'Veteran',
+        'veteranMiddleName' => 'B',
+        'veteranLastName' => 'Surname',
+        'sponsorFirstName' => 'Veteran',
+        'sponsorMiddleName' => 'B',
+        'sponsorLastName' => 'Surname',
+        'fileNumber' => '123456789',
+        'zipCode' => '12345',
+        'country' => 'USA',
+        'source' => 'VA Platform Digital Forms',
+        'docType' => '10-10D',
+        'businessLine' => 'CMP',
+        'ssn_or_tin' => '222554444',
+        'uuid' => known_uuid,
+        'primaryContactInfo' => { 'name' => { 'first' => 'Veteran', 'last' => 'Surname' }, 'email' => false },
+        'hasApplicantOver65' => '',
+        'primaryContactEmail' => 'false',
+        'applicant_0' => applicant_props[0],
+        'applicant_1' => applicant_props[1],
+        'applicant_2' => applicant_props[2],
+        'applicant_3' => applicant_props[3],
+        'applicant_4' => applicant_props[4]
+      )
+    end
+
+    it 'transforms validated metadata into the S3/Pega PDF attachment metadata' do
+      validated = form.validated_metadata
+      attachment_ids = %w[vha_10_10d vha_10_10d] + ['Birth certificate']
+
+      result = IvcChampva::DataTransformations.metadata_for_s3(
+        validated.merge('attachment_ids' => attachment_ids), form.form_id
+      )
+
+      expect(result).to eq(validated.except('primaryContactInfo').merge('attachment_id' => 'vha_10_10d'))
+      expect(result).not_to have_key('primaryContactInfo')
+      expect(result).not_to have_key('attachment_ids')
+    end
+  end
+
   describe '#desired_stamps' do
     context 'when sponsor is deceased' do
       let(:data_with_deceased_sponsor) do

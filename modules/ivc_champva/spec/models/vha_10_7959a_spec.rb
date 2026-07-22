@@ -95,6 +95,56 @@ RSpec.describe IvcChampva::VHA107959a do
     end
   end
 
+  describe '#metadata built from the JSON fixture (Pega payload)' do
+    let(:fixture_data) do
+      JSON.parse(
+        Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959a.json').read
+      )
+    end
+    let(:known_uuid) { 'test-uuid-10-7959a' }
+    let(:form) { described_class.new(fixture_data) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+      allow(SecureRandom).to receive(:uuid).and_return(known_uuid)
+    end
+
+    it 'produces the full metadata.json body from the fixture data' do
+      expect(form.metadata).to eq(
+        'veteranFirstName' => 'GI',
+        'veteranLastName' => 'Joe',
+        'zipCode' => '12345',
+        'source' => 'VA Platform Digital Forms',
+        'docType' => '10-7959A',
+        'businessLine' => 'CMP',
+        'ssn_or_tin' => '12345678',
+        'member_number' => '12345678',
+        'fileNumber' => '12345678',
+        'country' => 'USA',
+        'uuid' => known_uuid,
+        'primaryContactInfo' => {
+          'name' => { 'first' => 'Beneficiary', 'last' => 'Jones' },
+          'email' => 'beneficiary.contact@example.com',
+          'phone' => '1231231234'
+        },
+        'primaryContactEmail' => 'beneficiary.contact@example.com',
+        'claim_type' => 'medical'
+      )
+    end
+
+    it 'transforms validated metadata into the S3/Pega PDF attachment metadata' do
+      validated = form.validated_metadata
+
+      result = IvcChampva::DataTransformations.metadata_for_s3(
+        validated.merge('attachment_ids' => %w[vha_10_7959a vha_10_7959a 0 1]), form.form_id
+      )
+
+      expect(result).to eq(validated.except('primaryContactInfo').merge('attachment_id' => 'vha_10_7959a'))
+      expect(result).not_to have_key('primaryContactInfo')
+      expect(result).not_to have_key('attachment_ids')
+    end
+  end
+
   describe '#add_resubmission_properties' do
     context 'when medical claim resubmission data is present' do
       it 'includes a key for each present resubmission property' do

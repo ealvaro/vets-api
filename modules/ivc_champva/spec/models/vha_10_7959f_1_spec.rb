@@ -91,6 +91,54 @@ RSpec.describe IvcChampva::VHA107959f1 do
     end
   end
 
+  describe '#metadata built from the JSON fixture (Pega payload)' do
+    let(:fixture_data) do
+      JSON.parse(
+        Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959f_1.json').read
+      )
+    end
+    let(:known_uuid) { 'test-uuid-10-7959f-1' }
+    let(:form) { described_class.new(fixture_data) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+      allow(SecureRandom).to receive(:uuid).and_return(known_uuid)
+    end
+
+    it 'produces the full metadata.json body from the fixture data' do
+      expect(form.metadata).to eq(
+        'veteranFirstName' => 'Veteran',
+        'veteranMiddleName' => 'B',
+        'veteranLastName' => 'Surname',
+        'fileNumber' => '123456789',
+        'zipCode' => '12345',
+        'country' => 'USA',
+        'source' => 'VA Platform Digital Forms',
+        'ssn_or_tin' => '222554444',
+        'docType' => '10-7959F-1',
+        'businessLine' => 'CMP',
+        'uuid' => known_uuid,
+        'primaryContactInfo' => {
+          'name' => { 'first' => 'Veteran', 'last' => 'Surname' },
+          'email' => 'email@address.com'
+        },
+        'primaryContactEmail' => 'email@address.com'
+      )
+    end
+
+    it 'transforms validated metadata into the S3/Pega PDF attachment metadata' do
+      validated = form.validated_metadata
+
+      result = IvcChampva::DataTransformations.metadata_for_s3(
+        validated.merge('attachment_ids' => %w[vha_10_7959f_1]), form.form_id
+      )
+
+      expect(result).to eq(validated.except('primaryContactInfo').merge('attachment_id' => 'vha_10_7959f_1'))
+      expect(result).not_to have_key('primaryContactInfo')
+      expect(result).not_to have_key('attachment_ids')
+    end
+  end
+
   describe '#handle_attachments' do
     let(:file_path) { "#{uuid}_vha_10_7959f_1-tmp.pdf" }
 

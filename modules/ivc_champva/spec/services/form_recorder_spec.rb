@@ -42,6 +42,23 @@ RSpec.describe IvcChampva::FormRecorder do
       recorder.insert_form('test_file.pdf', [200])
     end
 
+    it "sets s3_status to '[200, nil]' and pega_status to 'Submitted' for a [200, nil] response" do
+      expect(IvcChampvaForm).to receive(:create!).with(
+        hash_including(
+          form_uuid: '4171e61a-03b5-49f3-8717-dbf340310473',
+          form_number: '10-10D',
+          first_name: 'John',
+          last_name: 'Doe',
+          s3_status: '[200, nil]',
+          pega_status: 'Submitted'
+        )
+      ).and_return(double('IvcChampvaForm'))
+
+      allow_any_instance_of(IvcChampva::Monitor).to receive(:track_insert_form)
+
+      recorder.insert_form('some_file.pdf', [200, nil])
+    end
+
     it 'sets pega_status to nil when S3 upload fails' do
       expect(IvcChampvaForm).to receive(:create!).with(
         hash_including(

@@ -41,6 +41,24 @@ RSpec.describe IvcChampva::VHA107959a2027 do
       expect(md['formExpiration']).to eq('12/31/2027')
       expect(md['primaryContactEmail']).to eq('primary@example.com')
     end
+
+    it 'passes the 2027 email and expiration fields through to the S3/Pega PDF metadata' do
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
+      validated = form.validated_metadata
+
+      result = IvcChampva::DataTransformations.metadata_for_s3(
+        validated.merge('attachment_ids' => %w[vha_10_7959a]), 'vha_10_7959a'
+      )
+
+      expect(result).to include(
+        'applicantEmail' => 'bene@example.com',
+        'signerEmail' => 'signer@example.com',
+        'formExpiration' => '12/31/2027',
+        'attachment_id' => 'vha_10_7959a'
+      )
+      expect(result).not_to have_key('primaryContactInfo')
+      expect(result).not_to have_key('attachment_ids')
+    end
   end
 
   describe '#track_submission' do
