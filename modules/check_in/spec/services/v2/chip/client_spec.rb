@@ -390,47 +390,23 @@ describe V2::Chip::Client do
     end
   end
 
-  describe 'feature flag behavior' do
+  describe 'endpoint settings' do
     let(:chip_token_response) { Faraday::Response.new(body: { 'token' => 'abc123' }, status: 200) }
 
     before do
       allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(chip_token_response)
+      allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
     end
 
-    context 'when check_in_experience_use_vaec_cie_endpoints flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(false)
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      end
-
-      it 'uses original settings' do
-        expect(subject.send(:url)).to eq(Settings.check_in.chip_api_v2.url)
-        expect(subject.send(:base_path)).to eq(Settings.check_in.chip_api_v2.base_path)
-        expect(subject.send(:tmp_api_id)).to eq(Settings.check_in.chip_api_v2.tmp_api_id)
-      end
-
-      it 'makes requests to original endpoints' do
-        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
-        subject.token
-      end
+    it 'uses the CHIP settings' do
+      expect(subject.send(:url)).to eq(Settings.check_in.chip_api_v2.url)
+      expect(subject.send(:base_path)).to eq(Settings.check_in.chip_api_v2.base_path)
+      expect(subject.send(:tmp_api_id)).to eq(Settings.check_in.chip_api_v2.tmp_api_id)
     end
 
-    context 'when check_in_experience_use_vaec_cie_endpoints flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(true)
-        allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      end
-
-      it 'uses v2 settings' do
-        expect(subject.send(:url)).to eq(Settings.check_in.chip_api_v2.url_v2)
-        expect(subject.send(:base_path)).to eq(Settings.check_in.chip_api_v2.base_path_v2)
-        expect(subject.send(:tmp_api_id)).to eq(Settings.check_in.chip_api_v2.tmp_api_id_v2)
-      end
-
-      it 'makes requests to v2 endpoints' do
-        expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
-        subject.token
-      end
+    it 'makes requests to the configured endpoints' do
+      expect_any_instance_of(Faraday::Connection).to receive(:post).with('/dev/token')
+      subject.token
     end
   end
 
@@ -440,14 +416,13 @@ describe V2::Chip::Client do
     before do
       allow_any_instance_of(Faraday::Connection).to receive(:post).with(anything).and_return(faraday_response)
       allow(Flipper).to receive(:enabled?).with('check_in_experience_mock_enabled').and_return(false)
-      allow(Flipper).to receive(:enabled?).with('check_in_experience_use_vaec_cie_endpoints').and_return(true)
     end
 
     context 'when url contains only the host and base_path carries the stage' do
       before do
         allow(Settings.check_in.chip_api_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
-          base_path_v2: 'dev'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path: 'dev'
         )
       end
 
@@ -460,8 +435,8 @@ describe V2::Chip::Client do
     context 'when url already contains the stage path' do
       before do
         allow(Settings.check_in.chip_api_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev',
-          base_path_v2: '/dev'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev',
+          base_path: '/dev'
         )
       end
 
@@ -474,8 +449,8 @@ describe V2::Chip::Client do
     context 'when base_path has a leading slash and url has no path' do
       before do
         allow(Settings.check_in.chip_api_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
-          base_path_v2: '/dev/'
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com',
+          base_path: '/dev/'
         )
       end
 
@@ -488,8 +463,8 @@ describe V2::Chip::Client do
     context 'when url has a trailing slash on its path' do
       before do
         allow(Settings.check_in.chip_api_v2).to receive_messages(
-          url_v2: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev/',
-          base_path_v2: ''
+          url: 'https://example.execute-api.us-gov-west-1.amazonaws.com/dev/',
+          base_path: ''
         )
       end
 
