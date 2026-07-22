@@ -13,6 +13,7 @@ RSpec.describe 'Income and Assets End to End', type: :request do
   let(:monitor) { IncomeAndAssets::Monitor.new }
   let(:service) { BenefitsIntake::Service.new }
   let(:vanotify) { double(send_email: true) }
+  let(:user) { create(:user) }
 
   let(:stats_key) { BenefitsIntake::SubmissionStatusJob::STATS_KEY }
 
@@ -26,11 +27,13 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return false
     allow(Flipper).to receive(:enabled?).with(:income_and_assets_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
+    sign_in(user)
   end
 
   it 'successfully completes the submission process' do
     # form submission
-    expect(IncomeAndAssets::SavedClaim).to receive(:new).with(form: form.form).and_call_original
+    expect(IncomeAndAssets::SavedClaim).to receive(:new).with(form: form.form,
+                                                              user_account: user.user_account).and_call_original
     expect(monitor).to receive(:track_create_attempt).and_call_original
     expect(SavedClaimSerializer).to receive(:new).and_call_original
     expect(PersistentAttachment).to receive(:where).with(guid: anything).and_call_original

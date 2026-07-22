@@ -6,21 +6,30 @@ reg_office = 'Department of Veteran Affairs, Pension Intake Center, P.O. Box 536
 
 # Income and Assets Claim Integration
 RSpec.describe Swagger::Requests::IncomeAndAssetsClaims, type: %i[request serializer] do
+  let(:full_claim) do
+    build(:income_and_assets_claim).parsed_form
+  end
+  let(:user) { build(:user, :loa3) }
+  let(:mpi_stub) { double('MPI') }
+
   before do
     allow(Rails.logger).to receive(:info)
     allow(Rails.logger).to receive(:error)
     allow(Flipper).to receive(:enabled?).and_call_original
-  end
-
-  let(:full_claim) do
-    build(:income_and_assets_claim).parsed_form
+    allow(MPI::Service).to receive(:new).and_return(mpi_stub)
+    allow(mpi_stub).to receive(:find_profile_by_identifier).and_return(
+      OpenStruct.new({ profile: OpenStruct.new({
+                                                 ssn: '123121234', participant_id: '123456789'
+                                               }) })
+    )
   end
 
   describe 'POST create' do
     subject do
       post '/income_and_assets/v0/form0969',
            params: params.to_json,
-           headers: { 'CONTENT_TYPE' => 'application/json', 'HTTP_X_KEY_INFLECTION' => 'camel' }
+           headers: { 'CONTENT_TYPE' => 'application/json', 'HTTP_X_KEY_INFLECTION' => 'camel',
+                      'Cookie' => sign_in(user, nil, true) }
     end
 
     context 'with invalid params' do

@@ -13,6 +13,7 @@ module IncomeAndAssets
     class ClaimsController < ClaimsBaseController
       include BPDS::SubmissionHandler
 
+      before_action :authenticate, only: :create
       before_action :check_flipper_flag
       service_tag 'income-and-assets-application'
 
