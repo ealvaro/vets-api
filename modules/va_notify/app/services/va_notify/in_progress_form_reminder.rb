@@ -12,7 +12,8 @@ module VANotify
     class MissingICN < StandardError; end
 
     def perform(form_id)
-      @in_progress_form = InProgressForm.find(form_id)
+      @in_progress_form = InProgressForm.find_by(id: form_id)
+      return unless @in_progress_form
       return unless enabled?
       return if veteran.first_name.blank?
 
@@ -112,6 +113,7 @@ module VANotify
       personalisation
     end
 
+    # rubocop:disable Metrics/MethodLength
     def find_template_id(in_progress_form)
       if in_progress_form.form_id == '686C-674-V2'
         claim = ::DependentsBenefits::PrimaryDependencyClaim.new(form: in_progress_form.form_data)
@@ -123,15 +125,32 @@ module VANotify
           elsif claim.submittable_674?
             '674-only'
           else
+            log_generic_fallback(in_progress_form, reason: 'predicates_returned_false')
             'generic'
           end
-        rescue
+        rescue => e
+          log_generic_fallback(in_progress_form, reason: 'exception_raised', error: e)
           'generic'
         end
         VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(key)
       else
         VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(in_progress_form.form_id)
       end
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    # Records WHY find_template_id fell back to generic, distinguishing the rescue
+    # from the else. Deliberately logs no form_data / PII — only the record id,
+    # the form_id, the branch reason, and the exception class/message.
+    def log_generic_fallback(in_progress_form, reason:, error: nil)
+      Rails.logger.warn(
+        'VANotify::InProgressFormReminder#find_template_id fell back to generic template',
+        in_progress_form_id: in_progress_form.id,
+        form_id: in_progress_form.form_id,
+        reason:,
+        error_class: error&.class&.name,
+        error_location: error&.backtrace&.first
+      )
     end
   end
 end

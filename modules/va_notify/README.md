@@ -14,7 +14,6 @@
     - [Option 1: Default Callback Class](#callbacks-option-1)
     - [Option 2: Custom Callback Class](#callbacks-option-2)
 - [Secure Email Parameters: VANotify::V2::QueueEmailJob](#secure-email-params)
-- ```
 - [Testing](#testing)
 - [Debugging](#debugging)
 - [Contact Us](#contact-us)
@@ -77,7 +76,7 @@ There are a couple of reasons that can cause an email notification to fail such 
 #### Synchronous/inline <a name="sync"></a>
 With synchronous sending, you will receive a response back right away. To do this, you will want to invoke `VaNotify::Service`. An example is shown here with a placeholder api key:
 
-```
+```rb
 # Observe the argument passed to new, specifically `your_va_notify_service_name_here`
 notify_client = VaNotify::Service.new(Settings.vanotify.services.your_va_notify_service_name_here.api_key)
 
@@ -145,7 +144,7 @@ sequenceDiagram
 With async sending, you will NOT immediately receive a response back, as it will be sent to Sidekiq for processing. For async sendings, there are two options available: `VANotify::EmailJob`, and for sending via an ICN, `VANotify::UserAccountJob` (note that this does not persist or log the ICN, as it is [considered to be PII](https://depo-platform-documentation.scrollhelp.site/developer-docs/personal-identifiable-information-pii-guidelines#PersonalIdentifiableInformation(PII)guidelines-NotesandpoliciesregardingICNs)).
 
 Note that `VANotify::EmailJob` will default to using the API key for VA.gov, but you can provide your service's key as shown in the example below:
-```
+```rb
     VANotify::EmailJob.perform_async(
       email,
       Settings.vanotify.services.your_vanotify_service_name_here.template_id.your_template_id_here,
@@ -215,7 +214,7 @@ That being said, a failure to receive a response in your custom callback class d
 
 ### Option 1: Default Callback Class <a name="callbacks-option-1"></a>
 The default callback class offers a standard, ready-to-use implementation for handling callbacks. We recommend this path for most use cases. This relies on using the `callback_options` Hash to pass metadata through:
-```
+```rb
 # define the callback_options
 
 callback_options = {
@@ -255,7 +254,7 @@ The custom callback handler allows team to create a bespoke solution tailored to
 To proceed with this option, several additional steps are needed. First, you will need to define a class in your module for handling callbacks, which must include a class-level method for `.call`. Next, you will need to [create a feature flag](https://depo-platform-documentation.scrollhelp.site/developer-docs/flipper-ui-access). Once your feature flag is created, you must choose a notification trigger and update the callback data you are passing in to include `callback_klass`.
 
 Here's an example of what a callback handler class might look like:
-```
+```rb
 # MUST be accessible from an autoloaded directory; Rails.autoloaders.main.dirs
 
 module ExampleTeam
@@ -282,7 +281,7 @@ module ExampleTeam
 end
 ```
 And here is an example of you might update a trigger to use this new custom callback handler class:
-```
+```rb
 # VANotify::EmailJob or VANotify::UserAccountJob
 
 if Flipper.enabled?(:custom_callback_handler)
@@ -345,7 +344,7 @@ For development, we strongly recommend the use of [Flipper feature flags](https:
 
 If you have SOCKS proxy access and know the template_id of the notification being sent, we recommend debugging notification delivery issues using the Rails console that's available via [ArgoCD](https://depo-platform-documentation.scrollhelp.site/developer-docs/vets-api-on-eks#VetsAPIonEKS-Terminalaccess). You can access the console's terminal by clicking on the `vets-api-staging` option there, which will open up terminal access to the portal. Once that's open, type `bundle exec rails c` to open the Rails console. Once there, you can use a script like this to trigger the notification:
 
-```
+```rb
 VANotify::EmailJob.new.perform(
   "your.valid-email@example.com",
   Settings.vanotify.services.va_gov.template_id.SOME_TEMPLATE,

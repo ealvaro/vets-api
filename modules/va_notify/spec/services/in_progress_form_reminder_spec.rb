@@ -10,6 +10,20 @@ describe VANotify::InProgressFormReminder, type: :worker do
   end
 
   describe '#perform' do
+    it 'returns early if the in_progress_form is not found' do
+      allow(InProgressForm).to receive(:find_by).and_return(nil)
+      allow(VANotify::Veteran).to receive(:new)
+      allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue)
+
+      result = Sidekiq::Testing.inline! do
+        described_class.new.perform(in_progress_form.id)
+      end
+
+      expect(result).to be_nil
+      expect(VANotify::Veteran).not_to have_received(:new)
+      expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
+    end
+
     it 'skips sending reminder email if there is no first name' do
       veteran_double = double('VaNotify::Veteran')
       allow(veteran_double).to receive_messages(icn: 'icn', first_name: nil)
@@ -159,6 +173,87 @@ describe VANotify::InProgressFormReminder, type: :worker do
                       'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
                     }
                   } })
+        end
+      end
+    end
+
+    describe 'generic template fallback logging (686C-674-V2)' do
+      let(:user_with_icn) { double('VANotify::Veteran', icn: 'icn', first_name: 'first_name', uuid: 'uuid') }
+      let(:log_message) do
+        'VANotify::InProgressFormReminder#find_template_id fell back to generic template'
+      end
+
+      before do
+        allow(VANotify::Veteran).to receive(:new).and_return(user_with_icn)
+        allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue)
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      context 'when the 686 and 674 predicates both return false' do
+        let(:in_progress_form) do
+          create(:in_progress_form,
+                 form_id: '686C-674-V2',
+                 user_uuid: user.uuid,
+                 user_account: create(:user_account),
+                 form_data: { 'view:selectable686_options' => {} }.to_json)
+        end
+
+        it 'logs the fallback with reason predicates_returned_false and no error' do
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(Rails.logger).to have_received(:warn).with(
+            log_message,
+            hash_including(
+              in_progress_form_id: in_progress_form.id,
+              form_id: '686C-674-V2',
+              reason: 'predicates_returned_false',
+              error_class: nil
+            )
+          )
+        end
+      end
+
+      context 'when a predicate raises because the options are not at the top level' do
+        let(:in_progress_form) do
+          create(:in_progress_form,
+                 form_id: '686C-674-V2',
+                 user_uuid: user.uuid,
+                 user_account: create(:user_account),
+                 form_data: {
+                   'dependents_application' => { 'view:selectable686_options' => { 'add_spouse' => true } }
+                 }.to_json)
+        end
+
+        it 'logs the fallback with reason exception_raised and the error class' do
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(Rails.logger).to have_received(:warn).with(
+            log_message,
+            hash_including(
+              in_progress_form_id: in_progress_form.id,
+              form_id: '686C-674-V2',
+              reason: 'exception_raised',
+              error_class: 'NoMethodError'
+            )
+          )
+        end
+      end
+
+      context 'when the form resolves to a specific template' do
+        let(:in_progress_form) do
+          create(:in_progress_686c_674_form, user_uuid: user.uuid, user_account: create(:user_account))
+        end
+
+        it 'does not log a generic fallback' do
+          Sidekiq::Testing.inline! do
+            described_class.new.perform(in_progress_form.id)
+          end
+
+          expect(Rails.logger).not_to have_received(:warn).with(log_message, anything)
         end
       end
     end
