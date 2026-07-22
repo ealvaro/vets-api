@@ -40,7 +40,8 @@ module Sidekiq
           }
 
           JobTracker.send_backup_submission_if_enabled(form526_submission_id:, job_class:, job_id:,
-                                                       error_message:, error_class:)
+                                                       error: { class: error_class, message: error_message,
+                                                                path: 'retryable' })
 
           ::Rails.logger.error('Form526 Exhausted or Errored (retryable-error-path)',
                                { submission_id: form526_submission_id, job_id:, job_class:,
@@ -145,7 +146,8 @@ module Sidekiq
         error_message = error.message
         JobTracker.send_backup_submission_if_enabled(form526_submission_id: @status_submission_id,
                                                      job_class: klass, job_id: jid,
-                                                     error_class:, error_message:)
+                                                     error: { class: error_class, message: error_message,
+                                                              path: 'non-retryable' })
 
         ::Rails.logger.error('Form526 Exhausted or Errored (non-retryable-error-path)',
                              'submission_id' => @status_submission_id, 'job_id' => jid, 'job_class' => klass,

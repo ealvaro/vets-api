@@ -1213,6 +1213,25 @@ RSpec.describe Form526Submission do
         expect(subject.get_first_name).to eql('BEYONCE')
       end
     end
+
+    context 'when User#first_name raises (e.g. expired Redis UserIdentity)' do
+      before do
+        # Ensure `subject` (and its auth headers) is built before stubbing `first_name` to raise,
+        # otherwise the auth headers can't be populated from the user during subject creation
+        subject
+        raising_user = User.create(user)
+        allow(raising_user).to receive(:first_name).and_raise(NoMethodError, "undefined method 'first_name'")
+        allow(User).to receive(:find).with(subject.user_uuid).and_return raising_user
+      end
+
+      it 'logs a warning and falls back to the first name from the auth headers' do
+        expect(Rails.logger).to receive(:warn).with(
+          "Form526Submission#get_first_name fell back to auth_headers for submission #{subject.id}",
+          hash_including(:error)
+        )
+        expect(subject.get_first_name).to eql('BEYONCE')
+      end
+    end
   end
 
   describe '#full_name' do

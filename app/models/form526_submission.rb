@@ -155,6 +155,12 @@ class Form526Submission < ApplicationRecord
   # Note that the User record is cached in Redis -- `User.redis_namespace_ttl`
   def get_first_name
     user&.first_name&.upcase.presence || auth_headers&.dig('va_eauth_firstName')&.upcase
+  rescue => e
+    # The transient Redis-backed User (and its UserIdentity) can expire independently, so
+    # User#first_name may raise even when `user` itself is present. Fall back to auth_headers.
+    Rails.logger.warn("Form526Submission#get_first_name fell back to auth_headers for submission #{id}",
+                      error: e.message)
+    auth_headers&.dig('va_eauth_firstName')&.upcase
   end
 
   # Checks against the User record first, and then resorts to checking the auth_headers

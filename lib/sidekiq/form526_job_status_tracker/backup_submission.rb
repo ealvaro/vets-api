@@ -4,8 +4,10 @@ module Sidekiq
   module Form526JobStatusTracker
     module BackupSubmission
       # rubocop:disable Metrics/MethodLength
-      def send_backup_submission_if_enabled(form526_submission_id:, job_class:, job_id:, error_class:,
-                                            error_message:)
+      def send_backup_submission_if_enabled(form526_submission_id:, job_class:, job_id:, error:)
+        error_class = error[:class]
+        error_message = error[:message]
+        error_path = error[:path]
         submission_obj = Form526Submission.find(form526_submission_id)
         if Flipper.enabled?(:disability_compensation_production_tester,
                             OpenStruct.new({ flipper_id: submission_obj.user_uuid }))
@@ -38,8 +40,10 @@ module Sidekiq
         vagov_id = JSON.parse(submission_obj.auth_headers_json)['va_eauth_service_transaction_id']
         log_message = {
           submission_id: form526_submission_id, job_id:, job_class:, error_class:, error_message:,
-          remaining_birls: additional_birls, va_eauth_service_transaction_id: vagov_id
+          remaining_birls: additional_birls, va_eauth_service_transaction_id: vagov_id, error_path:
         }
+        # backup_job_id is only present when a backup was actually enqueued, so it is a reliable
+        # discriminator for backup counts/stats (broken down by error_path).
         log_message['backup_job_id'] = backup_job_jid unless backup_job_jid.nil?
         ::Rails.logger.error('Form526 Exhausted or Errored', log_message)
       end

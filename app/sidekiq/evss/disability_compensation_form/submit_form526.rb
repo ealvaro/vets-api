@@ -109,13 +109,29 @@ module EVSS
             response_handler(response)
             send_post_evss_notifications(submission, true)
           rescue => e
-            send_post_evss_notifications(submission, false)
-            handle_errors(submission, e)
+            handle_submission_error(submission, response, e)
           end
         end
       end
 
       private
+
+      # Once we have a response the claim is established downstream. Any later error must NOT
+      # fail the job, since that triggers a backup submission and a duplicate claim. Only
+      # errors before the claim is established go through handle_errors.
+      def handle_submission_error(submission, response, error)
+        if response
+          Rails.logger.error('Form526 post-submission error after claim established; ' \
+                             'suppressing to prevent duplicate backup submission',
+                             submission_id: submission.id,
+                             submitted_claim_id: submission.submitted_claim_id,
+                             error_class: error.class.name,
+                             error_message: error.message)
+        else
+          send_post_evss_notifications(submission, false)
+          handle_errors(submission, error)
+        end
+      end
 
       # send submission data to either EVSS or Lighthouse (LH)
       def choose_service_provider(submission, service)
@@ -200,7 +216,12 @@ module EVSS
           submission.send_post_evss_notifications!
         end
       rescue => e
-        handle_errors(submission, e)
+        # Runs only after the claim is established downstream, so do not route to
+        # handle_errors (which would trigger a duplicate backup submission).
+        Rails.logger.error('Form526 send_post_evss_notifications error',
+                           submission_id: submission.id,
+                           error_class: e.class.name,
+                           error_message: e.message)
       end
 
       def handle_errors(submission, error)
