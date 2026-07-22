@@ -1,0 +1,118 @@
+Enrollment:
+  description: Enrollment Verification data.
+  type: object
+  properties:
+    claimantId:
+      description: The unique identifier for the verified enrollment data.
+      type: number
+      example: 600000000
+    lastCertifiedThroughDate:
+      description: The most recent date the enrollments were last certified.
+      type: string
+      example: '2021-08-31'
+    enrollmentVerifications:
+      description: List of Enrollment verification objects.
+      type: object
+      properties:
+        verificationMonth:
+          type: string
+          example: September 2021
+        certifiedBeginDate:
+          type: string
+          example: '2021-09-01'
+        certifiedEndDate:
+          type: string
+          example: '2021-09-30'
+        certifiedThroughDate:
+          type: string
+          example:
+        certificationMethod:
+          type: string
+          example:
+        enrollments:
+          type: array
+          description: Contains the name of the facility, total credit hours, beginning
+            and ending dates.
+          items:
+            type: object
+            properties:
+              facilityName:
+                type: string
+                example: UNIVERSITY OF HAWAII AT HILO
+              beginDate:
+                type: string
+                example: '2021-08-01'
+              endDate:
+                type: string
+                example: '2021-09-30'
+              totalCreditHours:
+                type: number
+                example: 12
+        verificationResponse:
+          type: string
+          example: NR
+        createdDate:
+          type: string
+          example: '2021-08-01'
+    paymentOnHold:
+      type: boolean
+      example: false
+SubmitEnrollmentRequestBody:
+  description: Form data submitted to DGI enrollment verification service.
+  type: object
+  properties:
+    claimantId:
+      type: number
+      example: 600000000
+    enrollmentCertifyRequests:
+      type: array
+      description: Contains one or more time periods and metadata needed to be certified.
+      items:
+        type: object
+        properties:
+          claimantId:
+            type: number
+            example: 600000000
+          certifiedPeriodBeginDate:
+            type: string
+            example: '2021-08-01'
+          certifiedPeriodEndDate:
+            type: string
+            example: '2021-08-31'
+          certifiedThroughDate:
+            type: string
+            example: '2021-08-31'
+          certificationMethod:
+            type: string
+            example: MEB
+          appCommunication:
+            type: object
+            properties:
+              responseType:
+                type: string
+                example: "Y"
+SubmitEnrollmentResponse:
+  description: Response proxied from DGI microservice pipeline.
+  type: object
+  properties:
+    enrollmentCertifyResponses:
+      type: array
+      description: Contains one or more periods of certification data.
+      items:
+        type: object
+        properties:
+          claimantId:
+            type: number
+            example: 600000000
+          enrollmentPeriodEndDate:
+            type: string
+            example: '2021-09-30'
+          certifiedThroughDate:
+            type: string
+            example: '2021-08-31'
+          certificationMethod:
+            type: string
+            example: MEB
+          paymentOnHold:
+            type: boolean
+            example: false

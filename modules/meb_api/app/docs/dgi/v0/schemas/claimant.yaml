@@ -1,0 +1,448 @@
+ClaimantInfoRequestBody:
+  description: Unique identifier in the request body to retrieve the claimant information.
+  type: object
+  properties:
+    ssn:
+      type: string
+      example: '123456789'
+ClaimantInfoResponse:
+  description: Information about an authenticated claimant.
+  type: object
+  properties:
+    claimant:
+      description: The Biographical data of the claimant
+      type: object
+      properties:
+        claimantId:
+          type: number
+          example: 990000000000000000
+        suffix:
+          type: string
+          example: III
+        dateOfBirth:
+          type: string
+          example: 05/08/1933
+        firstName:
+          type: string
+          example: Francis
+        lastName:
+          type: string
+          example: Ouimet
+        middleName:
+          type: string
+          example: Desales
+        notificationMethod:
+          type: string
+          example: TEXT
+        contactInfo:
+          type: object
+          properties:
+            addressLine1:
+              type: string
+              example: 123 Maple St
+            addressLine2:
+              type: string
+              example:
+            city:
+              type: string
+              example: Brookline
+            zipcode:
+              type: string
+            emailAddress:
+              type: string
+              example: example123@testing.com
+            addressType:
+              type: string
+              example: MILITARY_OVERSEAS
+            mobilePhoneNumber:
+              type: string
+              example: 1231231234
+            homePhoneNumber:
+              type: string
+              example: 1231231234
+            countryCode:
+              type: string
+              example: US
+            stateCode:
+              type: string
+              example: MA
+        preferredContact:
+          type: string
+        serviceData:
+          type: array
+          description: The claimants associated service data.
+          items:
+            type: object
+            properties:
+              branchOfService:
+                type: string
+              beginDate:
+                type: string
+              endDate:
+                type: string
+              characterOfService:
+                type: string
+              reasonForSeperation:
+                type: string
+              exclusionPeriods:
+                type: array
+                description: The claimants periods of time where they were excluded
+                  from counting towards their benefit.
+                items:
+                  type: string
+              trainingPeriods:
+                type: array
+                description: The Claimants period of time spent training.
+                items:
+                  type: string
+    ssn:
+      description: Masked Social Security Number (XXX-XX-####)
+      type: string
+      nullable: true
+      example: XXX-XX-1234
+    benefits:
+      description: Array of benefit information for the claimant
+      type: array
+      nullable: true
+      items:
+        type: object
+        properties:
+          benefit_type:
+            type: string
+            description: Type of benefit (CH33, CH30, CH1606, CH35, Fry, Toe)
+            example: CH33
+          amount_received:
+            type: object
+            description: Total entitlement received
+            properties:
+              months:
+                type: integer
+                example: 36
+              days:
+                type: number
+                example: 0.0
+          amount_used:
+            type: object
+            description: Entitlement used
+            properties:
+              months:
+                type: integer
+                example: 5
+              days:
+                type: number
+                example: 8
+          amount_left:
+            type: object
+            description: Entitlement remaining
+            properties:
+              months:
+                type: integer
+                example: 30
+              days:
+                type: number
+                example: 22.0
+          amount_transferred:
+            type: object
+            nullable: true
+            description: Amount transferred to dependents (TOE sponsors only)
+            properties:
+              months:
+                type: integer
+                example: 1
+              days:
+                type: number
+                example: 0
+          eligibility_percentage:
+            type: integer
+            nullable: true
+            description: Percentage of benefit eligibility
+            example: 100
+          benefit_end_date:
+            type: string
+            format: date
+            nullable: true
+            description: Delimiting date for the benefit
+            example: '2019-06-01'
+          coe_issued_date:
+            type: string
+            format: date
+            nullable: true
+            description: Certificate of Eligibility issue date
+            example: '2026-06-30'
+          coe_letter:
+            type: string
+            nullable: true
+            description: Base64-encoded PDF of the Certificate of Eligibility letter
+            example: data:application/pdf;base64,JVBERi0xLjQK...
+    has_ch_1606_original_claim_in_progress:
+      description: Whether there is a CH1606 original claim in progress
+      type: boolean
+      example: false
+    has_ch_30_original_claim_in_progress:
+      description: Whether there is a CH30 original claim in progress
+      type: boolean
+      example: false
+    has_ch_33_original_claim_in_progress:
+      description: Whether there is a CH33 original claim in progress
+      type: boolean
+      example: false
+    has_ch_35_original_claim_in_progress:
+      description: Whether there is a CH35 original claim in progress
+      type: boolean
+      example: false
+    has_fry_original_claim_in_progress:
+      description: Whether there is a Fry original claim in progress
+      type: boolean
+      example: false
+    has_toe_original_claim_in_progress:
+      description: Whether there is a TOE original claim in progress
+      type: boolean
+      example: false
+    ch_1606_received_date:
+      description: Date CH1606 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    ch_30_received_date:
+      description: Date CH30 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    ch_33_received_date:
+      description: Date CH33 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    ch_35_received_date:
+      description: Date CH35 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    fry_received_date:
+      description: Date Fry claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    toe_received_date:
+      description: Date TOE claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+ToeClaimantInfoResponse:
+  description: Information about an authenticated TOE claimant.
+  type: object
+  properties:
+    claimant:
+      description: The Biographical data of the claimant
+      type: object
+      properties:
+        claimantId:
+          type: number
+          example: 990000000000000000
+        suffix:
+          type: string
+          example: III
+        dateOfBirth:
+          type: string
+          example: 05/08/1933
+        firstName:
+          type: string
+          example: Francis
+        lastName:
+          type: string
+          example: Ouimet
+        middleName:
+          type: string
+          example: Desales
+        notificationMethod:
+          type: string
+          example: TEXT
+        contactInfo:
+          type: object
+          properties:
+            addressLine1:
+              type: string
+              example: 123 Maple St
+            addressLine2:
+              type: string
+              example:
+            city:
+              type: string
+              example: Brookline
+            zipcode:
+              type: string
+            emailAddress:
+              type: string
+              example: example123@testing.com
+            addressType:
+              type: string
+              example: MILITARY_OVERSEAS
+            mobilePhoneNumber:
+              type: string
+              example: 1231231234
+            homePhoneNumber:
+              type: string
+              example: 1231231234
+            countryCode:
+              type: string
+              example: US
+            stateCode:
+              type: string
+              example: MA
+        preferredContact:
+          type: string
+        serviceData:
+          type: array
+          description: The claimants associated service data.
+          items:
+            type: object
+            properties:
+              branchOfService:
+                type: string
+              beginDate:
+                type: string
+              endDate:
+                type: string
+              characterOfService:
+                type: string
+              reasonForSeperation:
+                type: string
+              exclusionPeriods:
+                type: array
+                description: The claimants periods of time where they were excluded
+                  from counting towards their benefit.
+                items:
+                  type: string
+              trainingPeriods:
+                type: array
+                description: The Claimants period of time spent training.
+                items:
+                  type: string
+    toe_sponsors:
+      description: Sponsor information for TOE benefits
+      type: object
+    ssn:
+      description: Masked Social Security Number (XXX-XX-####)
+      type: string
+      nullable: true
+      example: XXX-XX-1234
+    benefits:
+      description: Array of benefit information for the claimant
+      type: array
+      nullable: true
+      items:
+        type: object
+        properties:
+          benefit_type:
+            type: string
+            description: Type of benefit (CH33, CH35, Fry, Toe)
+            example: CH33
+          amount_received:
+            type: object
+            description: Total entitlement received
+            properties:
+              months:
+                type: integer
+                example: 36
+              days:
+                type: number
+                example: 0.0
+          amount_used:
+            type: object
+            description: Entitlement used
+            properties:
+              months:
+                type: integer
+                example: 5
+              days:
+                type: number
+                example: 8
+          amount_left:
+            type: object
+            description: Entitlement remaining
+            properties:
+              months:
+                type: integer
+                example: 30
+              days:
+                type: number
+                example: 22.0
+          amount_transferred:
+            type: object
+            nullable: true
+            description: Amount transferred to dependents (TOE sponsors only)
+            properties:
+              months:
+                type: integer
+                example: 1
+              days:
+                type: number
+                example: 0
+          eligibility_percentage:
+            type: integer
+            nullable: true
+            description: Percentage of benefit eligibility
+            example: 100
+          benefit_end_date:
+            type: string
+            format: date
+            nullable: true
+            description: Delimiting date for the benefit
+            example: '2019-06-01'
+          coe_issued_date:
+            type: string
+            format: date
+            nullable: true
+            description: Certificate of Eligibility issue date
+            example: '2026-06-30'
+          coe_letter:
+            type: string
+            nullable: true
+            description: Base64-encoded PDF of the Certificate of Eligibility letter
+            example: data:application/pdf;base64,JVBERi0xLjQK...
+    has_ch_33_original_claim_in_progress:
+      description: Whether there is a CH33 original claim in progress
+      type: boolean
+      example: false
+    has_ch_35_original_claim_in_progress:
+      description: Whether there is a CH35 original claim in progress
+      type: boolean
+      example: false
+    has_fry_original_claim_in_progress:
+      description: Whether there is a Fry original claim in progress
+      type: boolean
+      example: false
+    has_toe_original_claim_in_progress:
+      description: Whether there is a TOE original claim in progress
+      type: boolean
+      example: false
+    ch_33_received_date:
+      description: Date CH33 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    ch_35_received_date:
+      description: Date CH35 claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    fry_received_date:
+      description: Date Fry claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'
+    toe_received_date:
+      description: Date TOE claim was received
+      type: string
+      format: date
+      nullable: true
+      example: '2026-06-30'

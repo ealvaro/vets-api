@@ -1,0 +1,18 @@
+Errors:
+  type: object
+  required:
+    - errors
+  properties:
+    errors:
+      type: array
+      items:
+        type: object
+        properties:
+          status:
+            type: string
+          code:
+            type: string
+          title:
+            type: string
+          detail:
+            type: string
