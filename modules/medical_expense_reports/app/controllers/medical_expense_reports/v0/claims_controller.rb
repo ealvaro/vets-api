@@ -73,7 +73,7 @@ module MedicalExpenseReports
 
         clear_saved_form(claim.form_id)
 
-        pdf_url = upload_to_s3(claim, config: MedicalExpenseReports::ZsfConfig.new)
+        pdf_url = stamped_pdf_url(claim)
 
         render json: ArchivedClaimSerializer.new(claim, params: { pdf_url: })
       rescue => e
@@ -82,6 +82,21 @@ module MedicalExpenseReports
       end
 
       private
+
+      # Uploads the completed form to S3 for the confirmation-page download link and returns the
+      # presigned URL. The download copy must carry the same submission watermark as the Benefits
+      # Intake upload, so it is generated stamped rather than letting upload_to_s3 fall back to the
+      # default unstamped claim.to_pdf.
+      #
+      # @param claim [MedicalExpenseReports::SavedClaim]
+      # @return [String] presigned S3 URL for the stamped PDF
+      def stamped_pdf_url(claim)
+        upload_to_s3(
+          claim,
+          config: MedicalExpenseReports::ZsfConfig.new,
+          pdf_path: claim.to_stamped_pdf(claim.guid, loa: submitter_loa)
+        )
+      end
 
       # Enqueues the Benefits Intake submission job for the saved claim.
       #

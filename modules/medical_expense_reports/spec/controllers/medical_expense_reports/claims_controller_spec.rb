@@ -62,6 +62,20 @@ RSpec.describe MedicalExpenseReports::V0::ClaimsController, type: :request do
 
       expect(response).to have_http_status(:success)
     end
+
+    it 'uploads the watermark-stamped PDF as the confirmation-page download copy' do
+      stamped_path = 'tmp/stamped.pdf'
+      allow(MedicalExpenseReports::SavedClaim).to receive(:new).and_return(claim)
+      expect(claim).to receive(:to_stamped_pdf)
+        .with(claim.guid, loa: user.loa[:current]).and_return(stamped_path)
+      expect_any_instance_of(described_class).to receive(:upload_to_s3)
+        .with(claim, config: instance_of(MedicalExpenseReports::ZsfConfig), pdf_path: stamped_path)
+        .and_return(MOCK_URL)
+
+      post '/medical_expense_reports/v0/claims', params: { param_name => { form: claim.form } }
+
+      expect(JSON.parse(response.body)['data']['attributes']['pdf_url']).to eq(MOCK_URL)
+    end
   end
 
   describe '#show' do

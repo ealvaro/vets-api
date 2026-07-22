@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'common/file_helpers'
+require 'pdf/reader'
 
 RSpec.describe MedicalExpenseReports::SavedClaim do
   subject { described_class.new }
@@ -90,6 +92,29 @@ RSpec.describe MedicalExpenseReports::SavedClaim do
       it "calls PdfFill::Filler.fill_form with extras_redesign: #{extras_redesign}" do
         expect(PdfFill::Filler).to receive(:fill_form).with(subject, nil, { extras_redesign: })
         subject.to_pdf(nil, { extras_redesign: })
+      end
+    end
+
+    context 'when the claim has a cave_submission' do
+      let(:claim) { create(:medical_expense_reports_claim) }
+      let(:base_pdf_path) { 'tmp/pdfs/base.pdf' }
+      let(:statement_pdf_path) { 'tmp/pdfs/statement.pdf' }
+      let(:combined_path) { "tmp/pdfs/#{MedicalExpenseReports::FORM_ID}_#{claim.guid}_combined.pdf" }
+
+      before do
+        CaveSubmission.create!(saved_claim: claim, cave_response: { 'VETERAN_NAME' => 'JON A DOE' }.to_json)
+        allow(PdfFill::Filler).to receive(:fill_form).and_return(base_pdf_path)
+        allow(claim).to receive(:fill_ancillary_pdf).and_return(statement_pdf_path)
+        allow(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_signature).and_return(combined_path)
+      end
+
+      # Guards the merge_pdfs call: its signature is (*file_paths, new_file_path), so passing a 4th
+      # options hash (the original bug) bound new_file_path to the hash and pushed the real output
+      # path into file_paths as a source, raising when merge tried to open the unwritten output.
+      it 'merges the base and ancillary PDFs into the combined path with no extra arguments' do
+        expect(PdfFill::Filler).to receive(:merge_pdfs).with(base_pdf_path, statement_pdf_path, combined_path)
+
+        expect(claim.to_pdf).to eq(combined_path)
       end
     end
   end
@@ -250,6 +275,49 @@ RSpec.describe MedicalExpenseReports::SavedClaim do
         payload = instance.send(:build_ibm_payload, form_data)
 
         expect(payload['CLAIMANT_ADDRESS_FULL_BLOCK']).to eq('1 Main Street A1 City VA 22206 USA')
+      end
+    end
+  end
+
+  describe '#to_stamped_pdf' do
+    let(:claim) { create(:medical_expense_reports_claim) }
+    let(:raw_path) { 'tmp/raw.pdf' }
+    let(:stamped_path) { 'tmp/stamped.pdf' }
+
+    it 'suppresses the built-in footers, stamps the watermark, and removes the intermediate PDF' do
+      expect(claim).to receive(:to_pdf)
+        .with('file-name', { extras_redesign: true, omit_esign_stamp: true, omit_footer: true })
+        .and_return(raw_path)
+      expect(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_submission_footer)
+        .with(raw_path, claim.created_at, 3).and_return(stamped_path)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      expect(claim.to_stamped_pdf('file-name', loa: 3)).to eq(stamped_path)
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(raw_path)
+    end
+
+    it 'keeps the unstamped file when stamping fails open and returns the original path' do
+      allow(claim).to receive(:to_pdf).and_return(raw_path)
+      allow(MedicalExpenseReports::PdfFill::Va21p8416).to receive(:stamp_submission_footer).and_return(raw_path)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      expect(claim.to_stamped_pdf(loa: 3)).to eq(raw_path)
+      expect(Common::FileHelpers).not_to have_received(:delete_file_if_exists)
+    end
+
+    it 'renders the watermark exactly once on every page of the generated PDF' do
+      path = claim.to_stamped_pdf(claim.guid, loa: 3)
+
+      begin
+        reader = PDF::Reader.new(path)
+        reader.pages.each_with_index do |page, index|
+          expect(page.text.scan('Signed electronically and submitted via VA.gov at').count)
+            .to eq(1), "expected exactly one watermark timestamp line on page #{index + 1}"
+          expect(page.text.scan('Signee signed with an identity-verified account.').count)
+            .to eq(1), "expected exactly one watermark authentication line on page #{index + 1}"
+        end
+      ensure
+        Common::FileHelpers.delete_file_if_exists(path)
       end
     end
   end

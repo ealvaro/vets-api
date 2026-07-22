@@ -71,13 +71,10 @@ module MedicalExpenseReports
       # @return [String] the intake service UUID for the submission
       def process_submission
         # generate and validate claim pdf documents.
-        # omit_esign_stamp/omit_footer suppress the shared machinery's hardcoded-IAL2 footer so we can
-        # stamp a footer whose authentication level reflects the submitter's actual LOA on every page.
-        raw_pdf = @claim.to_pdf(@claim.id, extras_redesign: true, omit_esign_stamp: true, omit_footer: true)
-        @intermediate_pdf_paths << raw_pdf
-        stamped_pdf = MedicalExpenseReports::PdfFill::Va21p8416.stamp_submission_footer(
-          raw_pdf, @claim.created_at, footer_loa
-        )
+        # to_stamped_pdf suppresses the shared machinery's hardcoded-IAL2 footer and stamps the
+        # watermark whose authentication level reflects the submitter's actual LOA on every page —
+        # the same treatment the confirmation-page download copy gets in ClaimsController#create.
+        stamped_pdf = @claim.to_stamped_pdf(@claim.id, loa: footer_loa)
         @intermediate_pdf_paths << stamped_pdf
         @form_path = process_document(stamped_pdf)
         @attachment_paths = @claim.persistent_attachments.map { |pa| process_document(pa.to_pdf) }

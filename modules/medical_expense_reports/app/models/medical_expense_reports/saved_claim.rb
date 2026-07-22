@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'common/file_helpers'
 require 'medical_expense_reports/benefits_intake/submit_claim_job'
 require 'medical_expense_reports/pdf_fill/va21p8416'
 require 'pdf_fill/filler'
@@ -116,12 +117,32 @@ module MedicalExpenseReports
         folder = 'tmp/pdfs'
         FileUtils.mkdir_p(folder)
         combined_file_path = "#{folder}/#{MedicalExpenseReports::FORM_ID}_#{guid}_combined.pdf"
-        filler.merge_pdfs(pdf_path, statement_pdf_path, combined_file_path, { extras_redesign: true })
+        filler.merge_pdfs(pdf_path, statement_pdf_path, combined_file_path)
 
         MedicalExpenseReports::PdfFill::Va21p8416.stamp_signature(combined_file_path, form_data)
       else
         MedicalExpenseReports::PdfFill::Va21p8416.stamp_signature(pdf_path, form_data)
       end
+    end
+
+    ##
+    # Generates the completed-form PDF as it is submitted downstream: redesigned extras, the shared
+    # machinery's hardcoded-IAL2 footer suppressed, and the submission date/timestamp/authentication
+    # watermark stamped on every page. Every rendition of the completed form (the Benefits Intake
+    # upload and the S3 copy behind the confirmation-page download link) must carry the same
+    # watermark, so both are generated through here.
+    #
+    # @param file_name [String, nil] Optional name for the output PDF file
+    # @param loa [Integer, nil] the submitter's Level of Assurance (nil when unauthenticated)
+    # @return [String] Path to the stamped PDF file
+    #
+    def to_stamped_pdf(file_name = nil, loa: nil)
+      raw_pdf = to_pdf(file_name, extras_redesign: true, omit_esign_stamp: true, omit_footer: true)
+      stamped_pdf = MedicalExpenseReports::PdfFill::Va21p8416.stamp_submission_footer(raw_pdf, created_at, loa)
+      # stamp_submission_footer fails open and returns raw_pdf on error; only remove the
+      # intermediate when a new stamped copy replaced it.
+      Common::FileHelpers.delete_file_if_exists(raw_pdf) unless stamped_pdf == raw_pdf
+      stamped_pdf
     end
 
     ##

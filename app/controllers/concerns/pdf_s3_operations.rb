@@ -8,9 +8,12 @@ module PdfS3Operations
   # Upload to S3 and return a download URL
   # @param claim [SavedClaim] the claim to upload
   # @param config [SimpleFormsApi::FormRemediation::Configuration::Base] S3 config
-  def upload_to_s3(claim, config:, benefits_intake_uuid: nil)
+  # @param pdf_path [String, nil] a pre-generated PDF to upload instead of the default
+  #   `claim.to_pdf` output, for forms whose download copy needs extra treatment (e.g. watermark
+  #   stamping); deleted after upload like the default
+  def upload_to_s3(claim, config:, benefits_intake_uuid: nil, pdf_path: nil)
     form_submission_attempt = create_submission_attempt(claim, benefits_intake_uuid)
-    pdf_path = claim.to_pdf(claim.guid)
+    pdf_path ||= claim.to_pdf(claim.guid)
 
     begin
       File.open(pdf_path) do |file|
