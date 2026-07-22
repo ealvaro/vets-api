@@ -138,6 +138,54 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
       job.perform(claim.id, user_account_uuid)
       expect(job.instance_variable_get(:@ibm_payload)).to eq({ test: 'data' })
     end
+
+    # Regression: update_form_submission_attempt runs AFTER perform_upload has already handed the
+    # document to Lighthouse. If a bookkeeping error (e.g. a KMS/DB hiccup) were allowed to raise,
+    # #perform would re-raise and Sidekiq would retry the whole job -- re-running perform_upload
+    # and RE-UPLOADING the document under a new intake uuid (a duplicate submission). These prove
+    # the bookkeeping failure is swallowed so the successful upload is terminal.
+    context 'when update_form_submission_attempt fails after a successful upload' do
+      before do
+        allow(job).to receive(:process_document).and_return(pdf_path)
+        allow(UserAccount).to receive(:find).and_return(double('user_account'))
+        allow(Datadog::Tracing).to receive(:active_trace)
+        allow(Lighthouse::Submission).to receive(:create).and_return(double('lighthouse_submission'))
+        allow(Lighthouse::SubmissionAttempt).to receive(:create).and_return(double('lighthouse_submission_attempt'))
+        allow(SurvivorsBenefits::NotificationEmail).to receive(:new).and_return(double('email', deliver: nil))
+        # Simulate the bookkeeping write blowing up the way a KMS/DB error would.
+        allow(FormSubmission).to receive(:create_with).and_raise(ActiveRecord::StatementInvalid.new('KMS unavailable'))
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'does not raise (so Sidekiq will not retry) and uploads exactly once (no re-upload)' do
+        expect(service).to receive(:perform_upload).once.and_return(response)
+        expect(monitor).not_to receive(:track_submission_retry) # the `.failure` metric / retry path
+        expect(monitor).to receive(:track_submission_success)   # success path still completes
+
+        expect { job.perform(claim.id, user_account_uuid) }.not_to raise_error
+      end
+
+      it 'logs the bookkeeping failure instead of failing the job' do
+        expect(Rails.logger).to receive(:error)
+          .with(a_string_including('update_form_submission_attempt failed'), anything)
+
+        job.perform(claim.id, user_account_uuid)
+      end
+
+      it 'returns the intake uuid, i.e. the job completed successfully' do
+        allow(service).to receive(:uuid).and_return('abc-123')
+
+        expect(job.perform(claim.id, user_account_uuid)).to eq('abc-123')
+      end
+
+      it 'enqueues the backfill job so the bookkeeping is eventually consistent' do
+        expect { job.perform(claim.id, user_account_uuid) }
+          .to change(SurvivorsBenefits::BenefitsIntake::UpdateFormSubmissionAttemptJob.jobs, :size).by(1)
+
+        expect(SurvivorsBenefits::BenefitsIntake::UpdateFormSubmissionAttemptJob.jobs.last['args'])
+          .to eq([claim.id])
+      end
+    end
     # perform
   end
 
@@ -173,6 +221,23 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
 
       expect(claim.form_submissions.last.latest_attempt.benefits_intake_uuid)
         .to eq('22222222-2222-4222-8222-222222222222')
+    end
+
+    # Bookkeeping is best-effort inline: the Lighthouse upload has already succeeded by the time
+    # this runs, so a write failure must be logged and swallowed rather than raised (a raise would
+    # trigger a Sidekiq retry and a duplicate re-upload). Eventual consistency comes from the
+    # UpdateFormSubmissionAttemptJob backfill enqueued in the rescue.
+    it 'logs, enqueues the backfill job, and does not re-raise when the bookkeeping write fails' do
+      allow(FormSubmission).to receive(:create_with).and_raise(ActiveRecord::StatementInvalid.new('KMS unavailable'))
+      expect(Rails.logger).to receive(:error)
+        .with(a_string_including('update_form_submission_attempt failed'), hash_including(:claim_id))
+
+      expect { job.send(:update_form_submission_attempt) }.not_to raise_error
+      expect(FormSubmissionAttempt.count).to eq(0)
+
+      backfill_jobs = SurvivorsBenefits::BenefitsIntake::UpdateFormSubmissionAttemptJob.jobs
+      expect(backfill_jobs.size).to eq(1)
+      expect(backfill_jobs.last['args']).to eq([claim.id])
     end
   end
 

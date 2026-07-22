@@ -5,6 +5,7 @@ require 'lighthouse/benefits_intake/service'
 require 'lighthouse/benefits_intake/metadata'
 require 'survivors_benefits/notification_email'
 require 'survivors_benefits/monitor'
+require 'survivors_benefits/benefits_intake/update_form_submission_attempt_job'
 require 'pdf_utilities/datestamp_pdf'
 
 module SurvivorsBenefits
@@ -158,26 +159,38 @@ module SurvivorsBenefits
       # MyVA relies on SubmissionAttempt records to find submitted forms and create Submission
       # in Progress cards on the MyVA page
       #
-      # @return SubmissionAttempt
+      # This is post-upload bookkeeping ONLY and must never raise out of the job. By the time it
+      # runs the document has already been handed to Lighthouse (see #upload_document), so a
+      # raise here would propagate to #perform, be re-raised, and cause Sidekiq to retry the whole
+      # job -- which re-runs perform_upload and RE-UPLOADS the document under a new intake uuid,
+      # i.e. a duplicate submission. On failure the write is retried asynchronously by
+      # UpdateFormSubmissionAttemptJob (which re-derives the current intake uuid), so the
+      # bookkeeping is eventually consistent without sitting on the upload's critical path.
+      # Mirrors the non-fatal pattern already used by #govcio_upload and #send_submitted_email.
+      #
+      # @see UpdateFormSubmissionAttemptJob.update_form_submission_attempt (shared, idempotent)
+      #
+      # @return [FormSubmissionAttempt, nil] the attempt on success; nil when the write failed and
+      #   was swallowed (bookkeeping is then deferred to UpdateFormSubmissionAttemptJob)
       def update_form_submission_attempt
-        # If its a retry we need the new intake uuid for the submission
-        form_submission = @claim.form_submissions.order(created_at: :asc).last || FormSubmission.create_with(
-          form_type: @claim.form_id,
-          form_data: @claim.to_json,
-          saved_claim: @claim,
-          saved_claim_id: @claim.id,
-          user_account_id: @claim.user_account_id
-        ).find_or_create_by!(form_type: @claim.form_id, saved_claim_id: @claim.id)
-
-        # update the submission attempt as well
-        latest_form_submission_attempt = form_submission.latest_attempt
-        if latest_form_submission_attempt
-          latest_form_submission_attempt.update!(benefits_intake_uuid: @intake_service.uuid)
-        else
-          FormSubmissionAttempt.create_with(
-            form_submission:
-          ).find_or_create_by!(benefits_intake_uuid: @intake_service.uuid)
+        UpdateFormSubmissionAttemptJob.update_form_submission_attempt(@claim, @intake_service.uuid)
+      rescue => e
+        # Never fail the job for MyVA bookkeeping - a successful Lighthouse upload must be terminal.
+        Rails.logger.error(
+          'SurvivorsBenefits::BenefitsIntake::SubmitClaimJob update_form_submission_attempt failed',
+          claim_id: @claim&.id, benefits_intake_uuid: @intake_service&.uuid, error: e.message
+        )
+        begin
+          UpdateFormSubmissionAttemptJob.perform_async(@claim.id) if @claim
+        rescue => enqueue_error
+          # Even a failed enqueue must not fail the job; the error log above still has the
+          # claim_id + uuid needed for a manual backfill.
+          Rails.logger.error(
+            'SurvivorsBenefits::BenefitsIntake::SubmitClaimJob failed to enqueue UpdateFormSubmissionAttemptJob',
+            claim_id: @claim&.id, error: enqueue_error.message
+          )
         end
+        nil
       end
 
       # Create a new instance of the Benefits Intake service for this job

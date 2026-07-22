@@ -234,6 +234,23 @@ RSpec.describe MedicalExpenseReports::BenefitsIntake::SubmitClaimJob, :uploader_
       expect(claim.form_submissions.last.latest_attempt.benefits_intake_uuid)
         .to eq('22222222-2222-4222-8222-222222222222')
     end
+
+    # Bookkeeping is best-effort inline: the Lighthouse upload has already succeeded by the time
+    # this runs, so a write failure must be logged and swallowed rather than raised (a raise would
+    # trigger a Sidekiq retry and a duplicate re-upload). Eventual consistency comes from the
+    # UpdateFormSubmissionAttemptJob backfill enqueued in the rescue.
+    it 'logs, enqueues the backfill job, and does not re-raise when the bookkeeping write fails' do
+      allow(FormSubmission).to receive(:create_with).and_raise(ActiveRecord::StatementInvalid.new('KMS unavailable'))
+      expect(Rails.logger).to receive(:error)
+        .with(a_string_including('update_form_submission_attempt failed'), hash_including(:claim_id))
+
+      expect { job.send(:update_form_submission_attempt) }.not_to raise_error
+      expect(FormSubmissionAttempt.count).to eq(0)
+
+      backfill_jobs = MedicalExpenseReports::BenefitsIntake::UpdateFormSubmissionAttemptJob.jobs
+      expect(backfill_jobs.size).to eq(1)
+      expect(backfill_jobs.last['args']).to eq([claim.id])
+    end
   end
 
   describe '#process_document' do
