@@ -684,6 +684,10 @@ features:
     actor_type: user
     description: Enables flash updater to use local_bgs
     enable_in_development: true
+  claims_api_job_tracker:
+    actor_type: user
+    description: Enables Redis-based Sidekiq job tracking and orphan recovery for ClaimsApi jobs
+    enable_in_development: false
   claims_api_poa_vbms_updater_uses_local_bgs:
     actor_type: user
     description: Enables poa vbms updater to use local_bgs

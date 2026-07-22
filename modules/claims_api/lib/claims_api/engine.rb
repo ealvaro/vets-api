@@ -23,5 +23,30 @@ module ClaimsApi
         FactoryBot.definition_file_paths << path if Dir.exist?(path)
       end
     end
+
+    # Register job tracker middleware and orphan recovery for crash resilience.
+    # Keeps everything self-contained in the claims_api engine
+    # no changes needed in the main app's config/initializers/sidekiq.rb.
+    #
+    # Controlled by Flipper :claims_api_job_tracker flag.
+    # And recover_orphans!(log_only: true) controls
+    # if we do the re-enqueue or just log the orphaned jobs.
+    initializer 'claims_api.sidekiq_job_tracker' do
+      require 'claims_api/job_tracker'
+      require 'claims_api/job_tracker_middleware'
+
+      Sidekiq.configure_server do |config|
+        config.server_middleware do |chain|
+          chain.prepend ClaimsApi::JobTrackerMiddleware
+        end
+
+        config.on(:startup) do
+          # 65s delay: ProcessSet entries have ~60s heartbeat TTL.
+          # Waiting 65s guarantees crashed processes are fully evicted
+          # before we check. Mirrors Sidekiq Pro's super_fetch approach.
+          ClaimsApi::JobTrackerRecoveryJob.perform_in(65) if Flipper.enabled?(:claims_api_job_tracker)
+        end
+      end
+    end
   end
 end
