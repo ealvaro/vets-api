@@ -66,7 +66,8 @@ module BPDS
           # Submit the BPDS submission to the BPDS service
           identifiers = JSON.parse(KmsEncrypted::Box.new.decrypt(encrypted_payload))
 
-          response = BPDS::Service.new.submit_json(format_claim_form(@saved_claim), @saved_claim.form_id, identifiers)
+          payload, attachments = format_claim_form(@saved_claim)
+          response = BPDS::Service.new.submit_json(payload, @saved_claim.form_id, identifiers, attachments:)
           bpds_uuid = response['uuid']
           @bpds_submission.submission_attempts.create(status: 'submitted', response: response.to_json,
                                                       bpds_id: bpds_uuid)
@@ -98,20 +99,24 @@ module BPDS
         @monitor = BPDS::Monitor.new
       end
 
-      # Formats the claim's form data using a registered formatter if available.
+      # Formats the claim's form data using a registered formatter if available, and pulls any
+      # attachment records the formatter exposes. Attachments are returned separately so the service
+      # can place them in the BPDS envelope alongside (not inside) the form payload.
       #
       # @param claim [SavedClaim] The claim to format
-      # @return [Hash] The formatted payload (or original parsed_form if no formatter exists)
+      # @return [Array(Hash, Array<Hash>|nil)] The [payload, attachments] pair. Attachments is nil
+      #   when no formatter exists or the formatter does not provide attachments.
       def format_claim_form(claim)
         formatter_class_name = FORMATTERS[claim.form_id]
 
-        return claim.parsed_form unless formatter_class_name
+        return [claim.parsed_form, nil] unless formatter_class_name
 
-        formatter_class = formatter_class_name.constantize
-        formatter_class.new(claim.parsed_form).format
+        formatter = formatter_class_name.constantize.new(claim.parsed_form)
+        attachments = formatter.respond_to?(:attachments) ? formatter.attachments : nil
+        [formatter.format, attachments]
       rescue NameError
         # Formatter class not found - fall back to unformatted parsed_form
-        claim.parsed_form
+        [claim.parsed_form, nil]
       end
     end
   end

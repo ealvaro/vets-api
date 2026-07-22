@@ -18,8 +18,7 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2022::StructuredDataService d
       SurvivorsBenefits::StructuredData::V2022::Section10,
       SurvivorsBenefits::StructuredData::V2022::Section11,
       SurvivorsBenefits::StructuredData::V2022::Section12,
-      Mms::DataFormatting,
-      Mms::Attachments
+      Mms::DataFormatting
     )
   end
 

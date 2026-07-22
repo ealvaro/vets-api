@@ -32,10 +32,11 @@ module BPDS
     # @param formatted_claim_form [Hash] The formatted claim form data to be submitted.
     # @param form_id [String] The form ID associated with the claim.
     # @param identifiers [Hash] The user identifiers to be included in the payload.
+    # @param attachments [Array<Hash>, nil] Attachment records to include alongside the payload.
     # @return [String] The response body from the submission
     # @raise [StandardError] If an error occurs during submission.
-    def submit_json(formatted_claim_form, form_id, identifiers)
-      payload = default_payload(formatted_claim_form, form_id, identifiers)
+    def submit_json(formatted_claim_form, form_id, identifiers, attachments: nil)
+      payload = default_payload(formatted_claim_form, form_id, identifiers, attachments)
       response = perform(:post, '', payload.to_json, headers)
 
       response.body
@@ -80,7 +81,8 @@ module BPDS
     #     'payloadNamespace' => String,
     #     'participantId' => String, # Optional
     #     'fileNumber' => String, # Optional
-    #     'payload' => Hash
+    #     'payload' => Hash,
+    #     'attachments' => Array # Optional
     #   }
     # }
     #
@@ -92,7 +94,10 @@ module BPDS
     # - 'icn' is included if provided, representing the user's ICN.
     # - 'edipi' is included if provided, representing the user's EDIPI.
     # - 'payload' contains the parsed form data from the claim.
-    def default_payload(formatted_claim_form, form_id, identifiers)
+    # - 'attachments' contains attachment records (metadata + extracted data) when present. It sits
+    #   alongside 'payload' rather than inside it, keeping the form's structured data separate from
+    #   the supporting documents.
+    def default_payload(formatted_claim_form, form_id, identifiers, attachments = nil)
       bpd = { 'participantId' => nil, 'fileNumber' => nil } # ensure these fields are included, even if not populated
       bpd = bpd.merge(identifiers.transform_keys { |key| key.to_s.camelize(:lower) })
       bpd = bpd.merge({
@@ -100,6 +105,7 @@ module BPDS
                         'payloadNamespace' => bpds_namespace(form_id),
                         'payload' => formatted_claim_form
                       })
+      bpd['attachments'] = attachments if attachments.present?
 
       { 'bpd' => bpd }
     end

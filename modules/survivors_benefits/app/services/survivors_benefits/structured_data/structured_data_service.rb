@@ -59,8 +59,8 @@ module SurvivorsBenefits
         build_section10
         build_section11(form['bankAccount'])
         build_section12
-        # NOTE: CAVE-extracted artifact data is routed to BPDS (via the claim's idpArtifacts),
-        # not MMS — MMS does not accept attachment data. (Previously add_attached_files_data here.)
+        # NOTE: CAVE-extracted artifact data is routed to BPDS (via the claim's idpArtifacts and
+        # SurvivorsBenefits::BPDS::Formatter#attachments), not MMS — MMS does not accept attachment data.
         fill_veteran_ssn_reference_fields
         add_amounts_with_separation
         transform_booleans(fields)

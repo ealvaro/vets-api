@@ -77,17 +77,20 @@ module Mms
       end
 
       def transform_data
+        # NOTE: the CAVE artifact camel keys are spelled "decendent" (see Cave::FieldCatalog
+        # DEATH_CERTIFICATE); read those to match the incoming data. The output keys keep the
+        # correct "DECEDENT" spelling expected downstream.
         {
-          'DECEDENT_FULL_NAME' => build_name(attrs[:decedentFullName]&.transform_keys(&:to_s))[:full],
-          'DECEDENT_SSN' => attrs[:decedentSsn],
-          'DECEDENT_DATE_OF_DEATH' => format_date(attrs[:decedentDateOfDeath]),
-          'DECEDENT_DATE_OF_DISPOSITION' => format_date(attrs[:decedentDateOfDisposition]),
+          'DECEDENT_FULL_NAME' => build_name(attrs[:decendentFullName]&.transform_keys(&:to_s))[:full],
+          'DECEDENT_SSN' => attrs[:decendentSsn],
+          'DECEDENT_DATE_OF_DEATH' => format_date(attrs[:decendentDateOfDeath]),
+          'DECEDENT_DATE_OF_DISPOSITION' => format_date(attrs[:decendentDateOfDisposition]),
           'CAUSE_OF_DEATH' => attrs[:causeOfDeath],
           'UNDERLYING_CAUSE_OF_DEATH_B' => attrs[:underlyingCauseOfDeathB],
           'UNDERLYING_CAUSE_OF_DEATH_C' => attrs[:underlyingCauseOfDeathC],
           'UNDERLYING_CAUSE_OF_DEATH_D' => attrs[:underlyingCauseOfDeathD],
           'MANNER_OF_DEATH' => attrs[:mannerOfDeath],
-          'DECEDENT_MARITAL_STATUS' => attrs[:decedentMaritalStatus]
+          'DECEDENT_MARITAL_STATUS' => attrs[:decendentMaritalStatus]
         }
       end
     end

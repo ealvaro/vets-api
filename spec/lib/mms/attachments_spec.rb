@@ -61,19 +61,19 @@ RSpec.describe Mms::Attachments do
         idpArtifacts: {
           deathCertificates: [
             {
-              decedentFullName: {
+              decendentFullName: {
                 first: 'Jane',
                 last: 'Smith'
               },
-              decedentSsn: '123456789',
-              decedentDateOfDeath: '2024-05-01',
-              decedentDateOfDisposition: '2024-05-02',
+              decendentSsn: '123456789',
+              decendentDateOfDeath: '2024-05-01',
+              decendentDateOfDisposition: '2024-05-02',
               causeOfDeath: 'cause A',
               underlyingCauseOfDeathB: 'cause B',
               underlyingCauseOfDeathC: 'cause C',
               underlyingCauseOfDeathD: 'cause D',
               mannerOfDeath: 'manner',
-              decedentMaritalStatus: 'married'
+              decendentMaritalStatus: 'married'
             }
           ]
         }
@@ -171,32 +171,32 @@ RSpec.describe Mms::Attachments do
     describe '#initialize' do
       it 'sets the attributes correctly' do
         death_cert = Mms::Attachments::DeathCertificate.new(death_cert_attrs)
-        expect(death_cert.attrs[:decedentFullName]).to eq(death_cert_attrs[:decedentFullName])
-        expect(death_cert.attrs[:decedentSsn]).to eq(death_cert_attrs[:decedentSsn])
-        expect(death_cert.attrs[:decedentDateOfDeath]).to eq(death_cert_attrs[:decedentDateOfDeath])
-        expect(death_cert.attrs[:decedentDateOfDisposition]).to eq(death_cert_attrs[:decedentDateOfDisposition])
+        expect(death_cert.attrs[:decendentFullName]).to eq(death_cert_attrs[:decendentFullName])
+        expect(death_cert.attrs[:decendentSsn]).to eq(death_cert_attrs[:decendentSsn])
+        expect(death_cert.attrs[:decendentDateOfDeath]).to eq(death_cert_attrs[:decendentDateOfDeath])
+        expect(death_cert.attrs[:decendentDateOfDisposition]).to eq(death_cert_attrs[:decendentDateOfDisposition])
         expect(death_cert.attrs[:causeOfDeath]).to eq(death_cert_attrs[:causeOfDeath])
         expect(death_cert.attrs[:underlyingCauseOfDeathB]).to eq(death_cert_attrs[:underlyingCauseOfDeathB])
         expect(death_cert.attrs[:underlyingCauseOfDeathC]).to eq(death_cert_attrs[:underlyingCauseOfDeathC])
         expect(death_cert.attrs[:underlyingCauseOfDeathD]).to eq(death_cert_attrs[:underlyingCauseOfDeathD])
         expect(death_cert.attrs[:mannerOfDeath]).to eq(death_cert_attrs[:mannerOfDeath])
-        expect(death_cert.attrs[:decedentMaritalStatus]).to eq(death_cert_attrs[:decedentMaritalStatus])
+        expect(death_cert.attrs[:decendentMaritalStatus]).to eq(death_cert_attrs[:decendentMaritalStatus])
       end
 
       describe '#transform_data' do
         it 'transforms the data correctly' do
           death_cert = Mms::Attachments::DeathCertificate.new(death_cert_attrs)
           transformed = death_cert.transform_data
-          expect(transformed['DECEDENT_FULL_NAME']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).build_name(death_cert_attrs[:decedentFullName].transform_keys(&:to_s))[:full])
-          expect(transformed['DECEDENT_SSN']).to eq(death_cert_attrs[:decedentSsn])
-          expect(transformed['DECEDENT_DATE_OF_DEATH']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).format_date(death_cert_attrs[:decedentDateOfDeath]))
-          expect(transformed['DECEDENT_DATE_OF_DISPOSITION']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).format_date(death_cert_attrs[:decedentDateOfDisposition]))
+          expect(transformed['DECEDENT_FULL_NAME']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).build_name(death_cert_attrs[:decendentFullName].transform_keys(&:to_s))[:full])
+          expect(transformed['DECEDENT_SSN']).to eq(death_cert_attrs[:decendentSsn])
+          expect(transformed['DECEDENT_DATE_OF_DEATH']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).format_date(death_cert_attrs[:decendentDateOfDeath]))
+          expect(transformed['DECEDENT_DATE_OF_DISPOSITION']).to eq(Mms::Attachments::DeathCertificate.new(death_cert_attrs).format_date(death_cert_attrs[:decendentDateOfDisposition]))
           expect(transformed['CAUSE_OF_DEATH']).to eq(death_cert_attrs[:causeOfDeath])
           expect(transformed['UNDERLYING_CAUSE_OF_DEATH_B']).to eq(death_cert_attrs[:underlyingCauseOfDeathB])
           expect(transformed['UNDERLYING_CAUSE_OF_DEATH_C']).to eq(death_cert_attrs[:underlyingCauseOfDeathC])
           expect(transformed['UNDERLYING_CAUSE_OF_DEATH_D']).to eq(death_cert_attrs[:underlyingCauseOfDeathD])
           expect(transformed['MANNER_OF_DEATH']).to eq(death_cert_attrs[:mannerOfDeath])
-          expect(transformed['DECEDENT_MARITAL_STATUS']).to eq(death_cert_attrs[:decedentMaritalStatus])
+          expect(transformed['DECEDENT_MARITAL_STATUS']).to eq(death_cert_attrs[:decendentMaritalStatus])
         end
       end
     end

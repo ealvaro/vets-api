@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'mms/data_formatting'
-require 'mms/attachments'
 
 module SurvivorsBenefits
   module StructuredData
@@ -20,7 +19,6 @@ module SurvivorsBenefits
         include SurvivorsBenefits::StructuredData::V2025::Section11
         include SurvivorsBenefits::StructuredData::V2025::Section12
         include Mms::DataFormatting
-        include Mms::Attachments
 
         attr_reader :form
         attr_accessor :fields
@@ -60,7 +58,6 @@ module SurvivorsBenefits
           build_section10
           build_section11(form['bankAccount'])
           build_section12
-          add_attached_files_data if Flipper.enabled?(:include_CAVE_attachment_structured_data)
           fill_veteran_ssn_reference_fields
           transform_booleans(fields)
           transform_nils_to_empty_strings(fields)
@@ -95,17 +92,6 @@ module SurvivorsBenefits
 
         def transform_irregular_fields
           fields.transform_keys!(IRREGULAR_FIELD_TRANSFORMS)
-        end
-
-        def add_attached_files_data
-          return unless form['files']
-
-          attachments_service = Mms::Attachments::Service.new(form['files'])
-          attachments_service.files.each_value do |attached_file|
-            next unless attached_file&.form_data
-
-            fields.merge!(attached_file.form_data)
-          end
         end
       end
     end

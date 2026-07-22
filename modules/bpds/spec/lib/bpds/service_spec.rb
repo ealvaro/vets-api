@@ -66,6 +66,19 @@ RSpec.describe BPDS::Service do
       }
       expect(service.send(:default_payload, formatted_claim_form, form_id, identifiers)).to eq(expected_payload)
     end
+
+    it 'omits the attachments key when no attachments are given' do
+      payload = service.send(:default_payload, formatted_claim_form, form_id, {})
+      expect(payload['bpd']).not_to have_key('attachments')
+    end
+
+    it 'places attachments alongside payload in the bpd envelope when present' do
+      attachments = [{ 'index' => 1, 'name' => 'doc.pdf' }]
+      payload = service.send(:default_payload, formatted_claim_form, form_id, {}, attachments)
+
+      expect(payload['bpd']['attachments']).to eq(attachments)
+      expect(payload['bpd']['payload']).to eq(formatted_claim_form)
+    end
   end
 
   describe '#bpds_namespace' do

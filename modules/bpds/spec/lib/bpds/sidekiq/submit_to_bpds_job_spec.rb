@@ -51,7 +51,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
           described_class.new.perform(claim.id, encrypted_payload)
 
           identifiers = { 'participant_id' => participant_id }
-          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers,
+                                                              attachments: nil)
           expect(bpds_submission.submission_attempts).to have_received(:create).with(
             status: 'submitted',
             response: response.to_json,
@@ -66,7 +67,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
           described_class.new.perform(claim.id, encrypted_payload_file_number)
 
           identifiers = { 'file_number' => file_number }
-          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers,
+                                                              attachments: nil)
           expect(bpds_submission.submission_attempts).to have_received(:create).with(
             status: 'submitted',
             response: response.to_json,
@@ -88,7 +90,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
 
           described_class.new.perform(claim.id, encrypted)
 
-          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
+          expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers,
+                                                              attachments: nil)
           expect(bpds_submission.submission_attempts).to have_received(:create).with(
             status: 'submitted',
             response: response.to_json,
@@ -160,7 +163,37 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
         expect(formatter).to have_received(:format)
 
         identifiers = { 'participant_id' => participant_id }
-        expect(service).to have_received(:submit_json).with(formatted_data, '21P-530EZ', identifiers)
+        expect(service).to have_received(:submit_json).with(formatted_data, '21P-530EZ', identifiers, attachments: nil)
+      end
+    end
+
+    context 'when the formatter provides attachments' do
+      let(:sb_claim) { create(:pensions_saved_claim) }
+      let(:formatter) { double('Formatter') }
+      let(:formatted_data) { { 'formatted' => 'data' } }
+      let(:attachments) { [{ 'index' => 1, 'name' => 'dd214.pdf' }] }
+      let(:formatter_class) do
+        Class.new do
+          def initialize(_parsed_form); end
+          def format; end
+          def attachments; end
+        end
+      end
+
+      before do
+        allow(sb_claim).to receive(:form_id).and_return('21P-534EZ')
+        allow(SavedClaim).to receive(:find).with(sb_claim.id).and_return(sb_claim)
+        stub_const('SurvivorsBenefits::BPDS::Formatter', formatter_class)
+        allow(formatter_class).to receive(:new).with(sb_claim.parsed_form).and_return(formatter)
+        allow(formatter).to receive_messages(format: formatted_data, attachments:)
+      end
+
+      it 'passes the attachments through to the service' do
+        described_class.new.perform(sb_claim.id, encrypted_payload)
+
+        identifiers = { 'participant_id' => participant_id }
+        expect(service).to have_received(:submit_json).with(formatted_data, '21P-534EZ', identifiers,
+                                                            attachments:)
       end
     end
 
@@ -169,7 +202,8 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
         described_class.new.perform(claim.id, encrypted_payload)
 
         identifiers = { 'participant_id' => participant_id }
-        expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers)
+        expect(service).to have_received(:submit_json).with(claim.parsed_form, claim.form_id, identifiers,
+                                                            attachments: nil)
       end
     end
   end
