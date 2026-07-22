@@ -152,6 +152,54 @@ RSpec.describe IvcChampva::Attachments do
     end
   end
 
+  describe '#get_attachments ordering' do
+    let(:data) do
+      {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code-front' },
+          { 'confirmation_code' => 'code-7959c' }
+        ]
+      }
+    end
+
+    let(:front_attachment) do
+      double('PersistentAttachment',
+             guid: 'code-front',
+             created_at: Time.zone.now,
+             to_pdf: 'tmp/front.pdf')
+    end
+
+    let(:ohi_attachment) do
+      double('PersistentAttachment',
+             guid: 'code-7959c',
+             created_at: front_attachment.created_at,
+             to_pdf: 'tmp/10-7959c.pdf')
+    end
+
+    before do
+      # Simulate non-deterministic DB order for equal timestamps
+      allow(PersistentAttachment).to receive(:where)
+        .with(guid: %w[code-front code-7959c])
+        .and_return([ohi_attachment, front_attachment])
+    end
+
+    it 'uses confirmation_code order to break created_at ties when flipper is enabled' do
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      attachments = test_instance.send(:get_attachments)
+
+      expect(attachments).to eq(['tmp/front.pdf', 'tmp/10-7959c.pdf'])
+    end
+
+    it 'uses created_at ordering when flipper is disabled' do
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(false)
+
+      attachments = test_instance.send(:get_attachments)
+
+      expect(attachments).to eq(['tmp/10-7959c.pdf', 'tmp/front.pdf'])
+    end
+  end
+
   describe '#get_blank_page' do
     let(:blank_page_template_path) { Rails.root.join('modules', 'ivc_champva', 'templates', 'blank_page.pdf').to_path }
 

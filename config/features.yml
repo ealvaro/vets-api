@@ -476,6 +476,9 @@ features:
   champva_document_merging:
     actor_type: user
     description: Master toggle for CHAMPVA document combining functionality
+  champva_supporting_docs_ordering:
+    actor_type: user
+    description: Uses supporting_docs confirmation_code order to break CHAMPVA attachment created_at ties.
   champva_docmerge_10_7959a_cva_bene_response:
     actor_type: user
     description: Enables combining CVA Bene Response documents for 10-7959a submissions

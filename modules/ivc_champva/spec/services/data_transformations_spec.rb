@@ -172,6 +172,51 @@ RSpec.describe IvcChampva::DataTransformations do
 
       expect { form.supporting_document_ids(invalid_data) }.to raise_error(NoMethodError)
     end
+
+    it 'keeps original supporting_docs order when created_at timestamps are equal and flipper is enabled' do
+      equal_time = Time.zone.now
+      tie_break_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code1', 'attachment_id' => 'Front of insurance card' },
+          { 'confirmation_code' => 'code2', 'attachment_id' => 'VA form 10-7959c' }
+        ]
+      }
+
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code1')
+        .and_return(double('Record1', created_at: equal_time, file: double(id: 'file1')))
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code2')
+        .and_return(double('Record2', created_at: equal_time, file: double(id: 'file2')))
+
+      result = form.supporting_document_ids(tie_break_data)
+      expect(result).to eq(['Front of insurance card', 'VA form 10-7959c'])
+    end
+
+    it 'preserves created_at-only ordering when created_at timestamps are equal and flipper is disabled' do
+      equal_time = Time.zone.now
+      tie_break_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code1', 'attachment_id' => 'Front of insurance card' },
+          { 'confirmation_code' => 'code2', 'attachment_id' => 'VA form 10-7959c' }
+        ]
+      }
+
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(false)
+
+      # Simulate non-deterministic DB retrieval order for equal created_at values.
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code1')
+        .and_return(double('Record1', created_at: equal_time, file: double(id: 'file2')))
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code2')
+        .and_return(double('Record2', created_at: equal_time, file: double(id: 'file1')))
+
+      result = form.supporting_document_ids(tie_break_data)
+      expect(result).to eq(['Front of insurance card', 'VA form 10-7959c'])
+    end
   end
 
   describe '#applicant_pdf_count' do

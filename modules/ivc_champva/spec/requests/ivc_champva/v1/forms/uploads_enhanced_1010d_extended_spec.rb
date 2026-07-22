@@ -74,6 +74,7 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     created = Time.zone.parse('2024-06-01 12:00:00')
     attachment_record = instance_double(
       PersistentAttachment,
+      guid: confirmation_code,
       created_at: created,
       to_pdf: @supporting_pdf_for_mv
     )

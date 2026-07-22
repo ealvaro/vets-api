@@ -41,14 +41,22 @@ module IvcChampva
     # @return [Array<String>] Sorted array of attachment ID strings
     def supporting_document_ids(parsed_form_data)
       cached_uploads = []
-      parsed_form_data['supporting_docs']&.each do |d|
+      parsed_form_data['supporting_docs']&.each_with_index do |d, index|
         record = PersistentAttachments::MilitaryRecords.find_by(guid: d['confirmation_code'])
         cached_uploads.push({ attachment_id: d['attachment_id'],
                               created_at: record.created_at,
-                              file_name: record.file.id })
+                              file_name: record.file.id,
+                              index: })
       end
 
-      attachment_ids = cached_uploads.sort_by { |h| h[:created_at] }.pluck(:attachment_id)&.compact.presence
+      sorted_uploads = if Flipper.enabled?(:champva_supporting_docs_ordering)
+                         # Keep created_at ordering, but break ties by original supporting_docs order
+                         # to stay aligned with attachment file ordering.
+                         cached_uploads.sort_by { |h| [h[:created_at], h[:index]] }
+                       else
+                         cached_uploads.sort_by { |h| h[:created_at] }
+                       end
+      attachment_ids = sorted_uploads.pluck(:attachment_id)&.compact.presence
 
       attachment_ids || parsed_form_data['supporting_docs']&.pluck('attachment_id')&.compact.presence ||
         parsed_form_data['supporting_docs']&.pluck('claim_id')&.compact.presence || []
