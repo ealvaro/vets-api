@@ -1591,6 +1591,9 @@ features:
   form214502:
     actor_type: user
     description: Enable the form 21-4502
+  form214502_new_form_flow:
+    actor_type: user
+    description: Enables the new flow for the 21-4502 form
   form214502_planned_address:
     actor_type: user
     description: Enables new checkbox on the Planned Address page
