@@ -8,8 +8,8 @@ module SignIn
       @access_token_jwt = access_token_jwt
     end
 
-    def perform(with_validation: true)
-      decoded_token = jwt_decode_access_token(with_validation)
+    def perform(with_validation: true, verify_expiration: true)
+      decoded_token = jwt_decode_access_token(with_validation, verify_expiration)
       AccessToken.new(
         uuid: decoded_token.jti,
         session_handle: decoded_token.session_handle,
@@ -30,13 +30,13 @@ module SignIn
 
     private
 
-    def jwt_decode_access_token(with_validation)
+    def jwt_decode_access_token(with_validation, verify_expiration)
       decoded_jwt = JWT.decode(
         access_token_jwt,
         decode_key_array,
         with_validation,
         {
-          verify_expiration: with_validation,
+          verify_expiration:,
           algorithm: Constants::AccessToken::JWT_ENCODE_ALGORITHM
         }
       )&.first

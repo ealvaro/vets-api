@@ -5,12 +5,13 @@ require 'rails_helper'
 RSpec.describe SignIn::AccessTokenJwtDecoder do
   describe '#perform' do
     subject do
-      SignIn::AccessTokenJwtDecoder.new(access_token_jwt:).perform(with_validation:)
+      SignIn::AccessTokenJwtDecoder.new(access_token_jwt:).perform(with_validation:, verify_expiration:)
     end
 
     let(:access_token_jwt) { SignIn::AccessTokenJwtEncoder.new(access_token:).perform }
     let(:access_token) { create(:access_token) }
     let(:with_validation) { true }
+    let(:verify_expiration) { true }
     let(:client_config) { create(:client_config) }
     let(:client_id) { client_config.client_id }
 
@@ -24,6 +25,18 @@ RSpec.describe SignIn::AccessTokenJwtDecoder do
 
         it 'returns an access token expired error' do
           expect { subject }.to raise_error(expected_error, expected_error_message)
+        end
+
+        context 'and expiration validation is disabled' do
+          let(:verify_expiration) { false }
+
+          before do
+            allow(SignIn::AccessToken).to receive(:new).and_return(access_token)
+          end
+
+          it 'returns the decoded access token' do
+            expect(subject).to eq access_token
+          end
         end
       end
 
@@ -74,6 +87,14 @@ RSpec.describe SignIn::AccessTokenJwtDecoder do
 
         it 'returns an access token signature mismatch error' do
           expect { subject }.to raise_error(expected_error, expected_error_message)
+        end
+
+        context 'and expiration validation is disabled' do
+          let(:verify_expiration) { false }
+
+          it 'returns an access token signature mismatch error' do
+            expect { subject }.to raise_error(expected_error, expected_error_message)
+          end
         end
       end
 

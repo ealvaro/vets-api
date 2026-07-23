@@ -17,6 +17,7 @@ module V0
       rescue ::SignIn::Errors::LogoutAuthorizationError, ::SignIn::Errors::SessionNotAuthorizedError,
              ::SignIn::Errors::SessionNotFoundError => e
         log_logout_error(e)
+        delete_cookies if token_cookies
         perform_logout_redirect(logingov_logout_for_okta? ? ::SignIn::Constants::Auth::LOGINGOV : nil)
       rescue => e
         log_logout_error(e)
@@ -30,7 +31,7 @@ module V0
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Client id is not valid'
         end
 
-        unless access_token_authenticate(skip_render_error: true)
+        unless access_token_authenticate(skip_render_error: true, verify_expiration: false)
           raise ::SignIn::Errors::LogoutAuthorizationError.new message: 'Unable to authorize access token'
         end
 

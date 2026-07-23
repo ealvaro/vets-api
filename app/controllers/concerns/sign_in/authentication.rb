@@ -34,8 +34,8 @@ module SignIn
       nil
     end
 
-    def access_token_authenticate(skip_render_error: false, re_raise: false)
-      access_token.present?
+    def access_token_authenticate(skip_render_error: false, re_raise: false, verify_expiration: true)
+      access_token(verify_expiration:).present?
     rescue Errors::AccessTokenExpiredError => e
       raise if re_raise
 
@@ -48,8 +48,8 @@ module SignIn
 
     private
 
-    def access_token
-      @access_token ||= authenticate_access_token
+    def access_token(verify_expiration: true)
+      @access_token ||= authenticate_access_token(verify_expiration:)
     end
 
     def bearer_token
@@ -63,10 +63,10 @@ module SignIn
       cookies[access_token_cookie_name]
     end
 
-    def authenticate_access_token(with_validation: true)
+    def authenticate_access_token(with_validation: true, verify_expiration: true)
       access_token_jwt = bearer_token || cookie_access_token
 
-      AccessTokenJwtDecoder.new(access_token_jwt:).perform(with_validation:)
+      AccessTokenJwtDecoder.new(access_token_jwt:).perform(with_validation:, verify_expiration:)
     end
 
     def load_user_object

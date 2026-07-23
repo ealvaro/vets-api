@@ -23,9 +23,21 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       create(:access_token, session_handle: oauth_session.handle, client_id: client_config.client_id, expiration_time:)
     end
     let(:expiration_time) { Time.zone.now + SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
+    let(:expected_cleared_cookies) do
+      {
+        SignIn::Constants::Auth::ACCESS_TOKEN_COOKIE_NAME => nil,
+        SignIn::Constants::Auth::REFRESH_TOKEN_COOKIE_NAME => nil,
+        SignIn::Constants::Auth::ANTI_CSRF_COOKIE_NAME => nil,
+        SignIn::Constants::Auth::INFO_COOKIE_NAME => nil
+      }
+    end
 
     before do
       request.headers['Authorization'] = authorization
+      request.cookies[SignIn::Constants::Auth::ACCESS_TOKEN_COOKIE_NAME] = access_token
+      request.cookies[SignIn::Constants::Auth::REFRESH_TOKEN_COOKIE_NAME] = 'some-refresh-token'
+      request.cookies[SignIn::Constants::Auth::ANTI_CSRF_COOKIE_NAME] = 'some-anti-csrf-token'
+      request.cookies[SignIn::Constants::Auth::INFO_COOKIE_NAME] = 'some-info-token'
       allow(Rails.logger).to receive(:info)
     end
 
@@ -76,6 +88,10 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         subject
       end
 
+      it 'deletes the token cookies' do
+        expect(subject.cookies).to eq(expected_cleared_cookies)
+      end
+
       context 'when client configuration has not configured a logout redirect uri' do
         let(:logout_redirect_uri) { nil }
         let(:expected_error_status) { :ok }
@@ -124,6 +140,10 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
         expect { subject }.to change {
           SignIn::OAuthSession.find_by(handle: access_token_object.session_handle)
         }.from(oauth_session).to(nil)
+      end
+
+      it 'deletes the token cookies' do
+        expect(subject.cookies).to eq(expected_cleared_cookies)
       end
 
       it 'logs the logout call' do
@@ -253,50 +273,40 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
 
         it_behaves_like 'authorization error response'
       end
-    end
-
-    context 'when not successfully authenticated' do
-      let(:expected_error) { 'Unable to authorize access token' }
 
       context 'and the access token is expired' do
         let(:expiration_time) { Time.zone.now - SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES }
-        let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
-        it 'does not delete the OAuthSession object and clears cookies' do
-          expect { subject }.not_to change(SignIn::OAuthSession, :count)
-          expect(subject.cookies).to be_empty
+        it 'deletes the OAuthSession object matching the session_handle in the access token' do
+          expect { subject }.to change {
+            SignIn::OAuthSession.find_by(handle: access_token_object.session_handle)
+          }.from(oauth_session).to(nil)
         end
 
-        it 'logs a logout error' do
-          expect(Rails.logger).to receive(:info).with('[SignInService] [V0::SignInController] logout error',
-                                                      { errors: expected_error, error_code:, client_id: client_id_value,
-                                                        post_logout_redirect_uri:, csp_type: nil })
-          subject
+        it 'deletes the token cookies' do
+          expect(subject.cookies).to eq(expected_cleared_cookies)
         end
 
-        context 'and client_id has a client configuration with a configured logout redirect uri' do
-          let(:logout_redirect_uri) { 'https://some-logout-redirect-uri.com' }
-          let(:expected_status) { :redirect }
-
-          it 'returns redirect status' do
-            expect(subject).to have_http_status(expected_status)
-          end
-
-          it 'redirects to the configured logout redirect uri' do
-            expect(subject).to redirect_to(logout_redirect_uri)
-          end
+        it 'triggers statsd increment for successful call' do
+          expect { subject }.to trigger_statsd_increment(statsd_success)
         end
 
-        context 'and client_id does not have a client configuration with a configured logout redirect uri' do
-          let(:logout_redirect_uri) { nil }
-          let(:expected_status) { :ok }
+        it 'redirects to the configured logout redirect uri' do
+          expect(subject).to redirect_to(logout_redirect_uri)
+        end
 
-          it 'returns ok status' do
-            expect(subject).to have_http_status(expected_status)
-          end
+        context 'and no session is found matching the access token session_handle' do
+          let(:expected_error) { SignIn::Errors::SessionNotFoundError }
+          let(:expected_error_message) { 'Session not found' }
+
+          before { oauth_session.destroy! }
+
+          it_behaves_like 'authorization error response'
         end
       end
+    end
 
+    context 'when not successfully authenticated' do
       context 'and the access token is invalid' do
         let(:access_token) { 'some-invalid-access-token' }
         let(:expected_error) { SignIn::Errors::LogoutAuthorizationError }
