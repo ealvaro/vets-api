@@ -955,7 +955,7 @@ lib/benefits_claims/title_generator.rb @software/benefits-management-tools-be
 lib/benefits_documents @software/benefits-management-tools-be
 lib/benefits_intake_service @software/benefits-dependents-management
 lib/bgs @software/benefits-dependents-management
-lib/bep @software/disability-benefits
+lib/bep @software/govcio-vfep-codereviewers
 lib/carma @software/health-apps-backend
 lib/caseflow @software/lighthouse-banana-peels
 lib/cave @software/bio-huntridge
@@ -1641,7 +1641,7 @@ spec/lib/benefits_claims/title_generator_spec.rb @software/benefits-management-t
 spec/lib/benefits_documents @software/benefits-management-tools-be
 spec/lib/benefits_intake_service @software/benefits-dependents-management
 spec/lib/bgs @software/benefits-dependents-management
-spec/lib/bep @software/disability-benefits
+spec/lib/bep @software/govcio-vfep-codereviewers
 spec/lib/breakers @software/va-platform-backend
 spec/lib/carma @software/health-apps-backend
 spec/lib/caseflow @software/lighthouse-banana-peels
@@ -2518,7 +2518,7 @@ spec/support/vcr_cassettes/banners/get_banners_with_type_success.yml @software/v
 spec/support/vcr_cassettes/bb_client @software/vfs-vaos
 spec/support/vcr_cassettes/bgs @software/benefits-dependents-management
 spec/support/vcr_cassettes/bgs/benefit_claim @software/benefits-management-tools-be
-spec/support/vcr_cassettes/bep @software/disability-benefits
+spec/support/vcr_cassettes/bep @software/govcio-vfep-codereviewers
 spec/support/vcr_cassettes/brd @software/disability-benefits
 spec/support/vcr_cassettes/carma @software/health-apps-backend
 spec/support/vcr_cassettes/caseflow @software/lighthouse-banana-peels

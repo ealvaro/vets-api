@@ -8,6 +8,8 @@ require 'bgs/vnp_benefit_claim'
 require 'bgs/dependents'
 require 'bgs/marriages'
 require 'bgs/children'
+require 'bgs/student_school'
+require 'bgs/dependent_higher_ed_attendance'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -29,12 +31,15 @@ module DependentsBenefits::Sidekiq
       # create claim in BGS using the above claims api claim id
       # check for successful submission
       # record status via new submission + attempt
+      is_674_only = parent_claim.submittable_674? && !parent_claim.submittable_686?
 
-      vbms_claim_id, = create_claim_via_claims_api
+      claim_type = is_674_only ? '130SCHATTEBN' : '130DPNEBNADJ'
+      vbms_claim_id = create_claim_via_claims_api(claim_type)
+      create_contentions_via_claims_api(vbms_claim_id) unless is_674_only
 
       vnp_response = bgs_service.create_proc(proc_state: 'Started')
       proc_id = vnp_response[:vnp_proc_id]
-      send_data_to_vnp_tables(proc_id, vbms_claim_id)
+      send_data_to_vnp_tables(proc_id, vbms_claim_id, claim_type)
 
       bgs_service.update_proc(proc_id, proc_state: 'Ready')
 
@@ -42,20 +47,93 @@ module DependentsBenefits::Sidekiq
     end
 
     ##
-    # Call ClaimsAPI to create claim and contentions
+    # Call ClaimsAPI to create claim
     # ref: https://claims-uat.stage.bip.va.gov/swagger-ui.html#/
     #
-    # @return [claim_id, contention_ids]
-    def create_claim_via_claims_api
-      claim_id = nil
-      contention_ids = []
-      # TODO: Future PR: use ClaimsAPI service to create new claim
+    # @return [claim_id]
+    def create_claim_via_claims_api(claim_type)
+      response = claims_api_service.create_claim(create_claim_params(claim_type))
+      response['claim_id']
+    rescue => e
+      monitor.track_error_event('Failed to create claim via claims api',
+                                action: 'create_claim', component:, error: e.message,
+                                parent_claim_id:)
+      raise
+    end
 
-      # TODO: Future PR: add each dependent as a contention
-      # parent_claim.each_dependents do |d|
-      #   contention_ids << claims_api_service.create_contention(contention_params)
-      # end
-      [claim_id, contention_ids]
+    ##
+    # Params needed for ClaimsAPI to create claim
+    # ref: https://claims-uat.stage.bip.va.gov/swagger-ui.html#/
+    #
+    # @return [Hash]
+    def create_claim_params(claim_type_code)
+      user = generate_user_struct
+      {
+        serviceTypeCode: 'CP',
+        programTypeCode: 'CPL',
+        benefitClaimTypeCode: claim_type_code,
+        claimant: {
+          participantId: user.participant_id
+        },
+        veteran: {
+          participantId: user.participant_id,
+          firstName: user.first_name,
+          lastName: user.last_name
+        },
+        dateOfClaim: parent_claim.created_at.iso8601,
+        tempStationOfJurisdiction: 281,
+        submtrRoleTypeCd: 'VBA',
+        submtrApplcnTypeCd: 'VBMS'
+      }
+    end
+
+    ##
+    # Call ClaimsAPI to create contentions
+    # ref: https://claims-uat.stage.bip.va.gov/swagger-ui.html#/
+    #
+    # @return [contention_ids]
+    def create_contentions_via_claims_api(claim_id)
+      contentions = []
+      application_data = parent_claim.parsed_form['dependents_application']
+
+      # fortunately these are all formatted similarly so we can consolidate parsing logic
+      %w[student_information deaths children_to_add step_children child_marriage
+         child_stopped_attending_school].each do |key|
+        (application_data[key] || []).each do |data|
+          contentions << create_contention_params(format_full_name(data['full_name']))
+        end
+      end
+
+      # divorce
+      if (divorce_name = application_data.dig('report_divorce', 'full_name')).present?
+        contentions << create_contention_params(format_full_name(divorce_name))
+      end
+
+      # marriage
+      if (marriage_name = application_data.dig('spouse_information', 'full_name')).present?
+        contentions << create_contention_params(format_full_name(marriage_name))
+      end
+
+      response = claims_api_service.create_contentions(claim_id, { createContentions: contentions })
+      response['contention_ids']
+    rescue => e
+      monitor.track_error_event('Failed to create contentions via claims api', action: 'create_contentions', component:,
+                                                                               error: e.message, parent_claim_id:)
+      raise
+    end
+
+    # Params for creating a contention via the Claims API
+    #
+    # @param name [String]name
+    # @return [Hash]
+    def create_contention_params(name)
+      {
+        medicalInd: false,
+        contentionTypeCode: 'NEW',
+        classificationType: 8925,
+        claimantText: "Dependency claim for #{name}",
+        beginDate: parent_claim.created_at.iso8601
+      }
     end
 
     # Sends form data to VNP tables (via BGS)
@@ -63,15 +141,82 @@ module DependentsBenefits::Sidekiq
     # @param proc_id [String] proc_id
     # @param vbms_claim_id [String] claim id
     # @return [void]
-    def send_data_to_vnp_tables(_proc_id, _vbms_claim_id)
-      generate_user_struct
-      # create the participant, address, person, and phone records in VNP tables
-      # upload data for each spouse, child, parent, etc
-      # veteran_marriage_history, spouse_marriage_history, add_spouse
-      # children_to_add, step_children, child_marriage, child_stopped_attending_school
-      # loop through 'students' array in form data to capture 674 entries
+    def send_data_to_vnp_tables(proc_id, vbms_claim_id, claim_type)
+      user = generate_user_struct
+
+      send_vnp_proc_forms(proc_id)
+
+      veteran = ::BGS::VnpVeteran.new(proc_id:, payload: normalized_data, user:, claim_type:).create
+
+      send_vnp_relationship(proc_id, veteran)
+
       # create the claim record in VNP tables
+      vnp_benefit_claim = ::BGS::VnpBenefitClaim.new(proc_id:, veteran:, user:)
+      vnp_benefit_claim_record = vnp_benefit_claim.create
+
       # update the VNP claim to reference the claim created via the claims api
+      vnp_benefit_claim.update({
+                                 claim_type_code: claim_type,
+                                 benefit_claim_id: vbms_claim_id,
+                                 program_type_code: 'CPL',
+                                 status_type_code: 'PEND'
+                               }, vnp_benefit_claim_record)
+    rescue => e
+      monitor.track_error_event('Failed to send data to VNP tables',
+                                action: 'send_vnp_data', component:, error: e.message,
+                                parent_claim_id:)
+      raise
+    end
+
+    # Send create_proc_form data to VNP tables
+    def send_vnp_proc_forms(proc_id)
+      if parent_claim.submittable_686?
+        bgs_service.create_proc_form(proc_id,
+                                     ::DependentsBenefits::ADD_REMOVE_DEPENDENT.downcase)
+      end
+      if parent_claim.submittable_674?
+        bgs_service.create_proc_form(proc_id,
+                                     ::DependentsBenefits::SCHOOL_ATTENDANCE_APPROVAL)
+      end
+    end
+
+    # Send relationship data to VNP tables
+    def send_vnp_relationship(proc_id, veteran)
+      user = generate_user_struct
+      # upload data for each spouse, child, parent, etc
+      # report_death, report_divorce
+      dependents = ::BGS::Dependents.new(proc_id:, payload: normalized_data, user:).create_all
+
+      # veteran_marriage_history, spouse_marriage_history, add_spouse
+      marriages = ::BGS::Marriages.new(proc_id:, payload: normalized_data, user:).create_all
+
+      # children_to_add, step_children, child_marriage, child_stopped_attending_school
+      children = ::BGS::Children.new(proc_id:, payload: normalized_data, user:).create_all
+
+      # student_information (i.e. 674-related children 18-23)
+      students = (normalized_data.dig('dependents_application', 'student_information') || []).map do |student|
+        result = ::BGS::DependentHigherEdAttendance.new(proc_id:, payload: normalized_data, user:, student:).create
+        ::BGS::StudentSchool.new(
+          proc_id:, vnp_participant_id: result[:vnp_participant_id], payload: normalized_data,
+          user:, student:
+        ).create
+        result
+      end
+
+      ::BGS::VnpRelationships.new(
+        proc_id:,
+        veteran:,
+        dependents: dependents + marriages + children[:dependents] + students,
+        step_children: children[:step_children],
+        user:
+      ).create_all
+    end
+
+    # Normalizes the form data by handling special characters
+    #
+    # @return [Hash] normalized form data object
+    def normalized_data
+      @normalized_data ||= ::BGS::Job.new.normalize_names_and_addresses!(parent_claim.parsed_form)
     end
 
     # Generates an OpenStruct representing a user from stored user data
@@ -108,6 +253,24 @@ module DependentsBenefits::Sidekiq
     # @return [BGS::Service] BGS service object
     def bgs_service
       @bgs_service ||= ::BGS::Service.new(generate_user_struct)
+    end
+
+    # Memoized Claims API service
+    #
+    # @return [BEP::Claims::Service] BEP Claims API service object
+    def claims_api_service
+      @claims_api_service ||= ::BEP::Claims::Service.new
+    end
+
+    # Format full name
+    #
+    # Helper method to turn a name Hash into a string
+    # @param [Hash] full_name
+    # @return [string] name
+    def format_full_name(full_name)
+      return '' if full_name.blank?
+
+      "#{full_name['first']} #{full_name['last']}"
     end
   end
 end

@@ -37,7 +37,7 @@ RSpec.describe BEP::Claims::Service do
     end
   end
 
-  describe '#create_contention' do
+  describe '#create_contentions' do
     let(:claim_id) { 600_964_424 }
     let(:contention_params) do
       {
@@ -59,8 +59,8 @@ RSpec.describe BEP::Claims::Service do
     end
 
     it 'successfully calls the api' do
-      VCR.use_cassette('bep/claims/create_contention') do
-        response = service.create_contention(claim_id, contention_params)
+      VCR.use_cassette('bep/claims/create_contentions') do
+        response = service.create_contentions(claim_id, contention_params)
 
         expect(response.status).to eq(201)
         expect(response.body['contention_ids']).to eq([868_026])

@@ -32,7 +32,7 @@ module BEP
         end
       end
 
-      def create_contention(claim_id, params)
+      def create_contentions(claim_id, params)
         with_monitoring do
           perform(
             :post,
