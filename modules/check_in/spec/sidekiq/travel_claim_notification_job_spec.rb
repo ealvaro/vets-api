@@ -131,6 +131,57 @@ RSpec.describe CheckIn::TravelClaimNotificationJob do
       expect(StatsD).to have_received(:increment).with(CheckIn::Constants::STATSD_NOTIFY_SUCCESS)
     end
 
+    context 'when VA Notify rejects the request with a 400 BadRequest' do
+      it 'does not retry for an invalid phone number' do
+        invalid_phone_error = VANotify::BadRequest.new(
+          400,
+          'ValidationError: phone_number Not a valid number'
+        )
+        allow(notify_client).to receive(:send_sms).and_raise(invalid_phone_error)
+        job = described_class.new
+
+        expect(StatsD).to receive(:increment).with(CheckIn::Constants::STATSD_NOTIFY_ERROR)
+        expect(Rails.logger).to receive(:send).with(:error, 'CheckIn::TravelClaimNotificationJob',
+                                                    hash_including(
+                                                      message: 'CheckIn::TravelClaimNotificationJob: ' \
+                                                               'Failed to send Travel Claim Notification SMS: ' \
+                                                               'ValidationError: phone_number Not a valid ' \
+                                                               "number, Won't Retry",
+                                                      uuid:,
+                                                      status: 'failed_no_retry',
+                                                      template_id:,
+                                                      phone_last_four: '0123'
+                                                    ))
+
+        expect do
+          job.perform(uuid, appointment_date, template_id, claim_number)
+        end.not_to raise_error
+      end
+
+      it 'does not retry for other malformed request errors' do
+        bad_request = VANotify::BadRequest.new(
+          400,
+          'ValidationError: template_id is not a valid UUID'
+        )
+        allow(notify_client).to receive(:send_sms).and_raise(bad_request)
+        job = described_class.new
+
+        expect(StatsD).to receive(:increment).with(CheckIn::Constants::STATSD_NOTIFY_ERROR)
+        expect(Rails.logger).to receive(:send).with(:error, 'CheckIn::TravelClaimNotificationJob',
+                                                    hash_including(
+                                                      message: 'CheckIn::TravelClaimNotificationJob: ' \
+                                                               'Failed to send Travel Claim Notification SMS: ' \
+                                                               'ValidationError: template_id is not a valid ' \
+                                                               "UUID, Won't Retry",
+                                                      status: 'failed_no_retry'
+                                                    ))
+
+        expect do
+          job.perform(uuid, appointment_date, template_id, claim_number)
+        end.not_to raise_error
+      end
+    end
+
     context 'when an error occurs during SMS sending' do
       before do
         allow(notify_client).to receive(:send_sms).and_raise(StandardError.new('Test error'))
@@ -159,7 +210,21 @@ RSpec.describe CheckIn::TravelClaimNotificationJob do
 
         expect do
           job.perform(uuid, appointment_date, template_id, claim_number)
-        end.to raise_error(StandardError)
+        end.to raise_error(StandardError, 'Test error')
+      end
+
+      it 're-raises a scrubbed exception so Sidekiq failure logs do not include PII' do
+        allow(notify_client).to receive(:send_sms)
+          .and_raise(StandardError.new('Upstream failed for 555-123-4567'))
+        job = described_class.new
+
+        expect do
+          job.perform(uuid, appointment_date, template_id, claim_number)
+        end.to raise_error(StandardError) { |error|
+          expect(error.message).to eq('Upstream failed for [REDACTED]')
+          expect(error.message).not_to include('555-123-4567')
+          expect(error.backtrace).to be_present
+        }
       end
 
       it 'logs UUID only for error messages, not for info messages' do

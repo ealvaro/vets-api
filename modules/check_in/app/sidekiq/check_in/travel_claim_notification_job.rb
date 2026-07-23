@@ -48,24 +48,7 @@ module CheckIn
       # Early return here because there is no sense in retrying if the required fields are missing
       return unless validate_and_log_missing_fields(opts)
 
-      parsed_date = parse_appointment_date(opts)
-
-      begin
-        va_notify_send_sms(opts, parsed_date)
-      rescue => e
-        message = "Failed to send Travel Claim Notification SMS: #{e.message}"
-        log_data = self.class.build_log_data(message, opts, :error)
-        self.class.log_with_context(:error, message, log_data)
-
-        # Explicit re-raise to trigger the retry mechanism
-        raise e
-      end
-
-      # Log API request success (not delivery success - that would require VA Notify callbacks)
-      message = 'Travel Claim Notification SMS API request succeeded'
-      log_data = self.class.build_log_data(message, opts, :info)
-      self.class.log_with_context(:info, message, log_data)
-      StatsD.increment(Constants::STATSD_NOTIFY_SUCCESS)
+      send_notification_sms(opts, parse_appointment_date(opts))
     end
 
     ##
@@ -191,6 +174,55 @@ module CheckIn
     end
 
     private
+
+    ##
+    # Sends the SMS and handles permanent vs retryable failures
+    #
+    # @param opts [Hash] Options hash with phone_number, template_id, uuid, etc.
+    # @param parsed_date [Date, nil] Parsed appointment date
+    # @return [void]
+    def send_notification_sms(opts, parsed_date)
+      job_class = self.class
+
+      begin
+        va_notify_send_sms(opts, parsed_date)
+      rescue VANotify::BadRequest => e
+        # 400s are permanent client errors (e.g. invalid phone). Do not retry.
+        # Delivery callbacks are unreliable for this flow, so fail fast here.
+        job_class.log_failure_no_retry(scrub_pii(e.message), opts)
+        return
+      rescue => e
+        message = "Failed to send Travel Claim Notification SMS: #{scrub_pii(e.message)}"
+        log_data = job_class.build_log_data(message, opts, :error)
+        job_class.log_with_context(:error, message, log_data)
+
+        # Re-raise a scrubbed exception so Sidekiq failure logs do not leak PII
+        raise_scrubbed(e)
+      end
+
+      # Log API request success (not delivery success - that would require VA Notify callbacks)
+      message = 'Travel Claim Notification SMS API request succeeded'
+      log_data = job_class.build_log_data(message, opts, :info)
+      job_class.log_with_context(:info, message, log_data)
+      StatsD.increment(Constants::STATSD_NOTIFY_SUCCESS)
+    end
+
+    ##
+    # Rebuilds +error+ with a scrubbed message, preserving class and backtrace
+    #
+    # @param error [StandardError] The original exception
+    # @raise [StandardError] A new exception of the same class with scrubbed message
+    def raise_scrubbed(error)
+      scrubbed_message = scrub_pii(error.message)
+      scrubbed_error =
+        if error.is_a?(VANotify::Error)
+          error.class.new(error.status_code, scrubbed_message, error.context)
+        else
+          error.exception(scrubbed_message)
+        end
+      scrubbed_error.set_backtrace(error.backtrace)
+      raise scrubbed_error
+    end
 
     def scrub_pii(message)
       Logging::Helper::DataScrubber.scrub(message)
