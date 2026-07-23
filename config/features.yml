@@ -2054,6 +2054,9 @@ features:
       When enabled, displays alerts informing users of OH care team name changes
       (OH to OH renames) for facilities that have migrated from MyVAHealth to VA.gov.
     enable_in_development: false
+  mhv_secure_messaging_pact_team_message_body:
+    actor_type: user
+    description: Enables the PACT Team to be displayed in Secure Messaging message body
   mhv_secure_messaging_triage_group_plain_language:
     actor_type: user
     description: Disables/Enables Secure Messaging recipients group plain language design
