@@ -3,6 +3,11 @@
 module IvcChampva
   module ProdSupportUtilities
     class MissingStatusCleanup
+      # pega_status values that indicate a form is still awaiting a terminal update from Pega.
+      # 'Submitted' is set on a successful S3 upload; nil predates that behavior. Either means
+      # Pega has not yet acknowledged the file.
+      MISSING_PEGA_STATUSES = [nil, 'Submitted'].freeze
+
       # Displays a list of all form submission batches that include a missing PEGA status
       #
       # @param [boolean] silent whether or not to `puts` the batch information
@@ -12,13 +17,13 @@ module IvcChampva
       # @returns [Hash] a hash where keys are form UUIDs and values are arrays of
       #   IvcChampvaForm records matching that UUID
       def get_missing_statuses(silent: false, ignore_last_minute: false, ignore_recent: false)
-        all_nil_statuses = IvcChampvaForm.where(pega_status: nil)
+        missing_statuses = IvcChampvaForm.where(pega_status: MISSING_PEGA_STATUSES)
         if ignore_last_minute
-          all_nil_statuses = all_nil_statuses.where('created_at < ?', 1.minute.ago)
+          missing_statuses = missing_statuses.where('created_at < ?', 1.minute.ago)
         elsif ignore_recent
-          all_nil_statuses = all_nil_statuses.where('created_at < ?', 2.hours.ago)
+          missing_statuses = missing_statuses.where('created_at < ?', 2.hours.ago)
         end
-        batches = batch_records(all_nil_statuses)
+        batches = batch_records(missing_statuses)
 
         return batches if silent
 
@@ -75,10 +80,10 @@ module IvcChampva
       def display_batch(batch)
         return unless batch.count.positive?
 
-        nil_in_batch = batch.where(pega_status: nil)
+        missing_in_batch = batch.where(pega_status: MISSING_PEGA_STATUSES)
 
         form = batch[0] # Grab a representative form
-        fraction = "#{nil_in_batch.length}/#{batch.length}"
+        fraction = "#{missing_in_batch.length}/#{batch.length}"
         # rubocop:disable Rails/Output
         puts '---'
         puts "#{form.first_name} #{form.last_name} missing PEGA status on #{fraction} attachments - #{form.email}\n"
@@ -99,7 +104,7 @@ module IvcChampva
       #   IvcChampvaForm records matching that UUID
       def manually_process_batch(batch)
         batch.each do |form|
-          next unless form.pega_status.nil?
+          next unless MISSING_PEGA_STATUSES.include?(form.pega_status)
 
           # In this context, `form.file_name` has this structure: "#{uuid}_#{form_id}_supporting_doc-#{index}.pdf"
           Rails.logger.info("IVC ChampVA Forms - Setting #{form.file_name} to 'Manually Processed'")

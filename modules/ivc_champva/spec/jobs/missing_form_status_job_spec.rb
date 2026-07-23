@@ -301,6 +301,30 @@ RSpec.describe 'IvcChampva::MissingFormStatusJob', type: :job do
     batch.each(&:destroy)
   end
 
+  it 'excludes OHI VES JSON files when comparing document counts with Pega reports' do
+    form_uuid = SecureRandom.uuid
+    batch = [
+      create(:ivc_champva_form, form_uuid:, file_name: 'main_form.pdf', pega_status: nil, s3_status: '[200]'),
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_10d_ves.json",
+                                pega_status: 'Submitted', s3_status: '[200]'),
+      create(:ivc_champva_form, form_uuid:, file_name: "#{form_uuid}_vha_10_7959c_ohi_ves_0.json",
+                                pega_status: 'Submitted', s3_status: '[200]')
+    ]
+
+    # Pega reports only the main form; VES + OHI VES JSON are ingested by VES, not Pega
+    pega_reports = [{ 'UUID' => form_uuid, 'Status' => 'Processed' }]
+
+    allow(job.pega_api_client).to receive(:record_has_matching_report).and_return(pega_reports)
+    allow(job.missing_status_cleanup).to receive(:manually_process_batch)
+
+    result = job.num_docs_match_reports?(batch)
+
+    expect(result).to be true
+    expect(job.missing_status_cleanup).to have_received(:manually_process_batch).with(batch)
+
+    batch.each(&:destroy)
+  end
+
   it 'reconciles all records when combined PDF submission matches Pega report count' do
     # For combined submissions, the combined PDF has s3_status '[200]' (uploaded to S3),
     # while original file records have s3_status nil (not individually uploaded).

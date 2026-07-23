@@ -224,7 +224,7 @@ module IvcChampva
     # @return [Boolean] true if the file was uploaded to S3 for Pega processing
     def pega_processable?(record)
       return false if record.s3_status.blank?
-      return false if record.file_name&.include?('_ves.json')
+      return false if IvcChampva::FileNaming.ves_json?(record.file_name)
 
       record.s3_status.include?('200')
     end

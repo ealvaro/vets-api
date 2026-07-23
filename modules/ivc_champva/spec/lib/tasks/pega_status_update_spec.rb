@@ -312,7 +312,7 @@ RSpec.describe 'ivc_champva:pega_status_update rake tasks', type: :task do
       it 'shows verification counts between batches' do
         output = capture_stdout { task.invoke }
         expect(output).to match(/Records confirmed 'Manually Processed': \d+/)
-        expect(output).to match(/Records still nil: \d+/)
+        expect(output).to match(/Records still missing \(nil or 'Submitted'\): \d+/)
       end
 
       it 'pauses for user input between batches' do

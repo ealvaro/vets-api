@@ -45,6 +45,28 @@ RSpec.describe IvcChampva::ProdSupportUtilities::MissingStatusCleanup do
       end
     end
 
+    it "includes records with a 'Submitted' pega_status alongside nil ones" do
+      submitted_form = create(:ivc_champva_form, pega_status: 'Submitted', created_at: one_week_ago)
+
+      result = subject.get_missing_statuses(silent: true, ignore_last_minute: true)
+
+      expect(result.keys).to include(submitted_form.form_uuid)
+      # 3 nil forms + 1 submitted form
+      expect(result.keys.count).to eq(4)
+
+      submitted_form.destroy
+    end
+
+    it "excludes records with a terminal pega_status (e.g. 'Processed')" do
+      processed_form = create(:ivc_champva_form, pega_status: 'Processed', created_at: one_week_ago)
+
+      result = subject.get_missing_statuses(silent: true, ignore_last_minute: true)
+
+      expect(result.keys).not_to include(processed_form.form_uuid)
+
+      processed_form.destroy
+    end
+
     it 'filters out records created in the last minute when ignore_last_minute is true' do
       recent_form = create(:ivc_champva_form, pega_status: nil, created_at: Time.now.utc)
 
@@ -235,6 +257,16 @@ RSpec.describe IvcChampva::ProdSupportUtilities::MissingStatusCleanup do
 
       # Status should remain unchanged
       expect(form.reload.pega_status).to eq('Processed')
+    end
+
+    it "processes records with a 'Submitted' pega_status" do
+      form = forms.first
+      form.update(pega_status: 'Submitted')
+
+      batch = IvcChampvaForm.where(form_uuid: form.form_uuid)
+      subject.manually_process_batch(batch)
+
+      expect(form.reload.pega_status).to eq('Manually Processed')
     end
 
     it 'logs information about each processed record' do

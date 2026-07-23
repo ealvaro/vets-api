@@ -31,6 +31,7 @@ namespace :ivc_champva do
     puts '-' * 80
 
     cleanup_util = IvcChampva::ProdSupportUtilities::MissingStatusCleanup.new
+    missing_statuses = IvcChampva::ProdSupportUtilities::MissingStatusCleanup::MISSING_PEGA_STATUSES
     total_updated = 0
     total_forms_found = 0
     processed_uuids = []
@@ -40,13 +41,13 @@ namespace :ivc_champva do
       if batch_index.positive? && !dry_run
         batch_uuids_so_far = processed_uuids + failed_uuids.map { |f| f[:uuid] }
         verified_count = IvcChampvaForm.where(form_uuid: batch_uuids_so_far, pega_status: 'Manually Processed').count
-        nil_remaining = IvcChampvaForm.where(form_uuid: batch_uuids_so_far, pega_status: nil).count
+        missing_remaining = IvcChampvaForm.where(form_uuid: batch_uuids_so_far, pega_status: missing_statuses).count
 
         puts "\n#{'=' * 80}"
         puts "BATCH #{batch_index + 1}/#{total_batches} ready"
         puts '  Verification of previous batches:'
         puts "    Records confirmed 'Manually Processed': #{verified_count}"
-        puts "    Records still nil: #{nil_remaining}"
+        puts "    Records still missing (nil or 'Submitted'): #{missing_remaining}"
         puts '  Press ENTER to continue, or Ctrl+C to abort...'
         puts '=' * 80
         $stdin.gets
@@ -67,25 +68,28 @@ namespace :ivc_champva do
           puts "  Found #{forms.count} form record(s)"
           puts "  Current status distribution: #{forms.group(:pega_status).count}"
 
-          forms_with_nil_status = forms.where(pega_status: nil)
-          forms_with_status = forms.where.not(pega_status: nil)
+          forms_missing_status = forms.where(pega_status: missing_statuses)
+          forms_with_status = forms.where.not(pega_status: missing_statuses)
 
           forms_with_status.each do |f|
             puts "    SKIPPED form ID #{f.id} (#{f.file_name}) - already has status '#{f.pega_status}'"
           end
 
-          updated_count = forms_with_nil_status.count
+          updated_count = forms_missing_status.count
           if updated_count.positive?
             if dry_run
-              forms_with_nil_status.each do |f|
-                puts "    [DRY RUN] Would update form ID #{f.id} (#{f.file_name}) from '#{f.pega_status}' to \
+              forms_missing_status.each do |f|
+                puts "    [DRY RUN] Would update form ID #{f.id} (#{f.file_name}) from '#{f.pega_status || 'nil'}' to \
                 'Manually Processed'"
               end
             else
-              forms_to_update = forms_with_nil_status.map { |f| { id: f.id, file_name: f.file_name } }
-              cleanup_util.manually_process_batch(forms_with_nil_status)
+              forms_to_update = forms_missing_status.map do |f|
+                { id: f.id, file_name: f.file_name, status: f.pega_status || 'nil' }
+              end
+              cleanup_util.manually_process_batch(forms_missing_status)
               forms_to_update.each do |f|
-                puts "    Updated form ID #{f[:id]} (#{f[:file_name]}) from 'nil' to 'Manually Processed'"
+                puts "    Updated form ID #{f[:id]} (#{f[:file_name]}) from " \
+                     "'#{f[:status]}' to 'Manually Processed'"
               end
             end
           end

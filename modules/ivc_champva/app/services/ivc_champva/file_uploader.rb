@@ -124,11 +124,10 @@ module IvcChampva
         file_name = File.basename(file_path).gsub('-tmp', '')
         response_status = upload(file_name, file_path,
                                  IvcChampva::DataTransformations.metadata_for_s3(@metadata, attachment_id, file_path))
-        if bypass_ves_json_flag
-          @form_recorder.insert_form(file_name, response_status) if @insert_db_row && file_name.exclude?('_ves.json')
-        else
-          @form_recorder.insert_form(file_name, response_status) if @insert_db_row # rubocop:disable Style/IfInsideElse
-        end
+        # When bypassing, VES/OHI JSON files are ingested by VES (not Pega) and must not be
+        # persisted, otherwise they linger without a Pega status and skew reconciliation.
+        skip_ves_json = bypass_ves_json_flag && IvcChampva::FileNaming.ves_json?(file_name)
+        @form_recorder.insert_form(file_name, response_status) if @insert_db_row && !skip_ves_json
 
         @form_recorder.insert_combined_docs(file_path, @merge_map, insert_db_row: @insert_db_row)
 

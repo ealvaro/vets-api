@@ -400,6 +400,52 @@ describe IvcChampva::FileUploader do
         uploader.send(:handle_iterative_uploads)
       end
     end
+
+    context 'with OHI VES JSON files' do
+      let(:metadata) do
+        { 'uuid' => '4171e61a-03b5-49f3-8717-dbf340310473',
+          'attachment_ids' => ['Social Security card', 'VES JSON', 'VES OHI JSON'] }
+      end
+      let(:file_paths) do
+        [
+          'tmp/file1.pdf',
+          'tmp/4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json',
+          'tmp/4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ohi_ves_0.json'
+        ]
+      end
+
+      before { allow(uploader).to receive(:upload).and_return([200]) }
+
+      it 'does not persist VES or OHI VES JSON when bypass is enabled' do
+        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
+                                                  @current_user).and_return(true)
+
+        expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
+        expect(form_recorder).not_to receive(:insert_form).with(
+          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json', [200]
+        )
+        expect(form_recorder).not_to receive(:insert_form).with(
+          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ohi_ves_0.json', [200]
+        )
+
+        uploader.send(:handle_iterative_uploads)
+      end
+
+      it 'persists OHI VES JSON when bypass is disabled' do
+        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
+                                                  @current_user).and_return(false)
+
+        expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
+        expect(form_recorder).to receive(:insert_form).with(
+          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json', [200]
+        )
+        expect(form_recorder).to receive(:insert_form).with(
+          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ohi_ves_0.json', [200]
+        )
+
+        uploader.send(:handle_iterative_uploads)
+      end
+    end
   end
 
   describe '#metadata_for_s3 (delegated to DataTransformations)' do
