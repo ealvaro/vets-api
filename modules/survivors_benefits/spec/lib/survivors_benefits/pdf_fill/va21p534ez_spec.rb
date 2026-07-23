@@ -47,6 +47,12 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
         expect(described_class::SIGNATURE_FIELD_NAME).to eq(described_class.signature_field_name)
       end
 
+      it 'uses the alternate V2022 signature field for custodian relationship' do
+        form_data = { 'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18' }
+
+        expect(described_class.signature_field_name(form_data)).to eq('form1[0].#subform[218].SignatureField1[0]')
+      end
+
       it 'uses V2022 merged KEY mapping and KEY alias' do
         expect(described_class.key['veteranFullName']['first'][:key])
           .to eq('form1[0].#subform[207].VeteransFirstName[0]')
@@ -67,6 +73,12 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
       it 'uses the V2025 signature field and SIGNATURE_FIELD_NAME alias' do
         expect(described_class.signature_field_name).to eq('form1[0].#subform[163].SignatureField1[1]')
         expect(described_class::SIGNATURE_FIELD_NAME).to eq(described_class.signature_field_name)
+      end
+
+      it 'uses the alternate V2025 signature field for custodian relationship' do
+        form_data = { 'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18' }
+
+        expect(described_class.signature_field_name(form_data)).to eq('form1[0].#subform[163].SignatureField1[0]')
       end
 
       it 'uses V2025 merged KEY mapping and KEY alias' do
@@ -151,6 +163,52 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
     end
   end
 
+  describe '#merge_fields' do
+    shared_examples 'section12 date signed field selection' do
+      it 'uses dateSignedAlt for the custodian relationship' do
+        form_data = {
+          'veteranSocialSecurityNumber' => '123456789',
+          'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18',
+          'dateSigned' => '2024-01-01'
+        }
+
+        merged_data = described_class.new(form_data).merge_fields
+
+        expect(merged_data['dateSignedAlt']).to eq({ 'month' => '01', 'day' => '01', 'year' => '2024' })
+        expect(merged_data).not_to have_key('dateSigned')
+      end
+
+      it 'uses dateSigned for non-custodian relationships' do
+        form_data = {
+          'veteranSocialSecurityNumber' => '123456789',
+          'claimantRelationship' => 'SURVIVING_SPOUSE',
+          'dateSigned' => '2024-01-01'
+        }
+
+        merged_data = described_class.new(form_data).merge_fields
+
+        expect(merged_data['dateSigned']).to eq({ 'month' => '01', 'day' => '01', 'year' => '2024' })
+        expect(merged_data).not_to have_key('dateSignedAlt')
+      end
+    end
+
+    context 'when the 2025 feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_2025_version_enabled).and_return(false)
+      end
+
+      include_examples 'section12 date signed field selection'
+    end
+
+    context 'when the 2025 feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_2025_version_enabled).and_return(true)
+      end
+
+      include_examples 'section12 date signed field selection'
+    end
+  end
+
   describe '.stamp_signature' do
     let(:pdf_path) { '/tmp/test_form.pdf' }
     let(:stamped_path) { '/tmp/test_form_stamped.pdf' }
@@ -163,6 +221,8 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
     end
 
     it 'stamps the signature when present' do
+      form_data = { 'claimantSignature' => 'Jane Doe' }
+
       expect(datestamp_instance).to receive(:run).with(
         text: 'Jane Doe',
         x: coordinates[:x],
@@ -175,17 +235,36 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
         multistamp: true
       ).and_return(stamped_path)
 
-      result = described_class.stamp_signature(pdf_path, { 'claimantSignature' => 'Jane Doe' })
+      result = described_class.stamp_signature(pdf_path, form_data)
+
+      expect(described_class).to have_received(:signature_overlay_coordinates).with(pdf_path, form_data:)
       expect(result).to eq(stamped_path)
     end
 
-    it 'builds the signature from claimant name when signature is blank' do
+    it 'builds the signature from yourName when signature is blank' do
       expect(datestamp_instance).to receive(:run).and_return(stamped_path)
 
       result = described_class.stamp_signature(pdf_path,
-                                               { 'claimantFullName' => { 'first' => 'Jane', 'middle' => 'Q',
-                                                                         'last' => 'Doe' },
+                                               { 'yourName' => { 'first' => 'Jane', 'middle' => 'Q',
+                                                                 'last' => 'Doe' },
                                                  'claimantSignature' => '' })
+      expect(result).to eq(stamped_path)
+    end
+
+    it 'prefers yourName over claimantFullName for fallback signer text' do
+      expect(datestamp_instance).to receive(:run).with(
+        hash_including(text: 'Correct Signer')
+      ).and_return(stamped_path)
+
+      result = described_class.stamp_signature(
+        pdf_path,
+        {
+          'yourName' => { 'first' => 'Correct', 'last' => 'Signer' },
+          'claimantFullName' => { 'first' => 'Wrong', 'last' => 'Person' },
+          'claimantSignature' => ''
+        }
+      )
+
       expect(result).to eq(stamped_path)
     end
 
@@ -223,13 +302,15 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
     end
 
     it 'falls back to template coordinates when filled PDF lacks widget' do
-      allow(described_class).to receive(:signature_overlay_coordinates).with(pdf_path).and_return(nil)
+      form_data = { 'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18', 'claimantSignature' => 'Jane Doe' }
+
+      allow(described_class).to receive(:signature_overlay_coordinates).with(pdf_path, form_data:).and_return(nil)
       allow(described_class).to receive(:signature_overlay_coordinates)
-        .with(described_class::TEMPLATE).and_return(coordinates)
+        .with(described_class::TEMPLATE, form_data:).and_return(coordinates)
 
       expect(datestamp_instance).to receive(:run).and_return(stamped_path)
 
-      result = described_class.stamp_signature(pdf_path, { 'claimantSignature' => 'Jane Doe' })
+      result = described_class.stamp_signature(pdf_path, form_data)
       expect(result).to eq(stamped_path)
     end
 

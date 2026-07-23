@@ -89,6 +89,25 @@ RSpec.describe SurvivorsBenefits::Helpers do
     end
   end
 
+  describe '#signature_field_index_for_claimant_relationship' do
+    it 'returns index 0 for the custodian relationship enum value' do
+      result = described_class.signature_field_index_for_claimant_relationship('CUSTODIAN_FILING_FOR_CHILD_UNDER_18')
+
+      expect(result).to eq(0)
+    end
+
+    it 'returns index 0 for the humanized custodian relationship label' do
+      result = described_class.signature_field_index_for_claimant_relationship('CUSTODIAN FILING FOR CHILD UNDER 18')
+
+      expect(result).to eq(0)
+    end
+
+    it 'returns index 1 for all non-custodian relationships' do
+      expect(described_class.signature_field_index_for_claimant_relationship('SURVIVING_SPOUSE')).to eq(1)
+      expect(described_class.signature_field_index_for_claimant_relationship(nil)).to eq(1)
+    end
+  end
+
   describe '#format_name' do
     it 'returns a middle initial without changing first and last' do
       result = subject.format_name({

@@ -28,14 +28,33 @@ module SurvivorsBenefits
           'year' => {
             key: 'form1[0].#subform[218].Date_Signed_Year[1]'
           }
+        },
+        'dateSignedAlt' => {
+          'month' => {
+            key: 'form1[0].#subform[218].Date_Signed_Month[0]'
+          },
+          'day' => {
+            key: 'form1[0].#subform[218].Date_Signed_Day[0]'
+          },
+          'year' => {
+            key: 'form1[0].#subform[218].Date_Signed_Year[0]'
+          }
         }
       }.freeze
 
       def expand(form_data = {})
         form_data['p18HeaderVeteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
-        form_data['dateSigned'] = split_date(
+        date_signed = split_date(
           form_data['dateSigned'] || Time.zone.today.strftime('%Y-%m-%d')
         )
+
+        if signature_field_index_for_claimant_relationship(form_data['claimantRelationship']).zero?
+          form_data.delete('dateSigned')
+          form_data['dateSignedAlt'] = date_signed
+        else
+          form_data.delete('dateSignedAlt')
+          form_data['dateSigned'] = date_signed
+        end
         form_data
       end
     end

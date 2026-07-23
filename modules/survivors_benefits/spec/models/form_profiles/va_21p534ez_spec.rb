@@ -39,8 +39,8 @@ RSpec.describe SurvivorsBenefits::FormProfiles::VA21p534ez do
       it 'uses contact information values in prefill form data' do
         data = profile.prefill
 
-        expect(data[:form_data]['claimantPhone']).to eq({ 'contact' => '3035551234' })
-        expect(data[:form_data]['claimantEmail']).to eq('from.contact.info@va.gov')
+        expect(data[:form_data]['yourPhone']).to eq({ 'contact' => '3035551234' })
+        expect(data[:form_data]['yourEmail']).to eq('from.contact.info@va.gov')
       end
     end
 
@@ -48,8 +48,8 @@ RSpec.describe SurvivorsBenefits::FormProfiles::VA21p534ez do
       it 'falls back to user phone and email in prefill form data' do
         data = profile.prefill
 
-        expect(data[:form_data]['claimantPhone']).to eq({ 'contact' => '8008675309' })
-        expect(data[:form_data]['claimantEmail']).to eq('abraham.lincoln@vets.gov')
+        expect(data[:form_data]['yourPhone']).to eq({ 'contact' => '8008675309' })
+        expect(data[:form_data]['yourEmail']).to eq('abraham.lincoln@vets.gov')
         expect(data[:metadata]).to eq({ version: 0, prefill: true, returnUrl: '/claimant-relationship' })
       end
     end

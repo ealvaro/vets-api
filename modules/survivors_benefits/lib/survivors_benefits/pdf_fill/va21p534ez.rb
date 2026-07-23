@@ -90,12 +90,15 @@ module SurvivorsBenefits
           "#{SurvivorsBenefits::MODULE_PATH}/lib/survivors_benefits/pdf_fill/pdfs/#{version}/#{FORM_ID}.pdf"
         end
 
-        def signature_field_name
-          if pdf_version == :v2025
-            'form1[0].#subform[163].SignatureField1[1]'
-          else
-            'form1[0].#subform[218].SignatureField1[1]'
-          end
+        def signature_field_name(form_data = nil)
+          field_index = signature_field_index(form_data)
+          subform_index = pdf_version == :v2025 ? 163 : 218
+          "form1[0].#subform[#{subform_index}].SignatureField1[#{field_index}]"
+        end
+
+        def signature_field_index(form_data = nil)
+          relationship = form_data&.[]('claimantRelationship')
+          SurvivorsBenefits::Helpers.signature_field_index_for_claimant_relationship(relationship)
         end
 
         def section_classes
@@ -153,8 +156,8 @@ module SurvivorsBenefits
         signature_text = signature_text_for(form_data)
         return pdf_path if signature_text.blank?
 
-        coordinates = signature_overlay_coordinates(pdf_path) ||
-                      signature_overlay_coordinates(template_path)
+        coordinates = signature_overlay_coordinates(pdf_path, form_data:) ||
+                      signature_overlay_coordinates(template_path, form_data:)
         unless coordinates
           Rails.logger.warn(
             'SurvivorsBenefits 21P-534EZ: Unable to derive signature coordinates; returning original PDF',
@@ -176,22 +179,22 @@ module SurvivorsBenefits
       # @param pdf_path [String] Path to the PDF template
       # @return [Hash, nil] Coordinates hash of the form
       #   `{ x: Float, y: Float, page_number: Integer }` or nil on failure
-      def self.signature_overlay_coordinates(pdf_path = nil)
+      def self.signature_overlay_coordinates(pdf_path = nil, form_data: nil)
         pdf_path ||= template_path
-        signature_overlay_coordinates_for(pdf_path)
+        signature_overlay_coordinates_for(pdf_path, form_data:)
       rescue => e
         Rails.logger.error('SurvivorsBenefits 21P-534EZ: Error deriving signature coordinates',
                            error: e.message, backtrace: e.backtrace)
         nil
       end
 
-      def self.signature_overlay_coordinates_for(pdf_path)
+      def self.signature_overlay_coordinates_for(pdf_path, form_data: nil)
         if Flipper.enabled?(:acroform_debug_logs)
           Rails.logger.info("SurvivorsBenefits::PdfFill::Va21p534ez HexaPDF template: #{pdf_path}")
         end
 
         HexaPDF::Document.open(pdf_path) do |doc|
-          field = doc.acro_form&.field_by_name(signature_field_name)
+          field = doc.acro_form&.field_by_name(signature_field_name(form_data))
           widget = field&.each_widget&.first
           next unless widget
 
@@ -209,13 +212,13 @@ module SurvivorsBenefits
       def self.signature_text_for(form_data)
         form_data['claimantSignature'].presence ||
           form_data['statementOfTruthSignature'].presence ||
-          claimant_full_name(form_data)
+          signers_full_name(form_data)
       end
 
-      def self.claimant_full_name(form_data)
-        [form_data&.dig('claimantFullName', 'first'),
-         form_data&.dig('claimantFullName', 'middle'),
-         form_data&.dig('claimantFullName', 'last')].compact_blank.join(' ')
+      def self.signers_full_name(form_data)
+        [form_data&.dig('yourName', 'first'),
+         form_data&.dig('yourName', 'middle'),
+         form_data&.dig('yourName', 'last')].compact_blank.join(' ')
       end
 
       def self.stamp_pdf(pdf_path, signature_text, coordinates)

@@ -24,6 +24,18 @@ module SurvivorsBenefits
       Date.parse(date_string).strftime('%m/%d/%Y')
     end
 
+    # Returns the PDF field index for claimant-signature/date widgets.
+    # Custodian filing for a child under 18 uses the alternate widget set.
+    def signature_field_index_for_claimant_relationship(relationship)
+      # Section 2 converts raw enum values into humanized radio labels; normalize
+      # both forms so this comparison works regardless of expansion order.
+      normalized_relationship = relationship.to_s.upcase.gsub(/\s+/, '_')
+      return 0 if normalized_relationship == 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18'
+
+      1
+    end
+    module_function :signature_field_index_for_claimant_relationship
+
     ##
     # Splits a currency amount into thousands, dollars, and cents.
     #
