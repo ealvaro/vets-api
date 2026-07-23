@@ -56,12 +56,30 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             post '/v0/claims_evidence', params: { documentTypeId: valid_doc_type_id }
             expect(response).to have_http_status(:bad_request)
           end
+
+          it 'logs the failure with document context when documentTypeId is present' do
+            allow(Rails.logger).to receive(:error)
+            post '/v0/claims_evidence', params: { documentTypeId: valid_doc_type_id }
+            expect(Rails.logger).to have_received(:error).with(
+              'ClaimsEvidenceController#create upload failed',
+              hash_including(document_type_id: valid_doc_type_id, file_size: nil, content_type: nil)
+            )
+          end
         end
 
         context 'with a non-file value for file' do
           it 'returns 400' do
             post '/v0/claims_evidence', params: { file: 'not-a-file', documentTypeId: valid_doc_type_id }
             expect(response).to have_http_status(:bad_request)
+          end
+
+          it 'logs the failure with document context when documentTypeId is present' do
+            allow(Rails.logger).to receive(:error)
+            post '/v0/claims_evidence', params: { file: 'not-a-file', documentTypeId: valid_doc_type_id }
+            expect(Rails.logger).to have_received(:error).with(
+              'ClaimsEvidenceController#create upload failed',
+              hash_including(document_type_id: valid_doc_type_id, file_size: nil, content_type: nil)
+            )
           end
         end
 
@@ -133,6 +151,15 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               .and_call_original
             post '/v0/claims_evidence', params: { file:, documentTypeId: valid_doc_type_id }
           end
+
+          it 'increments the success counter tagged with documentTypeId' do
+            allow(StatsD).to receive(:increment)
+            post '/v0/claims_evidence', params: { file:, documentTypeId: valid_doc_type_id }
+            expect(StatsD).to have_received(:increment).with(
+              'api.claims_evidence.upload.success',
+              tags: ["documentTypeId:#{valid_doc_type_id}"]
+            )
+          end
         end
 
         context 'when the file contains a virus' do
@@ -158,6 +185,27 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
           it 'returns 503' do
             post '/v0/claims_evidence', params: { file:, documentTypeId: valid_doc_type_id }
             expect(response).to have_http_status(:service_unavailable)
+          end
+
+          it 'logs a structured failure entry with document context' do
+            allow(Rails.logger).to receive(:error)
+            post '/v0/claims_evidence', params: { file:, documentTypeId: valid_doc_type_id }
+            expect(Rails.logger).to have_received(:error).with(
+              'ClaimsEvidenceController#create upload failed',
+              hash_including(
+                document_type_id: valid_doc_type_id,
+                file_size: kind_of(Integer),
+                content_type: kind_of(String)
+              )
+            )
+          end
+
+          it 'does not increment the success counter' do
+            allow(StatsD).to receive(:increment)
+            post '/v0/claims_evidence', params: { file:, documentTypeId: valid_doc_type_id }
+            expect(StatsD).not_to have_received(:increment).with(
+              'api.claims_evidence.upload.success', anything
+            )
           end
         end
       end
