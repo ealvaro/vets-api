@@ -331,20 +331,19 @@ module PdfFill
       processor.process
     end
 
-    # Pension/Burial Team to remove instance changes after V2 in production
     def make_hash_converter(form_id, form_class, submit_date, fill_options, form_data = {})
+      # TODO: @software/benefits-lifestage team to remove override of class constants after
+      # V2 migration complete for forms 527ez and 530ez
       form_instance = form_class.new(form_data) if form_data.present?
-      question_key = form_instance.try(:question_key) || form_class::QUESTION_KEY
-      sections = form_instance.try(:sections) || form_class::SECTIONS
 
       extras_generator =
         if fill_options.fetch(:extras_redesign, false)
           ExtrasGeneratorV2.new(
             form_name: form_id.sub(/V2\z/, ''),
             submit_date:,
-            question_key:,
-            start_page: form_class::START_PAGE,
-            sections:,
+            question_key: form_instance.try(:question_key) || form_class::QUESTION_KEY,
+            start_page: form_instance.try(:start_page) || form_class::START_PAGE,
+            sections: form_instance.try(:sections) || form_class::SECTIONS,
             label_width: form_class::DEFAULT_LABEL_WIDTH,
             show_jumplinks: fill_options.fetch(:show_jumplinks, false),
             use_hexapdf: fill_options.fetch(:use_hexapdf, false),

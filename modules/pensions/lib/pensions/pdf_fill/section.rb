@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'helpers'
+require_relative 'constants'
 
 module Pensions
   module PdfFill
@@ -9,6 +10,7 @@ module Pensions
       include ::PdfFill::Forms::FormHelper
       include ::PdfFill::Forms::FormHelper::PhoneNumberFormatting
       include Helpers
+      include Constants
 
       # Hash iterator
       ITERATOR = ::PdfFill::HashConverter::ITERATOR

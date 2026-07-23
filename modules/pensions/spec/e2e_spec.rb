@@ -8,7 +8,6 @@ require 'lighthouse/benefits_intake/sidekiq/submission_status_job'
 require 'kafka/sidekiq/event_bus_submission_job'
 
 RSpec.describe 'Pensions End to End', type: :request do
-  let(:form) { build(:pensions_saved_claim) }
   let(:param_name) { :pension_claim }
   let(:pdf_path) { 'random/path/to/pdf' }
   let(:monitor) { Pensions::Monitor.new }
@@ -27,94 +26,196 @@ RSpec.describe 'Pensions End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(anything).and_call_original
     allow(Flipper).to receive(:enabled?).with(:pension_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
+    # TODO: Update after Part #2 of V2 migration PR merged
+    allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return false
     sign_in(user)
   end
 
-  it 'successfully completes the submission process' do
-    # form submission
-    expect(Pensions::SavedClaim).to receive(:new).with(form: form.form,
-                                                       user_account: user.user_account).and_call_original
-    expect(monitor).to receive(:track_create_attempt).and_call_original
-    expect(SavedClaimSerializer).to receive(:new).and_call_original
-    expect(PersistentAttachment).to receive(:where).with(guid: anything).and_call_original
-    expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
-    expect(Kafka::EventBusSubmissionJob).to receive(:perform_async).twice.and_call_original
-    expect(monitor).to receive(:track_create_success).and_call_original
+  context 'when pension_pdf_form_alignment flipper is disabled' do
+    let(:form) { build(:pensions_saved_claim) }
 
-    post '/pensions/v0/claims', params: { param_name => { form: form.form } }
-    expect(response).to have_http_status(:success)
+    before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(false) }
 
-    data = response.parsed_body['data']
-    saved_claim_id = data['id'].to_i
+    it 'successfully completes the submission process' do
+      # form submission
+      expect(Pensions::SavedClaim).to receive(:new).with(form: form.form,
+                                                         user_account: user.user_account).and_call_original
+      expect(monitor).to receive(:track_create_attempt).and_call_original
+      expect(SavedClaimSerializer).to receive(:new).and_call_original
+      expect(PersistentAttachment).to receive(:where).with(guid: anything).and_call_original
+      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
+      expect(Kafka::EventBusSubmissionJob).to receive(:perform_async).twice.and_call_original
+      expect(monitor).to receive(:track_create_success).and_call_original
 
-    # verify claim created
-    pension_claim = Pensions::SavedClaim.find(saved_claim_id)
-    expect(pension_claim).to be_present
-    expect(pension_claim.confirmation_number).to eq data['attributes']['confirmation_number']
-    expect(pension_claim.form).to match(/signatureDate/)
+      post '/pensions/v0/claims', params: { param_name => { form: form.form } }
+      expect(response).to have_http_status(:success)
 
-    # claim upload to benefits intake
-    expect(BenefitsIntake::Metadata).to receive(:generate).and_call_original
+      data = response.parsed_body['data']
+      saved_claim_id = data['id'].to_i
 
-    expect(service).to receive(:valid_document?).and_return(pdf_path)
-    upload_request_data = { 'id' => '123', 'attributes' => { 'location' => 'test_location' } }
-    upload_request = double(body: { 'data' => upload_request_data })
-    expect(service).to receive(:perform).with(:post, 'uploads', {}, {}).and_return(upload_request)
-    expect(service).to receive(:request_upload).and_call_original
-    expect(monitor).to receive(:track_submission_begun).and_call_original
+      # verify claim created
+      pension_claim = Pensions::SavedClaim.find(saved_claim_id)
+      expect(pension_claim).to be_present
+      expect(pension_claim.confirmation_number).to eq data['attributes']['confirmation_number']
+      expect(pension_claim.form).to match(/signatureDate/)
 
-    expect(Lighthouse::Submission).to receive(:create).and_call_original
-    expect(Lighthouse::SubmissionAttempt).to receive(:create).and_call_original
-    expect(Datadog::Tracing).to receive(:active_trace).and_call_original
+      # claim upload to benefits intake
+      expect(BenefitsIntake::Metadata).to receive(:generate).and_call_original
 
-    expect(service).to receive(:location)
+      expect(service).to receive(:valid_document?).and_return(pdf_path)
+      upload_request_data = { 'id' => '123', 'attributes' => { 'location' => 'test_location' } }
+      upload_request = double(body: { 'data' => upload_request_data })
+      expect(service).to receive(:perform).with(:post, 'uploads', {}, {}).and_return(upload_request)
+      expect(service).to receive(:request_upload).and_call_original
+      expect(monitor).to receive(:track_submission_begun).and_call_original
 
-    expect(monitor).to receive(:track_submission_attempted).and_call_original
-    expect(service).to receive(:perform_upload).and_return(double(success?: true))
+      expect(Lighthouse::Submission).to receive(:create).and_call_original
+      expect(Lighthouse::SubmissionAttempt).to receive(:create).and_call_original
+      expect(Datadog::Tracing).to receive(:active_trace).and_call_original
 
-    email = Pensions::NotificationEmail.new(saved_claim_id)
-    allow(Pensions::NotificationEmail).to receive(:new).and_return(email)
+      expect(service).to receive(:location)
 
-    # 'success' email notification
-    expect(email).to receive(:deliver).with(:submitted).and_call_original
-    expect(vanotify).to receive(:send_email)
+      expect(monitor).to receive(:track_submission_attempted).and_call_original
+      expect(service).to receive(:perform_upload).and_return(double(success?: true))
 
-    expect(monitor).to receive(:track_submission_success).and_call_original
-    expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
+      email = Pensions::NotificationEmail.new(saved_claim_id)
+      allow(Pensions::NotificationEmail).to receive(:new).and_return(email)
 
-    Pensions::BenefitsIntake::SubmitClaimJob.build_config_hash
-    lh_bi_uuid = Pensions::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id,
-                                                                      user.user_account_uuid,
-                                                                      user.participant_id)
+      # 'success' email notification
+      expect(email).to receive(:deliver).with(:submitted).and_call_original
+      expect(vanotify).to receive(:send_email)
 
-    # verify upload artifacts - form_submission and claim_va_notification
-    submission = Lighthouse::Submission.find_by(saved_claim_id:)
-    expect(submission).to be_present
+      expect(monitor).to receive(:track_submission_success).and_call_original
+      expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
 
-    attempt = submission.latest_pending_attempt
-    expect(attempt).to be_present
-    expect(attempt.status).to eq 'pending'
-    expect(attempt.benefits_intake_uuid).to eq lh_bi_uuid
+      Pensions::BenefitsIntake::SubmitClaimJob.build_config_hash
+      lh_bi_uuid = Pensions::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id,
+                                                                        user.user_account_uuid,
+                                                                        user.participant_id)
 
-    notification = ClaimVANotification.find_by(saved_claim_id:)
-    expect(notification).to be_present
+      # verify upload artifacts - form_submission and claim_va_notification
+      submission = Lighthouse::Submission.find_by(saved_claim_id:)
+      expect(submission).to be_present
 
-    # submission status update
-    updated_at = Time.zone.now
-    attributes = { 'status' => 'vbms', 'updated_at' => updated_at }
-    bulk_status_data = [{ 'id' => attempt.benefits_intake_uuid, 'attributes' => attributes }]
-    bulk_status = double(body: { 'data' => bulk_status_data }, success?: true)
+      attempt = submission.latest_pending_attempt
+      expect(attempt).to be_present
+      expect(attempt.status).to eq 'pending'
+      expect(attempt.benefits_intake_uuid).to eq lh_bi_uuid
 
-    expect(service).to receive(:bulk_status).and_return(bulk_status)
+      notification = ClaimVANotification.find_by(saved_claim_id:)
+      expect(notification).to be_present
 
-    expect(email).to receive(:deliver).with(:received).and_call_original
-    expect(vanotify).to receive(:send_email)
+      # submission status update
+      updated_at = Time.zone.now
+      attributes = { 'status' => 'vbms', 'updated_at' => updated_at }
+      bulk_status_data = [{ 'id' => attempt.benefits_intake_uuid, 'attributes' => attributes }]
+      bulk_status = double(body: { 'data' => bulk_status_data }, success?: true)
 
-    BenefitsIntake::SubmissionStatusJob.new.perform(Pensions::FORM_ID)
+      expect(service).to receive(:bulk_status).and_return(bulk_status)
 
-    updated = attempt.reload
-    expect(updated.status).to eq 'vbms'
-    expect(updated.lighthouse_updated_at).to be_the_same_time_as updated_at
-    expect(updated.error_message).to be_nil
+      expect(email).to receive(:deliver).with(:received).and_call_original
+      expect(vanotify).to receive(:send_email)
+
+      BenefitsIntake::SubmissionStatusJob.new.perform(Pensions::FORM_ID)
+
+      updated = attempt.reload
+      expect(updated.status).to eq 'vbms'
+      expect(updated.lighthouse_updated_at).to be_the_same_time_as updated_at
+      expect(updated.error_message).to be_nil
+    end
+  end
+
+  context 'when pension_pdf_form_alignment flipper is enabled' do
+    let(:form) { build(:pensions_saved_claim, :v2) }
+
+    before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(true) }
+
+    it 'successfully completes the submission process' do
+      # form submission
+      expect(Pensions::SavedClaim).to receive(:new).with(form: form.form,
+                                                         user_account: user.user_account).and_call_original
+      expect(monitor).to receive(:track_create_attempt).and_call_original
+      expect(SavedClaimSerializer).to receive(:new).and_call_original
+      expect(PersistentAttachment).to receive(:where).with(guid: anything).and_call_original
+      expect(Pensions::BenefitsIntake::SubmitClaimJob).to receive(:perform_async)
+      expect(Kafka::EventBusSubmissionJob).to receive(:perform_async).twice.and_call_original
+      expect(monitor).to receive(:track_create_success).and_call_original
+
+      post '/pensions/v0/claims', params: { param_name => { form: form.form } }
+      expect(response).to have_http_status(:success)
+
+      data = response.parsed_body['data']
+      saved_claim_id = data['id'].to_i
+
+      # verify claim created
+      pension_claim = Pensions::SavedClaim.find(saved_claim_id)
+      expect(pension_claim).to be_present
+      expect(pension_claim.confirmation_number).to eq data['attributes']['confirmation_number']
+      expect(pension_claim.form).to match(/signatureDate/)
+
+      # claim upload to benefits intake
+      expect(BenefitsIntake::Metadata).to receive(:generate).and_call_original
+
+      expect(service).to receive(:valid_document?).and_return(pdf_path)
+      upload_request_data = { 'id' => '123', 'attributes' => { 'location' => 'test_location' } }
+      upload_request = double(body: { 'data' => upload_request_data })
+      expect(service).to receive(:perform).with(:post, 'uploads', {}, {}).and_return(upload_request)
+      expect(service).to receive(:request_upload).and_call_original
+      expect(monitor).to receive(:track_submission_begun).and_call_original
+
+      expect(Lighthouse::Submission).to receive(:create).and_call_original
+      expect(Lighthouse::SubmissionAttempt).to receive(:create).and_call_original
+      expect(Datadog::Tracing).to receive(:active_trace).and_call_original
+
+      expect(service).to receive(:location)
+
+      expect(monitor).to receive(:track_submission_attempted).and_call_original
+      expect(service).to receive(:perform_upload).and_return(double(success?: true))
+
+      email = Pensions::NotificationEmail.new(saved_claim_id)
+      allow(Pensions::NotificationEmail).to receive(:new).and_return(email)
+
+      # 'success' email notification
+      expect(email).to receive(:deliver).with(:submitted).and_call_original
+      expect(vanotify).to receive(:send_email)
+
+      expect(monitor).to receive(:track_submission_success).and_call_original
+      expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(1).and_call_original
+
+      Pensions::BenefitsIntake::SubmitClaimJob.build_config_hash
+      lh_bi_uuid = Pensions::BenefitsIntake::SubmitClaimJob.new.perform(saved_claim_id,
+                                                                        user.user_account_uuid,
+                                                                        user.participant_id)
+
+      # verify upload artifacts - form_submission and claim_va_notification
+      submission = Lighthouse::Submission.find_by(saved_claim_id:)
+      expect(submission).to be_present
+
+      attempt = submission.latest_pending_attempt
+      expect(attempt).to be_present
+      expect(attempt.status).to eq 'pending'
+      expect(attempt.benefits_intake_uuid).to eq lh_bi_uuid
+
+      notification = ClaimVANotification.find_by(saved_claim_id:)
+      expect(notification).to be_present
+
+      # submission status update
+      updated_at = Time.zone.now
+      attributes = { 'status' => 'vbms', 'updated_at' => updated_at }
+      bulk_status_data = [{ 'id' => attempt.benefits_intake_uuid, 'attributes' => attributes }]
+      bulk_status = double(body: { 'data' => bulk_status_data }, success?: true)
+
+      expect(service).to receive(:bulk_status).and_return(bulk_status)
+
+      expect(email).to receive(:deliver).with(:received).and_call_original
+      expect(vanotify).to receive(:send_email)
+
+      BenefitsIntake::SubmissionStatusJob.new.perform(Pensions::FORM_ID)
+
+      updated = attempt.reload
+      expect(updated.status).to eq 'vbms'
+      expect(updated.lighthouse_updated_at).to be_the_same_time_as updated_at
+      expect(updated.error_message).to be_nil
+    end
   end
 end

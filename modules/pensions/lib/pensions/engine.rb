@@ -51,7 +51,7 @@ module Pensions
         require 'pdf_utilities/pdf_stamper'
         require 'pensions/pdf_stamper'
 
-        Pensions::PDFStamper::STAMP_SETS.each do |identifier, stamps|
+        Pensions::PDFStamper.stamp_sets.each do |identifier, stamps|
           ::PDFUtilities::PDFStamper.register_stamps(identifier, stamps)
         end
       end

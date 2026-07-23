@@ -61,26 +61,24 @@
  },
  "serviceNumber": "123456",
  "serviceBranch": {
-  "army": "1",
-  "navy": "1"
+  "army": "Yes",
+  "navy": "Yes"
  },
  "placeOfSeparation": "West Brookfield, MA",
  "powDateRange": {
-  "from": {
-   "month": "02",
-   "day": "26",
-   "year": "1971"
-  },
   "to": {
    "month": "03",
    "day": "02",
    "year": "1973"
+  },
+  "from": {
+   "month": "02",
+   "day": "26",
+   "year": "1971"
   }
  },
  "socialSecurityDisability": 0,
- "medicalCondition": null,
  "nursingHome": 1,
- "medicaidStatus": null,
  "specialMonthlyPension": 1,
  "isOver65": true,
  "vaTreatmentHistory": 0,
@@ -139,13 +137,17 @@
  "currentSpouse": {
   "spouseFullName": {
    "first": "Jessicaaaaaaaaaaaaaaaaaaaa",
-   "middle": "Middle",
+   "middle": "M",
    "last": "Doe"
   },
-  "locationOfMarriage": "Austin, INCORRECT",
-  "dateOfMarriage": "2001-01-01",
-  "marriageType": "OTHER",
-  "otherExplanation": "Lizard Tribunal"
+  "dateOfMarriage": {
+   "month": "01",
+   "day": "01",
+   "year": "2001"
+  },
+  "marriageType": 1,
+  "otherExplanation": "Lizard Tribunal",
+  "locationOfMarriageOverflow": "Austin, INCORRECT"
  },
  "spouseDateOfBirth": {
   "month": "12",
@@ -172,10 +174,7 @@
    "lastFour": ""
   }
  },
- "currentSpouseMonthlySupport": {
-  "part_cents": "75",
-  "part_one": "100"
- },
+ "currentSpouseMonthlySupport": "100.75",
  "marriages": [
   {
    "spouseFullName": {
@@ -197,7 +196,6 @@
     "year": "2026"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Spongebob Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-2026",
    "reasonForSeparationOverflow": "Other"
   },
@@ -220,7 +218,6 @@
     "year": "1990"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Jane Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-1990",
    "reasonForSeparationOverflow": "Divorce"
   },
@@ -243,7 +240,6 @@
     "year": "1990"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Jane Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-1990",
    "reasonForSeparationOverflow": "Divorce"
   },
@@ -266,7 +262,6 @@
     "year": "1990"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Jane Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-1990",
    "reasonForSeparationOverflow": "Divorce"
   }
@@ -292,7 +287,6 @@
     "year": "2026"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Spongebob Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-2026",
    "reasonForSeparationOverflow": "Other"
   },
@@ -315,7 +309,6 @@
     "year": "1990"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Jane Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-1990",
    "reasonForSeparationOverflow": "Divorce"
   },
@@ -338,7 +331,6 @@
     "year": "1990"
    },
    "locationOfSeparation": "San Antonio, TX",
-   "spouseFullNameOverflow": "Jane Middle Doe",
    "dateRangeOfMarriageOverflow": "03-02-1989 - 03-02-1990",
    "reasonForSeparationOverflow": "Divorce"
   }
@@ -358,11 +350,7 @@
     "middle": "M",
     "last": "Smith"
    },
-   "monthlyPayment": {
-    "part_cents": "00",
-    "part_two": "3",
-    "part_one": "444"
-   },
+   "monthlyPayment": 3444,
    "childPlaceOfBirth": "Tallahassee, FL",
    "childSocialSecurityNumber": {
     "first": "333",
@@ -370,11 +358,11 @@
     "third": "4444"
    },
    "childRelationship": {
-    "biological": "1",
+    "biological": "Yes",
     "adopted": "Off",
     "stepchild": "Off"
    },
-   "previouslyMarried": "1",
+   "previouslyMarried": "Yes",
    "disabled": "Off",
    "married": true,
    "fullName": {
@@ -387,13 +375,11 @@
     "day": "03",
     "year": "2000"
    },
-   "fullNameOverflow": "Emily Anne Doe",
    "childDateOfBirthOverflow": "03-03-2000",
    "childSocialSecurityNumberOverflow": "333224444",
    "attendingCollege": "Off",
-   "childNotInHousehold": "1",
-   "childStatusOverflow": "Biological, previously married, does not live with you but contributes",
-   "monthlyPaymentOverflow": "$3,444.00"
+   "childNotInHousehold": "Yes",
+   "childStatusOverflow": "Biological, previously married, does not live with you but contributes"
   },
   {
    "childInHousehold": true,
@@ -416,11 +402,11 @@
     "third": "4444"
    },
    "childRelationship": {
-    "biological": "1",
+    "biological": "Yes",
     "adopted": "Off",
     "stepchild": "Off"
    },
-   "previouslyMarried": "1",
+   "previouslyMarried": "Yes",
    "disabled": "Off",
    "married": true,
    "fullName": {
@@ -433,14 +419,12 @@
     "day": "03",
     "year": "2000"
    },
-   "fullNameOverflow": "Emily Anne Doe",
    "childDateOfBirthOverflow": "03-03-2000",
    "childSocialSecurityNumberOverflow": "333224444",
    "attendingCollege": "Off",
    "childNotInHousehold": "Off",
    "childStatusOverflow": "Biological, previously married",
-   "monthlyPayment": {},
-   "monthlyPaymentOverflow": null
+   "monthlyPayment": null
   },
   {
    "childInHousehold": true,
@@ -463,11 +447,11 @@
     "third": "4444"
    },
    "childRelationship": {
-    "biological": "1",
+    "biological": "Yes",
     "adopted": "Off",
     "stepchild": "Off"
    },
-   "previouslyMarried": "1",
+   "previouslyMarried": "Yes",
    "disabled": "Off",
    "married": true,
    "fullName": {
@@ -480,14 +464,12 @@
     "day": "03",
     "year": "2000"
    },
-   "fullNameOverflow": "Emily Anne Doe",
    "childDateOfBirthOverflow": "03-03-2000",
    "childSocialSecurityNumberOverflow": "333224444",
    "attendingCollege": "Off",
    "childNotInHousehold": "Off",
    "childStatusOverflow": "Biological, previously married",
-   "monthlyPayment": {},
-   "monthlyPaymentOverflow": null
+   "monthlyPayment": null
   },
   {
    "childInHousehold": true,
@@ -510,11 +492,11 @@
     "third": "4444"
    },
    "childRelationship": {
-    "biological": "1",
+    "biological": "Yes",
     "adopted": "Off",
     "stepchild": "Off"
    },
-   "previouslyMarried": "1",
+   "previouslyMarried": "Yes",
    "disabled": "Off",
    "married": true,
    "fullName": {
@@ -527,105 +509,72 @@
     "day": "03",
     "year": "2000"
    },
-   "fullNameOverflow": "Emily Anne Doe",
    "childDateOfBirthOverflow": "03-03-2000",
    "childSocialSecurityNumberOverflow": "333224444",
    "attendingCollege": "Off",
    "childNotInHousehold": "Off",
    "childStatusOverflow": "Biological, previously married",
-   "monthlyPayment": {},
-   "monthlyPaymentOverflow": null
+   "monthlyPayment": null
   }
  ],
  "totalNetWorth": 1,
- "netWorthEstimation": {
-  "part_cents": "99",
-  "part_one": "10"
- },
+ "netWorthEstimation": "10.99",
  "transferredAssets": 0,
  "homeOwnership": 0,
  "homeAcreageMoreThanTwo": 0,
- "homeAcreageValue": {
-  "part_cents": "00",
-  "part_two": "75",
-  "part_one": "000"
- },
+ "homeAcreageValue": 75000,
  "landMarketable": 0,
- "incomeSourceCount": "ONE_TO_FOUR",
+ "incomeSourceCount": 1,
  "incomeSources": [
   {
    "typeOfIncome": 0,
    "receiver": 2,
    "dependentName": "Chuck Edgar-Ellington-Erick-Eve-Endive-Earl Cheese",
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "05",
-    "part_one": "278"
-   },
+   "amount": "278.05",
    "receiverOverflow": "Dependent",
-   "typeOfIncomeOverflow": "Social security",
-   "amountOverflow": "$278.05"
+   "typeOfIncomeOverflow": "Social security"
   },
   {
    "typeOfIncome": 1,
    "receiver": 0,
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "50",
-    "part_one": "78"
-   },
+   "amount": "78.50",
    "receiverOverflow": "Veteran",
-   "typeOfIncomeOverflow": "Interest dividend",
-   "amountOverflow": "$78.50"
+   "typeOfIncomeOverflow": "Interest dividend"
   },
   {
    "typeOfIncome": 4,
    "otherTypeExplanation": "part-time Uber",
    "receiver": 1,
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "99",
-    "part_one": "278"
-   },
+   "amount": "278.99",
    "receiverOverflow": "Spouse",
-   "typeOfIncomeOverflow": "Other",
-   "amountOverflow": "$278.99"
+   "typeOfIncomeOverflow": "Other"
   },
   {
    "typeOfIncome": 3,
    "receiver": 0,
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "27",
-    "part_one": "55"
-   },
+   "amount": "55.27",
    "receiverOverflow": "Veteran",
-   "typeOfIncomeOverflow": "Pension retirement",
-   "amountOverflow": "$55.27"
+   "typeOfIncomeOverflow": "Pension retirement"
   },
   {
    "typeOfIncome": 3,
    "receiver": 0,
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "27",
-    "part_one": "55"
-   },
+   "amount": "55.27",
    "receiverOverflow": "Veteran",
-   "typeOfIncomeOverflow": "Pension retirement",
-   "amountOverflow": "$55.27"
+   "typeOfIncomeOverflow": "Pension retirement"
   },
   {
    "typeOfIncome": 3,
    "receiver": 0,
    "payer": "John Doe",
-   "amount": {
-    "part_cents": "27",
-    "part_one": "55"
-   },
+   "amount": "55.27",
    "receiverOverflow": "Veteran",
-   "typeOfIncomeOverflow": "Pension retirement",
-   "amountOverflow": "$55.27"
+   "typeOfIncomeOverflow": "Pension retirement"
   }
  ],
  "hasCareExpenses": true,
@@ -633,11 +582,8 @@
   {
    "recipients": 0,
    "provider": "NYC Care Provider Family Medical Facility",
-   "careType": 0,
-   "ratePerHour": {
-    "part_cents": "75",
-    "part_one": "100"
-   },
+   "careType": 1,
+   "ratePerHour": "100.75",
    "hoursPerWeek": "20",
    "careDateRange": {
     "from": {
@@ -652,27 +598,18 @@
     }
    },
    "paymentFrequency": 0,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "2",
-    "part_one": "500"
-   },
+   "paymentAmount": 2500,
    "recipientsOverflow": "Veteran",
-   "careTypeOverflow": "Care facility",
-   "ratePerHourOverflow": "$100.75",
-   "careDateRangeOverflow": "08-01-2020 - 05-25-2023",
-   "noCareEndDate": "Off",
    "paymentFrequencyOverflow": "ONCE_MONTH",
-   "paymentAmountOverflow": "$2,500.00"
+   "careTypeOverflow": "Care facility",
+   "careDateRangeOverflow": "08-01-2020 - 05-25-2023",
+   "noCareEndDate": "Off"
   },
   {
    "recipients": 1,
    "provider": "MA Care Provider",
-   "careType": 1,
-   "ratePerHour": {
-    "part_cents": "00",
-    "part_one": "150"
-   },
+   "careType": 3,
+   "ratePerHour": 150,
    "hoursPerWeek": "15",
    "careDateRange": {
     "from": {
@@ -687,28 +624,19 @@
     }
    },
    "paymentFrequency": 0,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "1",
-    "part_one": "500"
-   },
+   "paymentAmount": 1500,
    "recipientsOverflow": "Spouse",
-   "careTypeOverflow": "In home care provider",
-   "ratePerHourOverflow": "$150.00",
-   "careDateRangeOverflow": "08-01-2021 - 05-25-2022",
-   "noCareEndDate": "Off",
    "paymentFrequencyOverflow": "ONCE_MONTH",
-   "paymentAmountOverflow": "$1,500.00"
+   "careTypeOverflow": "In home care provider",
+   "careDateRangeOverflow": "08-01-2021 - 05-25-2022",
+   "noCareEndDate": "Off"
   },
   {
    "recipients": 2,
    "childName": "Joe Doe",
    "provider": "LA Care Provider",
-   "careType": 0,
-   "ratePerHour": {
-    "part_cents": "00",
-    "part_one": "200"
-   },
+   "careType": 1,
+   "ratePerHour": 200,
    "hoursPerWeek": "10",
    "careDateRange": {
     "from": {
@@ -718,29 +646,20 @@
     },
     "to": null
    },
-   "noCareEndDate": "1",
+   "noCareEndDate": "Yes",
    "paymentFrequency": 1,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "22",
-    "part_one": "500"
-   },
+   "paymentAmount": 22500,
    "recipientsOverflow": "Dependent",
-   "careTypeOverflow": "Care facility",
-   "ratePerHourOverflow": "$200.00",
-   "careDateRangeOverflow": "08-01-2020 - No End Date",
    "paymentFrequencyOverflow": "ONCE_YEAR",
-   "paymentAmountOverflow": "$22,500.00"
+   "careTypeOverflow": "Care facility",
+   "careDateRangeOverflow": "08-01-2020 - No End Date"
   },
   {
    "recipients": 2,
    "childName": "Joe Doe",
    "provider": "LA Care Provider",
-   "careType": 0,
-   "ratePerHour": {
-    "part_cents": "00",
-    "part_one": "200"
-   },
+   "careType": 1,
+   "ratePerHour": 200,
    "hoursPerWeek": "10",
    "careDateRange": {
     "from": {
@@ -750,29 +669,20 @@
     },
     "to": null
    },
-   "noCareEndDate": "1",
+   "noCareEndDate": "Yes",
    "paymentFrequency": 1,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "22",
-    "part_one": "500"
-   },
+   "paymentAmount": 22500,
    "recipientsOverflow": "Dependent",
-   "careTypeOverflow": "Care facility",
-   "ratePerHourOverflow": "$200.00",
-   "careDateRangeOverflow": "08-01-2020 - No End Date",
    "paymentFrequencyOverflow": "ONCE_YEAR",
-   "paymentAmountOverflow": "$22,500.00"
+   "careTypeOverflow": "Care facility",
+   "careDateRangeOverflow": "08-01-2020 - No End Date"
   },
   {
    "recipients": 2,
    "childName": "Joe Doe",
    "provider": "LA Care Provider",
-   "careType": 0,
-   "ratePerHour": {
-    "part_cents": "00",
-    "part_one": "200"
-   },
+   "careType": 1,
+   "ratePerHour": 200,
    "hoursPerWeek": "10",
    "careDateRange": {
     "from": {
@@ -782,19 +692,13 @@
     },
     "to": null
    },
-   "noCareEndDate": "1",
+   "noCareEndDate": "Yes",
    "paymentFrequency": 1,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "22",
-    "part_one": "500"
-   },
+   "paymentAmount": 22500,
    "recipientsOverflow": "Dependent",
-   "careTypeOverflow": "Care facility",
-   "ratePerHourOverflow": "$200.00",
-   "careDateRangeOverflow": "08-01-2020 - No End Date",
    "paymentFrequencyOverflow": "ONCE_YEAR",
-   "paymentAmountOverflow": "$22,500.00"
+   "careTypeOverflow": "Care facility",
+   "careDateRangeOverflow": "08-01-2020 - No End Date"
   }
  ],
  "hasMedicalExpenses": true,
@@ -809,15 +713,9 @@
     "year": "2020"
    },
    "paymentFrequency": 2,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "10",
-    "part_one": "000"
-   },
+   "paymentAmount": 10000,
    "recipientsOverflow": "Veteran",
-   "paymentDateOverflow": "03-15-2020",
-   "paymentFrequencyOverflow": "ONE_TIME",
-   "paymentAmountOverflow": "$10,000.00"
+   "paymentFrequencyOverflow": "ONE_TIME"
   },
   {
    "recipients": 2,
@@ -830,15 +728,9 @@
     "year": "2023"
    },
    "paymentFrequency": 2,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "10",
-    "part_one": "000"
-   },
+   "paymentAmount": 10000,
    "recipientsOverflow": "Dependent",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONE_TIME",
-   "paymentAmountOverflow": "$10,000.00"
+   "paymentFrequencyOverflow": "ONE_TIME"
   },
   {
    "recipients": 1,
@@ -850,14 +742,9 @@
     "year": "2023"
    },
    "paymentFrequency": 0,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_one": "500"
-   },
+   "paymentAmount": 500,
    "recipientsOverflow": "Spouse",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONCE_MONTH",
-   "paymentAmountOverflow": "$500.00"
+   "paymentFrequencyOverflow": "ONCE_MONTH"
   },
   {
    "recipients": 2,
@@ -870,15 +757,9 @@
     "year": "2023"
    },
    "paymentFrequency": 1,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_two": "5",
-    "part_one": "000"
-   },
+   "paymentAmount": 5000,
    "recipientsOverflow": "Dependent",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONCE_YEAR",
-   "paymentAmountOverflow": "$5,000.00"
+   "paymentFrequencyOverflow": "ONCE_YEAR"
   },
   {
    "recipients": 1,
@@ -890,14 +771,9 @@
     "year": "2023"
    },
    "paymentFrequency": 0,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_one": "200"
-   },
+   "paymentAmount": 200,
    "recipientsOverflow": "Spouse",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONCE_MONTH",
-   "paymentAmountOverflow": "$200.00"
+   "paymentFrequencyOverflow": "ONCE_MONTH"
   },
   {
    "recipients": 2,
@@ -910,14 +786,9 @@
     "year": "2023"
    },
    "paymentFrequency": 2,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_one": "100"
-   },
+   "paymentAmount": 100,
    "recipientsOverflow": "Dependent",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONE_TIME",
-   "paymentAmountOverflow": "$100.00"
+   "paymentFrequencyOverflow": "ONE_TIME"
   },
   {
    "recipients": 2,
@@ -930,14 +801,9 @@
     "year": "2023"
    },
    "paymentFrequency": 2,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_one": "100"
-   },
+   "paymentAmount": 100,
    "recipientsOverflow": "Dependent",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONE_TIME",
-   "paymentAmountOverflow": "$100.00"
+   "paymentFrequencyOverflow": "ONE_TIME"
   },
   {
    "recipients": 2,
@@ -950,14 +816,9 @@
     "year": "2023"
    },
    "paymentFrequency": 2,
-   "paymentAmount": {
-    "part_cents": "00",
-    "part_one": "100"
-   },
+   "paymentAmount": 100,
    "recipientsOverflow": "Dependent",
-   "paymentDateOverflow": "07-01-2023",
-   "paymentFrequencyOverflow": "ONE_TIME",
-   "paymentAmountOverflow": "$100.00"
+   "paymentFrequencyOverflow": "ONE_TIME"
   }
  ],
  "bankAccount": {
@@ -976,10 +837,9 @@
  "pow": 0,
  "placeOfSeparationLineOne": "West Brookfield, M",
  "placeOfSeparationLineTwo": "A",
- "currentMarriage": {},
- "additionalMarriages": 1,
- "additionalSpouseMarriages": 1,
- "dependentChildrenInHousehold": "3",
+ "additionalMarriages": 0,
+ "additionalSpouseMarriages": 0,
+ "dependentChildrenInHousehold": 3,
  "dependentsNotWithYouAtSameAddress": 0,
  "custodians": [
   {
@@ -1000,7 +860,6 @@
    "dependentsWithCustodianOverflow": "Emily A Doe"
   }
  ],
- "moreThanFourIncomeSources": 0,
- "hasAnyExpenses": 0,
- "noRapidProcessing": "Off"
+ "incomeSourceCountOverflow": "One to four",
+ "hasAnyExpenses": 0
 }
