@@ -5,10 +5,14 @@ class AddIndexesToArRepresentativeInProgressForms < ActiveRecord::Migration[8.1]
 
   def up
     # Clean up any INVALID indexes left behind by a prior failed
-    # CREATE INDEX CONCURRENTLY attempt.
-    execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_representative_in_progress_forms_on_composite_key'
-    execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_rep_in_progress_forms_on_rep_user_account_id'
-    execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_rep_in_progress_forms_on_needs_kms_rotation'
+    # CREATE INDEX CONCURRENTLY attempt. Wrapped in safety_assured because
+    # strong_migrations can't inspect raw execute calls; DROP INDEX
+    # CONCURRENTLY IF EXISTS is safe (non-blocking, no-op if absent).
+    safety_assured do
+      execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_representative_in_progress_forms_on_composite_key'
+      execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_rep_in_progress_forms_on_rep_user_account_id'
+      execute 'DROP INDEX CONCURRENTLY IF EXISTS index_ar_rep_in_progress_forms_on_needs_kms_rotation'
+    end
 
     add_index :ar_representative_in_progress_forms,
               %i[form_id rep_user_account_id veteran_icn],
