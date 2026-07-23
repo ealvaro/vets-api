@@ -21,7 +21,14 @@ module AccreditedRepresentativePortal
 
       # NOTE: The order of before_action calls is important here.
       before_action :feature_enabled, :loa3_user?
+      before_action :pilot_enabled, only: [:pilot_status]
       before_action :parse_request_body, :validate_form, only: [:submit]
+
+      # Call 1 of the pilot gate: a read-only status snapshot the frontend reads before
+      # rendering the form. Writes nothing.
+      def pilot_status
+        render json: Form21aPilotGate.status(current_user), status: :ok
+      end
 
       def background_detail_upload
         file = params[:file]
@@ -112,6 +119,7 @@ module AccreditedRepresentativePortal
 
       def handle_post_submission(response)
         enqueue_document_uploads(response)
+        mark_pilot_admission_submitted
         destroy_in_progress_form
       rescue => e
         Rails.logger.error(
@@ -191,8 +199,35 @@ module AccreditedRepresentativePortal
         routing_error unless Flipper.enabled?(:accredited_representative_portal_form_21a)
       end
 
+      # Gate that guards the pilot-specific endpoints/behavior, independent of the
+      # feature-wide accredited_representative_portal_form_21a flag.
+      def pilot_enabled
+        routing_error unless Flipper.enabled?(:accredited_representative_portal_form_21a_pilot, current_user)
+      end
+
       def loa3_user?
         routing_error unless current_user.loa3?
+      end
+
+      # Call 2's terminal transition: on a successful submission, flip the user's pilot
+      # admission to `submitted`. Idempotent and a no-op for users without an admission
+      # (e.g. submissions made before the pilot). Does not affect the monthly cap.
+      #
+      # Self-contained best-effort: a failure here is logged but must not prevent the
+      # in-progress form from being cleaned up in handle_post_submission.
+      def mark_pilot_admission_submitted
+        user_account = @current_user&.user_account
+        return if user_account.nil?
+
+        admission = Form21aPilotAdmission.find_by(user_account_id: user_account.id)
+        return if admission.nil? || admission.submitted?
+
+        admission.update!(status: :submitted, submitted_at: Time.current)
+      rescue => e
+        Rails.logger.error(
+          'Form21aController: Failed to mark pilot admission submitted ' \
+          "for user_uuid=#{@current_user&.uuid}. Error: #{e.class} - #{e.message}"
+        )
       end
 
       # Parses the raw request body as JSON and assigns it to an instance variable.
