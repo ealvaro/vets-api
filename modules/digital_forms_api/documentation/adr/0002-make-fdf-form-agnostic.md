@@ -6,6 +6,10 @@ Date: 2026-05-27
 
 Accepted
 
+Amended 2026-07-09: the PORO is renamed `DigitalFormsApi::SubmissionResponse` (originally `DigitalFormsApi::Submission`) — the status-tracking work (A1, 2026-06) has since claimed `DigitalFormsApi::Submission` for its ActiveRecord persistence model, so the name is updated throughout below. §5's `SubmissionHelper` has also since shipped (A2) with a keyword signature (`claim:`, `payload:`, `participant_id:`, `claim_label:`, `user_account:`) and `epCode` derived from the claim label's leading digits, superseding the positional sketch in §5.
+
+Amended 2026-07-13: the first `SubmissionResponse` slice has shipped as a behavior-preserving extraction — its constructor takes only the retrieve response (`SubmissionResponse.new(response)`) and it exposes just `#veteran_id` and `#payload`, the two fields the controller reads today. The two-argument constructor, `plugin`/`form_id` resolution, template translation, and serializer shown in §1/§3/§4 remain the target design, not yet built (the `params[:id]` second argument there feeds §3's `submission_id`).
+
 ## Context
 
 The `digital_forms_api` (FDF / FormsAPI) module treats 21-686c as its only form: `FORM_ID = '21-686c'` is hardcoded in `submissions_controller.rb` (6 references), a dependents-named Flipper flag is referenced directly, and the controller leaks the upstream BIP shape via `dig('envelope', ...)` while dropping `submissionId`, `claim`, and `document` metadata.
@@ -20,9 +24,9 @@ Move per-form concerns into a thin plugin layer, isolate the upstream shape behi
 
 ### 1. PORO — isolates the upstream shape
 
-`DigitalFormsApi::Submission` wraps the `Service::Submissions#retrieve` response and exposes: `form_id`, `payload`, `veteran_id_hash`, `ep_code`, `claim_label`, `source_request_id` (from `envelope`), `claim_metadata`, `document_metadata` (from `submission` — currently dropped), `template_details`, `template_version` (set by controller after lookup), and `plugin` (`Forms.resolve(form_id)`, lazily memoized).
+`DigitalFormsApi::SubmissionResponse` wraps the `Service::Submissions#retrieve` response. The initial shipped slice exposes only `#veteran_id` and `#payload`; the following accessors are part of the target design: `form_id`, `veteran_id_hash`, `ep_code`, `claim_label`, `source_request_id` (from `envelope`), `claim_metadata`, `document_metadata` (from `submission` — currently dropped), `template_details`, `template_version` (set by controller after lookup), and `plugin` (`Forms.resolve(form_id)`, lazily memoized).
 
-The PORO also translates the nested template shape (`template['formTemplate']['formTemplate'][form_id]`) into the flat `template_details`/`template_version` attributes the serializer expects, keeping both BIP shapes isolated in one place.
+The PORO will also translate the nested template shape (`template['formTemplate']['formTemplate'][form_id]`) into the flat `template_details`/`template_version` attributes the serializer expects, keeping both BIP shapes isolated in one place.
 
 ### 2. Plugin layer — self-registering, no central map
 
@@ -62,7 +66,7 @@ Form ID strings decouple from Ruby class names (`21P-530` needs no contorted con
 **Form ID is discovered post-retrieval.** The controller calls `retrieve(params[:id])` without a form ID — `envelope.formId` comes from the BIP response, extracted by the PORO. Gating (Flipper, authorization) happens after the round-trip, which is acceptable since the controller is deciding whether the *current user* may view an existing submission.
 
 ```ruby
-sub = Submission.new(submissions_service.retrieve(params[:id]), params[:id])
+sub = SubmissionResponse.new(submissions_service.retrieve(params[:id]), params[:id])
 return bad_request if sub.form_id.blank?
 return render_forbidden(:feature_flag_disabled) unless sub.plugin.enabled_for?(current_user)
 if (reason = sub.plugin.denial_reason_for(sub, current_user))
@@ -96,7 +100,7 @@ end
 | Action | Path |
 | --- | --- |
 | edit  | `modules/digital_forms_api/app/controllers/digital_forms_api/submissions_controller.rb` |
-| new   | `modules/digital_forms_api/app/models/digital_forms_api/submission.rb` (PORO) |
+| new   | `modules/digital_forms_api/app/models/digital_forms_api/submission_response.rb` (PORO) |
 | new   | `modules/digital_forms_api/app/serializers/digital_forms_api/submission_serializer.rb` |
 | new   | `modules/digital_forms_api/lib/digital_forms_api/forms/base.rb` |
 | new   | `modules/digital_forms_api/lib/digital_forms_api/forms/vba_21_686c.rb` |

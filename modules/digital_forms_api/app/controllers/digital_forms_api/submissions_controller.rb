@@ -20,7 +20,7 @@ module DigitalFormsApi
       started_at = monotonic_now
       stage = :retrieve_submission
 
-      submission = submissions_service.retrieve(params[:id], form_id: FORM_ID)
+      submission = SubmissionResponse.new(submissions_service.retrieve(params[:id], form_id: FORM_ID))
       stage = :authorize_submission
       return unless authorize_submission_access!(submission, started_at:)
 
@@ -41,10 +41,10 @@ module DigitalFormsApi
     # Authorize that the current user is able to access the submission
     # Auth is based on whether the veteranId in the submission matches current_user
     # If unauthorized, log the attempt and return a 403 response
-    # @param submission [Common::Client::Base] the submission object returned from the service
+    # @param submission [DigitalFormsApi::SubmissionResponse] the wrapped submission-retrieval response
     # @return [Boolean] true if authorized, false if not (after rendering the forbidden response)
     def authorize_submission_access!(submission, started_at:)
-      veteran_id = submission.body.dig('envelope', 'veteranId')
+      veteran_id = submission.veteran_id
       denial_reason = denial_reason_for_veteran_id(veteran_id)
       return true unless denial_reason
 
@@ -91,11 +91,11 @@ module DigitalFormsApi
     end
 
     # Render the submission and template details in the response
-    # @param submission [Common::Client::Base] the submission object returned from the service
+    # @param submission [DigitalFormsApi::SubmissionResponse] the wrapped submission-retrieval response
     # @param template_details [Hash] the details of the form template that was retrieved
     def render_submission(submission, template_details)
       render json: {
-        submission: submission.body.dig('envelope', 'payload'),
+        submission: submission.payload,
         template: template_details
       }
     end
