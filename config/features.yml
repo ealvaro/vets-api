@@ -3585,11 +3585,6 @@ features:
     description: >-
       If enabled, persistent_attachment_remediation rake task will use
       VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
-  va_notify_v2_preneeds_burial_form_job:
-    actor_type: user
-    description: >-
-      If enabled, BurialFormsController will use VANotify::V2::QueueEmailJob instead of
-      VANotify::EmailJob for confirmation emails
   va_notify_v2_simple_forms_email:
     actor_type: user
     description: >-
