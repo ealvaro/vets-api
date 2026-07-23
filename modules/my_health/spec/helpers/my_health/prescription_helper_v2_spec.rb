@@ -645,7 +645,6 @@ RSpec.describe MyHealth::PrescriptionHelperV2 do
       before do
         allow(Rails.logger).to receive(:info)
         allow(Rails.logger).to receive(:warn)
-        allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_medications_renewal_request,
                                                   nil).and_return(false)
         facility = instance_double(HealthFacility, name: 'Portland VA Medical Center')

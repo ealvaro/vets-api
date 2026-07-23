@@ -24,16 +24,12 @@ module MyHealth
         'Active', 'Active: Refill in Process', 'Active: Non-VA',
         'Active: Parked', 'Active: Submitted'
       ].freeze
-      ACTIVE_STATUSES_V2 = ['Active'].freeze
 
       IN_PROGRESS_STATUSES_V1 = ['Active: Refill in Process', 'Active: Submitted'].freeze
-      IN_PROGRESS_STATUSES_V2 = ['In progress'].freeze
 
       NON_ACTIVE_STATUSES_V1 = ['Expired', 'Discontinued', 'Active: On hold'].freeze
-      NON_ACTIVE_STATUSES_V2 = ['Inactive'].freeze
 
       UNKNOWN_STATUS_V1 = 'Unknown'
-      UNKNOWN_STATUS_V2 = 'Status not available'
 
       # Submits prescription refill orders to the upstream service.
       # Orders blocked by OH transition rules are partitioned out before submission.
@@ -256,7 +252,7 @@ module MyHealth
       end
 
       def in_progress_statuses
-        v2_status_mapping_enabled? ? IN_PROGRESS_STATUSES_V2 : IN_PROGRESS_STATUSES_V1
+        IN_PROGRESS_STATUSES_V1
       end
 
       def apply_filters_to_list(prescriptions)
@@ -346,7 +342,7 @@ module MyHealth
       end
 
       def count_active_medications(list)
-        active_statuses = v2_status_mapping_enabled? ? ACTIVE_STATUSES_V2 : ACTIVE_STATUSES_V1
+        active_statuses = ACTIVE_STATUSES_V1
         list.count { |rx| rx.respond_to?(:disp_status) && active_statuses.include?(rx.disp_status) }
       end
 
@@ -355,7 +351,7 @@ module MyHealth
       end
 
       def count_non_active_medications(list)
-        non_active_statuses = v2_status_mapping_enabled? ? NON_ACTIVE_STATUSES_V2 : NON_ACTIVE_STATUSES_V1
+        non_active_statuses = NON_ACTIVE_STATUSES_V1
         list.count { |rx| rx.respond_to?(:disp_status) && non_active_statuses.include?(rx.disp_status) }
       end
 
@@ -373,16 +369,12 @@ module MyHealth
       end
 
       def count_unknown_status_medications(list)
-        unknown_status = v2_status_mapping_enabled? ? UNKNOWN_STATUS_V2 : UNKNOWN_STATUS_V1
+        unknown_status = UNKNOWN_STATUS_V1
         list.count { |rx| rx.respond_to?(:disp_status) && rx.disp_status == unknown_status }
       end
 
-      def v2_status_mapping_enabled?
-        Flipper.enabled?(:mhv_medications_v2_status_mapping, @current_user)
-      end
-
       def in_progress_display_status
-        v2_status_mapping_enabled? ? IN_PROGRESS_STATUSES_V2.first : IN_PROGRESS_STATUSES_V1.last
+        IN_PROGRESS_STATUSES_V1.last
       end
 
       def apply_recent_submission_overrides(prescriptions)

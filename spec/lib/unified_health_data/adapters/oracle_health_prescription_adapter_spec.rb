@@ -16,7 +16,6 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     allow(Rails.cache).to receive(:exist?).and_return(false)
     allow(Rails.logger).to receive(:info)
     allow(Rails.logger).to receive(:warn)
-    allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping).and_return(false)
     facility = instance_double(HealthFacility, name: 'Portland VA Medical Center')
     allow(HealthFacility).to receive(:find_by).and_return(facility)
 

@@ -2295,10 +2295,6 @@ features:
     actor_type: user
     description: Controls user rollout of the prescription renewal secure-message flow for Oracle Health facilities listed in mhv.oh_facility_checks.renewal_flow_rollout_oh_facilities
     enable_in_development: true
-  mhv_medications_v2_status_mapping:
-    actor_type: user
-    description: Enables V2 status mapping for prescriptions (consolidates VistA/Oracle Health statuses into simplified groups)
-    enable_in_development: false
   mhv_milestone_2_changes_enabled:
     actor_type: user
     description: Enables MHV Milestone 2 changes

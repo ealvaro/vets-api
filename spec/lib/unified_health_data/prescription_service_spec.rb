@@ -21,7 +21,6 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
     # All config/features.yml flags default to enabled in tests, so leaving these unstubbed
     # ties cassette-count and status assertions to that global default. Individual contexts
     # override :mhv_medications_management_improvements where they exercise it.
-    allow(Flipper).to receive(:enabled?).with(:mhv_medications_v2_status_mapping, anything).and_return(false)
     allow(Flipper).to receive(:enabled?)
       .with(:mhv_medications_display_pending_meds, anything).and_return(true)
     allow(Flipper).to receive(:enabled?)

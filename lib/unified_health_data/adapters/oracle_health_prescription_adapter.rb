@@ -64,8 +64,6 @@ module UnifiedHealthData
         # Filter out medications that should not be visible to Veterans
         return nil if %i[pharmacy_charges inpatient clinic_administered].include?(category)
 
-        log_uncategorized_medication(resource) if category == :uncategorized
-
         UnifiedHealthData::Prescription.new(build_prescription_attributes(resource))
       rescue => e
         Rails.logger.error("Error parsing Oracle Health prescription: #{e.message}")

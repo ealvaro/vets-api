@@ -2,14 +2,12 @@
 
 require_relative 'vista_prescription_adapter'
 require_relative 'oracle_health_prescription_adapter'
-require_relative 'v2_status_mapping'
 require_relative '../constants'
 require_relative '../operation_outcome_detector'
 
 module UnifiedHealthData
   module Adapters
     class PrescriptionsAdapter
-      include V2StatusMapping
       # Prescription status constants (STATUS_* / DISP_*) live in Constants::PrescriptionStatuses.
       include UnifiedHealthData::Constants::PrescriptionStatuses
 
@@ -55,10 +53,6 @@ module UnifiedHealthData
           apply_shipped_tracking_logic(prescriptions)
           apply_awaiting_tracking_logic(prescriptions)
         end
-
-        # Apply V2 status mapping to all prescriptions when Cerner pilot flag is enabled
-        # This is the single point where V2 status mapping is applied for both VistA and Oracle Health
-        prescriptions = apply_v2_status_mapping_if_enabled(prescriptions)
 
         { prescriptions:, metadata: { has_failed_stations: any_source_failed?(body) } }
       end
@@ -160,16 +154,6 @@ module UnifiedHealthData
           nil
         end
         dates.max
-      end
-
-      # Applies V2 status mapping to all prescriptions when V2 status mapping flag is enabled
-      # This is the single consolidation point for V2 status mapping for both VistA and Oracle Health
-      # @param prescriptions [Array] Array of prescription objects
-      # @return [Array] The same array with prescription statuses mapped (if flag enabled)
-      def apply_v2_status_mapping_if_enabled(prescriptions)
-        return prescriptions unless Flipper.enabled?(:mhv_medications_v2_status_mapping, @current_user)
-
-        apply_v2_status_mapping_to_all(prescriptions)
       end
 
       # For prescriptions that have been recently dispensed (filled) but do not yet have

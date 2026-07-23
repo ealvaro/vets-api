@@ -65,19 +65,6 @@ module UnifiedHealthData
       def non_va_med?(resource)
         categorize_medication(resource) != :va_prescription
       end
-
-      def log_uncategorized_medication(resource)
-        return unless Flipper.enabled?(:mhv_medications_v2_status_mapping)
-
-        Rails.logger.warn(
-          message: 'Oracle Health medication uncategorized',
-          prescription_id_suffix: resource['id']&.to_s&.last(3) || 'unknown',
-          reported_boolean: resource['reportedBoolean'],
-          intent: resource['intent'],
-          category_codes: extract_category(resource),
-          service: 'unified_health_data'
-        )
-      end
     end
   end
 end
