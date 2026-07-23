@@ -51,8 +51,19 @@ module Pensions
         require 'pdf_utilities/pdf_stamper'
         require 'pensions/pdf_stamper'
 
-        Pensions::PDFStamper.stamp_sets.each do |identifier, stamps|
-          ::PDFUtilities::PDFStamper.register_stamps(identifier, stamps)
+        # Only register stamps if database exists and is connected
+        # This is happening because stamp_sets calls Pensions.pdf_path which checks a Flipper flag
+        # During the CI creation of the vets_api_test database
+        begin
+          ActiveRecord::Base.connection.verify!
+
+          stamp_sets = Pensions::PDFStamper.stamp_sets
+          stamp_sets.each do |identifier, stamps|
+            ::PDFUtilities::PDFStamper.register_stamps(identifier, stamps)
+          end
+        rescue ActiveRecord::NoDatabaseError, ActiveRecord::ConnectionNotEstablished
+          # Skip registration when database is not available (e.g., during db:create)
+          Rails.logger.debug('Skipping Pensions PDF stamper registration - database not available')
         end
       end
     end
