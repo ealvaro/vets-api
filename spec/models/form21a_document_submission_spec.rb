@@ -15,6 +15,24 @@ RSpec.describe Form21aDocumentSubmission, type: :model do
     }
   end
 
+  def create_submission(attributes = {})
+    described_class.create!(
+      valid_attributes.merge(
+        form21a_attachment_guid: SecureRandom.uuid
+      ).merge(attributes)
+    )
+  end
+
+  def create_attempts(submission, count:, status: 'failed_transient')
+    count.times do
+      Form21aDocumentSubmissionAttempt.create!(
+        submission:,
+        status:,
+        failure_classification: status == 'failed_transient' ? 'transient' : nil
+      )
+    end
+  end
+
   describe 'associations' do
     it 'has many submission attempts' do
       association = described_class.reflect_on_association(:submission_attempts)
@@ -45,6 +63,164 @@ RSpec.describe Form21aDocumentSubmission, type: :model do
 
       expect(submission.latest_status).to eq('pending')
       expect(submission).to be_latest_status_pending
+    end
+  end
+
+  describe '.redrivable' do
+    it 'returns only failed_transient submissions whose next_retry_at is due' do
+      due_transient = create_submission(
+        latest_status: 'failed_transient',
+        next_retry_at: 1.minute.ago
+      )
+
+      create_submission(
+        latest_status: 'failed_transient',
+        next_retry_at: 1.minute.from_now
+      )
+      create_submission(
+        latest_status: 'failed_transient',
+        next_retry_at: nil
+      )
+      create_submission(
+        latest_status: 'failed_permanent',
+        next_retry_at: 1.minute.ago
+      )
+      create_submission(
+        latest_status: 'succeeded',
+        next_retry_at: 1.minute.ago
+      )
+      create_submission(
+        latest_status: 'abandoned',
+        next_retry_at: 1.minute.ago
+      )
+      create_submission(
+        latest_status: 'pending',
+        next_retry_at: 1.minute.ago
+      )
+      create_submission(
+        latest_status: 'uploading',
+        next_retry_at: 1.minute.ago
+      )
+
+      expect(described_class.redrivable).to contain_exactly(due_transient)
+    end
+  end
+
+  describe '.stuck' do
+    it 'returns pending and uploading submissions older than the stuck threshold' do
+      old_pending = create_submission(latest_status: 'pending')
+      old_uploading = create_submission(latest_status: 'uploading')
+
+      # rubocop:disable Rails/SkipsModelValidations
+      old_pending.update_columns(created_at: described_class::STUCK_THRESHOLD.ago - 1.minute)
+      old_uploading.update_columns(created_at: described_class::STUCK_THRESHOLD.ago - 1.minute)
+      # rubocop:enable Rails/SkipsModelValidations
+      recent_pending = create_submission(latest_status: 'pending')
+      recent_uploading = create_submission(latest_status: 'uploading')
+      old_failed_transient = create_submission(latest_status: 'failed_transient')
+      old_succeeded = create_submission(latest_status: 'succeeded')
+      old_abandoned = create_submission(latest_status: 'abandoned')
+      # rubocop:disable Rails/SkipsModelValidations
+      old_failed_transient.update_columns(created_at: described_class::STUCK_THRESHOLD.ago - 1.minute)
+      old_succeeded.update_columns(created_at: described_class::STUCK_THRESHOLD.ago - 1.minute)
+      old_abandoned.update_columns(created_at: described_class::STUCK_THRESHOLD.ago - 1.minute)
+      # rubocop:enable Rails/SkipsModelValidations
+      expect(described_class.stuck).to contain_exactly(old_pending, old_uploading)
+      expect(described_class.stuck).not_to include(
+        recent_pending,
+        recent_uploading,
+        old_failed_transient,
+        old_succeeded,
+        old_abandoned
+      )
+    end
+  end
+
+  describe '#attempt_count' do
+    it 'returns the number of submission attempts' do
+      submission = described_class.create!(valid_attributes)
+
+      create_attempts(submission, count: 3)
+
+      expect(submission.attempt_count).to eq(3)
+    end
+  end
+
+  describe '#genuinely_stuck?' do
+    it 'returns true when the max redrive attempts have been reached' do
+      submission = described_class.create!(valid_attributes)
+
+      create_attempts(
+        submission,
+        count: described_class::REDRIVE_MAX_ATTEMPTS
+      )
+
+      expect(submission.reload).to be_genuinely_stuck
+    end
+
+    it 'returns true when the submission is older than the abandon threshold' do
+      submission = described_class.create!(valid_attributes)
+      # rubocop:disable Rails/SkipsModelValidations
+      submission.update_columns(created_at: described_class::ABANDON_THRESHOLD.ago - 1.minute)
+      # rubocop:enable Rails/SkipsModelValidations
+      expect(submission.reload).to be_genuinely_stuck
+    end
+
+    it 'returns false when under the attempt and age thresholds' do
+      submission = described_class.create!(valid_attributes)
+
+      create_attempts(
+        submission,
+        count: described_class::REDRIVE_MAX_ATTEMPTS - 1
+      )
+
+      expect(submission.reload).not_to be_genuinely_stuck
+    end
+  end
+
+  describe '#retry_due?' do
+    it 'returns true for failed_transient submissions whose next_retry_at is due' do
+      submission = described_class.create!(
+        valid_attributes.merge(
+          latest_status: 'failed_transient',
+          next_retry_at: 1.minute.ago
+        )
+      )
+
+      expect(submission).to be_retry_due
+    end
+
+    it 'returns false when next_retry_at is in the future' do
+      submission = described_class.create!(
+        valid_attributes.merge(
+          latest_status: 'failed_transient',
+          next_retry_at: 1.minute.from_now
+        )
+      )
+
+      expect(submission).not_to be_retry_due
+    end
+
+    it 'returns false when next_retry_at is nil' do
+      submission = described_class.create!(
+        valid_attributes.merge(
+          latest_status: 'failed_transient',
+          next_retry_at: nil
+        )
+      )
+
+      expect(submission).not_to be_retry_due
+    end
+
+    it 'returns false when the status is not failed_transient' do
+      submission = described_class.create!(
+        valid_attributes.merge(
+          latest_status: 'failed_permanent',
+          next_retry_at: 1.minute.ago
+        )
+      )
+
+      expect(submission).not_to be_retry_due
     end
   end
 

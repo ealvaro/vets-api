@@ -78,7 +78,8 @@ module AccreditedRepresentativePortal
       attachment = find_attachment
       file = retrieve_file(attachment)
 
-      upload_to_gclaws(file)
+      response = upload_to_gclaws(file)
+      record_successful_upload(http_status: response.status)
       delete_attachment(attachment)
     rescue => e
       raise unless handle_failed_upload(e)
@@ -152,6 +153,7 @@ module AccreditedRepresentativePortal
         end
 
         handle_response(response)
+        response
       end
     rescue => e
       raise unless transient_upload_exception?(e)
@@ -239,18 +241,76 @@ module AccreditedRepresentativePortal
       # Don't re-raise - the upload succeeded, deletion failure shouldn't cause retry
     end
 
+    def record_successful_upload(http_status:)
+      submission = Form21aDocumentSubmission.find_by(form21a_attachment_guid:)
+
+      return unless submission
+
+      persist_successful_upload!(submission, http_status:)
+    rescue => e
+      log_successful_upload_tracking_failure(e)
+    end
+
+    def persist_successful_upload!(submission, http_status:)
+      attempted_at = Time.current
+
+      Form21aDocumentSubmission.transaction do
+        create_successful_attempt!(submission, http_status:, attempted_at:)
+        mark_submission_succeeded!(submission, attempted_at:)
+      end
+    end
+
+    def create_successful_attempt!(submission, http_status:, attempted_at:)
+      submission.submission_attempts.create!(
+        status: 'succeeded',
+        last_http_status: normalized_http_status(http_status),
+        attempted_at:,
+        metadata: successful_attempt_metadata
+      )
+    end
+
+    def mark_submission_succeeded!(submission, attempted_at:)
+      submission.update!(
+        last_attempted_at: attempted_at,
+        next_retry_at: nil,
+        succeeded_at: attempted_at
+      )
+    end
+
+    def log_successful_upload_tracking_failure(error)
+      Rails.logger.error(
+        'UploadForm21aDocumentToGCLAWSJob: Failed to record successful Form 21a document upload. ' \
+        "guid=#{form21a_attachment_guid} " \
+        "application_id=#{application_id} " \
+        "document_type=#{document_type} " \
+        "content_type=#{content_type}",
+        exception: error
+      )
+    end
+
+    def successful_attempt_metadata
+      {
+        'job_class' => self.class.name,
+        'form21a_attachment_guid' => form21a_attachment_guid,
+        'application_id' => application_id,
+        'document_type' => document_type
+      }
+    end
+
     def record_failed_attempt(exception:, classification:)
+      attempted_at = Time.current
       submission = find_or_create_submission
 
-      submission.submission_attempts.create!(
-        status: failed_status_for(classification),
-        failure_classification: classification,
-        last_http_status: http_status_for(exception),
-        attempted_at: Time.current,
-        metadata: attempt_metadata(exception),
-        error_message: exception.message,
-        response: response_data_for(exception)
-      )
+      Form21aDocumentSubmission.transaction do
+        create_failed_attempt!(
+          submission,
+          exception:,
+          classification:,
+          attempted_at:
+        )
+
+        submission.update!(last_attempted_at: attempted_at)
+      end
     rescue => e
       Rails.logger.error(
         'UploadForm21aDocumentToGCLAWSJob: Failed to record Form21aDocumentSubmissionAttempt. ' \
@@ -259,6 +319,18 @@ module AccreditedRepresentativePortal
       )
 
       false
+    end
+
+    def create_failed_attempt!(submission, exception:, classification:, attempted_at:)
+      submission.submission_attempts.create!(
+        status: failed_status_for(classification),
+        failure_classification: classification,
+        last_http_status: http_status_for(exception),
+        attempted_at:,
+        metadata: attempt_metadata(exception),
+        error_message: exception.message,
+        response: response_data_for(exception)
+      )
     end
 
     def record_retries_exhausted(job_args, exception)
@@ -295,15 +367,28 @@ module AccreditedRepresentativePortal
     end
 
     def append_terminal_attempt!(submission:, classification:, terminal_status:, exception:)
+      attempted_at = Time.current
+
       submission.submission_attempts.create!(
         status: terminal_status,
         failure_classification: classification,
         last_http_status: http_status_for(exception),
-        attempted_at: Time.current,
+        attempted_at:,
         metadata: attempt_metadata(exception).merge('terminal' => true),
         error_message: exception.message,
         response: response_data_for(exception)
       )
+
+      submission.update!(
+        last_attempted_at: attempted_at,
+        next_retry_at: next_retry_at_for_terminal_failure(submission, classification)
+      )
+    end
+
+    def next_retry_at_for_terminal_failure(submission, classification)
+      return nil if classification == PERMANENT_CLASSIFICATION
+
+      submission.next_retry_at || Time.current
     end
 
     def log_retries_exhausted_recording_failure(tracking_error, original_exception)

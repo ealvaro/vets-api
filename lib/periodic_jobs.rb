@@ -293,6 +293,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Delete old IntentToFile records 60 days or older
   mgr.register('0 0 * * *', 'AccreditedRepresentativePortal::DeleteOldIntentToFileRecordsJob')
 
+  # Re-drive failed transient Form 21a document uploads through the existing upload job.
+  mgr.register('25 */2 * * *', 'AccreditedRepresentativePortal::RunUnsuccessful21aUploads')
+
   # Engine version: Sync non-final DR SavedClaims to LH status
   mgr.register('10 */4 * * *', 'DecisionReviews::HlrStatusUpdaterJob')
   mgr.register('15 1-21/4 * * *', 'DecisionReviews::NodStatusUpdaterJob')

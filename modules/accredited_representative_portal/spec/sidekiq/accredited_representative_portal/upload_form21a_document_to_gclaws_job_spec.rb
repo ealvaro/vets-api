@@ -82,6 +82,28 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
     Form21aDocumentSubmission.find_by!(form21a_attachment_guid:)
   end
 
+  def create_existing_submission(attributes = {})
+    Form21aDocumentSubmission.create!(
+      {
+        form_id: '21a',
+        application_id:,
+        form21a_attachment_guid:,
+        document_type:,
+        content_type:,
+        latest_status: 'failed_transient',
+        next_retry_at: 1.minute.ago
+      }.merge(attributes)
+    ).tap do |document_submission|
+      document_submission.original_file_name = original_file_name
+      document_submission.identifiers = {
+        'form21a_attachment_guid' => form21a_attachment_guid,
+        'application_id' => application_id,
+        'document_type' => document_type
+      }
+      document_submission.save!
+    end
+  end
+
   describe 'Sidekiq retry configuration' do
     it 'uses two bounded in-job retries' do
       expect(described_class.sidekiq_options['retry']).to eq(2)
@@ -119,13 +141,95 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         expect { perform_job }.to change(FormAttachment, :count).by(-1)
       end
 
-      it 'does not create document submission tracking rows' do
+      it 'records the actual successful HTTP status for an existing document submission' do
+        existing_submission = create_existing_submission
+
+        stub_request(:post, document_upload_url)
+          .with { |request| multipart_request?(request) }
+          .to_return(
+            status: 201,
+            body: { success: true }.to_json,
+            headers: { 'Content-Type' => 'application/json' }
+          )
+
+        perform_job
+
+        attempt = existing_submission.reload.submission_attempts.last
+
+        expect(existing_submission.latest_status).to eq('succeeded')
+        expect(attempt.status).to eq('succeeded')
+        expect(attempt.last_http_status).to eq(201)
+      end
+
+      it 'does not create document submission tracking rows when no tracking row exists' do
         stub_successful_upload
 
         expect { perform_job }
           .not_to change(Form21aDocumentSubmission, :count)
 
         expect(Form21aDocumentSubmissionAttempt.count).to eq(0)
+      end
+
+      it 'marks an existing document submission as succeeded' do
+        existing_submission = create_existing_submission
+        Form21aDocumentSubmissionAttempt.create!(
+          submission: existing_submission,
+          status: 'failed_transient',
+          failure_classification: 'transient',
+          attempted_at: 1.minute.ago,
+          error_message: 'Previous failure'
+        )
+
+        stub_successful_upload
+
+        expect do
+          perform_job
+        end.to change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+        existing_submission.reload
+        attempt = existing_submission.submission_attempts.last
+
+        expect(existing_submission.latest_status).to eq('succeeded')
+        expect(existing_submission.succeeded_at).to be_present
+        expect(existing_submission.last_attempted_at).to be_present
+        expect(existing_submission.next_retry_at).to be_nil
+        expect(attempt.status).to eq('succeeded')
+        expect(attempt.failure_classification).to be_nil
+        expect(attempt.last_http_status).to eq(200)
+        expect(attempt.attempted_at).to be_present
+        expect(attempt.metadata).to include(
+          'job_class' => described_class.name,
+          'form21a_attachment_guid' => form21a_attachment_guid,
+          'application_id' => application_id,
+          'document_type' => document_type
+        )
+      end
+
+      it 'logs and continues when recording a successful upload fails' do
+        existing_submission = create_existing_submission
+        tracking_error = StandardError.new('tracking failed')
+
+        allow(Form21aDocumentSubmission).to receive(:find_by).and_call_original
+        allow(Form21aDocumentSubmission).to receive(:find_by)
+          .with(form21a_attachment_guid:)
+          .and_return(existing_submission)
+        allow(existing_submission).to receive(:update!).and_raise(tracking_error)
+        allow(Rails.logger).to receive(:error)
+
+        stub_successful_upload
+
+        expect { perform_job }.to change(FormAttachment, :count).by(-1)
+
+        expect(Rails.logger).to have_received(:error).with(
+          a_string_including(
+            'UploadForm21aDocumentToGCLAWSJob: Failed to record successful Form 21a document upload.',
+            "guid=#{form21a_attachment_guid}",
+            "application_id=#{application_id}",
+            "document_type=#{document_type}",
+            "content_type=#{content_type}"
+          ),
+          exception: tracking_error
+        )
       end
 
       it 'sends the correct multipart payload to GCLAWS' do
@@ -193,6 +297,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         expect(submission.document_type).to eq(document_type)
         expect(submission.original_file_name).to eq(original_file_name)
         expect(submission.content_type).to eq(content_type)
+        expect(submission.last_attempted_at).to be_present
         expect(submission.identifiers).to eq(
           'form21a_attachment_guid' => form21a_attachment_guid,
           'application_id' => application_id,
@@ -255,6 +360,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         attempt = submission.submission_attempts.last
 
         expect(submission.latest_status).to eq('failed_transient')
+        expect(submission.last_attempted_at).to be_present
         expect(attempt.status).to eq('failed_transient')
         expect(attempt.failure_classification).to eq('transient')
         expect(attempt.last_http_status).to be_nil
@@ -311,6 +417,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         attempt = submission.submission_attempts.last
 
         expect(submission.latest_status).to eq('failed_transient')
+        expect(submission.last_attempted_at).to be_present
         expect(attempt.status).to eq('failed_transient')
         expect(attempt.failure_classification).to eq('transient')
         expect(attempt.last_http_status).to be_nil
@@ -338,6 +445,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
 
         expect(submission.latest_status).to eq('failed_permanent')
         expect(submission.content_type).to eq('image/png')
+        expect(submission.last_attempted_at).to be_present
         expect(attempt.status).to eq('failed_permanent')
         expect(attempt.failure_classification).to eq('permanent')
         expect(attempt.last_http_status).to be_nil
@@ -431,6 +539,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         expect(submission.document_type).to eq(document_type)
         expect(submission.original_file_name).to eq(original_file_name)
         expect(submission.content_type).to eq(content_type)
+        expect(submission.last_attempted_at).to be_present
         expect(submission.identifiers).to eq(
           'form21a_attachment_guid' => form21a_attachment_guid,
           'application_id' => application_id,
@@ -445,6 +554,38 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
           'body' => {
             'error' => 'Internal Server Error'
           }
+        )
+      end
+
+      it 'does not leave a partially persisted failed attempt when tracking update fails' do
+        existing_submission = create_existing_submission
+        tracking_error = StandardError.new('tracking update failed')
+
+        stub_failed_upload(status: 500, body: { error: 'Internal Server Error' })
+
+        allow(Form21aDocumentSubmission).to receive(:find_or_create_by!).and_call_original
+        allow(Form21aDocumentSubmission).to receive(:find_or_create_by!)
+          .with(form21a_attachment_guid:)
+          .and_return(existing_submission)
+        allow(existing_submission).to receive(:update!).and_raise(tracking_error)
+        allow(Rails.logger).to receive(:error)
+
+        expect do
+          perform_job
+        end.to raise_error(
+          described_class::GclawsDocumentUploadError,
+          'GCLAWS Document API returned 500'
+        )
+
+        expect(existing_submission.reload.submission_attempts.count).to eq(0)
+
+        expect(Rails.logger).to have_received(:error).with(
+          a_string_including(
+            'UploadForm21aDocumentToGCLAWSJob: Failed to record Form21aDocumentSubmissionAttempt.',
+            "guid=#{form21a_attachment_guid}",
+            "application_id=#{application_id}"
+          ),
+          exception: tracking_error
         )
       end
 
@@ -586,6 +727,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         attempt = submission.submission_attempts.last
 
         expect(submission.latest_status).to eq('failed_transient')
+        expect(submission.last_attempted_at).to be_present
         expect(attempt.status).to eq('failed_transient')
         expect(attempt.failure_classification).to eq('transient')
         expect(attempt.last_http_status).to be_nil
@@ -616,6 +758,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         attempt = submission.submission_attempts.last
 
         expect(submission.latest_status).to eq('failed_transient')
+        expect(submission.last_attempted_at).to be_present
         expect(attempt.status).to eq('failed_transient')
         expect(attempt.failure_classification).to eq('transient')
         expect(attempt.last_http_status).to be_nil
@@ -644,13 +787,27 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         expect { perform_job }.not_to raise_error
       end
 
-      it 'does not create document submission tracking rows' do
+      it 'does not create document submission tracking rows when no tracking row exists' do
         stub_successful_upload
 
         expect { perform_job }
           .not_to change(Form21aDocumentSubmission, :count)
 
         expect(Form21aDocumentSubmissionAttempt.count).to eq(0)
+      end
+
+      it 'still marks an existing document submission as succeeded' do
+        existing_submission = create_existing_submission
+
+        stub_successful_upload
+
+        expect do
+          perform_job
+        end.to change(Form21aDocumentSubmissionAttempt, :count).by(1)
+
+        expect(existing_submission.reload.latest_status).to eq('succeeded')
+        expect(existing_submission.succeeded_at).to be_present
+        expect(existing_submission.next_retry_at).to be_nil
       end
     end
 
@@ -842,6 +999,8 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
       expect(submission.document_type).to eq(document_type)
       expect(submission.original_file_name).to eq(original_file_name)
       expect(submission.content_type).to eq(content_type)
+      expect(submission.last_attempted_at).to be_present
+      expect(submission.next_retry_at).to be_present
       expect(attempt.status).to eq('failed_transient')
       expect(attempt.failure_classification).to eq('transient')
       expect(attempt.last_http_status).to be_nil
@@ -902,6 +1061,7 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
       attempt = submission.submission_attempts.last
 
       expect(submission.latest_status).to eq('failed_transient')
+      expect(submission.next_retry_at).to be_present
       expect(attempt.status).to eq('failed_transient')
       expect(attempt.failure_classification).to eq('transient')
       expect(attempt.last_http_status).to eq(422)
@@ -993,7 +1153,8 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
         form_id: '21a',
         application_id:,
         form21a_attachment_guid:,
-        document_type:
+        document_type:,
+        content_type:
       )
 
       Form21aDocumentSubmissionAttempt.create!(
@@ -1013,6 +1174,8 @@ RSpec.describe AccreditedRepresentativePortal::UploadForm21aDocumentToGCLAWSJob,
 
       expect(existing_submission.reload.submission_attempts.count).to eq(2)
       expect(existing_submission.latest_status).to eq('failed_transient')
+      expect(existing_submission.next_retry_at).to be_present
+      expect(existing_submission.last_attempted_at).to be_present
       expect(existing_submission.submission_attempts.last.metadata).to include(
         'terminal' => true
       )
