@@ -1,6 +1,6 @@
 ARG IMAGEMAGICK_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dpokidov/imagemagick:7.1.1-47-bookworm
 ARG RUBY_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/ruby:3.3.6-slim-bookworm
-ARG CERTS_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.0
+ARG CERTS_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.1
 
 FROM ${RUBY_IMAGE} AS rubyimg
 FROM rubyimg AS modules
@@ -60,38 +60,31 @@ RUN sed -i '/rights="none" pattern="PDF"/d' /usr/local/etc/ImageMagick-7/policy.
 # Install fwdproxy.crt into trust store
 COPY config/ca-trust/*.crt /usr/local/share/ca-certificates/
 
-# Stage the prebuilt VA certs from the certs image into a temp dir. These are only consumed
-# for review instances (see the conditional RUN below); for everything else they're discarded.
-COPY --from=certs /usr/local/share/ca-certificates/ /tmp/va-certs/
+# Copy VA certs from the prebuilt vsp-platform-va-certs image (CERTS_IMAGE). No runtime
+# downloads — the build fails if the cert image is missing, empty, or incomplete.
+COPY --from=certs /usr/local/share/ca-certificates/ /usr/local/share/ca-certificates/
 
-# VA certs come from one of two sources depending on the instance type:
-#   - Review instances (SHOULD_USE_CERT_IMAGE=true): use the prebuilt certs baked into the certs
-#     image. Review apps can't reach the VA cert CDNs/GHEC mirror at build time, so we rely on
-#     the prebuilt image instead of downloading.
-#   - Everything else: run import-va-certs.sh to download fresh certs from the VA CDNs / GHEC
-#     mirror (the script ends with its own `update-ca-certificates --fresh`).
-#
-# update-ca-certificates only ingests files with a .crt extension, so the review-instance path
-# normalizes any .pem-extension certs to .crt first — otherwise PEM-only anchors (e.g. DigiCert
-# TLS RSA SHA256 2020 CA1, Federal Common Policy CA) are silently dropped from the trust bundle.
-# This mirrors import-va-certs.sh, which converts everything to .crt before updating. The trust
-# bundle is then rebuilt with BOTH fwdproxy and VA certs. Must run AFTER fwdproxy certs are in.
-ARG SHOULD_USE_CERT_IMAGE=false
-COPY import-va-certs.sh /usr/local/bin/import-va-certs.sh
-RUN chmod +x /usr/local/bin/import-va-certs.sh && \
-    if [ "$SHOULD_USE_CERT_IMAGE" = "true" ]; then \
-      echo "SHOULD_USE_CERT_IMAGE=true — using prebuilt VA certs from the certs image"; \
-      cp -a /tmp/va-certs/. /usr/local/share/ca-certificates/; \
-      for f in /usr/local/share/ca-certificates/*.pem; do \
-        [ -e "$f" ] || continue; \
-        mv -n -- "$f" "${f%.pem}.crt"; \
-      done; \
-      update-ca-certificates --fresh; \
-    else \
-      echo "SHOULD_USE_CERT_IMAGE!=true — downloading VA certs via import-va-certs.sh"; \
-      /usr/local/bin/import-va-certs.sh; \
+# update-ca-certificates only ingests files with a .crt extension, so normalize any .pem-extension
+# certs to .crt first — otherwise PEM-only anchors (e.g. DigiCert TLS RSA SHA256 2020 CA1,
+# Federal Common Policy CA) are silently dropped from the trust bundle.
+RUN set -eu && \
+    for f in /usr/local/share/ca-certificates/*.pem; do \
+      [ -e "$f" ] || continue; \
+      base=$(basename "$f" .pem); \
+      mv -n -- "$f" "/usr/local/share/ca-certificates/${base}.crt"; \
+    done && \
+    if [ -z "$(find /usr/local/share/ca-certificates -maxdepth 1 -name 'VA-Internal*.crt' -print -quit)" ]; then \
+      echo "✗ No VA-Internal certificates copied from CERTS_IMAGE — build cannot continue without VA certs"; \
+      exit 1; \
     fi && \
-    rm -rf /tmp/va-certs /usr/local/bin/import-va-certs.sh
+    update-ca-certificates --fresh && \
+    subjects=$(find /usr/local/share/ca-certificates -maxdepth 1 -name '*.crt' \
+      -exec openssl x509 -in {} -noout -subject \; 2>/dev/null) && \
+    if ! echo "$subjects" | grep -qiE 'VA-Internal|DigiCert'; then \
+      echo "✗ Expected VA-Internal/DigiCert anchors not found after installing certs from CERTS_IMAGE"; \
+      exit 1; \
+    fi && \
+    echo "✓ VA certificates installed and validated"
 
 COPY config/clamd.conf /etc/clamav/clamd.conf
 

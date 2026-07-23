@@ -8,8 +8,7 @@ x-app: &common
       USER_ID: ${VETS_API_USER_ID}
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-public.ecr.aws/docker/library/ruby:3.3.6-slim-bookworm}"
-      CERTS_IMAGE: "${CERTS_IMAGE:-008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.0}"
-      SHOULD_USE_CERT_IMAGE: "true"
+      CERTS_IMAGE: "${CERTS_IMAGE:-008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.1}"
     context: .
   environment:
     RAILS_ENV: development

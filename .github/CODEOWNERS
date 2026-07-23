@@ -939,7 +939,6 @@ docs/setup/mpi.md @software/octo-identity
 Gemfile @software/va-platform-backend
 Gemfile.lock @software/va-platform-backend
 helmCharts/ @software/va-platform-backend
-import-va-certs.sh @software/va-platform-backend
 lib/accredited_representation/constants.rb @software/accredited-representative-crew
 lib/accredited_representation/create_accredited_individual.rb @software/accredited-representative-crew
 lib/admin @software/va-platform-backend
@@ -2116,7 +2115,6 @@ spec/rswag/v0/form214192_spec.rb @software/benefits-optimization-aquia
 spec/rswag/v0/form21p530a_spec.rb @software/benefits-optimization-aquia
 spec/rswag/v0/shared_schemas @software/va-platform-backend
 spec/scripts/coverage_collate_spec.rb @software/va-platform-backend
-spec/scripts/import_va_certs_spec.rb @software/va-platform-backend
 spec/scripts/junit_to_runtime_log_spec.rb @software/va-platform-backend
 spec/scripts/vcr_inspector @software/va-platform-backend
 spec/scripts/vcr_mcp @software/va-platform-backend
