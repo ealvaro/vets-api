@@ -36,7 +36,7 @@ module Mobile
         %i[mhv_meds rx_refill],
         %i[vaos appointments],
         %i[vapro_personal_info user_demographics],
-        %i[vapro_contact_info user_contact_update],
+        %i[vapro_contact_info user_profile_update],
         %i[eoas preneed_burial],
         %i[travel_pay travel_pay_features]
       ].freeze
