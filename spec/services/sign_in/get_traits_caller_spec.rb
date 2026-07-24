@@ -20,10 +20,10 @@ RSpec.describe SignIn::GetTraitsCaller do
       birth_date: '1990-01-01',
       ssn: '123456789',
       address: {
-        street1: '123 Main',
+        street: '123 Main',
         city: 'Springfield',
         state: 'VA',
-        zipcode: '12345'
+        postal_code: '12345'
       }
     }
   end

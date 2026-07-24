@@ -46,10 +46,10 @@ module SignIn
         birth_date:,
         ssn:,
         email: credential_email,
-        street1: address[:street1],
+        street1: address[:street],
         city: address[:city],
         state: address[:state],
-        zipcode: address[:zipcode]
+        zipcode: address[:postal_code]
       )
     end
 
