@@ -97,6 +97,9 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       image_processor = instance_double(MiniMagick::Image)
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
+      expect(Rails.logger).to receive(:info).with(
+        '[HCA_CONVERT_ATTACHMENT] ext: .png, content_type: image/png'
+      )
 
       uploader.store!(png_file)
     end
@@ -110,6 +113,9 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       image_processor = instance_double(MiniMagick::Image)
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
+      expect(Rails.logger).to receive(:info).with(
+        '[HCA_CONVERT_ATTACHMENT] ext: .heic, content_type: image/heic'
+      )
 
       uploader.store!(heic_file)
     end
@@ -123,6 +129,9 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       image_processor = instance_double(MiniMagick::Image)
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
+      expect(Rails.logger).to receive(:info).with(
+        '[HCA_CONVERT_ATTACHMENT] ext: .heif, content_type: image/heic'
+      )
 
       uploader.store!(heif_file)
     end

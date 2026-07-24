@@ -49,6 +49,7 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
   def convert_png_or_heic_to_jpg
     return unless png_or_heic?(file)
 
+    Rails.logger.info("[HCA_CONVERT_ATTACHMENT] ext: #{File.extname(file.file)}, content_type: #{file.content_type}")
     converted_file = MiniMagick::Image.new(file.file)
     converted_file.format('jpg')
 
