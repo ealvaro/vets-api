@@ -259,7 +259,7 @@ RSpec.describe BGS::Form686c do
 
   describe '#set_claim_type' do
     let(:form686c) { BGS::Form686c.new(user_struct, saved_claim) }
-    let(:bid_service) { instance_double(BEP::Awards::Service) }
+    let(:bep_awards_service) { instance_double(BEP::Awards::Service) }
     let(:selectable_options) do
       {
         'report_child18_or_older_is_not_attending_school' => false,
@@ -273,8 +273,8 @@ RSpec.describe BGS::Form686c do
     end
 
     before do
-      allow(form686c).to receive(:bep_service).and_return(bid_service)
-      allow(bid_service).to receive(:get_awards_pension).and_return(
+      allow(form686c).to receive(:bep_awards_service).and_return(bep_awards_service)
+      allow(bep_awards_service).to receive(:get_awards_pension).and_return(
         double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } })
       )
     end
@@ -294,7 +294,7 @@ RSpec.describe BGS::Form686c do
             let(:options_with_removal) { selectable_options.merge('report_death' => true) }
 
             before do
-              allow(bid_service).to receive(:get_awards_pension).and_return(
+              allow(bep_awards_service).to receive(:get_awards_pension).and_return(
                 double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } })
               )
             end
@@ -324,7 +324,7 @@ RSpec.describe BGS::Form686c do
 
           context 'when not removing dependent but receiving pension' do
             before do
-              allow(bid_service).to receive(:get_awards_pension).and_return(
+              allow(bep_awards_service).to receive(:get_awards_pension).and_return(
                 double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } })
               )
             end
@@ -356,7 +356,7 @@ RSpec.describe BGS::Form686c do
             end
 
             before do
-              allow(bid_service).to receive(:get_awards_pension).and_return(
+              allow(bep_awards_service).to receive(:get_awards_pension).and_return(
                 double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } })
               )
             end
@@ -394,7 +394,7 @@ RSpec.describe BGS::Form686c do
             end
 
             it 'does not call pension service when not removing dependent' do
-              expect(bid_service).not_to receive(:get_awards_pension)
+              expect(bep_awards_service).not_to receive(:get_awards_pension)
               form686c.send(:set_claim_type, 'Started', selectable_options)
             end
           end
@@ -410,7 +410,7 @@ RSpec.describe BGS::Form686c do
           let(:options_with_removal) { selectable_options.merge('report_marriage_of_child_under18' => true) }
 
           it 'sets exception end product without checking pension' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
 
             form686c.send(:set_claim_type, 'MANUAL_VAGOV', options_with_removal)
 
@@ -423,7 +423,7 @@ RSpec.describe BGS::Form686c do
 
         context 'when proc_state is MANUAL_VAGOV and not removing dependent' do
           it 'sets reject end product without checking pension' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
 
             form686c.send(:set_claim_type, 'MANUAL_VAGOV', selectable_options)
 
@@ -436,7 +436,7 @@ RSpec.describe BGS::Form686c do
           let(:options_with_removal) { selectable_options.merge('report_death' => true) }
 
           it 'sets removal end product without checking pension' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
 
             form686c.send(:set_claim_type, 'Started', options_with_removal)
 
@@ -460,7 +460,7 @@ RSpec.describe BGS::Form686c do
         context 'when proc_state is MANUAL_VAGOV' do
           context 'when receiving pension' do
             before do
-              allow(bid_service).to receive(:get_awards_pension).and_return(
+              allow(bep_awards_service).to receive(:get_awards_pension).and_return(
                 double(body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } })
               )
             end
@@ -497,7 +497,7 @@ RSpec.describe BGS::Form686c do
           end
 
           it 'does not call pension service' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
             form686c.send(:set_claim_type, 'Started', selectable_options)
           end
         end
@@ -510,7 +510,7 @@ RSpec.describe BGS::Form686c do
 
         context 'when proc_state is MANUAL_VAGOV' do
           it 'sets reject end product without pension check' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
 
             form686c.send(:set_claim_type, 'MANUAL_VAGOV', selectable_options)
 
@@ -531,7 +531,7 @@ RSpec.describe BGS::Form686c do
           end
 
           it 'does not call pension service' do
-            expect(bid_service).not_to receive(:get_awards_pension)
+            expect(bep_awards_service).not_to receive(:get_awards_pension)
             form686c.send(:set_claim_type, 'Started', selectable_options)
           end
         end

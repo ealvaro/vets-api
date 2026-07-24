@@ -18,11 +18,11 @@ module BEP
 
       # Retrieves pension awards information for the current user
       # @return [Faraday::Response] the HTTP response containing pension award data
-      def get_awards_pension
+      def get_awards_pension(participant_id)
         with_monitoring do
           perform(
             :get,
-            end_point,
+            "#{config.base_path}pension/#{participant_id}",
             nil,
             request_headers
           )
@@ -31,11 +31,11 @@ module BEP
 
       # This method will retrieve a list of current award events for the user
       # Mock response is defined in: spec/lib/bep/awards/support/current_awards_response.rb (RSpec shared context)
-      def get_current_awards
+      def get_current_awards(participant_id)
         with_monitoring do
           perform(
             :get,
-            current_awards_endpoint,
+            "#{config.base_path}current/#{participant_id}/beneficiaryId/#{participant_id}?awardTC=CPL",
             nil,
             request_headers
           )
@@ -50,23 +50,6 @@ module BEP
         {
           Authorization: "Bearer #{BEP::Awards::JwtGenerator.encode_jwt}"
         }
-      end
-
-      def participant_id
-        @user.participant_id.presence || raise(StandardError,
-                                               'BEP Awards Service requires a participant_id for the user')
-      end
-
-      def current_awards_endpoint
-        # NOTE: participant_id is the same as vereranId and beneficiaryId
-        # awardTC = CPL (compensation pension live)
-        "#{config.base_path}current/#{participant_id}/beneficiaryId/#{participant_id}?awardTC=CPL"
-      end
-
-      # Constructs the API endpoint URL for pension awards
-      # @return [String] the full URL endpoint for pension awards API
-      def end_point
-        "#{config.base_path}pension/#{participant_id}"
       end
     end
   end

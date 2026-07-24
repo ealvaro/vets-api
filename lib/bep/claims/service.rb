@@ -15,10 +15,6 @@ module BEP
       # StatsD key prefix for metrics tracking
       STATSD_KEY_PREFIX = 'api.bep.claims'
 
-      def initialize
-        super(nil)
-      end
-
       # Retrieves pension claims information for the current user
       # @return [Faraday::Response] the HTTP response containing pension award data
       def create_claim(params)

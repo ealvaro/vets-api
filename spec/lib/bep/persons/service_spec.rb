@@ -5,7 +5,7 @@ require 'bep/persons/service'
 
 RSpec.describe BEP::Persons::Service do
   let(:user) { create(:evss_user, :loa3) }
-  let(:service) { BEP::Persons::Service.new(user) }
+  let(:service) { BEP::Persons::Service.new }
   let(:participant_id) { '600293960' }
 
   describe '#get_relationships' do

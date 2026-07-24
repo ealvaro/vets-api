@@ -29,7 +29,7 @@ module PensionAwardHelper
   # @return [Hash] the awards pension data from BEP service or an empty hash if the request fails
   def awards_pension
     @awards_pension ||= begin
-      response = pension_award_service.get_current_awards
+      response = pension_award_service.get_current_awards(user.participant_id)
       current_awards_data = response.try(:body)
 
       if current_awards_data.present?
@@ -90,11 +90,10 @@ module PensionAwardHelper
   end
 
   ##
-  # Abstract method that must be implemented by including classes
   # Returns the pension award service instance
   #
   # @return [BEP::Awards::Service] Service for retrieving pension award data
   def pension_award_service
-    raise NotImplementedError, 'Including class must implement #pension_award_service'
+    @pension_award_service ||= BEP::Awards::Service.new
   end
 end

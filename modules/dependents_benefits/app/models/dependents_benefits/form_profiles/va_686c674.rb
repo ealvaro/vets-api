@@ -193,15 +193,6 @@ module DependentsBenefits
     end
 
     ##
-    # Returns a BEP awards service instance for the current user
-    # Used to retrieve pension award information
-    #
-    # @return [BEP::Awards::Service] Service for retrieving pension award data
-    def pension_award_service
-      @pension_award_service ||= BEP::Awards::Service.new(user)
-    end
-
-    ##
     # Implementation of abstract method from PensionAwardHelper
     # Tracks pension award errors using the monitor service
     #

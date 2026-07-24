@@ -9,7 +9,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
   let(:job) { described_class.new }
   let(:user) { create(:evss_user) }
   let(:bgs_stub) { double('BGS::Service') }
-  let(:bid_awards_stub) { double('BEP::Awards::Service') }
+  let(:bep_awards_stub) { double('BEP::Awards::Service') }
   let(:proc_id) { 101 }
   let(:create_proc_response) { OpenStruct.new({ vnp_proc_id: proc_id }) }
 
@@ -38,8 +38,8 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
                                         create_child_student: {},
                                         find_regional_offices: {}, create_person: {}, create_phone: {})
 
-    allow(BEP::Awards::Service).to receive(:new).and_return(bid_awards_stub)
-    allow(bid_awards_stub).to receive(:get_awards_pension).and_return(
+    allow(BEP::Awards::Service).to receive(:new).and_return(bep_awards_stub)
+    allow(bep_awards_stub).to receive(:get_awards_pension).and_return(
       OpenStruct.new({ body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } } })
     )
   end

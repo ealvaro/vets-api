@@ -151,7 +151,7 @@ module BGS
         receiving_pension = false
 
         if Flipper.enabled?(:dependents_pension_check)
-          pension_response = bep_service.get_awards_pension
+          pension_response = bep_awards_service.get_awards_pension(@user.participant_id)
           receiving_pension = pension_response.body['awards_pension']['is_in_receipt_of_pension']
         end
 
@@ -174,8 +174,8 @@ module BGS
       BGS::Service.new(@user)
     end
 
-    def bep_service
-      BEP::Awards::Service.new(@user)
+    def bep_awards_service
+      BEP::Awards::Service.new
     end
 
     def stats_key

@@ -157,12 +157,6 @@ class FormProfiles::VA686c674v2 < FormProfile
     @dependent_service ||= BGS::DependentService.new(user)
   end
 
-  # Returns the BEP Awards pension service instance
-  # @return [BEP::Awards::Service] service for retrieving pension award information
-  def pension_award_service
-    @pension_award_service ||= BEP::Awards::Service.new(user)
-  end
-
   # Returns the dependents monitor instance for logging
   # @return [Dependents::Monitor] monitor for tracking dependent events
   def monitor

@@ -239,13 +239,14 @@ RSpec.describe FormProfile, type: :model do
             let(:user) { create(:evss_user, :loa3) }
             let(:form_profile) { FormProfiles::VA686c674v2.new(user:, form_id: '686C-674-V2') }
             let(:mock_award_response) { OpenStruct.new(body: {}) }
-            let(:bid_service) { double('BEP::Awards::Service', get_current_awards: mock_award_response) }
+            let(:bep_awards_service) { instance_double(BEP::Awards::Service) }
             let(:monitor) { instance_double(DependentsBenefits::Monitor) }
 
             before do
               allow(Rails.logger).to receive(:warn)
-              allow(BEP::Awards::Service).to receive(:new).with(user).and_return(bid_service)
+              allow(BEP::Awards::Service).to receive(:new).and_return(bep_awards_service)
               allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
+              allow(bep_awards_service).to receive(:get_current_awards).and_return(mock_award_response)
               allow(monitor).to receive(:track_warning_event)
             end
 
@@ -345,9 +346,9 @@ RSpec.describe FormProfile, type: :model do
               error = StandardError.new('awards pension error')
               VCR.use_cassette('va_profile/military_personnel/post_read_service_histories_200',
                                allow_playback_repeats: true) do
-                allow(bid_service).to receive(:get_current_awards).and_raise(error)
+                allow(bep_awards_service).to receive(:get_current_awards).and_raise(error)
                 prefilled_data = described_class.for(form_id: '686C-674-V2', user:).prefill[:form_data]
-                expect(bid_service).to have_received(:get_current_awards)
+                expect(bep_awards_service).to have_received(:get_current_awards)
                 expect(monitor)
                   .to have_received(:track_warning_event)
                   .with(

@@ -76,7 +76,7 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     end
 
     context 'with the last verified date feature flag on' do
-      let(:persons_service) { double('BEP::Persons::Service') }
+      let(:persons_service) { instance_double(BEP::Persons::Service) }
       let(:persons_response) do
         OpenStruct.new(
           success?: true,

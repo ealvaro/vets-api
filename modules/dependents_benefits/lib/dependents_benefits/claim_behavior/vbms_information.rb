@@ -107,8 +107,8 @@ module DependentsBenefits
         # we only need to do a pension check if we are removing a dependent or we have set the status to manual
         receiving_pension = false
         if Flipper.enabled?(:dependents_pension_check) && user && (removing_dependent || @proc_state == 'MANUAL_VAGOV')
-          bid_service = BEP::Awards::Service.new(user)
-          pension_response = bid_service.get_awards_pension
+          bep_awards_service = BEP::Awards::Service.new
+          pension_response = bep_awards_service.get_awards_pension(user.participant_id)
           receiving_pension = pension_response.body['awards_pension']['is_in_receipt_of_pension']
         end
 

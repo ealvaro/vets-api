@@ -9,14 +9,14 @@ RSpec.describe DependentsBenefits::ClaimBehavior::VBMSInformation do
   let(:claim) { create(:dependents_claim) }
   let(:parsed_form) { claim.parsed_form }
   let(:user) { double('User', participant_id: 'participant_id') }
-  let(:bid_service) { double('BEP::Awards::Service', get_awards_pension: awards_response) }
+  let(:bep_awards_service) { double('BEP::Awards::Service', get_awards_pension: awards_response) }
   let(:awards_response) { double('response', body: { 'awards_pension' => { 'is_in_receipt_of_pension' => true } }) }
 
   before do
     allow(Flipper).to receive(:enabled?).with(:dependents_removal_check).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:dependents_pension_check).and_return(true)
 
-    allow(BEP::Awards::Service).to receive(:new).and_return(bid_service)
+    allow(BEP::Awards::Service).to receive(:new).and_return(bep_awards_service)
 
     allow(claim).to receive(:parsed_form).and_return(parsed_form)
   end
@@ -95,7 +95,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior::VBMSInformation do
     context 'without receiving pension' do
       before do
         no_pension = double('response', body: { 'awards_pension' => { 'is_in_receipt_of_pension' => false } })
-        allow(bid_service).to receive(:get_awards_pension).and_return(no_pension)
+        allow(bep_awards_service).to receive(:get_awards_pension).and_return(no_pension)
       end
 
       it 'covers add_spouse' do

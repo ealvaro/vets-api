@@ -246,7 +246,7 @@ module DependentsBenefits
         monitor.track_info_event('Fetching last verified dates',
                                  action: 'fetch_dlv.start')
 
-        service = BEP::Persons::Service.new(current_user)
+        service = BEP::Persons::Service.new
         response = service.get_relationships(current_user.participant_id)
 
         if response.success?

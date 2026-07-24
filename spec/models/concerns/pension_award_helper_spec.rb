@@ -16,8 +16,8 @@ RSpec.describe PensionAwardHelper, type: :model do
     Class.new do
       include PensionAwardHelper
 
-      def pension_award_service
-        @pension_award_service ||= BEP::Awards::Service.new(nil)
+      def user
+        OpenStruct.new({ participant_id: '1234567' })
       end
 
       def track_pension_award_error(error)
@@ -30,18 +30,6 @@ RSpec.describe PensionAwardHelper, type: :model do
   let(:complete_instance) { test_class_with_methods.new }
 
   describe 'abstract method validation' do
-    describe '#pension_award_service' do
-      it 'raises NotImplementedError when not implemented and awards_pension is called' do
-        expect { incomplete_instance.awards_pension }.to raise_error(
-          NotImplementedError, 'Including class must implement #pension_award_service'
-        )
-      end
-
-      it 'does not raise error when implemented' do
-        expect { complete_instance.pension_award_service }.not_to raise_error
-      end
-    end
-
     describe '#track_pension_award_error' do
       it 'raises NotImplementedError when not implemented and service error occurs' do
         # Create a test class that implements pension_award_service but not track_pension_award_error

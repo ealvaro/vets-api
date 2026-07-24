@@ -6,7 +6,8 @@ require_relative 'support/current_awards_response'
 
 RSpec.describe BEP::Awards::Service do
   let(:user) { create(:evss_user, :loa3) }
-  let(:service) { BEP::Awards::Service.new(user) }
+  let(:participant_id) { user.participant_id }
+  let(:service) { BEP::Awards::Service.new }
 
   include_context 'BEP Awards CurrentAwardsResponse'
 
@@ -20,23 +21,12 @@ RSpec.describe BEP::Awards::Service do
     context 'with a successful submission' do
       it 'successfully receives an Award Pension object' do
         VCR.use_cassette('bep/awards/get_awards_pension') do
-          response = service.get_awards_pension
+          response = service.get_awards_pension(participant_id)
 
           expect(response.status).to eq(200)
           expect(response.body['awards_pension']['is_eligible_for_pension']).to be(true)
           expect(response.body['awards_pension']['is_in_receipt_of_pension']).to be(true)
         end
-      end
-    end
-
-    context 'with a failed submission' do
-      it 'handles missing participant_id error' do
-        user_without_participant_id = create(:evss_user, :loa3, participant_id: nil)
-        service_without_participant_id = BEP::Awards::Service.new(user_without_participant_id)
-
-        expect do
-          service_without_participant_id.get_awards_pension
-        end.to raise_error(StandardError, 'BEP Awards Service requires a participant_id for the user')
       end
     end
   end
@@ -58,7 +48,7 @@ RSpec.describe BEP::Awards::Service do
           )
         )
 
-        response = service.get_current_awards
+        response = service.get_current_awards(participant_id)
 
         expect(response.status).to eq(200)
         expect(response.body).to have_key('award')
@@ -87,32 +77,6 @@ RSpec.describe BEP::Awards::Service do
         expect(first_line['gross_amount']).to eq('462.00')
         expect(first_line['net_amount']).to eq('462.00')
       end
-    end
-
-    context 'with a failed submission' do
-      it 'raises an error when participant_id is missing' do
-        user_without_participant_id = create(:evss_user, :loa3, participant_id: nil)
-        service_without_participant_id = BEP::Awards::Service.new(user_without_participant_id)
-
-        expect do
-          service_without_participant_id.get_current_awards
-        end.to raise_error(StandardError, 'BEP Awards Service requires a participant_id for the user')
-      end
-    end
-  end
-
-  describe 'participant_id validation' do
-    it 'returns the participant_id when present' do
-      expect(service.send(:participant_id)).to eq(user.participant_id)
-    end
-
-    it 'raises an error if participant_id is missing' do
-      user_without_participant_id = create(:evss_user, :loa3, participant_id: nil)
-      service_without_participant_id = BEP::Awards::Service.new(user_without_participant_id)
-
-      expect do
-        service_without_participant_id.send(:participant_id)
-      end.to raise_error(StandardError, 'BEP Awards Service requires a participant_id for the user')
     end
   end
 end
