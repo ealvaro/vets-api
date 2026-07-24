@@ -296,6 +296,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Re-drive failed transient Form 21a document uploads through the existing upload job.
   mgr.register('25 */2 * * *', 'AccreditedRepresentativePortal::RunUnsuccessful21aUploads')
 
+  # Delete retained Form 21a attachments after their terminal-state retention window.
+  mgr.register('50 2 * * *', 'AccreditedRepresentativePortal::DeleteOldForm21aAttachmentsJob')
+
   # Engine version: Sync non-final DR SavedClaims to LH status
   mgr.register('10 */4 * * *', 'DecisionReviews::HlrStatusUpdaterJob')
   mgr.register('15 1-21/4 * * *', 'DecisionReviews::NodStatusUpdaterJob')
