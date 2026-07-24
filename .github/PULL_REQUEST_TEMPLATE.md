@@ -7,12 +7,10 @@ Keep your PR as a Draft until it's ready for Platform review. A PR is ready for 
 - What is the solution, and why?
 
 **Is this work behind a feature flag (flipper)?**
-- [ ] Yes — flipper name: `my_feature_enabled`
-- [ ] No — briefly explain (e.g. "low-risk refactor", "hotfix")
+- [ ] Yes — flipper name: ``
+- [ ] No — briefly explain:
 
 ## Related issue(s)
-
-*Link your GitHub issue or Jira ticket and any related PRs.*
 -
 
 ---
@@ -42,8 +40,8 @@ A teammate must be able to verify this work without tracking you down.
 
 | Name | URL | What it tracks |
 |------|-----|----------------|
-| _(e.g. My Feature Error Rate)_ | _(paste link)_ | _(e.g. 5xx errors for /v0/my_endpoint)_ |
-| _(e.g. My Feature Latency Dashboard)_ | _(paste link)_ | _(e.g. p50/p95 latency)_ |
+| _(Name)_ | _[url](paste link)_ | _(e.g. 5xx errors for /v0/my_endpoint)_ |
+| _(Name)_ | _[url](paste link)_ | _(e.g. p50/p95 latency)_ |
 
 **Expected outcome:**
 - Describe what a successful release looks like
@@ -52,9 +50,8 @@ A teammate must be able to verify this work without tracking you down.
 
 - **Rollback via flipper?** — [ ] Yes / [ ] No
 - **Steps:**
-  - e.g. "Disable `my_feature_enabled` in Flipper UI"
-  - e.g. "If no flipper: revert this PR and deploy"
-- **Known risks:** e.g. "DB migration is not reversible — data added during the window needs manual cleanup"
+  -
+- **Known risks:**
 
 ## Acceptance Criteria
 - [ ] Unit and integration tests added for each feature (if applicable)
