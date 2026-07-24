@@ -74,7 +74,7 @@ app/controllers/v0/datadog_action_controller.rb @software/va-platform-backend
 app/controllers/v0/debt_letters_controller.rb @software/vsa-debt-resolution
 app/controllers/v0/debts_controller.rb @software/vsa-debt-resolution
 app/controllers/v0/dependents_applications_controller.rb @software/vfs-authenticated-experience-backend
-app/controllers/v0/dependents_verifications_controller.rb @software/benefits-dependents-management
+app/controllers/v0/dependents_verifications_controller.rb @software/benefits-lifestage
 app/controllers/v0/disability_compensation_forms_controller.rb @software/disability-benefits
 app/controllers/v0/disability_compensation_in_progress_forms_controller.rb @software/disability-benefits
 app/controllers/v0/documents_controller.rb @software/benefits-management-tools-be
@@ -106,8 +106,8 @@ app/controllers/v0/hca_attachments_controller.rb @software/health-apps-backend
 app/controllers/v0/health_care_applications_controller.rb @software/health-apps-backend
 app/controllers/v0/id_card_announcement_subscription_controller.rb @software/va-platform-backend
 app/controllers/v0/id_card_attributes_controller.rb @software/va-platform-backend
-app/controllers/v0/in_progress_forms_controller.rb @software/vfs-authenticated-experience-backend @software/benefits-dependents-management
-app/controllers/v0/intent_to_files_controller.rb @software/disability-benefits @software/benefits-lifestage @software/pension-and-burials
+app/controllers/v0/in_progress_forms_controller.rb @software/vfs-authenticated-experience-backend
+app/controllers/v0/intent_to_files_controller.rb @software/disability-benefits @software/benefits-lifestage
 app/controllers/v0/intents_to_file_controller.rb @software/benefits-management-tools-be
 app/controllers/v0/letters_discrepancy_controller.rb @software/benefits-management-tools-be
 app/controllers/v0/letters_generator_controller.rb @software/benefits-management-tools-be
@@ -155,7 +155,7 @@ app/mailers/bio_submission_status_report_mailer.rb @software/benefits-optimizati
 app/mailers/create_daily_spool_files_mailer.rb @software/va-platform-backend
 app/mailers/create_excel_files_mailer.rb @software/govcio-vfep-codereviewers
 app/mailers/create_staging_spool_files_mailer.rb @software/va-platform-backend
-app/mailers/dependents_application_failure_mailer.rb @software/benefits-dependents-management @software/vfs-authenticated-experience-backend
+app/mailers/dependents_application_failure_mailer.rb @software/vfs-authenticated-experience-backend
 app/mailers/direct_deposit_mailer.rb @software/vfs-authenticated-experience-backend
 app/mailers/rrd_alert_mailer.rb @software/va-platform-backend
 app/mailers/rrd_mas_notification_mailer.rb @software/va-platform-backend
@@ -168,7 +168,7 @@ app/mailers/stem_applicant_sco_mailer.rb @software/govcio-vfep-codereviewers
 app/mailers/transactional_email_mailer.rb @software/govcio-vfep-codereviewers
 app/mailers/veteran_readiness_employment_mailer.rb @software/benefits-non-disability
 app/mailers/views/ch31_submissions_report.html.erb @software/benefits-non-disability
-app/mailers/views/dependents_application_failure.erb @software/vfs-authenticated-experience-backend @software/benefits-dependents-management
+app/mailers/views/dependents_application_failure.erb @software/vfs-authenticated-experience-backend @software/benefits-lifestage
 app/mailers/views/direct_deposit.html.erb @software/vfs-authenticated-experience-backend
 app/mailers/views/rrd_alert_mailer.html.erb @software/va-platform-backend
 app/mailers/views/rrd_mas_notification_mailer.html.erb @software/va-platform-backend
@@ -192,8 +192,8 @@ app/models/async_transaction/va_profile @software/vfs-authenticated-experience-b
 app/models/attachment.rb @software/va-platform-backend
 app/models/audit/ @software/octo-identity
 app/models/average_days_for_claim_completion.rb @software/benefits-microservices
-app/models/bgs @software/benefits-dependents-management
-app/models/bgs_dependents @software/benefits-dependents-management
+app/models/bgs @software/benefits-lifestage
+app/models/bgs_dependents @software/benefits-lifestage
 app/models/category.rb @software/va-platform-backend
 app/models/cave_submission.rb @software/bio-huntridge
 app/models/central_mail_claim.rb @software/vfs-authenticated-experience-backend
@@ -212,7 +212,7 @@ app/models/concerns/form526_mpi_concern.rb @software/disability-benefits
 app/models/concerns/form526_rapid_ready_for_decision_concern.rb @software/disability-benefits
 app/models/concerns/ibm_data_dictionary.rb @software/benefits-optimization-aquia
 app/models/concerns/kms_encrypted_model_patch.rb @software/va-platform-backend
-app/models/concerns/pension_award_helper.rb @software/benefits-dependents-management
+app/models/concerns/pension_award_helper.rb @software/benefits-lifestage
 app/models/concerns/redis_caching.rb @software/va-platform-backend
 app/models/concerns/redis_form.rb @software/va-platform-backend
 app/models/concerns/set_guid.rb @software/va-platform-backend
@@ -272,8 +272,8 @@ app/models/form_profiles/va_214502.rb @software/benefits-intake-pingwind
 app/models/form_profiles/va_21p0537.rb @software/bio-heart-team
 app/models/form_profiles/va_261880.rb @software/va-core-veteran-experiences
 app/models/form_profiles/va_526ez.rb @software/govcio-vfep-codereviewers
-app/models/form_profiles/va_686c674.rb @software/benefits-dependents-management
-app/models/form_profiles/va_686c674v2.rb @software/benefits-dependents-management
+app/models/form_profiles/va_686c674.rb @software/benefits-lifestage
+app/models/form_profiles/va_686c674v2.rb @software/benefits-lifestage
 app/models/form_profiles/vha_10_7959f_2.rb @software/health-apps-backend
 app/models/form_submission_attempt.rb @software/platform-va-product-forms @software/disability-benefits
 app/models/form_submission.rb @software/platform-va-product-forms @software/disability-benefits
@@ -297,13 +297,13 @@ app/models/iam_user_identity.rb @software/octo-identity
 app/models/iam_user.rb @software/octo-identity
 app/models/id_card_attributes.rb @software/va-platform-backend
 app/models/identifier_index.rb @software/vsa-debt-resolution
-app/models/in_progress_form.rb @software/vfs-authenticated-experience-backend @software/benefits-dependents-management
+app/models/in_progress_form.rb @software/vfs-authenticated-experience-backend
 app/models/intent_to_file_queue_exhaustion.rb @software/benefits-lifestage
 app/models/ivc_champva_applicant.rb @software/health-apps-backend
 app/models/ivc_champva_form.rb @software/health-apps-backend
 app/models/ivc_champva_sponsor.rb @software/health-apps-backend
 app/models/lcpe_redis.rb @software/govcio-vfep-codereviewers
-app/models/lighthouse @software/pension-and-burials
+app/models/lighthouse @software/benefits-lifestage
 app/models/lighthouse_document.rb @software/va-platform-backend
 app/models/lighthouse526_document_upload.rb @software/disability-benefits
 app/models/maintenance_window.rb @software/va-platform-backend
@@ -322,9 +322,9 @@ app/models/mpi_data.rb @software/octo-identity
 app/models/old_email.rb @software/vfs-authenticated-experience-backend
 app/models/onsite_notification.rb @software/vfs-authenticated-experience-backend
 app/models/payment_history.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution
-app/models/persistent_attachment.rb @software/benefits-non-disability @software/benefits-lifestage @software/pension-and-burials
+app/models/persistent_attachment.rb @software/benefits-non-disability @software/benefits-lifestage
 app/models/persistent_attachments/claim_evidence.rb @software/benefits-lifestage
-app/models/persistent_attachments/dependency_claim.rb @software/benefits-dependents-management
+app/models/persistent_attachments/dependency_claim.rb @software/benefits-lifestage
 app/models/persistent_attachments/lgy_claim.rb @software/benefits-non-disability
 app/models/persistent_attachments/military_records.rb @software/platform-va-product-forms
 app/models/persistent_attachments/va_form_documentation.rb @software/va-platform-backend
@@ -378,8 +378,8 @@ app/models/secondary_appeal_form.rb @software/benefits-decision-reviews-be
 app/models/session.rb @software/octo-identity
 app/models/sign_in @software/octo-identity
 app/models/spool_file_event.rb @software/govcio-vfep-codereviewers
-app/models/submission_attempt.rb @software/benefits-lifestage @software/pension-and-burials
-app/models/submission.rb @software/benefits-lifestage @software/pension-and-burials
+app/models/submission_attempt.rb @software/benefits-lifestage
+app/models/submission.rb @software/benefits-lifestage
 app/models/supporting_evidence_attachment.rb @software/disability-benefits
 app/models/terms_of_use_agreement.rb @software/octo-identity
 app/models/tooltip.rb @software/vfs-mhv-integration
@@ -410,7 +410,7 @@ app/openapi/openapi/requests/form214192.rb @software/benefits-optimization-aquia
 app/openapi/openapi/requests/form21p530a.rb @software/benefits-optimization-aquia
 app/openapi/openapi/responses/benefits_intake_submission_response.rb @software/va-platform-backend
 app/policies/appeals_policy.rb @software/va-platform-backend
-app/policies/bgs_policy.rb @software/benefits-dependents-management
+app/policies/bgs_policy.rb @software/benefits-lifestage
 app/policies/claims_evidence_policy.rb @software/benefits-management-tools-be
 app/policies/coe_policy.rb @software/benefits-non-disability
 app/policies/communication_preferences_policy.rb @software/vfs-authenticated-experience-backend
@@ -440,7 +440,7 @@ app/serializers/archived_claim_serializer.rb @software/bio-huntridge
 app/serializers/async_transaction @software/vfs-authenticated-experience-backend
 app/serializers/async_transaction/base_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/backend_statuses_serializer.rb @software/va-platform-backend
-app/serializers/benefits_intake_submission_serializer.rb @software/benefits-dependents-management
+app/serializers/benefits_intake_submission_serializer.rb @software/benefits-lifestage
 app/serializers/cemetery_serializer.rb @software/bah-mbs-selfserv
 app/serializers/communication_groups_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/contact_information_serializer.rb @software/vfs-authenticated-experience-backend
@@ -478,7 +478,7 @@ app/serializers/maintenance_window_serializer.rb @software/va-platform-backend
 app/serializers/mhv_user_account_serializer.rb @software/octo-identity
 app/serializers/onsite_notification_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/payment_history_serializer.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution
-app/serializers/persistent_attachment_serializer.rb @software/benefits-non-disability @software/benefits-lifestage @software/pension-and-burials
+app/serializers/persistent_attachment_serializer.rb @software/benefits-non-disability @software/benefits-lifestage
 app/serializers/persistent_attachment_va_form_serializer.rb @software/platform-va-product-forms
 app/serializers/personal_information_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/post911_gi_bill_status_serializer.rb @software/govcio-vfep-codereviewers
@@ -502,14 +502,14 @@ app/serializers/user_serializer.rb @software/octo-identity
 app/serializers/user_verification_serializer.rb @software/octo-identity
 app/serializers/valid_va_file_number_serializer.rb @software/vfs-authenticated-experience-backend
 app/services/bgs/awards_service.rb @software/va-platform-backend
-app/services/bgs/constants.rb @software/benefits-dependents-management
-app/services/bgs/dependency_verification_service.rb @software/benefits-dependents-management
-app/services/bgs/dependent_service.rb @software/benefits-dependents-management
-app/services/bgs/dependents_veteran_identifiers.md @software/benefits-dependents-management
+app/services/bgs/constants.rb @software/benefits-lifestage
+app/services/bgs/dependency_verification_service.rb @software/benefits-lifestage
+app/services/bgs/dependent_service.rb @software/benefits-lifestage
+app/services/bgs/dependents_veteran_identifiers.md @software/benefits-lifestage
 app/services/bgs/payment_service.rb @software/vsa-debt-resolution
-app/services/bgs/people/request.rb @software/benefits-dependents-management
-app/services/bgs/people/service.rb @software/benefits-dependents-management
-app/services/bgs/uploaded_document_service.rb @software/benefits-dependents-management
+app/services/bgs/people/request.rb @software/benefits-lifestage
+app/services/bgs/people/service.rb @software/benefits-lifestage
+app/services/bgs/uploaded_document_service.rb @software/benefits-lifestage
 app/services/claim_fast_tracking @software/disability-benefits
 app/services/claim_fast_tracking/constants.rb @software/disability-benefits
 app/services/claim_fast_tracking/diagnostic_codes.rb @software/disability-benefits
@@ -541,7 +541,7 @@ app/services/users @software/octo-identity
 app/services/v0/lighthouse_claims/proxy.rb @software/benefits-management-tools-be
 app/sidekiq/benefits_intake_remediation_status_job.rb @software/platform-va-product-forms
 app/sidekiq/benefits_intake_status_job.rb @software/platform-va-product-forms @software/disability-benefits
-app/sidekiq/bgs @software/benefits-dependents-management
+app/sidekiq/bgs @software/benefits-lifestage
 app/sidekiq/bio_submission_status_report_job.rb @software/benefits-optimization-aquia
 app/sidekiq/cave_submission_purge_job.rb @software/bio-huntridge
 app/sidekiq/central_mail/submit_form4142_job.rb @software/disability-benefits
@@ -584,9 +584,9 @@ app/sidekiq/in_progress_form_cleaner.rb @software/vfs-authenticated-experience-b
 app/sidekiq/income_limits @software/vfs-public-websites-frontend
 app/sidekiq/kms_key_rotation @software/va-platform-backend
 app/sidekiq/lighthouse/benefits_discovery/log_eligible_benefits_job.rb @software/va-core-veteran-experiences
-app/sidekiq/lighthouse/benefits_intake/submit_central_form686c_job.rb @software/benefits-dependents-management
-app/sidekiq/lighthouse/benefits_intake/submit_central_form686c_v2_job.rb @software/benefits-dependents-management
-app/sidekiq/lighthouse/create_intent_to_file_job.rb @software/benefits-lifestage @software/pension-and-burials
+app/sidekiq/lighthouse/benefits_intake/submit_central_form686c_job.rb @software/benefits-lifestage
+app/sidekiq/lighthouse/benefits_intake/submit_central_form686c_v2_job.rb @software/benefits-lifestage
+app/sidekiq/lighthouse/create_intent_to_file_job.rb @software/benefits-lifestage
 app/sidekiq/lighthouse/document_upload_synchronous.rb @software/benefits-management-tools-be
 app/sidekiq/lighthouse/evidence_submissions/delete_evidence_submission_records_job.rb @software/benefits-management-tools-be
 app/sidekiq/lighthouse/evidence_submissions/document_upload.rb @software/benefits-management-tools-be
@@ -689,8 +689,8 @@ app/swagger/swagger/schemas/async_transaction/vet360.rb @software/vfs-authentica
 app/swagger/swagger/schemas/benefits_claims.rb @software/benefits-management-tools-be
 app/swagger/swagger/schemas/connected_applications.rb @software/lighthouse-pivot
 app/swagger/swagger/schemas/contacts.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
-app/swagger/swagger/schemas/dependents_verifications.rb @software/benefits-dependents-management
-app/swagger/swagger/schemas/dependents.rb @software/benefits-dependents-management
+app/swagger/swagger/schemas/dependents_verifications.rb @software/benefits-lifestage
+app/swagger/swagger/schemas/dependents.rb @software/benefits-lifestage
 app/swagger/swagger/schemas/financial_status_reports.rb @software/vsa-debt-resolution
 app/swagger/swagger/schemas/form526/ @software/disability-benefits
 app/swagger/swagger/schemas/gibct @software/va-platform-backend
@@ -780,7 +780,7 @@ config/form_profile_mappings/10182.yml @software/benefits-decision-reviews-be
 config/form_profile_mappings/20-0995.yml @software/benefits-decision-reviews-be
 config/form_profile_mappings/20-0996.yml @software/benefits-decision-reviews-be
 config/form_profile_mappings/20-10206.yml @software/platform-va-product-forms
-config/form_profile_mappings/21-0538.yml @software/benefits-dependents-management
+config/form_profile_mappings/21-0538.yml @software/benefits-lifestage
 config/form_profile_mappings/21-22.yml @software/accredited-representative-crew
 config/form_profile_mappings/21-22A.yml @software/accredited-representative-crew
 config/form_profile_mappings/21-2680.yml @software/benefits-optimization-aquia
@@ -792,9 +792,9 @@ config/form_profile_mappings/21-686C.yml @software/disability-benefits
 config/form_profile_mappings/21-8940.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/21-8940v1.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/21P-0537.yml @software/bio-heart-team
-config/form_profile_mappings/21P-0969.yml @software/income-and-assets
-config/form_profile_mappings/21P-527EZ.yml @software/pension-and-burials
-config/form_profile_mappings/21P-530EZ.yml @software/pension-and-burials
+config/form_profile_mappings/21P-0969.yml @software/benefits-lifestage
+config/form_profile_mappings/21P-527EZ.yml @software/benefits-lifestage
+config/form_profile_mappings/21P-530EZ.yml @software/benefits-lifestage
 config/form_profile_mappings/21P-534EZ.yml @software/bio-huntridge
 config/form_profile_mappings/21P-8416.yml @software/bio-huntridge
 config/form_profile_mappings/22-0803.yml @software/govcio-vfep-codereviewers
@@ -952,9 +952,9 @@ lib/benefits_claims/providers @software/benefits-management-tools-be
 lib/benefits_claims/responses/claim_response.rb @software/benefits-management-tools-be
 lib/benefits_claims/title_generator.rb @software/benefits-management-tools-be
 lib/benefits_documents @software/benefits-management-tools-be
-lib/benefits_intake_service @software/benefits-dependents-management
-lib/bgs @software/benefits-dependents-management
-lib/bep @software/govcio-vfep-codereviewers
+lib/benefits_intake_service @software/benefits-lifestage
+lib/bgs @software/benefits-lifestage
+lib/bep @software/benefits-lifestage
 lib/carma @software/health-apps-backend
 lib/caseflow @software/lighthouse-banana-peels
 lib/cave @software/bio-huntridge
@@ -996,7 +996,7 @@ lib/data_migrations/write_benefits_intake_uuids_to_form_submission_attempts.rb @
 lib/debt_management_center @software/vsa-debt-resolution
 lib/decision_review @software/benefits-decision-reviews-be
 lib/decision_review_v1 @software/benefits-decision-reviews-be
-lib/dependents @software/benefits-dependents-management
+lib/dependents @software/benefits-lifestage
 lib/disability_compensation @software/disability-benefits
 lib/disability_max_ratings @software/benefits-vro-engineers @software/benefits-employee-exp-engineers
 lib/education_benefits_claims @software/govcio-vfep-codereviewers
@@ -1110,8 +1110,8 @@ lib/pdf_fill/forms/field_mappings/va212680.rb @software/benefits-optimization-aq
 lib/pdf_fill/forms/field_mappings/va21p530a.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/pdfs/21-0779.pdf @software/benefits-optimization-aquia
 lib/pdf_fill/forms/pdfs/21-2680.pdf @software/benefits-optimization-aquia
-lib/pdf_fill/forms/pdfs/21-674.pdf @software/benefits-dependents-management
-lib/pdf_fill/forms/pdfs/21P-0969.pdf @software/income-and-assets
+lib/pdf_fill/forms/pdfs/21-674.pdf @software/benefits-lifestage
+lib/pdf_fill/forms/pdfs/21P-0969.pdf @software/benefits-lifestage
 lib/pdf_fill/forms/pdfs/21P-530a.pdf @software/benefits-optimization-aquia
 lib/pdf_fill/forms/pdfs/22-0810.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/22-0989.pdf @software/govcio-vfep-codereviewers
@@ -1123,12 +1123,12 @@ lib/pdf_fill/forms/pdfs/22-10275.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/22-10278.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/28-1900.pdf @software/benefits-non-disability
 lib/pdf_fill/forms/pdfs/28-8832.pdf @software/benefits-non-disability
-lib/pdf_fill/forms/pdfs/686C-674.pdf @software/benefits-dependents-management
+lib/pdf_fill/forms/pdfs/686C-674.pdf @software/benefits-lifestage
 lib/pdf_fill/forms/va210779.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/va212680.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/va2141422024.rb @software/benefits-decision-reviews-be @software/disability-benefits
-lib/pdf_fill/forms/va21674.rb @software/benefits-dependents-management
-lib/pdf_fill/forms/va21p0969.rb @software/income-and-assets
+lib/pdf_fill/forms/va21674.rb @software/benefits-lifestage
+lib/pdf_fill/forms/va21p0969.rb @software/benefits-lifestage
 lib/pdf_fill/forms/va21p530a.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/va220810.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va220839.rb @software/govcio-vfep-codereviewers
@@ -1140,12 +1140,12 @@ lib/pdf_fill/forms/va2210278.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va228794.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va281900.rb @software/benefits-non-disability
 lib/pdf_fill/forms/va288832.rb @software/benefits-non-disability
-lib/pdf_fill/forms/va686c674.rb @software/benefits-dependents-management
+lib/pdf_fill/forms/va686c674.rb @software/benefits-lifestage
 lib/pdf_fill/processors/va220976_processor.rb @software/govcio-vfep-codereviewers
 lib/pdf_info.rb @software/va-platform-backend
 lib/pdf_utilities @software/va-platform-backend
 lib/periodic_jobs.rb @software/va-platform-backend
-lib/persistent_attachments @software/benefits-lifestage @software/pension-and-burials
+lib/persistent_attachments @software/benefits-lifestage
 lib/preneeds @software/bah-mbs-selfserv
 lib/reports/uploader.rb @software/govcio-vfep-codereviewers
 lib/request_context_middleware.rb @software/octo-identity
@@ -1238,20 +1238,20 @@ modules/ask_va_api @software/ask-va-engineers
 modules/avs @software/after-visit-summary
 modules/banners @software/vfs-facilities-frontend
 modules/bio_heart @software/bio-heart-team
-modules/bpds @software/benefits-lifestage @software/govcio-vfep-codereviewers
-modules/burials @software/govcio-vfep-codereviewers
+modules/bpds @software/benefits-lifestage
+modules/burials @software/benefits-lifestage
 modules/check_in @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in
 modules/claims_api @software/lighthouse-dash
 modules/claims_api/config/schemas/v2/526.json @software/disability-benefits
 modules/claims_evidence_api @software/benefits-lifestage @software/claims-evidence-api
 modules/debts_api @software/vsa-debt-resolution
 modules/decision_reviews @software/benefits-decision-reviews-be
-modules/dependents_benefits @software/govcio-vfep-codereviewers
-modules/dependents_verification @software/govcio-vfep-codereviewers
+modules/dependents_benefits @software/benefits-lifestage
+modules/dependents_verification @software/benefits-lifestage
 modules/dhp_connected_devices @software/digital-health-platform
 modules/digital_forms_api @software/benefits-lifestage @software/benefits-employee-exp-engineers
 modules/facilities_api @software/vfs-facilities-frontend
-modules/income_and_assets @software/govcio-vfep-codereviewers
+modules/income_and_assets @software/benefits-lifestage
 modules/income_limits @software/vfs-public-websites-frontend
 modules/increase_compensation @software/benefits-intake-pingwind
 modules/ivc_champva @software/health-apps-backend
@@ -1273,7 +1273,7 @@ modules/my_health @software/vfs-mhv-integration
 modules/my_health/app/controllers/my_health/v1/prescriptions_controller.rb @software/vfs-mhv-integration
 modules/my_health/app/controllers/my_health/v1/tooltips_controller.rb @software/vfs-mhv-integration
 modules/my_health/spec/request/v1/prescriptions_request_spec.rb @software/vfs-mhv-integration
-modules/pensions @software/govcio-vfep-codereviewers
+modules/pensions @software/benefits-lifestage
 modules/representation_management @software/accredited-representative-crew
 modules/simple_forms_api @software/platform-va-product-forms
 modules/sob @software/govcio-vfep-codereviewers
@@ -1366,12 +1366,12 @@ spec/controllers/v0/concerns/multi_provider_support_spec.rb @software/benefits-m
 spec/controllers/v0/datadog_action_controller_spec.rb @software/va-platform-backend
 spec/controllers/v0/debt_letters_controller_spec.rb @software/vsa-debt-resolution
 spec/controllers/v0/dependents_applications_controller_spec.rb @software/vfs-authenticated-experience-backend
-spec/controllers/v0/dependents_verifications_controller_spec.rb @software/benefits-dependents-management
+spec/controllers/v0/dependents_verifications_controller_spec.rb @software/benefits-lifestage
 spec/controllers/v0/disability_compensation_forms_controller @software/disability-benefits
 spec/controllers/v0/disability_compensation_forms_controller_spec.rb @software/disability-benefits
 spec/controllers/v0/documents_controller_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/education_benefits_claims_controller_spec.rb @software/govcio-vfep-codereviewers
-spec/controllers/v0/education_career_counseling_claims_controller_spec.rb @software/benefits-dependents-management
+spec/controllers/v0/education_career_counseling_claims_controller_spec.rb @software/benefits-lifestage
 spec/controllers/v0/event_bus_gateway_controller_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/evss_claims_controller_spec.rb @software/vfs-authenticated-experience-backend
 spec/controllers/v0/example_controller_spec.rb @software/va-platform-backend
@@ -1413,7 +1413,7 @@ spec/controllers/v1/gids @software/govcio-vfep-codereviewers
 spec/controllers/v1/post911_gi_bill_statuses_controller_spec.rb @software/govcio-vfep-codereviewers
 spec/controllers/v1/profile @software/vfs-authenticated-experience-backend
 spec/controllers/v1/sessions_controller_spec.rb @software/octo-identity
-spec/factories/686c/ @software/benefits-dependents-management
+spec/factories/686c/ @software/benefits-lifestage
 spec/factories/accreditations.rb @software/accredited-representative-crew
 spec/factories/accredited_individuals.rb @software/accredited-representative-crew
 spec/factories/accredited_organizations.rb @software/accredited-representative-crew
@@ -1422,7 +1422,7 @@ spec/factories/appeal_submissions.rb @software/vfs-authenticated-experience-back
 spec/factories/async_transactions.rb @software/vfs-authenticated-experience-backend
 spec/factories/attachments.rb @software/vfs-mhv-integration
 spec/factories/audit/ @software/octo-identity
-spec/factories/bgs @software/benefits-dependents-management
+spec/factories/bgs @software/benefits-lifestage
 spec/factories/caregivers_assistance_claim.rb @software/health-apps-backend
 spec/factories/central_mail_submissions.rb @software/vfs-authenticated-experience-backend
 spec/factories/chatbot @software/vfs-virtual-agent-chatbot
@@ -1432,9 +1432,9 @@ spec/factories/console1984 @software/va-platform-backend
 spec/factories/debt_transaction_logs.rb @software/vsa-debt-resolution
 spec/factories/decision_review_evidence_attachment.rb @software/vfs-authenticated-experience-backend
 spec/factories/decision_review_notification_audit_logs.rb @software/benefits-decision-reviews-be
-spec/factories/dependency_claim_no_vet_information.rb @software/benefits-dependents-management
-spec/factories/dependency_claim.rb @software/benefits-dependents-management @software/benefits-dependents-management
-spec/factories/dependency_verification_claim.rb @software/benefits-dependents-management
+spec/factories/dependency_claim_no_vet_information.rb @software/benefits-lifestage
+spec/factories/dependency_claim.rb @software/benefits-lifestage
+spec/factories/dependency_verification_claim.rb @software/benefits-lifestage
 spec/factories/dependents_application.rb @software/vfs-authenticated-experience-backend
 spec/factories/dependents_verifications.rb @software/vfs-authenticated-experience-backend
 spec/factories/deprecated_user_accounts.rb @software/octo-identity
@@ -1554,13 +1554,13 @@ spec/factories/va5495.rb @software/govcio-vfep-codereviewers
 spec/factories/va8794.rb @software/govcio-vfep-codereviewers
 spec/factories/veteran_onboardings.rb @software/va-core-veteran-experiences
 spec/factories/veteran_readiness_employment_claim.rb @software/govcio-vfep-codereviewers
-spec/fixtures/bgs @software/benefits-dependents-management
+spec/fixtures/bgs @software/benefits-lifestage
 spec/fixtures/carma @software/health-apps-backend
 spec/fixtures/carma/10-10CG_f6056cff-d4cb-4058-8fb0-42296e12698f.pdf @software/health-apps-backend
 spec/fixtures/carma/privatekey.pem @software/health-apps-backend
 spec/fixtures/certs @software/octo-identity
 spec/fixtures/claim_letter @software/benefits-management-tools-be
-spec/fixtures/dependents @software/benefits-dependents-management
+spec/fixtures/dependents @software/benefits-lifestage
 spec/fixtures/dmc @software/vsa-debt-resolution
 spec/fixtures/education_benefits_claims @software/govcio-vfep-codereviewers
 spec/fixtures/education_benefits_claims/0810 @software/govcio-vfep-codereviewers
@@ -1606,9 +1606,9 @@ spec/fixtures/pdf_fill/21-0779 @software/benefits-optimization-aquia
 spec/fixtures/pdf_fill/21-0781V2 @software/disability-benefits
 spec/fixtures/pdf_fill/21-2680/simple.pdf @software/benefits-optimization-aquia
 spec/fixtures/pdf_fill/21-4192/ @software/benefits-optimization-aquia
-spec/fixtures/pdf_fill/21-674 @software/benefits-dependents-management
-spec/fixtures/pdf_fill/21-674-V2 @software/benefits-dependents-management
-spec/fixtures/pdf_fill/21P-0969 @software/income-and-assets
+spec/fixtures/pdf_fill/21-674 @software/benefits-lifestage
+spec/fixtures/pdf_fill/21-674-V2 @software/benefits-lifestage
+spec/fixtures/pdf_fill/21P-0969 @software/benefits-lifestage
 spec/fixtures/pdf_fill/21P-530a @software/benefits-optimization-aquia
 spec/fixtures/pdf_fill/22-0810 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10215 @software/govcio-vfep-codereviewers
@@ -1620,9 +1620,9 @@ spec/fixtures/pdf_fill/26-1880 @software/health-apps-backend
 spec/fixtures/pdf_fill/28-1900 @software/benefits-non-disability
 spec/fixtures/pdf_fill/28-8832 @software/benefits-non-disability
 spec/fixtures/pdf_fill/5655 @software/vsa-debt-resolution
-spec/fixtures/pdf_fill/686C-674 @software/benefits-dependents-management
-spec/fixtures/pdf_fill/686C-674-V2 @software/benefits-dependents-management
-spec/fixtures/pension @software/pension-and-burials
+spec/fixtures/pdf_fill/686C-674 @software/benefits-lifestage
+spec/fixtures/pdf_fill/686C-674-V2 @software/benefits-lifestage
+spec/fixtures/pension @software/benefits-lifestage
 spec/fixtures/preneeds @software/bah-mbs-selfserv
 spec/fixtures/remediation/ @software/octo-benefits-portfolio-code-reviewers
 spec/fixtures/sign_in @software/octo-identity
@@ -1630,7 +1630,7 @@ spec/fixtures/supplemental_claims @software/benefits-decision-reviews-be
 spec/fixtures/unified_health_data/ @software/va-cto-health-products @software/vfs-mhv-integration
 spec/fixtures/va_profile @software/vfs-authenticated-experience-backend
 spec/fixtures/vba_documents @software/lighthouse-banana-peels
-spec/fixtures/vbms @software/benefits-dependents-management
+spec/fixtures/vbms @software/benefits-lifestage
 spec/fixtures/veteran_enrollment_system @software/health-apps-backend
 spec/helpers/parameter_filter_helper_spec.rb @software/va-platform-backend
 spec/initializers/httpi_spec.rb @software/va-platform-backend
@@ -1642,9 +1642,9 @@ spec/lib/benefits_claims/providers @software/benefits-management-tools-be
 spec/lib/benefits_claims/responses/claim_response_spec.rb @software/benefits-management-tools-be
 spec/lib/benefits_claims/title_generator_spec.rb @software/benefits-management-tools-be
 spec/lib/benefits_documents @software/benefits-management-tools-be
-spec/lib/benefits_intake_service @software/benefits-dependents-management
-spec/lib/bgs @software/benefits-dependents-management
-spec/lib/bep @software/govcio-vfep-codereviewers
+spec/lib/benefits_intake_service @software/benefits-lifestage
+spec/lib/bgs @software/benefits-lifestage
+spec/lib/bep @software/benefits-lifestage
 spec/lib/breakers @software/va-platform-backend
 spec/lib/carma @software/health-apps-backend
 spec/lib/caseflow @software/lighthouse-banana-peels
@@ -1681,7 +1681,7 @@ spec/lib/dangerfile/ @software/va-platform-backend
 spec/lib/debt_management_center @software/vsa-debt-resolution
 spec/lib/decision_review @software/benefits-decision-reviews-be
 spec/lib/decision_review_v1 @software/benefits-decision-reviews-be
-spec/lib/dependents @software/benefits-dependents-management
+spec/lib/dependents @software/benefits-lifestage
 spec/lib/disability_compensation @software/disability-benefits
 spec/lib/disability_max_ratings @software/benefits-vro-engineers @software/benefits-employee-exp-engineers
 spec/lib/education_benefits_claims @software/govcio-vfep-codereviewers
@@ -1778,7 +1778,7 @@ spec/lib/pdf_fill/processors/va220976_processor_spec.rb @software/govcio-vfep-co
 spec/lib/pdf_info/metadata_spec.rb @software/va-platform-backend
 spec/lib/pdf_utilities @software/va-platform-backend
 spec/lib/periodic_jobs_spec.rb @software/govcio-vfep-codereviewers
-spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage @software/pension-and-burials
+spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage
 spec/lib/postgis_schema_roundtrip_spec.rb @software/va-platform-backend
 spec/lib/preneeds @software/bah-mbs-selfserv
 spec/lib/request_context_middleware_spec.rb @software/octo-identity
@@ -1873,8 +1873,8 @@ spec/models/application_record_spec.rb @software/va-platform-backend
 spec/models/async_transaction/base_spec.rb @software/vfs-authenticated-experience-backend
 spec/models/async_transaction/va_profile @software/vfs-authenticated-experience-backend
 spec/models/audit/ @software/octo-identity
-spec/models/bgs @software/benefits-dependents-management
-spec/models/bgs_dependents @software/benefits-dependents-management
+spec/models/bgs @software/benefits-lifestage
+spec/models/bgs_dependents @software/benefits-lifestage
 spec/models/category_spec.rb @software/va-platform-backend
 spec/models/cave_submission_spec.rb @software/bio-huntridge
 spec/models/chatbot @software/vfs-virtual-agent-chatbot
@@ -1882,7 +1882,7 @@ spec/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experi
 spec/models/concerns/form526_claim_fast_tracking_concern_spec.rb @software/disability-benefits
 spec/models/concerns/form526_conditions_logging_concern_spec.rb @software/disability-benefits
 spec/models/concerns/ibm_data_dictionary_spec.rb @software/benefits-optimization-aquia
-spec/models/concerns/pension_award_helper_spec.rb @software/benefits-dependents-management
+spec/models/concerns/pension_award_helper_spec.rb @software/benefits-lifestage
 spec/models/concerns/signature_required_spec.rb @software/vfs-mhv-integration
 spec/models/debt_transaction_log_spec.rb @software/vsa-debt-resolution
 spec/models/debts_api @software/vsa-debt-resolution
@@ -1934,8 +1934,8 @@ spec/models/gi_bill_feedback_spec.rb @software/govcio-vfep-codereviewers
 spec/models/gids_redis_spec.rb @software/va-platform-backend
 spec/models/health_care_application_spec.rb @software/health-apps-backend
 spec/models/iam_user_identity_spec.rb @software/octo-identity
-spec/models/in_progress_form_spec.rb @software/vfs-authenticated-experience-backend @software/benefits-dependents-management
-spec/models/intent_to_file_queue_exhaustion_spec.rb @software/pension-and-burials
+spec/models/in_progress_form_spec.rb @software/vfs-authenticated-experience-backend
+spec/models/intent_to_file_queue_exhaustion_spec.rb @software/benefits-lifestage
 spec/models/ivc_champva_forms_spec.rb @software/health-apps-backend
 spec/models/lcpe_redis_spec.rb @software/govcio-vfep-codereviewers
 spec/models/lighthouse @software/benefits-lifestage
@@ -1948,7 +1948,7 @@ spec/models/mhv_user_account_spec.rb @software/octo-identity
 spec/models/mhv/mr @software/vfs-mhv-integration
 spec/models/mpi_data_spec.rb @software/octo-identity
 spec/models/onsite_notification_spec.rb @software/vfs-authenticated-experience-backend
-spec/models/persistent_attachments @software/benefits-non-disability @software/pension-and-burials
+spec/models/persistent_attachments @software/benefits-non-disability @software/benefits-lifestage
 spec/models/personal_information_log_spec.rb @software/va-platform-backend
 spec/models/preneeds @software/bah-mbs-selfserv
 spec/models/prescription_details_spec.rb @software/vfs-mhv-integration
@@ -1997,7 +1997,7 @@ spec/models/va_profile_redis @software/vfs-authenticated-experience-backend
 spec/models/veteran_enrollment_system/form1095_b/form1095_b_spec.rb @software/va-core-veteran-experiences
 spec/models/veteran_onboarding_spec.rb @software/va-core-veteran-experiences
 spec/policies/appeals_policy_spec.rb @software/va-platform-backend
-spec/policies/bgs_policy_spec.rb @software/benefits-dependents-management
+spec/policies/bgs_policy_spec.rb @software/benefits-lifestage
 spec/policies/claims_evidence_policy_spec.rb @software/benefits-management-tools-be
 spec/policies/coe_policy_spec.rb @software/benefits-non-disability
 spec/policies/debt_policy_spec.rb @software/vsa-debt-resolution
@@ -2081,7 +2081,7 @@ spec/requests/v0/id_card/announcement_subscription_spec.rb @software/va-platform
 spec/requests/v0/id_card/attributes_spec.rb @software/va-platform-backend
 spec/requests/v0/in_progress_forms_controller_spec.rb @software/vfs-authenticated-experience-backend
 spec/requests/v0/in_progress_forms/5655_spec.rb @software/vsa-debt-resolution
-spec/requests/v0/intent_to_file_spec.rb @software/disability-benefits @software/benefits-lifestage @software/pension-and-burials
+spec/requests/v0/intent_to_file_spec.rb @software/disability-benefits @software/benefits-lifestage
 spec/requests/v0/intents_to_file_spec.rb @software/benefits-management-tools-be
 spec/requests/v0/maintenance_window_diagnostics_spec.rb @software/va-platform-backend
 spec/requests/v0/maintenance_windows_spec.rb @software/va-platform-backend
@@ -2123,7 +2123,7 @@ spec/scripts/vcr_mcp @software/va-platform-backend
 spec/serializers/appointment_serializer_spec.rb @software/vfs-vaos
 spec/serializers/async_transaction/base_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/backend_statuses_serializer_spec.rb @software/va-platform-backend
-spec/serializers/benefits_intake_submission_serializer_spec.rb @software/benefits-dependents-management
+spec/serializers/benefits_intake_submission_serializer_spec.rb @software/benefits-lifestage
 spec/serializers/cemetery_serializer_spec.rb @software/bah-mbs-selfserv
 spec/serializers/central_mail_submission_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/communication_groups_serializer_spec.rb @software/vfs-authenticated-experience-backend
@@ -2156,7 +2156,7 @@ spec/serializers/lighthouse_rating_info_serializer_spec.rb @software/vfs-facilit
 spec/serializers/mhv_user_account_serializer_spec.rb @software/octo-identity
 spec/serializers/onsite_notification_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/payment_history_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution
-spec/serializers/persistent_attachment_serializer_spec.rb @software/benefits-non-disability @software/benefits-lifestage @software/pension-and-burials
+spec/serializers/persistent_attachment_serializer_spec.rb @software/benefits-non-disability @software/benefits-lifestage
 spec/serializers/persistent_attachment_va_form_serializer_spec.rb @software/platform-va-product-forms
 spec/serializers/personal_information_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/post911_gi_bill_status_serializer_spec.rb @software/govcio-vfep-codereviewers
@@ -2176,7 +2176,7 @@ spec/serializers/tooltip_serializer_spec.rb @software/vfs-mhv-integration
 spec/serializers/user_serializer_spec.rb @software/octo-identity
 spec/serializers/user_verification_serializer_spec.rb @software/octo-identity
 spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authenticated-experience-backend
-spec/services/bgs @software/benefits-dependents-management
+spec/services/bgs @software/benefits-lifestage
 spec/services/bgs/payment_service_spec.rb @software/vsa-debt-resolution
 spec/services/claim_fast_tracking @software/disability-benefits
 spec/services/debt_transaction_log_service_spec.rb @software/vsa-debt-resolution
@@ -2205,10 +2205,10 @@ spec/services/user_visn_service_spec.rb @software/vfs-authenticated-experience-b
 spec/services/users @software/octo-identity
 spec/services/v0/lighthouse_claims/proxy_spec.rb @software/benefits-management-tools-be
 spec/sidekiq/benefits_intake_status_job_spec.rb @software/platform-va-product-forms @software/disability-benefits
-spec/sidekiq/bgs @software/benefits-dependents-management
+spec/sidekiq/bgs @software/benefits-lifestage
 spec/sidekiq/bio_submission_status_report_job_spec.rb @software/benefits-optimization-aquia
 spec/sidekiq/cave_submission_purge_job_spec.rb @software/bio-huntridge
-spec/sidekiq/central_mail/submit_central_form686c_job_spec.rb @software/benefits-dependents-management
+spec/sidekiq/central_mail/submit_central_form686c_job_spec.rb @software/benefits-lifestage
 spec/sidekiq/central_mail/submit_form4142_job_spec.rb @software/disability-benefits
 spec/sidekiq/console1984_log_upload_job_spec.rb @software/va-platform-backend
 spec/sidekiq/copay_notifications @software/vsa-debt-resolution
@@ -2255,7 +2255,7 @@ spec/sidekiq/in_progress_form_cleaner_spec.rb @software/vfs-authenticated-experi
 spec/sidekiq/income_limits @software/vfs-public-websites-frontend
 spec/sidekiq/kms_key_rotation @software/va-platform-backend
 spec/sidekiq/lighthouse/benefits_discovery/log_eligible_benefits_job_spec.rb @software/va-core-veteran-experiences
-spec/sidekiq/lighthouse/benefits_intake/submit_central_form686c_job_spec.rb @software/benefits-dependents-management
+spec/sidekiq/lighthouse/benefits_intake/submit_central_form686c_job_spec.rb @software/benefits-lifestage
 spec/sidekiq/lighthouse/evidence_submissions/delete_evidence_submission_records_job_spec.rb @software/benefits-management-tools-be
 spec/sidekiq/lighthouse/evidence_submissions/document_upload_spec.rb @software/benefits-management-tools-be
 spec/sidekiq/lighthouse/evidence_submissions/evidence_submission_document_upload_polling_job_spec.rb @software/benefits-management-tools-be
@@ -2518,9 +2518,9 @@ spec/support/vcr_cassettes/avs @software/after-visit-summary
 spec/support/vcr_cassettes/banners/get_banners_success.yml @software/vfs-facilities-frontend
 spec/support/vcr_cassettes/banners/get_banners_with_type_success.yml @software/vfs-facilities-frontend
 spec/support/vcr_cassettes/bb_client @software/vfs-vaos
-spec/support/vcr_cassettes/bgs @software/benefits-dependents-management
+spec/support/vcr_cassettes/bgs @software/benefits-lifestage
 spec/support/vcr_cassettes/bgs/benefit_claim @software/benefits-management-tools-be
-spec/support/vcr_cassettes/bep @software/govcio-vfep-codereviewers
+spec/support/vcr_cassettes/bep @software/benefits-lifestage
 spec/support/vcr_cassettes/brd @software/disability-benefits
 spec/support/vcr_cassettes/carma @software/health-apps-backend
 spec/support/vcr_cassettes/caseflow @software/lighthouse-banana-peels
@@ -2643,7 +2643,7 @@ spec/support/vcr_cassettes/va_profile @software/vfs-authenticated-experience-bac
 spec/support/vcr_cassettes/va_profile/profile/v3/health_benefit_bio*.yml @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 spec/support/vcr_cassettes/vaos @software/vfs-vaos
 spec/support/vcr_cassettes/vass @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in
-spec/support/vcr_cassettes/vbms @software/benefits-dependents-management
+spec/support/vcr_cassettes/vbms @software/benefits-lifestage
 spec/support/vcr_cassettes/verbose_logging @software/va-platform-backend
 spec/support/vcr_cassettes/veteran @software/lighthouse-dash
 spec/support/vcr_cassettes/veteran_enrollment_system @software/health-apps-backend
