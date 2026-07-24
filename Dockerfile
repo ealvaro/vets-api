@@ -1,5 +1,5 @@
 ARG IMAGEMAGICK_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dpokidov/imagemagick:7.1.1-47-bookworm
-ARG RUBY_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/ruby:3.3.6-slim-bookworm
+ARG RUBY_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/ruby:3.3.12-slim-bookworm
 ARG CERTS_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.1
 
 FROM ${RUBY_IMAGE} AS rubyimg
