@@ -136,7 +136,9 @@
             "COAST GUARD",
             "MARINE CORPS",
             "NAVY",
+            "NOAA",
             "SPACE FORCE",
+            "USPHS",
             "OTHER"
           ],
           "example": "ARMY"
@@ -173,6 +175,12 @@
           "description": "Last name of Claimant.",
           "type": "string",
           "example": "Dow"
+        },
+        "dateOfBirth": {
+          "description": "Date of birth of Claimant.",
+          "type": "string",
+          "pattern": "^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$",
+          "example": "2018-06-04"
         },
         "address": {
           "type": "object",
@@ -427,6 +435,28 @@
     "consentAddressChange": {
       "description": "AUTHORIZATION FOR REPRESENTATIVE TO ACT ON CLAIMANT'S BEHALF TO CHANGE CLAIMANT'S ADDRESS.",
       "type": "boolean"
+    },
+    "consentDisclosureAffiliated": {
+      "description": "Authorization for disclosure to all associate attorneys, claims agents and support staff affiliated with the representative. Form 2122a only.",
+      "type": "boolean"
+    },
+    "firmOrOrgName": {
+      "description": "Name of the firm or organization affiliated with the representative. Form 2122a only.",
+      "type": "string",
+      "maxLength": 175
+    },
+    "consentDisclosureIndividuals": {
+      "description": "Authorization for disclosure to individually named administrative employees of the representative. Form 2122a only.",
+      "type": "boolean"
+    },
+    "individualNames": {
+      "description": "List of individually named administrative employees authorized for disclosure. Form 2122a only.",
+      "type": ["array"],
+      "maxItems": 100,
+      "items": {
+        "type": "string"
+      },
+      "example": ["jane", "janey lee", "jane lee MacDonald"]
     },
     "signatures": {
       "type": "object",
