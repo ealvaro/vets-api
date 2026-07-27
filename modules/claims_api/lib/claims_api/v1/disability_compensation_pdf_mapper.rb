@@ -58,7 +58,7 @@ module ClaimsApi
 
       def section_0_claim_attributes
         claim_process_type = lookup_in_auto_claim(:standard_claim) ? 'STANDARD_CLAIM_PROCESS' : 'FDC_PROGRAM'
-        claim_process_type = 'BDD_PROGRAM' if any_service_end_dates_in_bdd_window?
+        claim_process_type = BDD_PROGRAM_CLAIM if any_service_end_dates_in_bdd_window?
 
         @pdf_data[:data][:attributes][:claimProcessType] = claim_process_type
       end
@@ -67,10 +67,11 @@ module ClaimsApi
         service_periods_data = lookup_in_auto_claim(:service_periods)
         service_periods_data.each do |sp|
           end_date = sp['activeDutyEndDate'].to_date
-          if end_date >= 90.days.from_now.to_date && end_date <= 180.days.from_now.to_date
+          created_at_date = @created_at.to_date
+          if end_date.between?(created_at_date.next_day(90), created_at_date.next_day(180))
             identification_info = build_pdf_path(:identification_info)
 
-            future_date = make_date_string_month_first(sp['activeDutyEndDate'], sp['activeDutyEndDate'].length)
+            future_date = make_date_object(sp['activeDutyEndDate'], sp['activeDutyEndDate'].length)
             identification_info[:dateOfReleaseFromActiveDuty] = future_date
             return true
           end

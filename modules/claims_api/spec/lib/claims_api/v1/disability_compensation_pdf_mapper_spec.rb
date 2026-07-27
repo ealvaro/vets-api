@@ -53,31 +53,52 @@ describe ClaimsApi::V1::DisabilityCompensationPdfMapper do
       expect(claim_process_type).to eq('FDC_PROGRAM')
     end
 
-    it 'set claimProcessType as BDD_PROGRAM when activeDutyEndDate is between 90 - 180 days in the future' do
+    it 'set claimProcessType as BDD_PROGRAM_CLAIM when activeDutyEndDate is between 90 - 180 days in the future' do
       form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = '2025-12-03' # 91 days
       mapper.map_claim
 
       claim_process_type = pdf_data[:data][:attributes][:claimProcessType]
 
-      expect(claim_process_type).to eq('BDD_PROGRAM')
+      expect(claim_process_type).to eq('BDD_PROGRAM_CLAIM')
     end
 
-    it 'set claimProcessType as BDD_PROGRAM when activeDutyEndDate is exactly 90 days in the future' do
+    it 'set claimProcessType as BDD_PROGRAM_CLAIM when activeDutyEndDate is exactly 90 days in the future' do
       form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = '2025-12-02' # 90 days
       mapper.map_claim
 
       claim_process_type = pdf_data[:data][:attributes][:claimProcessType]
 
-      expect(claim_process_type).to eq('BDD_PROGRAM')
+      expect(claim_process_type).to eq('BDD_PROGRAM_CLAIM')
     end
 
-    it 'set claimProcessType as BDD_PROGRAM when activeDutyEndDate is exactly 180 days in the future' do
+    it 'set claimProcessType as BDD_PROGRAM_CLAIM when activeDutyEndDate is exactly 180 days in the future' do
       form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = '2026-03-02' # 180 days
       mapper.map_claim
 
       claim_process_type = pdf_data[:data][:attributes][:claimProcessType]
 
-      expect(claim_process_type).to eq('BDD_PROGRAM')
+      expect(claim_process_type).to eq('BDD_PROGRAM_CLAIM')
+    end
+
+    it 'uses the claim created_at to determine the BDD window' do
+      created_at = Time.zone.parse('2024-01-01')
+      mapper = described_class.new(form_attributes, pdf_data, auth_headers, middle_initial, created_at)
+      form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = '2024-04-01' # 91 days
+
+      mapper.map_claim
+
+      claim_process_type = pdf_data[:data][:attributes][:claimProcessType]
+
+      expect(claim_process_type).to eq('BDD_PROGRAM_CLAIM')
+    end
+
+    it 'sends the release date as a structured date object for the PDF generator' do
+      form_attributes['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] = '2025-12-03' # 91 days
+      mapper.map_claim
+
+      release_date = pdf_data[:data][:attributes][:identificationInformation][:dateOfReleaseFromActiveDuty]
+
+      expect(release_date).to eq({ year: '2025', month: '12', day: '03' })
     end
   end
 

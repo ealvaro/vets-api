@@ -71,7 +71,7 @@ module ClaimsApi
 
       def claim_process_type
         if @auto_claim&.dig('claimProcessType') == 'BDD_PROGRAM'
-          @pdf_data[:data][:attributes][:claimProcessType] = 'BDD_PROGRAM_CLAIM'
+          @pdf_data[:data][:attributes][:claimProcessType] = BDD_PROGRAM_CLAIM
         end
 
         @pdf_data

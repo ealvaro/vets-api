@@ -7,6 +7,7 @@ module ClaimsApi
     YYYYMMDD_REGEX = /(?<year>\d{4})(?:-(?<month>\d{2}))?(?:-(?<day>\d{2}))?/
     MMDDYYYY_REGEX = /(?<month>\d{2})?(?:-(?<day>\d{2}))?-?(?<year>\d{4})/
     CLAIM_DATE_FORMAT = '%Y-%m-%d'
+    BDD_PROGRAM_CLAIM = 'BDD_PROGRAM_CLAIM'
 
     def date_signed(claim_date)
       claim_date_value = extract_date_safely(claim_date)
