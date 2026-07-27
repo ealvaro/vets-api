@@ -29,7 +29,9 @@
             "COAST_GUARD",
             "MARINE_CORPS",
             "NAVY",
+            "NOAA",
             "SPACE_FORCE",
+            "USPHS",
             "OTHER"
           ],
           "example": "ARMY"
@@ -264,6 +266,12 @@
           "description": "Relationship of claimant to the veteran. Required if claimant information provided.",
           "type": "string",
           "example": "Spouse"
+        },
+        "dateOfBirth": {
+          "description": "Date of birth for the dependent claimant in YYYY-MM-DD format.",
+          "type": "string",
+          "pattern": "^(?:[0-9]{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])$",
+          "example": "2018-06-04"
         }
       }
     },
@@ -366,6 +374,29 @@
     "consentAddressChange": {
       "description": "Authorization for Representative to Act on Claimant's Behalf to Change Claimant's Address.",
       "type": "boolean"
+    },
+    "consentDisclosureAffiliated": {
+      "description": "Authorization for disclosure to all associate attorneys, claims agents and support staff affiliated with the representative.",
+      "type": "boolean"
+    },
+    "firmOrOrgName": {
+      "description": "Name of the firm or organization affiliated with the representative.",
+      "type": "string",
+      "maxLength": 175
+    },
+    "consentDisclosureIndividuals": {
+      "description": "Authorization for disclosure to individually named administrative employees of the representative.",
+      "type": "boolean"
+    },
+    "individualNames": {
+      "description": "List of individually named administrative employees authorized for disclosure.",
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      },
+      "example": ["jane", "janey lee", "jane lee MacDonald"]
     },
     "conditionsOfAppointment": {
       "description": "If the individual named in Item 15A is an accredited agent or attorney, the scope of representation provided before VA may be limited by the agent or attorney as indicated below in Item 23",

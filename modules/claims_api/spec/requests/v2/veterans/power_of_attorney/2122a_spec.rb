@@ -32,6 +32,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
           data: {
             attributes: {
               veteran: {
+                serviceBranch: 'NOAA',
                 address: {
                   addressLine1: '123',
                   city: 'city',
@@ -50,7 +51,11 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
                   countryCode: 'US',
                   zipCode: '12345'
                 }
-              }
+              },
+              consentDisclosureAffiliated: true,
+              firmOrOrgName: 'Test Law Firm',
+              consentDisclosureIndividuals: true,
+              individualNames: ['Jane Doe', 'John Smith']
             }
           }
         }
@@ -61,6 +66,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
           data: {
             attributes: {
               veteran: {
+                serviceBranch: 'USPHS',
                 address: {
                   addressLine1: '123',
                   city: 'city',
@@ -83,6 +89,7 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
               },
               claimant: {
                 claimantId: '1013062086V794840',
+                dateOfBirth: '1990-01-15',
                 address: {
                   addressLine1: '123',
                   city: 'city',
@@ -642,6 +649,133 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
                       expect(response_body['title']).to eq('Unprocessable entity')
                       expect(response_body['status']).to eq('422')
                       expect(response_body['detail']).to eq(detail)
+                    end
+                  end
+                end
+
+                context 'schema field validation' do
+                  let(:valid_body) do
+                    {
+                      data: {
+                        attributes: {
+                          veteran: {
+                            address: {
+                              addressLine1: '123',
+                              city: 'city',
+                              stateCode: 'OR',
+                              countryCode: 'US',
+                              zipCode: '12345'
+                            }
+                          },
+                          representative: {
+                            poaCode: individual_poa_code,
+                            registrationNumber: '12345',
+                            type: 'ATTORNEY'
+                          }
+                        }
+                      }
+                    }
+                  end
+
+                  it 'returns a 422 when dateOfBirth violates the pattern' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_dependent_claimants)
+                                                          .and_return true
+                      allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController)
+                        .to receive(:user_profile).and_return(
+                          MPI::Responses::FindProfileResponse.new(
+                            status: :ok,
+                            profile: MPI::Models::MviProfile.new(
+                              given_names: %w[Test], family_name: 'User', participant_id: '123'
+                            )
+                          )
+                        )
+                      allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+                        .to receive(:validate_poa_code_exists!).and_return(nil)
+                      allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+                        .to receive(:validate_dependent_by_participant_id!).and_return(nil)
+
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:claimant] = {
+                        claimantId: '1013062086V794840',
+                        dateOfBirth: '15-01-1990',
+                        relationship: 'Spouse',
+                        address: { addressLine1: '123', city: 'city', stateCode: 'OR',
+                                   countryCode: 'US', zipCode: '12345' }
+                      }
+
+                      VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                        post validate2122a_path, params: body.to_json, headers: auth_header
+                      end
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('dateOfBirth')
+                    end
+                  end
+
+                  it 'returns a 422 when individualNames exceeds 100 items' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:individualNames] = Array.new(101) { |i| "Name #{i}" }
+
+                      post validate2122a_path, params: body.to_json, headers: auth_header
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('individualNames')
+                    end
+                  end
+
+                  it 'returns a 422 when an individualNames item exceeds 100 characters' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:individualNames] = ['A' * 101]
+
+                      post validate2122a_path, params: body.to_json, headers: auth_header
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('individualNames')
+                    end
+                  end
+
+                  it 'returns a 422 when firmOrOrgName exceeds 175 characters' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:firmOrOrgName] = 'A' * 176
+
+                      post validate2122a_path, params: body.to_json, headers: auth_header
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('firmOrOrgName')
+                    end
+                  end
+
+                  it 'returns a 422 when serviceBranch has an invalid enum value' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:veteran][:serviceBranch] = 'INVALID_BRANCH'
+
+                      post validate2122a_path, params: body.to_json, headers: auth_header
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('serviceBranch')
+                    end
+                  end
+
+                  it 'returns a 422 when representative type has an invalid enum value' do
+                    mock_ccg(%w[claim.write claim.read]) do |auth_header|
+                      body = valid_body.deep_dup
+                      body[:data][:attributes][:representative][:type] = 'INVALID_TYPE'
+
+                      post validate2122a_path, params: body.to_json, headers: auth_header
+
+                      expect(response).to have_http_status(:unprocessable_content)
+                      response_body = JSON.parse(response.body)
+                      expect(response_body['errors'][0]['detail']).to include('type')
                     end
                   end
                 end
