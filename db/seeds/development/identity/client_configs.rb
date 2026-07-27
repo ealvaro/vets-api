@@ -1,7 +1,18 @@
 # frozen_string_literal: true
 
-SignIn::ClientConfig.where("'dslogon' = ANY(credential_service_providers)").find_each do |config|
-  config.update!(credential_service_providers: config.credential_service_providers.without('dslogon'))
+SignIn::Constants::Auth::DEPRECATED_CSP_TYPES.each do |deprecated_csp|
+  SignIn::ClientConfig.where('? = ANY(credential_service_providers)', deprecated_csp).find_each do |config|
+    config.update!(
+      credential_service_providers: config.credential_service_providers.without(deprecated_csp),
+      # Provide defaults for any nil required fields
+      auth_method: config.auth_method || 'pkce',
+      access_token_duration: config.access_token_duration || SignIn::Constants::AccessToken::VALIDITY_LENGTH_SHORT_MINUTES,
+      refresh_token_duration: config.refresh_token_duration || SignIn::Constants::RefreshToken::VALIDITY_LENGTH_SHORT_MINUTES,
+      authentication: config.authentication || SignIn::Constants::Auth::COOKIE,
+      redirect_uri: config.redirect_uri.presence || 'http://localhost:3001/auth/callback',
+      service_levels: config.service_levels.presence || SignIn::Constants::Auth::ACR_VALUES
+    )
+  end
 end
 
 # Create Config for va.gov Sign in Service client
