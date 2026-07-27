@@ -223,11 +223,20 @@ module AccreditedRepresentativePortal
         return if admission.nil? || admission.submitted?
 
         admission.update!(status: :submitted, submitted_at: Time.current)
+        emit_submission_counter
       rescue => e
         Rails.logger.error(
           'Form21aController: Failed to mark pilot admission submitted ' \
           "for user_uuid=#{@current_user&.uuid}. Error: #{e.class} - #{e.message}"
         )
+      end
+
+      # Best-effort telemetry: emitted only after a confirmed submitted transition. A StatsD
+      # failure must not surface as a misleading "failed to mark admission submitted" error.
+      def emit_submission_counter
+        StatsD.increment(Form21aPilotGate::STATSD_SUBMISSION)
+      rescue => e
+        Rails.logger.warn('Form21aController: pilot submission telemetry failed', exception: e)
       end
 
       # Parses the raw request body as JSON and assigns it to an instance variable.

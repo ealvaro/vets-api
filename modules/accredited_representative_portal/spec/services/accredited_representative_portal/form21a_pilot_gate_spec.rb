@@ -76,6 +76,47 @@ RSpec.describe AccreditedRepresentativePortal::Form21aPilotGate do
       expect { @result = gate.admit!(user) }.not_to(change { admission_count })
       expect(@result).to eq(:open)
     end
+
+    describe 'StatsD metrics' do
+      before { allow(StatsD).to receive(:increment) }
+
+      it 'emits the admission counter tagged outcome:open on a new admission' do
+        gate.admit!(user)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.form21a.pilot.admission', tags: ['outcome:open'])
+      end
+
+      it 'does not emit outcome:open when the surrounding transaction rolls back' do
+        # outcome:open is deferred to after_commit, so a caller rollback (e.g. the
+        # in-progress-form save failing after the slot is consumed) must not over-count it.
+        ActiveRecord::Base.transaction do
+          gate.admit!(user)
+          raise ActiveRecord::Rollback
+        end
+
+        expect(StatsD).not_to have_received(:increment)
+          .with('api.form21a.pilot.admission', any_args)
+      end
+
+      it 'emits the admission counter tagged outcome:closed when at capacity' do
+        monthly_limit.times { create(:form21a_pilot_admission) }
+
+        gate.admit!(user)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.form21a.pilot.admission', tags: ['outcome:closed'])
+      end
+
+      it 'emits nothing for an idempotent already-admitted user' do
+        create(:form21a_pilot_admission, user_account: user.user_account)
+
+        gate.admit!(user)
+
+        expect(StatsD).not_to have_received(:increment)
+          .with('api.form21a.pilot.admission', any_args)
+      end
+    end
   end
 
   describe '.admitted?' do

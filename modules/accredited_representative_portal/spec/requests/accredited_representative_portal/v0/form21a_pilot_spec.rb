@@ -177,12 +177,29 @@ RSpec.describe 'AccreditedRepresentativePortal::V0 Form 21a pilot gate', type: :
       expect(admission.submitted_at).to be_present
     end
 
+    it 'emits the submission counter on a successful submission for an admitted user' do
+      create(:form21a_pilot_admission, user_account: representative_user.user_account)
+      allow(StatsD).to receive(:increment)
+
+      post('/accredited_representative_portal/v0/form21a', params: payload, headers:)
+
+      expect(StatsD).to have_received(:increment).with('api.form21a.pilot.submission')
+    end
+
     it 'succeeds without error when the user has no pilot admission' do
       expect do
         post('/accredited_representative_portal/v0/form21a', params: payload, headers:)
       end.not_to change(AccreditedRepresentativePortal::Form21aPilotAdmission, :count)
 
       expect(response).to have_http_status(:created)
+    end
+
+    it 'does not emit the submission counter when the user has no admission' do
+      allow(StatsD).to receive(:increment)
+
+      post('/accredited_representative_portal/v0/form21a', params: payload, headers:)
+
+      expect(StatsD).not_to have_received(:increment).with('api.form21a.pilot.submission', any_args)
     end
 
     it 'preserves the original submitted_at when an already-submitted admission is resubmitted' do

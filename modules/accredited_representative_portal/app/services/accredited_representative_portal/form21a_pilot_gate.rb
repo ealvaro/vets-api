@@ -15,6 +15,17 @@ module AccreditedRepresentativePortal
     MONTHLY_LIMIT = 50
     TIMEZONE = 'America/New_York'
 
+    # StatsD counters emitted inline at event time. Product/OGC visibility (admissions this
+    # month, remaining slots, in-progress, submitted, gate open/closed) is derived query-side
+    # in Datadog by summing these counters over an Eastern-month window; no gauges or backend
+    # aggregation job are required.
+    #
+    # STATSD_ADMISSION is tagged outcome:open (a new slot was consumed) or outcome:closed (the
+    # cap was reached and the user was turned away). Idempotent re-entry by an already-admitted
+    # user emits nothing so the admissions-this-month sum stays accurate.
+    STATSD_ADMISSION = 'api.form21a.pilot.admission'
+    STATSD_SUBMISSION = 'api.form21a.pilot.submission'
+
     class << self
       # Call 1 (read-only): the state payload the frontend reads before rendering the form.
       # Writes nothing.
@@ -48,11 +59,20 @@ module AccreditedRepresentativePortal
           bucket = current_bucket
           Form21aPilotAdmission.with_advisory_lock(advisory_lock_key(bucket), transaction: true) do
             if admitted?(user)
+              # Idempotent re-entry: already counted when first admitted. Emit nothing.
               :open
             elsif open?(bucket)
               Form21aPilotAdmission.create!(user_account: user.user_account)
+              # Emit only after the surrounding transaction actually commits. admit! runs inside
+              # the caller's transaction (see InProgressFormsController#admit_and_persist); if that
+              # transaction later rolls back (e.g. the draft save fails), the admission row is
+              # undone, so deferring keeps sum(outcome:open) an accurate count of real admissions.
+              emit_admission_counter_after_commit('outcome:open')
               :open
             else
+              # The caller rolls back the transaction on :closed, so an after_commit callback would
+              # be discarded. Emit inline — the "turned away" event is real regardless of rollback.
+              emit_admission_counter('outcome:closed')
               :closed
             end
           end
@@ -70,6 +90,22 @@ module AccreditedRepresentativePortal
       end
 
       private
+
+      # Defers admission telemetry until the surrounding transaction commits, so a caller
+      # rollback cannot leave an over-counted admission. current_transaction returns the open
+      # transaction (bubbling to the outermost) or a no-op transaction that fires immediately
+      # when none is open.
+      def emit_admission_counter_after_commit(outcome)
+        ActiveRecord::Base.current_transaction.after_commit { emit_admission_counter(outcome) }
+      end
+
+      # Best-effort telemetry: a StatsD failure must never roll back the admission or error
+      # the gate, so emission is rescued (mirrors lib/statsd_middleware.rb).
+      def emit_admission_counter(outcome)
+        StatsD.increment(STATSD_ADMISSION, tags: [outcome])
+      rescue => e
+        Rails.logger.warn('Form21aPilotGate: admission telemetry failed', exception: e)
+      end
 
       def current_bucket
         Time.current.in_time_zone(TIMEZONE)
