@@ -362,7 +362,6 @@ app/models/saved_claim/education_benefits/va_10297.rb @software/govcio-vfep-code
 app/models/saved_claim/education_benefits/va_1990.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_1995.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_5490.rb @software/govcio-vfep-codereviewers
-app/models/saved_claim/education_benefits/va_5495.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_8794.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_career_counseling_claim.rb @software/benefits-non-disability
 app/models/saved_claim/form210779.rb @software/benefits-optimization-aquia
@@ -813,7 +812,6 @@ config/form_profile_mappings/22-1990EMEB.yml @software/govcio-vfep-codereviewers
 config/form_profile_mappings/22-1990EZ.yml @software/govcio-vfep-codereviewers
 config/form_profile_mappings/22-1995.yml @software/govcio-vfep-codereviewers
 config/form_profile_mappings/22-5490.yml @software/govcio-vfep-codereviewers
-config/form_profile_mappings/22-5495.yml @software/govcio-vfep-codereviewers
 config/form_profile_mappings/26-1880.yml @software/health-apps-backend
 config/form_profile_mappings/26-1880v2.yml @software/va-core-veteran-experiences
 config/form_profile_mappings/26-1880v3.yml @software/va-core-veteran-experiences
@@ -1550,7 +1548,6 @@ spec/factories/va210779.rb @software/benefits-optimization-aquia
 spec/factories/va214192.rb @software/benefits-optimization-aquia
 spec/factories/va526ez.rb @software/govcio-vfep-codereviewers
 spec/factories/va5490.rb @software/govcio-vfep-codereviewers
-spec/factories/va5495.rb @software/govcio-vfep-codereviewers
 spec/factories/va8794.rb @software/govcio-vfep-codereviewers
 spec/factories/veteran_onboardings.rb @software/va-core-veteran-experiences
 spec/factories/veteran_readiness_employment_claim.rb @software/govcio-vfep-codereviewers
@@ -1970,7 +1967,6 @@ spec/models/saved_claim/education_benefits/va10282_spec.rb @software/govcio-vfep
 spec/models/saved_claim/education_benefits/va10297_spec.rb @software/govcio-vfep-codereviewers
 spec/models/saved_claim/education_benefits/va1995_spec.rb @software/va-platform-backend
 spec/models/saved_claim/education_benefits/va5490_spec.rb @software/govcio-vfep-codereviewers
-spec/models/saved_claim/education_benefits/va5495_spec.rb @software/govcio-vfep-codereviewers
 spec/models/saved_claim/form210779_spec.rb @software/benefits-optimization-aquia
 spec/models/saved_claim/form212680_spec.rb @software/benefits-optimization-aquia
 spec/models/saved_claim/form214192_spec.rb @software/benefits-optimization-aquia

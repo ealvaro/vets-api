@@ -1968,7 +1968,6 @@ vanotify:
         form526_submitted_email: fake_template_id
         form526ez_reminder_email: ~
         form5490_confirmation_email: form5490_confirmation_email_template_id
-        form5495_confirmation_email: form5495_confirmation_email_template_id
         form674_only_confirmation_email: 674_confirmation_template_id
         form674_only_reminder_email: fake_template_674_only_id
         form686c_674_confirmation_email: 686c_674_confirmation_template_id

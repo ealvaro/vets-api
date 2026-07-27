@@ -1539,10 +1539,6 @@ features:
     actor_type: user
     description: Enables form 5490 email submission confirmation (VaNotify)
     enable_in_development: true
-  form5495_confirmation_email:
-    actor_type: user
-    description: Enables form 5495 email submission confirmation (VaNotify)
-    enable_in_development: true
   simple_forms_email_notifications:
     actor_type: user
     description: Enables form email notifications upon certain state changes (error and received)
@@ -2601,9 +2597,6 @@ features:
   show_edu_benefits_5490_wizard:
     actor_type: user
     description: This determines when the wizard should show up on the 5490 introduction page
-  show_edu_benefits_5495_wizard:
-    actor_type: user
-    description: This determines when the wizard should show up on the 5495 introduction page
   show_financial_status_report:
     actor_type: user
     description: Enables VA Form 5655 (Financial Status Report)
@@ -3527,11 +3520,9 @@ features:
     actor_type: user
     description: >-
       If enabled, VA5490#send_confirmation_email will use VANotify::V2::QueueEmailJob
-  va_notify_v2_form5495_confirmation_email:
+  va_notify_v2_health_care_application_model_send_failure_email:
     actor_type: user
-    description: >-
-      If enabled, VA5495#send_confirmation_email will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
+    description: If enabled, HealthCareApplication will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
   va_notify_v2_ivc_champva_email:
     actor_type: user
     description: >-

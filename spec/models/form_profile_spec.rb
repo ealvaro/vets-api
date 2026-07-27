@@ -480,20 +480,6 @@ RSpec.describe FormProfile, type: :model do
       'relativeDateOfBirth' => user.birth_date
     }
   end
-  let(:v22_5495_expected) do
-    {
-      'toursOfDuty' => tours_of_duty,
-      'currentlyActiveDuty' => false,
-      'relativeFullName' => {
-        'first' => user.first_name&.capitalize,
-        'middle' => user.middle_name&.capitalize,
-        'last' => user.last_name&.capitalize,
-        'suffix' => user.suffix
-      },
-      'relativeSocialSecurityNumber' => user.ssn,
-      'relativeDateOfBirth' => user.birth_date
-    }
-  end
   let(:v1010ez_expected) do
     {
       'veteranFullName' => {
@@ -2448,7 +2434,6 @@ RSpec.describe FormProfile, type: :model do
           22-1990
           22-1995
           22-5490
-          22-5495
           40-10007
           1010ez
           22-0993

@@ -86,12 +86,6 @@ http_interactions:
             },
             {
                             "title": "Apply for education benefits",
-                              "url": "https://www.vets.gov/education/apply-for-education-benefits/application/5495/",
-                          "snippet": "Use your VA education benefits to pay for college or training programs. Find...documents youll need to apply for benefits, and start your online application...Home Education Apply for Education Benefits Please wait while we load the application",
-                "publication_date": null
-            },
-            {
-                            "title": "Apply for education benefits",
                               "url": "https://www.vets.gov/education/apply-for-education-benefits/application/1990/",
                           "snippet": "Use your VA education benefits to pay for college or training programs. Find...documents youll need to apply for benefits, and start your online application...Home Education Apply for Education Benefits Please wait while we load the application",
                 "publication_date": null
@@ -221,12 +215,6 @@ http_interactions:
             {
                             "title": "Apply for education benefits",
                               "url": "https://www.vets.gov/education/apply-for-education-benefits/application/5490/",
-                          "snippet": "Use your VA education benefits to pay for college or training programs. Find...documents youll need to apply for benefits, and start your online application...Home Education Apply for Education Benefits Please wait while we load the application",
-                "publication_date": null
-            },
-            {
-                            "title": "Apply for education benefits",
-                              "url": "https://www.vets.gov/education/apply-for-education-benefits/application/5495/",
                           "snippet": "Use your VA education benefits to pay for college or training programs. Find...documents youll need to apply for benefits, and start your online application...Home Education Apply for Education Benefits Please wait while we load the application",
                 "publication_date": null
             },

@@ -7,7 +7,7 @@ RSpec.describe EducationBenefitsClaim, type: :model do
     create(:va1990).education_benefits_claim
   end
 
-  %w[1990 1995 5490 5495 0993 0994 10203 10282 10216 10215 10297 1919 0839 10275 8794 0976 10272
+  %w[1990 1995 5490 0993 0994 10203 10282 10216 10215 10297 1919 0839 10275 8794 0976 10272
      0810].each do |form_type|
     method = "is_#{form_type}?"
 
@@ -175,23 +175,6 @@ RSpec.describe EducationBenefitsClaim, type: :model do
           submission_attributes.merge(
             'chapter35' => true,
             'form_type' => '5490'
-          )
-        )
-      end
-    end
-
-    context 'with a form type of 5495' do
-      subject do
-        create(:va5495)
-      end
-
-      it 'creates a submission' do
-        subject
-
-        expect(associated_submission).to eq(
-          submission_attributes.merge(
-            'form_type' => '5495',
-            'chapter35' => true
           )
         )
       end
@@ -482,16 +465,6 @@ RSpec.describe EducationBenefitsClaim, type: :model do
     context 'with form type 5490' do
       it 'returns the benefit' do
         saved_claim = create(:va5490)
-        claim = saved_claim.education_benefits_claim
-        benefits = claim.selected_benefits
-
-        expect(benefits).to be_a(Hash)
-      end
-    end
-
-    context 'with form type 5495' do
-      it 'returns the benefit' do
-        saved_claim = create(:va5495)
         claim = saved_claim.education_benefits_claim
         benefits = claim.selected_benefits
 

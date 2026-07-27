@@ -5,7 +5,6 @@ class EducationBenefitsClaim < ApplicationRecord
     1990
     1995
     5490
-    5495
     0993
     0994
     10203

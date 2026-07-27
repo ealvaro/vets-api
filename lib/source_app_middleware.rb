@@ -71,7 +71,6 @@ class SourceAppMiddleware
     '4555-adapted-housing',
     '526EZ-all-claims',
     '5490-edu-benefits',
-    '5495-edu-benefits',
     '686C-674',
     '686C-674-v2',
     '995-supplemental-claim',

@@ -15316,21 +15316,6 @@
             }
         },
         {
-            "id" : 1446,
-            "createDateTime" : "2020-11-30",
-            "modifiedDateTime" : "2020-11-30T17:57:09",
-            "name" : "L1446",
-            "description" : "VA Form 22-5495 - Dependents' Request for Change of Program or Place of Training (Under Provisions of Chapters 33 and 35, Title 38, U.S.C.)",
-            "isUserUploadable" : true,
-            "is526" : false,
-            "documentCategory" : {
-                "id" : 17,
-                "createDateTime" : "2012-01-25",
-                "modifiedDateTime" : "2014-04-28T14:44:52",
-                "description" : "Education"
-            }
-        },
-        {
             "id" : 1447,
             "createDateTime" : "2020-11-30",
             "modifiedDateTime" : "2020-11-30T17:57:09",

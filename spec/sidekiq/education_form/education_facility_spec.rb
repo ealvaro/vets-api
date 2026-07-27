@@ -47,18 +47,16 @@ RSpec.describe EducationForm::EducationFacility do
       end
     end
 
-    %w[5490 5495].each do |form_type|
-      context "22-#{form_type}" do
-        let(:form) { OpenStruct.new(relativeAddress: western_address) }
+    context '22-5490' do
+      let(:form) { OpenStruct.new(relativeAddress: western_address) }
 
-        it 'uses educationProgram over relativeAddress' do
-          form.educationProgram = school(central_address)
-          expect(described_class.routing_address(form, form_type:).state).to eq(central_address.state)
-        end
+      it 'uses educationProgram over relativeAddress' do
+        form.educationProgram = school(central_address)
+        expect(described_class.routing_address(form, form_type: '5490').state).to eq(central_address.state)
+      end
 
-        it 'uses relativeAddress when no educationProgram address is given' do
-          expect(described_class.routing_address(form, form_type:).state).to eq(western_address.state)
-        end
+      it 'uses relativeAddress when no educationProgram address is given' do
+        expect(described_class.routing_address(form, form_type: '5490').state).to eq(western_address.state)
       end
     end
 
