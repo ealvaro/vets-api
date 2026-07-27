@@ -8,6 +8,12 @@ module DependentsVerification
     class Section1 < Section
       include ::PdfFill::Forms::FormHelper
       include ::PdfFill::Forms::FormHelper::PhoneNumberFormatting
+
+      # Character limit for street
+      STREET_LIMIT = 30
+      # Character limit for street2
+      STREET_2_LIMIT = 5
+
       # Section configuration hash
       KEY = {
         # 1
@@ -104,17 +110,21 @@ module DependentsVerification
         'veteranAddress' => {
           'street' => {
             key: key_name('5', 'VeteranAddress', 'Street'),
-            limit: 30,
+            limit: STREET_LIMIT,
             question_num: 5,
             question_suffix: 'a',
             question_text: 'STREET ADDRESS'
           },
           'unit_number' => {
             key: key_name('5', 'VeteranAddress', 'UnitNumber'),
-            limit: 5,
+            limit: STREET_2_LIMIT,
             question_num: 5,
             question_suffix: 'b',
             question_text: 'UNIT NUMBER'
+          },
+          'street3' => {
+            limit: 0, # force overflow if present
+            question_num: 5
           },
           'city' => {
             key: key_name('5', 'VeteranAddress', 'City'),
@@ -331,6 +341,7 @@ module DependentsVerification
         {
           'street' => address['street'],
           'unit_number' => address['street2'],
+          'street3' => address['street3'],
           'city' => address['city'],
           'state' => address['state'],
           'postal_code' => split_postal_code(address),
@@ -353,6 +364,7 @@ module DependentsVerification
       # if first or last name overflows, truncate the value on pdf and show full value on overflow page.
       def handle_overflows(form_data)
         address_overflow = check_for_multiple_overflow(form_data['veteranAddress'], 'veteranAddress') if form_data['veteranAddress'].present? # rubocop:disable Layout/LineLength
+        handle_street_overflow(form_data['veteranAddress']) if address_overflow
         email_overflow = check_for_multiple_overflow(form_data['veteranEmail'], 'veteranEmail') if form_data['veteranEmail'].present? # rubocop:disable Layout/LineLength
 
         first_name_overflow = check_for_single_overflow(form_data['veteranFullName']['first'],
@@ -385,6 +397,24 @@ module DependentsVerification
       # checks the passed in attribute against the limit for the fields passed in.
       def check_for_single_overflow(data, *params)
         data.size > KEY.dig(*params)[:limit]
+      end
+
+      # if street3 present, or if either street or unit_number overflow, combine into one multiline string
+      def handle_street_overflow(address)
+        return if address.blank?
+
+        street, unit_number, street3 = address.values_at('street', 'unit_number', 'street3')
+
+        if street3.present? ||
+           street&.length&.>(STREET_LIMIT) ||
+           unit_number&.length&.>(STREET_2_LIMIT)
+          address.merge!(
+            {
+              'street' => [street, unit_number, street3].compact.join("\n"),
+              'unit_number' => nil
+            }
+          )
+        end
       end
 
       # if any part of the address overflows, then the entire address section

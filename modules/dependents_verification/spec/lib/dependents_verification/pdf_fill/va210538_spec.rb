@@ -19,7 +19,8 @@ describe DependentsVerification::PdfFill::Va210538 do
       hash.map do |key, value|
         if key == :key
           value
-        elsif value.key?(:key)
+        # skip keyless configs like ['veteranAddress']['street3']
+        elsif value.respond_to?(:key?) && value.key?(:key)
           value[:key] unless value[:overflow_only]
         elsif value.is_a?(Hash)
           get_keys(value)

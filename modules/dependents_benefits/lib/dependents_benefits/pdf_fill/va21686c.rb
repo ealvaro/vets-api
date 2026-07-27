@@ -27,6 +27,11 @@ module DependentsBenefits
       # Path to the 21-686c PDF template
       TEMPLATE = DependentsBenefits::PDF_PATH_21_686C
 
+      # Character limit for street
+      STREET_LIMIT = 30
+      # Character limit for street2
+      STREET_2_LIMIT = 5
+
       # Field mapping hash defining all PDF form fields and their constraints
       KEY = {
         'veteran_information' => {
@@ -162,19 +167,27 @@ module DependentsBenefits
             'veteran_address' => {
               'street' => {
                 key: 'form1[0].#subform[17].CurrentMailingAddress_NumberAndStreet[0]',
-                limit: 30,
+                limit: STREET_LIMIT,
                 question_num: 10,
                 question_suffix: 'A',
-                question_text: 'VETERAN/CLAIMANT\'S IDENTIFICATION INFORMATION > MAILING ADDRESS OF VETERAN/CLAIMANT'
+                question_text: 'VETERAN/CLAIMANT\'S IDENTIFICATION INFORMATION > MAILING ADDRESS OF VETERAN/CLAIMANT',
+                hide_from_overflow: true
               },
               'street2' => {
                 key: 'form1[0].#subform[17].CurrentMailingAddress_ApartmentOrUnitNumber[0]',
-                limit: 5,
+                limit: STREET_2_LIMIT,
+                question_num: 10,
+                question_suffix: 'B',
+                question_text: 'VETERAN/CLAIMANT\'S IDENTIFICATION INFORMATION > MAILING ADDRESS OF VETERAN/CLAIMANT',
+                hide_from_overflow: true
+              },
+              'street3' => {
+                key: 'form1[0].#subform[17].CurrentMailingAddress_NumberAndStreet[0]',
+                limit: 0,
                 question_num: 10,
                 question_suffix: 'B',
                 question_text: 'VETERAN/CLAIMANT\'S IDENTIFICATION INFORMATION > MAILING ADDRESS OF VETERAN/CLAIMANT'
               },
-              # street3
               'city' => {
                 key: 'form1[0].#subform[17].CurrentMailingAddress_City[0]',
                 limit: 18,
@@ -1641,6 +1654,37 @@ module DependentsBenefits
         veteran_contact_information['veteran_address']['zip_code'] = zip_code
         veteran_contact_information['veteran_address']['country_name'] = veteran_country
         veteran_contact_information['electronic_correspondence'] = electronic_correspondence
+
+        handle_street_overflow(veteran_contact_information['veteran_address'])
+      end
+
+      ##
+      # Handles street address overflow by combining street lines if limits are exceeded
+      # or if a third street line is present
+      #
+      # @param address [Hash] The veteran's address hash containing street fields
+      #
+      # @return [Hash, nil] The updated address hash with combined street lines if overflow occurs,
+      #                     or nil if the address is blank
+      #
+      # @note This method modifies the `address` hash in place
+      #
+      def handle_street_overflow(address)
+        return if address.blank?
+
+        street, street2, street3 = address.values_at('street', 'street2', 'street3')
+
+        if street3.present? ||
+           street&.length&.>(STREET_LIMIT) ||
+           street2&.length&.>(STREET_2_LIMIT)
+          address.merge!(
+            {
+              'street' => nil,
+              'street2' => nil,
+              'street3' => [street, street2, street3].compact.join("\n")
+            }
+          )
+        end
       end
 
       ##

@@ -21,7 +21,7 @@ FactoryBot.define do
         address: {
           addressType: 'DOMESTIC',
           street: '123 Main St',
-          unitNumber: '4B',
+          street2: '4B',
           city: 'Anytown',
           state: 'NY',
           postalCode: '12345-1234',

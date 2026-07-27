@@ -236,4 +236,110 @@ RSpec.describe DependentsBenefits::PdfFill::Va21686c do
       end
     end
   end
+
+  describe '#handle_street_overflow' do
+    subject(:handle_overflow) { va21686c.send(:handle_street_overflow, address) }
+
+    let(:address) do
+      { 'street' => street,
+        'street2' => street2,
+        'street3' => street3 }
+    end
+    let(:combined_street) { address.values.compact.join("\n") }
+
+    it 'returns nil if address blank' do
+      expect(va21686c.send(:handle_street_overflow, nil)).to be_nil
+    end
+
+    shared_examples 'an address overflow' do
+      it 'nullifies street and street2 and overflows combined street into street3' do
+        expect { handle_overflow }.to change { address }.from(address).to(
+          {
+            'street' => nil,
+            'street2' => nil,
+            'street3' => combined_street
+          }
+        )
+      end
+    end
+
+    context 'when street3 not present' do
+      let(:street3) { nil }
+
+      context 'when no overflow' do
+        let(:street) { '123 Main Street' }
+        let(:street2) { 'Rm 5' }
+
+        it 'does not mutate address' do
+          expect(street.length).to be < described_class::STREET_LIMIT
+          expect(street2.length).to be < described_class::STREET_2_LIMIT
+          expect { handle_overflow }.not_to(change { address })
+        end
+      end
+
+      context 'when only one of the two street lines overflow' do
+        let(:street) { '123 General Spongebob Squarepants Memorial Parkway' }
+        let(:street2) { 'Rm 5' }
+
+        before do
+          expect(street.length).to be > described_class::STREET_LIMIT
+          expect(street2.length).to be < described_class::STREET_2_LIMIT
+        end
+
+        it_behaves_like 'an address overflow'
+      end
+
+      context 'when both of the two street lines overflow' do
+        let(:street) { '123 General Spongebob Squarepants Memorial Parkway' }
+        let(:street2) { 'Attn: Randall' }
+
+        before do
+          expect(street.length).to be > described_class::STREET_LIMIT
+          expect(street2.length).to be > described_class::STREET_2_LIMIT
+        end
+
+        it_behaves_like 'an address overflow'
+      end
+    end
+
+    context 'when street3 present' do
+      let(:street3) { 'Attn: Randall' }
+
+      context 'when no overflow' do
+        let(:street) { '123 Main Street' }
+        let(:street2) { 'Rm 5' }
+
+        before do
+          expect(street.length).to be < described_class::STREET_LIMIT
+          expect(street2.length).to be < described_class::STREET_2_LIMIT
+        end
+
+        it_behaves_like 'an address overflow'
+      end
+
+      context 'when only one of the two street lines overflow' do
+        let(:street) { '123 General Spongebob Squarepants Memorial Parkway' }
+        let(:street2) { 'Rm 5' }
+
+        before do
+          expect(street.length).to be > described_class::STREET_LIMIT
+          expect(street2.length).to be < described_class::STREET_2_LIMIT
+        end
+
+        it_behaves_like 'an address overflow'
+      end
+
+      context 'when both of the two street lines overflow' do
+        let(:street) { '123 General Spongebob Squarepants Memorial Parkway' }
+        let(:street2) { 'Attn: Randall' }
+
+        before do
+          expect(street.length).to be > described_class::STREET_LIMIT
+          expect(street2.length).to be > described_class::STREET_2_LIMIT
+        end
+
+        it_behaves_like 'an address overflow'
+      end
+    end
+  end
 end
