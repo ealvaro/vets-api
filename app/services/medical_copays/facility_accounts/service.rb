@@ -10,7 +10,8 @@ module MedicalCopays
       def accounts
         raise Common::Exceptions::Forbidden unless use_payment_history?
 
-        builder.build_facility_accounts
+        facilities = builder.build_facility_accounts
+        { total_current_balance: FacilityAccount.sum_balances(facilities), facilities: }
       end
 
       def account(station_id, include_transactions: true)

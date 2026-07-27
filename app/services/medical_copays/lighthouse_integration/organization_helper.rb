@@ -4,6 +4,7 @@ module MedicalCopays
   module LighthouseIntegration
     module OrganizationHelper
       ORG_CACHE_STATSD_KEY = 'api.mcp.lighthouse.org_cache'
+      ORG_FETCH_DEGRADED_STATSD_KEY = 'api.mcp.lighthouse.org_fetch_degraded'
 
       def fetch_organization(org_id, statsd_key = ORG_CACHE_STATSD_KEY)
         return nil if org_id.blank?
@@ -16,6 +17,10 @@ module MedicalCopays
 
         StatsD.increment(statsd_key, tags: ["result:#{cache_miss ? 'miss' : 'hit'}"])
         organization
+      rescue => e
+        Rails.logger.warn("OrganizationHelper fetch_organization failed for #{org_id}: #{e.class}")
+        StatsD.increment(ORG_FETCH_DEGRADED_STATSD_KEY)
+        nil
       end
 
       private

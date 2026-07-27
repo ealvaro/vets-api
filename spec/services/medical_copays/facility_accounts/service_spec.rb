@@ -17,6 +17,21 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
     allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, user).and_return(lighthouse_copays_enabled)
   end
 
+  describe '#accounts' do
+    let(:payment_history_enabled) { true }
+    let(:lighthouse_copays_enabled) { true }
+
+    it 'returns the facilities with their total current balance' do
+      facilities = [
+        MedicalCopays::FacilityAccounts::FacilityAccount.new(station_id: '896', current_balance: 0.1),
+        MedicalCopays::FacilityAccounts::FacilityAccount.new(station_id: '640', current_balance: 0.2)
+      ]
+      allow(lighthouse_builder).to receive(:build_facility_accounts).and_return(facilities)
+
+      expect(service.accounts).to eq({ total_current_balance: 0.3, facilities: })
+    end
+  end
+
   describe 'feature gating' do
     context 'when enable_copays_payment_history is disabled' do
       let(:payment_history_enabled) { false }

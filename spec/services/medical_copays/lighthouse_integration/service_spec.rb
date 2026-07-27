@@ -84,6 +84,33 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
         expect(memory_store.exist?("lighthouse:org:#{organization_id}")).to be(false)
       end
     end
+
+    context 'when the upstream read fails' do
+      before do
+        allow(organization_client).to receive(:read).and_raise(Common::Exceptions::BackendServiceException)
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      it 'degrades to nil instead of raising' do
+        expect(service.fetch_organization(organization_id)).to be_nil
+      end
+
+      it 'logs the failure class and counts the degradation' do
+        expect { service.fetch_organization(organization_id) }
+          .to trigger_statsd_increment('api.mcp.lighthouse.org_fetch_degraded')
+
+        expect(Rails.logger).to have_received(:warn)
+          .with('OrganizationHelper fetch_organization failed for ' \
+                "#{organization_id}: Common::Exceptions::BackendServiceException")
+      end
+
+      it 'does not cache the failure' do
+        2.times { service.fetch_organization(organization_id) }
+
+        expect(organization_client).to have_received(:read).twice
+        expect(memory_store.exist?("lighthouse:org:#{organization_id}")).to be(false)
+      end
+    end
   end
 
   describe 'StatsD metrics' do
