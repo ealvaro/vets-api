@@ -25,7 +25,11 @@
       },
       "recordConsent": true,
       "consentAddressChange": true,
-      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL", "HIV", "ALCOHOLISM"]
+      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL", "HIV", "ALCOHOLISM"],
+      "consentDisclosureIndividuals": true,
+      "firmOrOrgName": "This Org",
+      "consentDisclosureAffiliated": true,
+      "individualNames": ["Name 1", "Name 2"]
     }
   }
 }

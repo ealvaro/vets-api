@@ -94,14 +94,19 @@ module ClaimsApi
                   phone_number: request.dig('claimant', 'phone', 'phoneNumber')
                 },
                 email: request.dig('claimant', 'email'),
-                relationship: request.dig('claimant', 'relationship')
+                relationship: request.dig('claimant', 'relationship'),
+                date_of_birth: request.dig('claimant', 'dateOfBirth')
               },
               representative: {
                 poa_code: request.dig('representative', 'poaCode')
               },
               record_consent: request['recordConsent'],
               consent_limits: request['consentLimits'],
-              consent_address_change: request['consentAddressChange']
+              consent_address_change: request['consentAddressChange'],
+              consent_disclosure_individuals: request['consentDisclosureIndividuals'],
+              firm_or_org_name: request['firmOrOrgName'],
+              consent_disclosure_affiliated: request['consentDisclosureAffiliated'],
+              individual_names: request['individualNames']
             }
           end
 

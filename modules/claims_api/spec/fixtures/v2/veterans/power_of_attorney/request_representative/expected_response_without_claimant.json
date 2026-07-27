@@ -40,14 +40,19 @@
           "phoneNumber": null
         },
         "email": null,
-        "relationship": null
+        "relationship": null,
+        "dateOfBirth": null
       },
       "representative": {
         "poaCode": "067"
       },
       "recordConsent": true,
       "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL", "HIV", "ALCOHOLISM"],
-      "consentAddressChange": true
+      "consentAddressChange": true,
+      "consentDisclosureIndividuals": true,
+      "consentDisclosureAffiliated": true,
+      "firmOrOrgName": "This Org",
+      "individualNames": ["Name 1", "Name 2"]
     }
   }
 }

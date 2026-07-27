@@ -756,7 +756,11 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
           SICKLE_CELL
           HIV
           ALCOHOLISM
-        ]
+        ],
+        consentDisclosureAffiliated: true,
+        consentDisclosureIndividuals: true,
+        firmOrOrgName: 'This Org',
+        individualNames: ['Jane R.', 'John Rep']
       }
     end
     let(:claimant_information) do
@@ -772,7 +776,8 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
             zipCodeSuffix: '0200'
           },
           claimantId: '1012667145V762142',
-          relationship: 'Spouse'
+          relationship: 'Spouse',
+          dateOfBirth: '2001-01-12'
         }
       }
     end
@@ -1173,6 +1178,76 @@ Rspec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::RequestController, type
               expect(number).to eq(2)
             end
           end
+        end
+      end
+    end
+
+    context 'blueprinter response' do
+      before do
+        allow_any_instance_of(
+          ClaimsApi::V2::PowerOfAttorneyValidation
+        ).to receive(:validate_form_2122_and_2122a_submission_values).and_return(nil)
+      end
+
+      it 'returns the claimant date of birth in the response' do
+        mock_ccg(scopes) do |auth_header|
+          form_attributes.merge!(claimant_information)
+
+          create_request_with(veteran_id:, form_attributes:, auth_header:)
+          response_data = JSON.parse(response.body)['data']['attributes']
+
+          expect(response_data['claimant']).to have_key('dateOfBirth')
+          expect(response_data['claimant']['dateOfBirth']).to eq(
+            claimant_information[:claimant][:dateOfBirth]
+          )
+        end
+      end
+
+      it 'returns individual names in the response' do
+        mock_ccg(scopes) do |auth_header|
+          create_request_with(veteran_id:, form_attributes:, auth_header:)
+          response_data = JSON.parse(response.body)['data']['attributes']
+
+          expect(response_data).to have_key('individualNames')
+          expect(response_data['individualNames']).to eq(
+            form_attributes[:individualNames]
+          )
+        end
+      end
+
+      it 'returns consent disclosure individuals in the response' do
+        mock_ccg(scopes) do |auth_header|
+          create_request_with(veteran_id:, form_attributes:, auth_header:)
+          response_data = JSON.parse(response.body)['data']['attributes']
+
+          expect(response_data).to have_key('consentDisclosureIndividuals')
+          expect(response_data['consentDisclosureIndividuals']).to eq(
+            form_attributes[:consentDisclosureIndividuals]
+          )
+        end
+      end
+
+      it 'returns firm or org name in the response' do
+        mock_ccg(scopes) do |auth_header|
+          create_request_with(veteran_id:, form_attributes:, auth_header:)
+          response_data = JSON.parse(response.body)['data']['attributes']
+
+          expect(response_data).to have_key('firmOrOrgName')
+          expect(response_data['firmOrOrgName']).to eq(
+            form_attributes[:firmOrOrgName]
+          )
+        end
+      end
+
+      it 'returns consent disclosure affiliated in the response' do
+        mock_ccg(scopes) do |auth_header|
+          create_request_with(veteran_id:, form_attributes:, auth_header:)
+          response_data = JSON.parse(response.body)['data']['attributes']
+
+          expect(response_data).to have_key('consentDisclosureAffiliated')
+          expect(response_data['consentDisclosureAffiliated']).to eq(
+            form_attributes[:consentDisclosureAffiliated]
+          )
         end
       end
     end

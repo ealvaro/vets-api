@@ -63,6 +63,51 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
         end
 
         context 'when the Veteran ICN is found in MPI' do
+          context 'when request includes new optional disclosure and claimant fields' do
+            let(:valid_request_hash) do
+              JSON.parse(
+                Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                'power_of_attorney', 'request_representative', 'valid.json').read
+              )
+            end
+
+            let(:user_profile) do
+              double(
+                'user_profile',
+                status: :ok,
+                profile: double(
+                  'profile',
+                  given_names: %w[Jane],
+                  family_name: 'Doe',
+                  participant_id: '123',
+                  ssn: '123456789',
+                  birth_date: Date.parse('1990-01-15'),
+                  birls_id: '123456789'
+                )
+              )
+            end
+
+            before do
+              allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController)
+                .to receive(:user_profile).and_return(user_profile)
+              allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+                .to receive(:validate_poa_code_exists!).and_return(nil)
+              allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+                .to receive(:validate_dependent_by_participant_id!).and_return(nil)
+            end
+
+            it 'allows individualNames without requiring consentDisclosureIndividuals' do
+              request_hash = valid_request_hash.deep_dup
+              request_hash['data']['attributes'].delete('consentDisclosureIndividuals')
+
+              mock_ccg(scopes) do |auth_header|
+                post request_path, params: request_hash.to_json, headers: auth_header
+
+                expect(response).to have_http_status(:created)
+              end
+            end
+          end
+
           context 'when the request data does not pass schema validation' do
             let(:request_body) do
               Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
@@ -82,6 +127,106 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
                   expect(response_body['title']).to eq('Unprocessable entity')
                   expect(response_body['status']).to eq('422')
                   expect(response_body['detail']).to include(detail)
+                end
+              end
+            end
+          end
+
+          context 'when claimant dateOfBirth has an invalid format' do
+            let(:request_body) do
+              request_hash = JSON.parse(
+                Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                'power_of_attorney', 'request_representative', 'valid.json').read
+              )
+              request_hash['data']['attributes']['claimant']['dateOfBirth'] = '01-15-1990'
+              request_hash.to_json
+            end
+
+            it 'returns a schema validation 422' do
+              VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                mock_ccg(scopes) do |auth_header|
+                  post request_path, params: request_body, headers: auth_header
+
+                  response_body = JSON.parse(response.body)['errors'][0]
+
+                  expect(response).to have_http_status(:unprocessable_content)
+                  expect(response_body['status']).to eq('422')
+                  expect(response_body['detail']).to include('/claimant/dateOfBirth')
+                end
+              end
+            end
+          end
+
+          context 'when individualNames contains a non-string item' do
+            let(:request_body) do
+              request_hash = JSON.parse(
+                Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                'power_of_attorney', 'request_representative', 'valid.json').read
+              )
+              request_hash['data']['attributes']['individualNames'] = ['jane', 123]
+              request_hash.to_json
+            end
+
+            it 'returns a schema validation 422' do
+              VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                mock_ccg(scopes) do |auth_header|
+                  post request_path, params: request_body, headers: auth_header
+
+                  response_body = JSON.parse(response.body)['errors'][0]
+
+                  expect(response).to have_http_status(:unprocessable_content)
+                  expect(response_body['status']).to eq('422')
+                  expect(response_body['detail']).to include('/individualNames/1')
+                end
+              end
+            end
+          end
+
+          context 'when individualNames exceeds maxItems' do
+            let(:request_body) do
+              request_hash = JSON.parse(
+                Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                'power_of_attorney', 'request_representative', 'valid.json').read
+              )
+              request_hash['data']['attributes']['individualNames'] = Array.new(101, 'jane')
+              request_hash.to_json
+            end
+
+            it 'returns a schema validation 422' do
+              VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                mock_ccg(scopes) do |auth_header|
+                  post request_path, params: request_body, headers: auth_header
+
+                  response_body = JSON.parse(response.body)['errors'][0]
+
+                  expect(response).to have_http_status(:unprocessable_content)
+                  expect(response_body['status']).to eq('422')
+                  expect(response_body['detail']).to include('/individualNames')
+                end
+              end
+            end
+          end
+
+          context 'when consentDisclosureAffiliated is not a boolean' do
+            let(:request_body) do
+              request_hash = JSON.parse(
+                Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'v2', 'veterans',
+                                'power_of_attorney', 'request_representative', 'valid.json').read
+              )
+              request_hash['data']['attributes']['consentDisclosureAffiliated'] = 'true'
+              request_hash.to_json
+            end
+
+            it 'returns a schema validation 422' do
+              VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+                mock_ccg(scopes) do |auth_header|
+                  post request_path, params: request_body, headers: auth_header
+
+                  response_body = JSON.parse(response.body)['errors'][0]
+
+                  expect(response).to have_http_status(:unprocessable_content)
+                  expect(response_body['status']).to eq('422')
+                  expect(response_body['detail']).to include('/consentDisclosureAffiliated')
                 end
               end
             end

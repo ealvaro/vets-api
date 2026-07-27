@@ -36,14 +36,19 @@
           "phoneNumber": "5559876"
         },
         "email": "example@example.com",
-        "relationship": "Spouse"
+        "relationship": "Spouse",
+        "dateOfBirth": "1980-01-01"
       },
       "representative": {
         "poaCode": "067"
       },
       "recordConsent": true,
       "consentAddressChange": true,
-      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL", "HIV", "ALCOHOLISM"]
+      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL", "HIV", "ALCOHOLISM"],
+      "consentDisclosureIndividuals": true,
+      "firmOrOrgName": "This Org",
+      "consentDisclosureAffiliated": true,
+      "individualNames": ["Name 1", "Name 2"]
     }
   }
 }

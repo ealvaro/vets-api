@@ -23,7 +23,9 @@
       },
       "recordConsent": true,
       "consentAddressChange": true,
-      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL"]
+      "consentLimits": ["DRUG_ABUSE", "SICKLE_CELL"],
+      "consentDisclosureIndividuals": true,
+      "firmOrOrgName": "This Org"
     }
   }
 }

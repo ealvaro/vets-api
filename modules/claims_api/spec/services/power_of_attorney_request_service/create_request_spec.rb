@@ -149,13 +149,12 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
           temp = form_data
           temp[:veteran].merge!(additional_vet_details)
           temp[:claimant].merge!(additional_claimant_details)
-          temp[:claimant][:birthDate] = '1990-01-15'
           file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
 
           VCR.use_cassette(file_name) do
             response = subject.call
 
-            expect(response['meta']['claimant']['birth_date']).to eq('1990-01-15')
+            expect(response['meta']['claimant']['birth_date']).to eq('1980-01-01')
           end
         end
       end
@@ -165,6 +164,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
           temp = form_data
           temp[:veteran].merge!(additional_vet_details)
           temp[:claimant].merge!(additional_claimant_details)
+          temp[:claimant].delete(:dateOfBirth)
           file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
 
           VCR.use_cassette(file_name) do
@@ -271,6 +271,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
           temp = form_data
           temp[:claimant] = nil
           temp[:veteran].merge!(additional_vet_details)
+          temp.except!(
+            :consentDisclosureIndividuals, :firmOrOrgName, :consentDisclosureAffiliated, :individualNames
+          )
           file_name = 'claims_api/power_of_attorney_request_service/create_request/without_claimant'
 
           VCR.use_cassette(file_name) do
@@ -387,14 +390,13 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
           .with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(false)
       end
 
-      context 'and claimant birthDate is present in form_data' do
+      context 'and claimant dateOfBirth is present in form_data' do
         let(:claimant_participant_id) { '600036513' }
 
         it 'does not include birth_date in claimant metadata' do
           temp = form_data
           temp[:veteran].merge!(additional_vet_details)
           temp[:claimant].merge!(additional_claimant_details)
-          temp[:claimant][:birthDate] = '1990-01-15'
           file_name = 'claims_api/power_of_attorney_request_service/create_request/with_claimant'
 
           VCR.use_cassette(file_name) do
@@ -676,6 +678,9 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
 
     describe '#set_form_attributes' do
       it 'does not raise when called before create_vonapp_data and no attributes are present' do
+        form_data.except!(
+          :consentDisclosureIndividuals, :firmOrOrgName, :consentDisclosureAffiliated, :individualNames
+        )
         subject.instance_variable_set(:@vnp_res_object, nil)
 
         expect { subject.send(:set_form_attributes) }.not_to raise_error
@@ -683,19 +688,17 @@ describe ClaimsApi::PowerOfAttorneyRequestService::CreateRequest do
       end
 
       it 'adds form_attributes when values are present without prior create_vonapp_data call' do
-        org_name = 'Smith & Associates Law Firm'
-        local_form_data = form_data.deep_dup
-        local_form_data[:consentDisclosureAffiliated] = false
-        local_form_data[:firmOrOrgName] = org_name
-        service = described_class.new(veteran_participant_id, local_form_data, claimant_participant_id)
+        service = described_class.new(veteran_participant_id, form_data, claimant_participant_id)
 
         service.send(:set_form_attributes)
 
         expect(service.instance_variable_get(:@vnp_res_object)).to include(
           'meta' => {
             'form_attributes' => {
-              'consent_disclosure_affiliated' => false,
-              'firm_or_org_name' => org_name
+              'consent_disclosure_affiliated' => true,
+              'consent_disclosure_individuals' => true,
+              'firm_or_org_name' => 'This Org',
+              'individual_names' => ['Name 1', 'Name 2']
             }
           }
         )

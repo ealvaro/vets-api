@@ -116,7 +116,7 @@ module ClaimsApi
         create_vonapp_data(@form_data[:claimant], @claimant_vnp_ptcpnt_id, trace_digest, 'claimant')
 
         if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
-          birth_date = @form_data.dig(:claimant, :birthDate)
+          birth_date = @form_data.dig(:claimant, :dateOfBirth)
           @vnp_res_object['meta']['claimant']['birth_date'] = birth_date unless birth_date.nil?
         end
       end
