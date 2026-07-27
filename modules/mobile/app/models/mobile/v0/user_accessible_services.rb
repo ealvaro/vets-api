@@ -45,8 +45,7 @@ module Mobile
           directDepositBenefitsUpdate: access?(lighthouse: :mobile_access?),
           disabilityRating: access?(lighthouse: :access?),
           genderIdentity: access?(demographics: :access_update?) && access?(mpi: :queryable?),
-          labsAndTestsEnabled: versioned_flagged_access?(%i[mhv_accelerated_delivery_labs_and_tests_enabled
-                                                            mhv_accelerated_delivery_uhd_enabled],
+          labsAndTestsEnabled: versioned_flagged_access?(%i[mhv_accelerated_delivery_uhd_enabled],
                                                          :labs_oracle_health),
           lettersAndDocuments: access?(lighthouse: :access?),
           militaryServiceHistory: access?(vet360: :military_access?),

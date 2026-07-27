@@ -1888,10 +1888,6 @@ features:
     actor_type: user
     description: Control fetching OH health condition data
     enable_in_development: false
-  mhv_accelerated_delivery_labs_and_tests_enabled:
-    actor_type: user
-    description: Control fetching lab and test data from UHD (SCDF) service (web)
-    enable_in_development: false
   mhv_accelerated_delivery_vital_signs_enabled:
     actor_type: user
     description: Control fetching OH vitals data
@@ -2034,10 +2030,6 @@ features:
       If enabled, prescriptions without a CMOP NDC will fall back to the
       VistA-sourced NDC for Krames PMI documentation lookup, unlocking the
       "Learn more about this medication" link for local pharmacy fills.
-    enable_in_development: true
-  mhv_scdf_for_labs_enabled:
-    actor_type: user
-    description: Controls whether labs and test and imaging is pulled from SCDF service
     enable_in_development: true
   mhv_supply_reordering_enabled:
     actor_type: user

@@ -19,8 +19,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
                                                 instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
-                                                instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_schedules,
@@ -146,8 +144,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot, instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
-                                                instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
@@ -190,8 +186,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                   instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
-                                                  instance_of(User)).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                                   instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                   instance_of(User)).and_return(false)
@@ -241,8 +235,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                   instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_allergies_enabled,
                                                   instance_of(User)).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
-                                                  instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                   instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
@@ -285,8 +277,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot, instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
-                                                instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_oh_migration_trusted_user_bypass,
@@ -327,8 +317,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
-                                                instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                                 instance_of(User)).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(true)
@@ -568,8 +556,6 @@ RSpec.describe 'Mobile::V0::User::AuthorizedServices', type: :request do
       allow(Flipper).to receive(:enabled?).with(:event_bus_gateway_letter_ready_push_notifications, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider_mobile, instance_of(Flipper::Actor)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_secure_messaging_cerner_pilot,
-                                                instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_labs_and_tests_enabled,
                                                 instance_of(User)).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_uhd_enabled,
                                                 instance_of(User)).and_return(false)
