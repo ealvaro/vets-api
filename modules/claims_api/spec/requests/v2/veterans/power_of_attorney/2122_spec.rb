@@ -234,7 +234,8 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122', type: :request do
                     countryCode: 'US',
                     zipCode: '12345'
                   },
-                  relationship: 'Child'
+                  relationship: 'Child',
+                  dateOfBirth: '1990-01-15'
                 }
               end
 
