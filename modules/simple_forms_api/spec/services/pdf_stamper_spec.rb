@@ -220,6 +220,7 @@ describe SimpleFormsApi::PdfStamper do
     end
     let(:stamp_path) { Rails.root.join('tmp', "perform_multistamp_stamp-#{SecureRandom.hex}.pdf").to_s }
     let(:fixture_pdf) { 'modules/simple_forms_api/spec/fixtures/pdfs/vba_21_0779-completed.pdf' }
+    let(:pdftk_error_message) { 'java.lang.ClassCastException: pdftk crashed' }
 
     before do
       FileUtils.cp(fixture_pdf, stamped_template_path)
@@ -242,7 +243,8 @@ describe SimpleFormsApi::PdfStamper do
 
     context 'when pdftk raises PdfForms::PdftkError' do
       before do
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+          .and_raise(PdfForms::PdftkError, pdftk_error_message)
         allow(StatsD).to receive(:increment)
       end
 
@@ -265,7 +267,8 @@ describe SimpleFormsApi::PdfStamper do
 
     context 'when the HexaPDF fallback itself fails' do
       before do
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+          .and_raise(PdfForms::PdftkError, pdftk_error_message)
         allow(HexaPDF::CLI).to receive(:run).and_raise('hexapdf also failed')
       end
 

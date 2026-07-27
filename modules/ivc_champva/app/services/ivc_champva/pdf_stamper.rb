@@ -207,11 +207,16 @@ module IvcChampva
       begin
         pdftk.multistamp(stamped_template_path, stamp_path, out_path)
       rescue PdfForms::PdftkError => e
-        Rails.logger.warn(
-          "IVC Champva Forms - PdfStamper: pdftk failed (#{e.class}), falling back to HexaPDF watermark stamping"
-        )
-        StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
-        perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+        if e.message.include?('ClassCastException')
+          Rails.logger.warn(
+            "IVC Champva Forms - PdfStamper: pdftk failed with known ClassCastException bug (#{e.class}), " \
+            'falling back to HexaPDF watermark stamping'
+          )
+          StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
+          perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+        else
+          raise
+        end
       end
       Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post pdftk.multistamp delete'
       File.delete(stamped_template_path)

@@ -2,6 +2,8 @@
 
 require 'common/file_helpers'
 require 'pdf_utilities/exception_handling'
+require 'hexapdf'
+require 'hexapdf/cli'
 
 # Utility classes and functions for VA PDF
 module PDFUtilities
@@ -14,6 +16,8 @@ module PDFUtilities
 
     # metric stat key
     STATS_KEY = 'api.datestamp_pdf.error'
+    # metric stat key for successful fallback to HexaPDF after a pdftk failure
+    PDFTK_FALLBACK_STATS_KEY = 'api.datestamp_pdf.pdftk_fallback'
 
     # prepare to datestamp an existing pdf document
     #
@@ -132,18 +136,38 @@ module PDFUtilities
 
     # combine the input and background pdfs into the stamped_pdf
     # @see https://www.pdflabs.com/docs/pdftk-man-page/#dest-op-stamp
-    def stamp_pdf
+    #
+    # pdftk (specifically pdftk-java) has known, longstanding bugs where certain
+    # non-conforming AcroForm structures in the input PDF cause it to crash with an
+    # unhandled java.lang.ClassCastException (see e.g. gitlab.com/pdftk-java/pdftk
+    # issues #17, #45, #47, #110, #139, #166). When that happens we fall back to
+    # HexaPDF's watermark CLI, which does not share pdftk-java's AcroForm parsing
+    # bugs and is already used elsewhere in this codebase for the same kind of
+    # overlay stamping (see PDFUtilities::PDFStamper).
+    def stamp_pdf # rubocop:disable Metrics/MethodLength
       Rails.logger.info("Stamping PDF: #{file_path} with stamp: #{stamp_path}")
 
       raise PdfMissingError, "Original PDF missing: #{file_path}" unless File.exist?(file_path)
       raise PdfMissingError, "Generated stamp missing: #{stamp_path}" unless File.exist?(stamp_path)
 
       @stamped_pdf = "#{Common::FileHelpers.random_file_path}.pdf"
-
-      if multistamp
-        PDFUtilities::PDFTK.multistamp(file_path, stamp_path, stamped_pdf)
-      else
-        PDFUtilities::PDFTK.stamp(file_path, stamp_path, stamped_pdf)
+      begin
+        if multistamp
+          PDFUtilities::PDFTK.multistamp(file_path, stamp_path, stamped_pdf)
+        else
+          PDFUtilities::PDFTK.stamp(file_path, stamp_path, stamped_pdf)
+        end
+      rescue PdfForms::PdftkError => e
+        if e.message.include?('ClassCastException')
+          Rails.logger.warn(
+            "DatestampPdf: pdftk failed with known ClassCastException bug (#{e.class}), " \
+            'falling back to HexaPDF watermark stamping'
+          )
+          StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
+          stamp_pdf_with_hexapdf
+        else
+          raise
+        end
       end
 
       raise StampGenerationError, 'Stamped PDF was not created' unless File.exist?(stamped_pdf)
@@ -152,6 +176,16 @@ module PDFUtilities
     rescue => e
       Common::FileHelpers.delete_file_if_exists(stamped_pdf)
       log_and_raise_error('PDF stamping failed', e, STATS_KEY)
+    end
+
+    # Fallback stamping path used when pdftk fails with PdfForms::PdftkError.
+    # Mirrors PDFUtilities::PDFStamper#stamp_pdf's approach.
+    # @see https://github.com/gettalong/hexapdf/blob/master/lib/hexapdf/cli/watermark.rb
+    def stamp_pdf_with_hexapdf
+      reader = PDF::Reader.new(stamp_path)
+      pages = multistamp ? [*1..reader.page_count].join(',') : '1'
+
+      HexaPDF::CLI.run(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', file_path, stamped_pdf])
     end
 
     # DatestampPdf class

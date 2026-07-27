@@ -321,6 +321,7 @@ describe IvcChampva::PdfStamper do
     let(:stamp_path) { 'path/to/stamp.pdf' }
     let(:random_path) { 'tmp/000033337777BBBB111144448888CCCC' }
     let(:out_path) { "#{random_path}.pdf" }
+    let(:pdftk_error_message) { 'java.lang.ClassCastException: pdftk crashed' }
 
     context 'when an error occurs during stamping' do
       before do
@@ -349,7 +350,8 @@ describe IvcChampva::PdfStamper do
       before do
         allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
         allow(Common::FileHelpers).to receive(:delete_file_if_exists)
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+          .and_raise(PdfForms::PdftkError, pdftk_error_message)
         allow(StatsD).to receive(:increment)
         allow(described_class).to receive(:perform_multistamp_with_hexapdf)
         allow(File).to receive(:delete)
@@ -372,7 +374,8 @@ describe IvcChampva::PdfStamper do
       before do
         allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
         allow(Common::FileHelpers).to receive(:delete_file_if_exists)
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(PdfForms::PdftkError, 'pdftk crashed')
+        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+          .and_raise(PdfForms::PdftkError, pdftk_error_message)
         allow(StatsD).to receive(:increment)
         allow(described_class).to receive(:perform_multistamp_with_hexapdf)
           .and_raise(StandardError, 'hexapdf also failed')

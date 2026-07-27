@@ -117,6 +117,63 @@ RSpec.describe PDFUtilities::DatestampPdf do
         end
       end
 
+      context 'when pdftk raises PdfForms::PdftkError' do
+        subject(:run) { instance.run(text: 'Received via vets.gov at', x: 10, y: 10) }
+
+        before do
+          allow(PDFUtilities::PDFTK).to receive(:stamp)
+            .and_raise(PdfForms::PdftkError, 'java.lang.ClassCastException: pdftk crashed')
+          allow(StatsD).to receive(:increment)
+        end
+
+        it 'falls back to HexaPDF watermark stamping instead of raising' do
+          out_path = run
+          expect(File.exist?(out_path)).to be true
+          expect(StatsD).to have_received(:increment).with('api.datestamp_pdf.pdftk_fallback')
+          expect(logging_monitor_double).not_to have_received(:track_request)
+          File.delete(out_path)
+        end
+      end
+
+      context 'when pdftk raises PdfForms::PdftkError during multistamp' do
+        subject(:run) do
+          instance.run(text: 'Received via vets.gov', x: 10, y: 10, timestamp: Time.zone.now,
+                       text_only: true, page_number: 0,
+                       template: './lib/pdf_fill/forms/pdfs/686C-674.pdf', multistamp: true)
+        end
+
+        before do
+          allow(PDFUtilities::PDFTK).to receive(:multistamp)
+            .and_raise(PdfForms::PdftkError, 'java.lang.ClassCastException: pdftk crashed')
+        end
+
+        it 'falls back to HexaPDF watermark stamping and preserves the multistamp page range' do
+          out_path = run
+          expect(File.exist?(out_path)).to be true
+          File.delete(out_path)
+        end
+      end
+
+      context 'when the HexaPDF fallback itself fails' do
+        subject(:run) { instance.run(text: 'Received via vets.gov at', x: 10, y: 10) }
+
+        before do
+          allow(PDFUtilities::PDFTK).to receive(:stamp)
+            .and_raise(PdfForms::PdftkError, 'java.lang.ClassCastException: pdftk crashed')
+          allow(HexaPDF::CLI).to receive(:run).and_raise(error_message)
+        end
+
+        it 'still logs and reraises, same as any other stamping failure' do
+          expect(logging_monitor_double).to receive(:track_request).at_least(:once).with(
+            :error,
+            /PDF stamping failed/,
+            'api.datestamp_pdf.error',
+            hash_including(exception: have_attributes(message: /bad news bears/))
+          )
+          expect { run }.to raise_error(RuntimeError, /bad news bears/)
+        end
+      end
+
       context 'when the file does not exist' do
         subject(:instance) { described_class.new(stamped_template_path) }
 
