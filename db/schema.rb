@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_160836) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1460,6 +1460,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_160836) do
     t.text "applicant_icn_ciphertext"
     t.text "applicant_last_name_ciphertext"
     t.datetime "created_at", null: false
+    t.boolean "documents_requested", default: false, null: false
     t.boolean "eligibility_resolved", default: false, null: false
     t.text "encrypted_kms_key"
     t.boolean "needs_kms_rotation", default: false, null: false
