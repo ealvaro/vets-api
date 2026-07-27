@@ -23,6 +23,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
           {
             icn: user.icn,
             user_uuid: user.uuid,
+            verified: true,
             is_veteran: true,
             mpi_vet_person_type: true,
             safe_keys: [:icn]
@@ -41,6 +42,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
           {
             icn: user.icn,
             user_uuid: user.uuid,
+            verified: true,
             is_veteran: false,
             mpi_vet_person_type: true,
             safe_keys: [:icn]
@@ -64,6 +66,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
         {
           icn: nil,
           user_uuid: user.uuid,
+          verified: false,
           is_veteran: false,
           mpi_vet_person_type: false,
           safe_keys: [:icn]
@@ -73,7 +76,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
   end
 
   context 'for users without an EDIPI' do
-    let(:user) { create(:user, edipi: nil) }
+    let(:user) { create(:user, :loa3, edipi: nil, person_types: ['NOT_VET']) }
 
     before { allow(user).to receive(:veteran?) }
 
@@ -86,6 +89,7 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
         {
           icn: user.icn,
           user_uuid: user.uuid,
+          verified: true,
           is_veteran: false,
           mpi_vet_person_type: false,
           safe_keys: [:icn]

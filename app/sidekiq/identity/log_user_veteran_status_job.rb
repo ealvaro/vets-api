@@ -10,14 +10,16 @@ module Identity
       user = User.find(user_uuid)
       return unless user
 
+      verified = user.loa3?
       is_veteran = false
 
-      is_veteran = fetch_user_veteran_status(user) if user.loa3? && user.edipi.present?
+      is_veteran = fetch_user_veteran_status(user) if verified && user.edipi.present?
 
       Rails.logger.info(
         'user_veteran_status',
         icn: user.icn,
         user_uuid: user.uuid,
+        verified:,
         is_veteran:,
         mpi_vet_person_type: mpi_vet_person_type(user),
         safe_keys: [:icn]
