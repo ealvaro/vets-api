@@ -3037,19 +3037,9 @@ features:
   vba_documents_uploads_report_uuid_limit:
     actor_type: user
     description: Enables MaxArraySizeExceeded error when uploads/report exceeds 1000 IDs
-  veteran_onboarding_beta_flow:
-    actor_type: user
-    description: Conditionally display the new veteran onboarding flow to user
   veteran_onboarding_browser_monitoring_enabled:
     actor_type: user
     description: Enables Datadog Real User Monitoring for the veteran onboarding review information form
-  veteran_onboarding_show_to_newly_onboarded:
-    actor_type: user
-    description: Conditionally display the new veteran onboarding flow to user, based upon number of days since verified
-  veteran_onboarding_show_welcome_message_to_new_users:
-    actor_type: user
-    description: Conditionally display the "Welcome to VA" message to new (LOA1 or LOA3) users
-    enable_in_development: false
   vet_status_pdf_logging:
     actor_type: user
     description: Enables the Veteran Status Card to log PDF download events/failures
