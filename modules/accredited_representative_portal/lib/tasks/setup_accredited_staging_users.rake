@@ -42,7 +42,7 @@ module AccreditedRepresentativePortal
     def sync_representative_accreditations!(individual, poa_codes, result)
       return unless individual.individual_type == AccreditedIndividual::INDIVIDUAL_TYPE_VSO_REPRESENTATIVE
 
-      poa_codes.each do |poa_code|
+      poa_codes.each_with_index do |poa_code, index|
         organization = AccreditedOrganization.find_by(poa_code:)
 
         unless organization
@@ -58,6 +58,8 @@ module AccreditedRepresentativePortal
           accredited_individual: individual,
           accredited_organization: organization
         )
+        # Alternate acceptance mode so individual-accept can be exercised across both modes.
+        accreditation.acceptance_mode = index.even? ? 'any_request' : 'self_only'
 
         if accreditation.new_record?
           accreditation.save!
@@ -65,6 +67,8 @@ module AccreditedRepresentativePortal
         elsif accreditation.deactivated_at.present?
           accreditation.activate!
           result[:accreditations_activated_count] += 1
+        elsif accreditation.changed?
+          accreditation.save!
         end
       end
     end

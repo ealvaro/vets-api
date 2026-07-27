@@ -46,33 +46,13 @@ module AccreditedRepresentativePortal
             ]
           )
 
-          insert_all(
-            Records::ORGANIZATIONS,
-            factory: [
-              :organization
-            ]
-          )
+          accreditations = build_accreditations
 
-          accreditations = []
-
-          insert_all(
-            Records::REPRESENTATIVES,
-            factory: %i[representative],
-            unique_by: %i[representative_id]
-          ) do |representative|
-            representative[:poa_codes].each do |poa_code|
-              accreditations.push(
-                accredited_individual_id: representative[:representative_id],
-                accredited_organization_id: poa_code
-              )
-            end
+          if AccreditedRepresentativePortal.use_accredited_models?
+            insert_accredited_vso_records
+          else
+            insert_legacy_vso_records
           end
-
-          insert_all(
-            Records::ORGANIZATION_REPRESENTATIVES,
-            factory: [:organization_representative],
-            unique_by: %i[organization_poa representative_id]
-          )
 
           insert_all(
             Records::CLAIMANTS,
@@ -88,6 +68,134 @@ module AccreditedRepresentativePortal
       end
 
       private
+
+      ##
+      # The `accredited_individual_id` / `accredited_organization_id` values here are the
+      # `registration_number` / `poa_code` strings that back the shared POA-request FK
+      # columns, so they are identical regardless of which model layer is seeded.
+      #
+      def build_accreditations
+        Records::REPRESENTATIVES.flat_map do |representative|
+          representative[:poa_codes].map do |poa_code|
+            {
+              accredited_individual_id: representative[:representative_id],
+              accredited_organization_id: poa_code
+            }
+          end
+        end
+      end
+
+      def insert_legacy_vso_records
+        insert_all(
+          Records::ORGANIZATIONS,
+          factory: [
+            :organization
+          ]
+        )
+
+        insert_all(
+          Records::REPRESENTATIVES,
+          factory: %i[representative],
+          unique_by: %i[representative_id]
+        )
+
+        insert_all(
+          Records::ORGANIZATION_REPRESENTATIVES,
+          factory: [:organization_representative],
+          unique_by: %i[organization_poa representative_id]
+        )
+      end
+
+      def insert_accredited_vso_records
+        insert_all(
+          accredited_organization_records,
+          factory: [:accredited_organization],
+          unique_by: %i[poa_code]
+        )
+
+        insert_all(
+          accredited_individual_records,
+          factory: %i[accredited_individual representative],
+          unique_by: %i[registration_number individual_type]
+        )
+
+        insert_accreditations
+      end
+
+      def accredited_organization_records
+        Records::ORGANIZATIONS.map.with_index do |organization, index|
+          {
+            name: organization[:name],
+            poa_code: organization[:poa],
+            # Alternate digital acceptance so both digital and non-digital orgs are seeded.
+            can_accept_digital_poa_requests: index.even?
+          }
+        end
+      end
+
+      def accredited_individual_records
+        Records::REPRESENTATIVES.map do |representative|
+          {
+            first_name: representative[:first_name],
+            last_name: representative[:last_name],
+            registration_number: representative[:representative_id],
+            email: representative[:email]
+          }
+        end
+      end
+
+      ##
+      # Builds the `Accreditation` join rows linking the seeded representatives to their
+      # organizations. Acceptance mode alternates by representative so individual-accept can
+      # be exercised across both `any_request` and `self_only`.
+      #
+      def insert_accreditations
+        organizations_by_poa_code =
+          AccreditedOrganization
+          .where(poa_code: Records::ORGANIZATIONS.map { |organization| organization[:poa] })
+          .index_by(&:poa_code)
+
+        individuals_by_registration_number =
+          AccreditedIndividual
+          .representatives
+          .where(registration_number: Records::REPRESENTATIVES.map { |rep| rep[:representative_id] })
+          .index_by(&:registration_number)
+
+        rows =
+          Records::REPRESENTATIVES.each_with_index.flat_map do |representative, index|
+            individual = individuals_by_registration_number[representative[:representative_id]]
+            next [] unless individual
+
+            acceptance_mode = index.even? ? 'any_request' : 'self_only'
+
+            representative[:poa_codes].filter_map do |poa_code|
+              organization = organizations_by_poa_code[poa_code]
+              next unless organization
+
+              {
+                accredited_individual_id: individual.id,
+                accredited_organization_id: organization.id,
+                acceptance_mode:,
+                can_accept_reject_poa: true
+              }
+            end
+          end
+
+        return if rows.empty?
+
+        Accreditation.insert_all(
+          rows,
+          unique_by: %i[accredited_individual_id accredited_organization_id]
+        )
+      end
+
+      def find_accredited_individual(registration_number)
+        if AccreditedRepresentativePortal.use_accredited_models?
+          AccreditedIndividual.representatives.find_by(registration_number:)
+        else
+          Veteran::Service::Representative.find_by(representative_id: registration_number)
+        end
+      end
 
       ##
       # There is one claimant per accreditation. The claimant then gets a permutation
@@ -113,14 +221,13 @@ module AccreditedRepresentativePortal
             accreditation = accreditation_cycle.next
             created_at = RESOLVED_TIME_TRAVELER.next
 
-            poa_forms.push(claimant_poa_forms[claimant_id].dup)
-            resolutions.push(created_at: created_at + 1.day)
-            resolution_traits.push(resolution_trait)
-            accredited_representative = Veteran::Service::Representative.find_by(
-              representative_id: accreditation[:accredited_individual_id]
-            )
+            accredited_representative =
+              find_accredited_individual(accreditation[:accredited_individual_id])
             id = Records::POA_REQUEST_IDS.next
             unless AccreditedRepresentativePortal::PowerOfAttorneyRequest.exists?(id:)
+              poa_forms.push(claimant_poa_forms[claimant_id].dup)
+              resolutions.push(created_at: created_at + 1.day)
+              resolution_traits.push(resolution_trait)
               poa_requests.push(
                 id:,
                 claimant_type: 'veteran',
@@ -140,18 +247,25 @@ module AccreditedRepresentativePortal
           .each_with_index do |accreditation, i|
             claimant_id = Records::CLAIMANTS[i][:id]
             created_at = UNRESOLVED_TIME_TRAVELER.next
+            accredited_representative =
+              find_accredited_individual(accreditation[:accredited_individual_id])
 
-            poa_forms.push(claimant_poa_forms[claimant_id].dup)
-            # NOTE: need to include an `accredited_individual` so poa code won't be overwritten
-            poa_requests.push(
-              id: Records::POA_REQUEST_IDS.next,
-              claimant_type: 'veteran',
-              claimant_id:,
-              power_of_attorney_holder_type: 'veteran_service_organization',
-              power_of_attorney_holder_poa_code: accreditation[:accredited_organization_id],
-              accredited_individual_registration_number: accreditation[:accredited_individual_id],
-              created_at:
-            )
+            id = Records::POA_REQUEST_IDS.next
+            unless AccreditedRepresentativePortal::PowerOfAttorneyRequest.exists?(id:)
+              poa_forms.push(claimant_poa_forms[claimant_id].dup)
+              # NOTE: include an `accredited_individual` and transient `poa_code` so the holder
+              # poa code resolves to the seeded organization under both flag states.
+              poa_requests.push(
+                id:,
+                claimant_type: 'veteran',
+                claimant_id:,
+                power_of_attorney_holder_type: 'veteran_service_organization',
+                poa_code: accreditation[:accredited_organization_id],
+                accredited_individual_registration_number: accreditation[:accredited_individual_id],
+                accredited_individual: accredited_representative,
+                created_at:
+              )
+            end
           end
 
         inserted_poa_requests =

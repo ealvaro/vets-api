@@ -33,8 +33,8 @@ module AccreditedRepresentativePortal
           claimant_id: claimant.id,
           claimant_type: dependent_toggle ? 'dependent' : 'veteran',
           power_of_attorney_holder_type: org ? 'veteran_service_organization' : 'individual_representative',
-          power_of_attorney_holder_poa_code: org&.poa,
-          accredited_individual_registration_number: rep.representative_id,
+          power_of_attorney_holder_poa_code: org && org_poa_code(org),
+          accredited_individual_registration_number: rep_registration_number(rep),
           created_at:
         )
 
@@ -85,20 +85,25 @@ module AccreditedRepresentativePortal
           AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision::Types::DECLINATION
         ].cycle
       end
+
+      # POA-request FK columns are shared across model layers, so read the poa code /
+      # registration number from whichever record class the flag selected.
+      def org_poa_code(org)
+        org.respond_to?(:poa_code) ? org.poa_code : org.poa
+      end
+
+      def rep_registration_number(rep)
+        rep.respond_to?(:registration_number) ? rep.registration_number : rep.representative_id
+      end
     end
 
     module OrganizationMethods
       def fetch_organizations
-        {
-          ct: Veteran::Service::Organization.find_by(poa: '008'),
-          digital: Veteran::Service::Organization
-                   .where(can_accept_digital_poa_requests: true)
-                   .where.not(poa: '008')
-                   .limit(2),
-          non_digital: Veteran::Service::Organization
-                       .where(can_accept_digital_poa_requests: false)
-                       .limit(2)
-        }
+        if AccreditedRepresentativePortal.use_accredited_models?
+          fetch_accredited_organizations
+        else
+          fetch_legacy_organizations
+        end
       end
 
       def process_organizations(orgs, options)
@@ -107,26 +112,56 @@ module AccreditedRepresentativePortal
 
       private
 
+      def fetch_legacy_organizations
+        {
+          ct: Veteran::Service::Organization.find_by(poa: '008'),
+          digital: Veteran::Service::Organization
+                   .where(can_accept_digital_poa_requests: true)
+                   .where.not(poa: '008')
+                   .limit(2),
+          non_digital: Veteran::Service::Organization
+                       .where(can_accept_digital_poa_requests: false)
+                       .where.not(poa: '008')
+                       .limit(2)
+        }
+      end
+
+      def fetch_accredited_organizations
+        {
+          ct: AccreditedOrganization.find_by(poa_code: '008'),
+          digital: AccreditedOrganization
+                   .where(can_accept_digital_poa_requests: true)
+                   .where.not(poa_code: '008')
+                   .limit(2),
+          non_digital: AccreditedOrganization
+                       .where(can_accept_digital_poa_requests: false)
+                       .where.not(poa_code: '008')
+                       .limit(2)
+        }
+      end
+
       def process_matched_orgs(orgs, options)
-        [orgs[:ct], *orgs[:digital], *orgs[:non_digital]].each do |org|
+        [orgs[:ct], *orgs[:digital], *orgs[:non_digital]].compact.each do |org|
           process_org_reps(org, options)
         end
       end
 
       def process_org_reps(org, options)
-        matching_reps = if org.poa == '008'
-                          # Get all CT reps without limit
-                          Veteran::Service::Representative
-                            .where('poa_codes && ARRAY[?]::varchar[]', [org.poa])
-                        else
-                          # limit for other orgs
-                          Veteran::Service::Representative
-                            .where('poa_codes && ARRAY[?]::varchar[]', [org.poa])
-                            .limit(2)
-                        end
+        matching_reps = matching_reps_for(org)
 
         matching_reps.each do |rep|
           create_requests_for_rep(org, rep, options)
+        end
+      end
+
+      def matching_reps_for(org)
+        if AccreditedRepresentativePortal.use_accredited_models?
+          scope = org.accredited_individuals.representatives
+          org_poa_code(org) == '008' ? scope : scope.limit(2)
+        else
+          scope = Veteran::Service::Representative
+                  .where('poa_codes && ARRAY[?]::varchar[]', [org.poa])
+          org.poa == '008' ? scope : scope.limit(2)
         end
       end
 
