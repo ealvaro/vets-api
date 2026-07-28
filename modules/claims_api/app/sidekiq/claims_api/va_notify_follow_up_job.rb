@@ -112,6 +112,8 @@ module ClaimsApi
       NOTIFY_STATUS_DICTIONARY.each do |key, value|
         status = key.to_s if value.include?(vanotify_status.to_s)
       end
+      raise StandardError, "Unknown VANotify status: #{vanotify_status}" if status.blank?
+
       status
     end
 

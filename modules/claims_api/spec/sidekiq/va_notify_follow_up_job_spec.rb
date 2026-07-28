@@ -171,6 +171,20 @@ describe ClaimsApi::VANotifyFollowUpJob, type: :job do
           .with(30.minutes, notification_id, nil, 1)
       end
     end
+
+    context 'unknown VANotify status' do
+      it 'raises an error when an unknown status is returned' do
+        power_of_attorney = ClaimsApi::PowerOfAttorney.find(temp.id)
+        allow_any_instance_of(described_class).to receive(:notification_response_status).and_return('unknown-status')
+
+        expect { subject.perform(notification_id, power_of_attorney.id) }.to raise_error(
+          StandardError, 'Unknown VANotify status: unknown-status'
+        )
+
+        process = ClaimsApi::Process.find_by(processable: power_of_attorney, step_type: 'CLAIMANT_NOTIFICATION')
+        expect(process).to be_nil
+      end
+    end
   end
 
   describe '#settings' do
