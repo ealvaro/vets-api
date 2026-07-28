@@ -70,10 +70,10 @@ en:
         status: 429
       BTSSS-API_500:
         <<: *external_defaults
-        title: Internal Server Error
+        title: Bad Gateway
         code: 'BTSSS-API_500'
         detail: 'BTSSS internal server error'
-        status: 500
+        status: 502
       BTSSS-API_502:
         <<: *external_defaults
         title: Bad Gateway

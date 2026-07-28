@@ -65,7 +65,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
         VCR.use_cassette('travel_pay/documents/get/internal_error', match_requests_on: %i[method path]) do
           get(doc_path('big-bad-error'), headers:)
 
-          expect(response).to have_http_status(:internal_server_error)
+          expect(response).to have_http_status(:bad_gateway)
           body = JSON.parse(response.body)
           expect(body['errors']).to be_present
         end

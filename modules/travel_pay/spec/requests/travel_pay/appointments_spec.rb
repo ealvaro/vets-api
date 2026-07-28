@@ -86,7 +86,7 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
 
       context 'when the upstream API returns a 5xx error' do
         [
-          [500, :internal_server_error],
+          [500, :bad_gateway],
           [502, :bad_gateway],
           [503, :service_unavailable],
           [504, :gateway_timeout]
@@ -163,7 +163,7 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
 
       context 'when the upstream API returns a 5xx error' do
         [
-          [500, :internal_server_error],
+          [500, :bad_gateway],
           [502, :bad_gateway],
           [503, :service_unavailable],
           [504, :gateway_timeout]
