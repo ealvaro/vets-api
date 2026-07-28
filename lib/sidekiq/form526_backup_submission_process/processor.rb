@@ -6,7 +6,6 @@ require 'common/client/errors'
 require 'evss/disability_compensation_auth_headers'
 require 'evss/disability_compensation_form/form4142'
 require 'evss/disability_compensation_form/service'
-require 'evss/disability_compensation_form/non_breakered_service'
 require 'form526_backup_submission/service'
 require 'decision_review_v1/utilities/form_4142_processor'
 require 'pdf_utilities/datestamp_pdf'
@@ -29,7 +28,6 @@ module Sidekiq
       wrap_with_logging(
         :get_form_from_external_api,
         :instantiate_upload_info_from_lighthouse,
-        :get_from_non_breakered_service,
         additional_instance_logs: [
           {
             submission_id: %i[submission_id],
@@ -361,8 +359,7 @@ module Sidekiq
       # @param form_json the request body as a hash
       # @param transaction_id for lighthouse provider only: to track submission's journey in APM(s) across systems
       def get_form_from_external_api(headers, provider, form_json, transaction_id = nil)
-        # get the "breakered" version
-        service = choose_provider(headers, provider, breakered: true)
+        service = choose_provider(headers, provider)
         service.generate_526_pdf(form_json, transaction_id)
       end
 
@@ -446,59 +443,14 @@ module Sidekiq
       end
 
       # 82245 - Adding provider to method. this should be removed when toxic exposure flipper is removed
-      def choose_provider(headers, _provider, breakered: true)
+      def choose_provider(headers, _provider)
         ApiProviderFactory.call(
           type: ApiProviderFactory::FACTORIES[:generate_pdf],
           provider: :lighthouse,
-          # this sends the auth headers and if we want the "breakered" or "non-breakered" version
-          options: { auth_headers: headers, breakered: },
+          options: { auth_headers: headers },
           current_user: OpenStruct.new({ flipper_id: submission.user_uuid, icn: @user_account.icn }),
           feature_toggle: nil
         )
-      end
-    end
-
-    class NonBreakeredProcessor < Processor
-      def get_form526_pdf
-        headers = submission.auth_headers
-        submission_create_date = submission.created_at.iso8601
-        form_json = submission.form[FORM_526]
-        form_json[FORM_526]['claimDate'] ||= submission_create_date
-        form_json[FORM_526]['applicationExpirationDate'] = 365.days.from_now.iso8601 if @ignore_expiration
-
-        form_version = submission.saved_claim.parsed_form['startedFormVersion']
-        if form_version.present?
-          resp = get_from_non_breakered_service(headers, ApiProviderFactory::API_PROVIDER[:lighthouse],
-                                                form_json.to_json)
-          content = resp.env.response_body
-        else
-          resp = get_from_non_breakered_service(headers, ApiProviderFactory::API_PROVIDER[:evss], form_json.to_json)
-          b64_enc_body = resp.body['pdf']
-          content = Base64.decode64(b64_enc_body)
-        end
-        file = write_to_tmp_file(content)
-        docs << {
-          type: FORM_526_DOC_TYPE,
-          file:
-        }
-      end
-    end
-
-    # 82245 - Adding provider to method. this should be removed when toxic exposure flipper is removed
-    def get_from_non_breakered_service(headers, provider, form_json)
-      # get the "non-breakered" version
-      service = choose_provider(headers, provider, breakered: false)
-
-      service.get_form526(form_json)
-    end
-
-    class NonBreakeredForm526BackgroundLoader
-      extend ActiveSupport::Concern
-      include Sidekiq::Job
-      sidekiq_options retry: false
-      def perform(id)
-        NonBreakeredProcessor.new(id, get_upload_location_on_instantiation: false,
-                                      ignore_expiration: true).upload_pdf_submission_to_s3
       end
     end
   end

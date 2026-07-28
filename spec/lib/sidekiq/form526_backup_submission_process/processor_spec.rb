@@ -46,7 +46,7 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Processor do
         {
           type: ApiProviderFactory::FACTORIES[:generate_pdf],
           provider: ApiProviderFactory::API_PROVIDER[:lighthouse],
-          options: { auth_headers:, breakered: true },
+          options: { auth_headers: },
           current_user: OpenStruct.new({ flipper_id: submission.user_uuid, icn: }),
           feature_toggle: nil
         }
@@ -120,7 +120,7 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Processor do
       end
     end
 
-    it 'pulls from the correct Lighthouse provider according to the startedFormVersion' do
+    it 'pulls the 526 PDF from the Lighthouse generate_pdf provider' do
       allow_any_instance_of(LighthouseGeneratePdfProvider).to receive(:generate_526_pdf)
         .and_return(Faraday::Response.new(
                       status: 200, body: '526pdf'
@@ -130,7 +130,7 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Processor do
         {
           type: ApiProviderFactory::FACTORIES[:generate_pdf],
           provider: ApiProviderFactory::API_PROVIDER[:lighthouse],
-          options: { auth_headers: submission.auth_headers, breakered: true },
+          options: { auth_headers: submission.auth_headers },
           current_user: OpenStruct.new({ flipper_id: submission.user_uuid, icn: }),
           feature_toggle: nil
         }
@@ -617,53 +617,6 @@ RSpec.describe Sidekiq::Form526BackupSubmissionProcess::Processor do
       processor.instance_variable_set(:@docs_gathered, true)
       expect(processor).not_to receive(:gather_docs!)
       processor.process!
-    end
-  end
-
-  describe 'NonBreakeredProcessor' do
-    let(:mock_lh_service) { instance_double(Form526BackupSubmission::Service) }
-    # Use let! so the submission (and saved_claim) is created eagerly before any
-    # allow_any_instance_of stubs on SavedClaim#parsed_form run inside the it block.
-    let!(:nb_submission) { create(:form526_submission) }
-
-    before do
-      allow(Form526BackupSubmission::Service).to receive(:new).and_return(mock_lh_service)
-      allow(mock_lh_service).to receive(:get_location_and_uuid).and_return({ uuid: 'nb-uuid',
-                                                                             location: 'https://nb.example.com' })
-    end
-
-    describe '#get_form526_pdf' do
-      context 'when the form has a startedFormVersion (Lighthouse path)' do
-        let(:mock_provider) { double('LighthouseGeneratePdfProvider') }
-
-        it 'fetches the PDF via the non-breakered Lighthouse provider' do
-          fake_pdf_resp = double('Faraday::Response', env: double('Faraday::Env', response_body: '%PDF-LH'))
-          # Stub parsed_form AFTER the submission is created (let! ensures creation happened first)
-          allow_any_instance_of(SavedClaim::DisabilityCompensation::Form526AllClaim)
-            .to receive(:parsed_form).and_return({ 'startedFormVersion' => '2019' })
-          processor = Sidekiq::Form526BackupSubmissionProcess::NonBreakeredProcessor.new(
-            nb_submission.id, get_upload_location_on_instantiation: false
-          )
-          allow(processor).to receive(:get_from_non_breakered_service).and_return(fake_pdf_resp)
-          processor.get_form526_pdf
-          expect(processor.docs).to include(a_hash_including(type: '21-526EZ'))
-        end
-      end
-    end
-  end
-
-  describe 'NonBreakeredForm526BackgroundLoader' do
-    let(:loader) { Sidekiq::Form526BackupSubmissionProcess::NonBreakeredForm526BackgroundLoader.new }
-    let(:submission) { create(:form526_submission) }
-    let(:mock_processor) { instance_double(Sidekiq::Form526BackupSubmissionProcess::NonBreakeredProcessor) }
-
-    it 'creates a NonBreakeredProcessor and calls upload_pdf_submission_to_s3' do
-      allow(Sidekiq::Form526BackupSubmissionProcess::NonBreakeredProcessor).to receive(:new)
-        .with(submission.id, get_upload_location_on_instantiation: false, ignore_expiration: true)
-        .and_return(mock_processor)
-      allow(mock_processor).to receive(:upload_pdf_submission_to_s3)
-      loader.perform(submission.id)
-      expect(mock_processor).to have_received(:upload_pdf_submission_to_s3)
     end
   end
 end
