@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+require 'logging/monitor'
+
+module TravelPay
+  ##
+  # Centralized monitoring for the TravelPay module.
+  #
+  # Provides structured logging + StatsD metrics through a single interface,
+  # replacing scattered raw StatsD calls across clients, controllers, and services.
+  #
+  # @example Tracking an upstream API response time (in service clients)
+  #   monitor.track_response_time('claims', 'get_all') { connection.get(...) }
+  #
+  # @example Tracking an operation outcome (in controllers/services)
+  #   monitor.track_request(:info, 'SMOC create success', 'travel_pay.claims.smoc.create',
+  #                         tags: ['result:success'])
+  #
+  class Monitor < ::Logging::Monitor
+    STATSD_KEY_PREFIX = 'travel_pay'
+
+    ALLOWLIST = %w[
+      tags
+      correlation_id
+      duration
+    ].freeze
+
+    def initialize
+      super('travel-pay', allowlist: ALLOWLIST)
+    end
+
+    ##
+    # Wraps a block, measures elapsed time via StatsD.measure.
+    # Used by service clients to track upstream API response times.
+    #
+    # @param service [String] the service category (e.g. 'claims', 'appointments')
+    # @param tag_value [String] the operation tag (e.g. 'get_all', 'create')
+    # @return the result of the yielded block
+    #
+    def track_response_time(service, tag_value)
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      result = yield
+      result
+    rescue => e
+      raise
+    ensure
+      elapsed_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
+      metric = "#{STATSD_KEY_PREFIX}.#{service}.response_time"
+      status = e ? 'failure' : 'success'
+      StatsD.measure(metric, elapsed_time, tags: ["travel_pay:#{tag_value}", "status:#{status}"])
+    end
+  end
+end
