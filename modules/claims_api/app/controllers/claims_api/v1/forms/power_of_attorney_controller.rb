@@ -256,7 +256,7 @@ module ClaimsApi
 
         def build_representative_info(poa_code)
           if poa_code_in_organization?(poa_code)
-            veteran_service_organization = ::Veteran::Service::Organization.find_by(poa: poa_code)
+            veteran_service_organization = ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code)
             {
               first_name: nil,
               last_name: nil,
@@ -264,7 +264,7 @@ module ClaimsApi
               phone_number: veteran_service_organization.phone
             }
           else
-            representative = ::Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).first
+            representative = ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)', poa_code).first
             if representative.blank?
               raise ::Common::Exceptions::ResourceNotFound.new(detail: 'Power of Attorney not found')
             end

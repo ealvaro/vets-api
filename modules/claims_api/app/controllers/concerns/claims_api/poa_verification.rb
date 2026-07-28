@@ -4,7 +4,7 @@ module ClaimsApi
   module PoaVerification
     extend ActiveSupport::Concern
 
-    included do
+    included do # rubocop:disable Metrics/BlockLength
       #
       # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
       # @param poa_code [String] poa code to validate
@@ -22,7 +22,7 @@ module ClaimsApi
       #
       # @return [Boolean] True if valid poa code, False if not
       def valid_poa_code?(poa_code)
-        ::Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).any?
+        ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)', poa_code).any?
       end
 
       #
@@ -59,7 +59,7 @@ module ClaimsApi
         return false if @current_user.first_name.nil? || @current_user.last_name.nil?
         return false unless valid_poa_code?(poa_code)
 
-        reps_by_first_and_last_name = ::Veteran::Service::Representative.all_for_user(
+        reps_by_first_and_last_name = ClaimsApi::AccreditationTables.representative.all_for_user(
           first_name: @current_user.first_name,
           last_name: @current_user.last_name
         )
@@ -92,7 +92,7 @@ module ClaimsApi
       end
 
       def poa_code_in_organization?(poa_code)
-        ::Veteran::Service::Organization.find_by(poa: poa_code).present?
+        ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code).present?
       end
 
       private
@@ -105,8 +105,10 @@ module ClaimsApi
         return false if @current_user.suffix.blank?
 
         last_name_with_suffix = "#{@current_user.last_name} #{@current_user.suffix}"
-        reps_by_suffix = ::Veteran::Service::Representative.all_for_user(first_name: @current_user.first_name,
-                                                                         last_name: last_name_with_suffix)
+        reps_by_suffix = ClaimsApi::AccreditationTables.representative.all_for_user(
+          first_name: @current_user.first_name,
+          last_name: last_name_with_suffix
+        )
 
         exactly_one_rep_match?(reps_by_suffix, poa_code)
       end
@@ -115,17 +117,21 @@ module ClaimsApi
         return false if @current_user.middle_name.blank?
 
         middle_initial = @current_user.middle_name[0]
-        reps_by_middle_initial = ::Veteran::Service::Representative.all_for_user(first_name: @current_user.first_name,
-                                                                                 last_name: @current_user.last_name,
-                                                                                 middle_initial:)
+        reps_by_middle_initial = ClaimsApi::AccreditationTables.representative.all_for_user(
+          first_name: @current_user.first_name,
+          last_name: @current_user.last_name,
+          middle_initial:
+        )
 
         exactly_one_rep_match?(reps_by_middle_initial, poa_code)
       end
 
       def find_by_poa_code(poa_code)
-        reps_by_poa_code = ::Veteran::Service::Representative.all_for_user(first_name: @current_user.first_name,
-                                                                           last_name: @current_user.last_name,
-                                                                           poa_code:)
+        reps_by_poa_code = ClaimsApi::AccreditationTables.representative.all_for_user(
+          first_name: @current_user.first_name,
+          last_name: @current_user.last_name,
+          poa_code:
+        )
 
         exactly_one_rep_match?(reps_by_poa_code, poa_code)
       end

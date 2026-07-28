@@ -15,7 +15,8 @@ module ClaimsApi
         org = find_org(poa, '2122')
         res = send_organization_notification(poa, org)
       else
-        rep = ::Veteran::Service::Representative.where(representative_id: rep_id).order(created_at: :desc).first
+        rep = ClaimsApi::AccreditationTables.representative.where(representative_id: rep_id)
+                                            .order(created_at: :desc).first
         poa_code_from_form('2122a', poa)
         res = send_representative_notification(poa, rep)
       end
@@ -99,7 +100,7 @@ module ClaimsApi
 
     def find_org(poa, form_number)
       poa_code = poa_code_from_form(form_number, poa)
-      ::Veteran::Service::Organization.find_by(poa: poa_code)
+      ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code)
     end
 
     def rep_phone(rep)

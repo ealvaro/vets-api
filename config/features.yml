@@ -709,6 +709,10 @@ features:
     actor_type: user
     description: Enables the method calls in the v1 526 validations use local_bgs
     enable_in_development: true
+  claims_api_use_claims_accreditation_tables:
+    actor_type: user
+    description: When enabled, Claims API POA lookups and validation use the Claims API accreditation models instead of the legacy Veteran::Service models.
+    enable_in_development: false
   claims_api_use_person_web_service:
     actor_type: user
     description: Uses person web service rather than local bgs

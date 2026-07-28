@@ -130,9 +130,9 @@ module ClaimsApi
 
         def validate_registration_number!(base, poa_code)
           rn = form_attributes.dig(base, 'registrationNumber')
-          rep = ::Veteran::Service::Representative.where('? = ANY(poa_codes) AND representative_id = ?',
-                                                         poa_code,
-                                                         rn).order(created_at: :desc).first
+          rep = ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes) AND representative_id = ?',
+                                                                    poa_code,
+                                                                    rn).order(created_at: :desc).first
           if rep.nil?
             raise ::Common::Exceptions::ResourceNotFound.new(
               detail: "Could not find an Accredited Representative with registration number: #{rn} " \
@@ -230,11 +230,11 @@ module ClaimsApi
         end
 
         def representative(poa_code)
-          organization = ::Veteran::Service::Organization.find_by(poa: poa_code)
+          organization = ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code)
           return format_organization(organization) if organization.present?
 
-          individuals = ::Veteran::Service::Representative.where('? = ANY(poa_codes)',
-                                                                 poa_code).order(created_at: :desc)
+          individuals = ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)',
+                                                                            poa_code).order(created_at: :desc)
           if individuals.blank?
             raise ::ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound.new(
               detail: "Could not retrieve Power of Attorney with code: #{poa_code}"

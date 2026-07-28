@@ -66,8 +66,8 @@ module ClaimsApi
         end
 
         def validate_accredited_representative(poa_code)
-          @representative = ::Veteran::Service::Representative.where('? = ANY(poa_codes)',
-                                                                     poa_code).order(created_at: :desc).first
+          @representative = ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)',
+                                                                                poa_code).order(created_at: :desc).first
           # there must be a representative to appoint. This representative can be an accredited attorney, claims agent,
           #   or representative.
           if @representative.nil?
@@ -80,7 +80,7 @@ module ClaimsApi
         def validate_accredited_organization(poa_code)
           # organization is not required. An attorney or claims agent appointment request would not have an accredited
           #   organization to associate with.
-          @organization = ::Veteran::Service::Organization.find_by(poa: poa_code)
+          @organization = ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code)
         end
       end
     end

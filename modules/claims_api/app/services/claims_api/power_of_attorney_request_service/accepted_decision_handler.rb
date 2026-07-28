@@ -54,7 +54,7 @@ module ClaimsApi
       end
 
       def poa_code_in_organization?
-        ::Veteran::Service::Organization.find_by(poa: @poa_code).present?
+        ClaimsApi::AccreditationTables.organization.find_by(poa: @poa_code).present?
       end
     end
   end

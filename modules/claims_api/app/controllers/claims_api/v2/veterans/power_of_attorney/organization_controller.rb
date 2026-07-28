@@ -32,7 +32,7 @@ module ClaimsApi
         private
 
         def validate_org_poa_code!(poa_code)
-          return if ::Veteran::Service::Organization.exists?(poa: poa_code)
+          return if ClaimsApi::AccreditationTables.organization.exists?(poa: poa_code)
 
           raise ::ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound.new(
             detail: "Could not find an Organization with code: #{poa_code}"

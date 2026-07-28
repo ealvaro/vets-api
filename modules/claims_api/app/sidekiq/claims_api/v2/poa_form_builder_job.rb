@@ -22,7 +22,8 @@ module ClaimsApi
                                                        step_type: 'PDF_SUBMISSION')
         process.update!(step_status: 'IN_PROGRESS')
 
-        rep = ::Veteran::Service::Representative.where(representative_id: rep_id).order(created_at: :desc).first
+        rep = ClaimsApi::AccreditationTables.representative.where(representative_id: rep_id)
+                                            .order(created_at: :desc).first
 
         queue_poa_assignment(power_of_attorney, rep_id)
         # POA assignment sets the status to ERRORED, validate success before uploading
@@ -189,7 +190,7 @@ module ClaimsApi
       def organization_name(power_of_attorney)
         poa_code = power_of_attorney.form_data.dig('serviceOrganization', 'poaCode')
 
-        name = ::Veteran::Service::Organization.find_by(poa: poa_code).name
+        name = ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code).name
 
         {
           'serviceOrganization' => {

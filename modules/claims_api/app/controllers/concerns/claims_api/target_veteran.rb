@@ -69,7 +69,7 @@ module ClaimsApi
       def user_represents_veteran?
         return false if @current_user.first_name.nil? || @current_user.last_name.nil?
 
-        reps = ::Veteran::Service::Representative.all_for_user(
+        reps = ClaimsApi::AccreditationTables.representative.all_for_user(
           first_name: @current_user.first_name,
           last_name: @current_user.last_name
         )
@@ -90,7 +90,7 @@ module ClaimsApi
 
         first_name = @current_user.first_name
         last_name =  @current_user.last_name
-        ::Veteran::Service::Representative.find_by(first_name, last_name).present?
+        ClaimsApi::AccreditationTables.representative.find_by(first_name, last_name).present?
       end
     end
 

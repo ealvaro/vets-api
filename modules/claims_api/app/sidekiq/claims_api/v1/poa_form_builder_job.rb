@@ -54,7 +54,8 @@ module ClaimsApi
         if poa_code_in_organization?(poa_code)
           ClaimsApi::V1::PoaPdfConstructor::Organization.new
         else
-          @rep = ::Veteran::Service::Representative.where('? = ANY(poa_codes)', poa_code).order(created_at: :desc).first
+          @rep = ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)',
+                                                                     poa_code).order(created_at: :desc).first
           ClaimsApi::V1::PoaPdfConstructor::Individual.new
         end
       end
@@ -101,7 +102,7 @@ module ClaimsApi
       end
 
       def poa_code_in_organization?(poa_code)
-        ::Veteran::Service::Organization.find_by(poa: poa_code).present?
+        ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code).present?
       end
     end
   end
