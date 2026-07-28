@@ -86,7 +86,8 @@ module V0
                                                      nonce: state_payload.nonce,
                                                      authorize_sso_id: state_payload.authorize_sso_id,
                                                      app_name: state_payload.app_name).perform
-        render body: auth_service(state_payload.type, state_payload.client_id).render_auth(state:, acr: acr_for_type),
+        auth_url = auth_service(state_payload.type, state_payload.client_id).render_auth(state:, acr: acr_for_type)
+        render body: ::SignIn::RedirectUrlGenerator.new(redirect_uri: auth_url).perform,
                content_type: 'text/html'
       end
 

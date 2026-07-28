@@ -41,7 +41,8 @@ module V0
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SUCCESS,
                          tags: ["type:#{type}", "client_id:#{client_id}", "acr:#{acr}", "operation:#{operation}"])
 
-        render body: auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:),
+        auth_url = auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:)
+        render body: ::SignIn::RedirectUrlGenerator.new(redirect_uri: auth_url).perform,
                content_type: 'text/html'
       rescue => e
         sign_in_logger.error('authorize error', exception: e,

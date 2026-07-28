@@ -6,34 +6,33 @@ require 'sign_in/logingov/service'
 describe SignIn::Logingov::Service do
   let(:code) { '6805c923-9f37-4b47-a5c9-214391ddffd5' }
   let(:user_info) do
-    OpenStruct.new({
-                     sub: user_uuid,
-                     iss: 'https://idp.int.identitysandbox.gov/',
-                     email:,
-                     email_verified: true,
-                     all_emails:,
-                     given_name: first_name,
-                     family_name: last_name,
-                     address:,
-                     birthdate: birth_date,
-                     social_security_number: ssn,
-                     verified_at: 1_635_465_286
-                   })
+    SignIn::OAuth::UserInfo.new(
+      sub: user_uuid,
+      email:,
+      all_emails:,
+      multifactor:,
+      first_name:,
+      last_name:,
+      ssn: ssn.tr('-', ''),
+      birth_date:,
+      address: normalized_address,
+      verified_at: 1_635_465_286
+    )
+  end
+  let(:normalized_address) do
+    {
+      street: street.split("\n").first,
+      street2: street.split("\n").last,
+      postal_code:,
+      state: region,
+      city: locality,
+      country: 'USA'
+    }
   end
   let(:first_name) { 'Bob' }
   let(:last_name) { 'User' }
   let(:birth_date) { '1993-01-01' }
   let(:ssn) { '999-11-9999' }
-  let(:address) do
-    {
-      formatted: formatted_address,
-      street_address: street,
-      postal_code:,
-      region:,
-      locality:
-    }
-  end
-  let(:formatted_address) { "#{street}\n#{locality}, #{region} #{postal_code}" }
   let(:street) { "1 Microsoft Way\nApt 3" }
   let(:postal_code) { '11364' }
   let(:region) { 'NY' }
@@ -208,24 +207,24 @@ describe SignIn::Logingov::Service do
       let(:wrong_key) { OpenSSL::PKey::RSA.generate(2048) }
       let(:encoded_state) { JWT.encode(state_payload, wrong_key, 'RS256') }
 
-      it 'raises a MalformedParamsError' do
-        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      it 'raises a JWTDecodeError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::OAuth::Errors::JWTDecodeError)
       end
     end
 
     context 'when state is unsigned base64-encoded JSON' do
       let(:encoded_state) { Base64.encode64(state_payload.to_json) }
 
-      it 'raises a MalformedParamsError' do
-        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      it 'raises a JWTDecodeError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::OAuth::Errors::JWTDecodeError)
       end
     end
 
     context 'when state is completely malformed' do
       let(:encoded_state) { 'malformed-state' }
 
-      it 'raises a MalformedParamsError' do
-        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      it 'raises a JWTDecodeError' do
+        expect { subject.render_logout_redirect(encoded_state) }.to raise_error(SignIn::OAuth::Errors::JWTDecodeError)
       end
     end
   end
@@ -255,8 +254,8 @@ describe SignIn::Logingov::Service do
     context 'when state is not a valid JWT' do
       let(:encoded_state) { 'malformed-jwt' }
 
-      it 'raises a MalformedParamsError' do
-        expect { subject.decode_logout_state(encoded_state) }.to raise_error(SignIn::Errors::MalformedParamsError)
+      it 'raises a JWTDecodeError' do
+        expect { subject.decode_logout_state(encoded_state) }.to raise_error(SignIn::OAuth::Errors::JWTDecodeError)
       end
     end
   end
@@ -290,7 +289,7 @@ describe SignIn::Logingov::Service do
 
         expect do
           service.jwt_decode(expired_jwt)
-        end.to raise_error(SignIn::Logingov::Errors::JWTExpiredError, '[SignIn][Logingov][Service] JWT has expired')
+        end.to raise_error(SignIn::OAuth::Errors::JWTExpiredError, '[SignIn][Logingov][Service] JWT has expired')
       end
     end
 
@@ -300,7 +299,7 @@ describe SignIn::Logingov::Service do
 
         expect do
           service.jwt_decode(malformed_jwt)
-        end.to raise_error(SignIn::Logingov::Errors::JWTDecodeError, '[SignIn][Logingov][Service] JWT is malformed')
+        end.to raise_error(SignIn::OAuth::Errors::JWTDecodeError, '[SignIn][Logingov][Service] JWT is malformed')
       end
     end
 
@@ -310,7 +309,7 @@ describe SignIn::Logingov::Service do
 
         expect do
           service.jwt_decode(invalid_signature_jwt)
-        end.to raise_error(SignIn::Logingov::Errors::JWTVerificationError,
+        end.to raise_error(SignIn::OAuth::Errors::JWTVerificationError,
                            '[SignIn][Logingov][Service] JWT body does not match signature')
       end
     end
@@ -321,7 +320,7 @@ describe SignIn::Logingov::Service do
 
         expect do
           service.jwt_decode(valid_jwt)
-        end.to raise_error(SignIn::Logingov::Errors::PublicJWKError,
+        end.to raise_error(SignIn::OAuth::Errors::PublicJWKError,
                            '[SignIn][Logingov][Service] Public JWK is malformed')
       end
     end
@@ -377,7 +376,7 @@ describe SignIn::Logingov::Service do
     end
 
     context 'when the JWT decoding does not match expected verification' do
-      let(:expected_error) { SignIn::Logingov::Errors::JWTVerificationError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTVerificationError }
       let(:expected_error_message) { '[SignIn][Logingov][Service] JWT body does not match signature' }
 
       it 'raises a jwe decode error with expected message',
@@ -388,7 +387,7 @@ describe SignIn::Logingov::Service do
 
     context 'when the JWT has expired' do
       let(:current_time) { expiration_time + 100 }
-      let(:expected_error) { SignIn::Logingov::Errors::JWTExpiredError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTExpiredError }
       let(:expected_error_message) { '[SignIn][Logingov][Service] JWT has expired' }
 
       it 'raises a jwe expired error with expected message',
@@ -398,7 +397,7 @@ describe SignIn::Logingov::Service do
     end
 
     context 'when the JWT is malformed' do
-      let(:expected_error) { SignIn::Logingov::Errors::JWTDecodeError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTDecodeError }
       let(:expected_error_message) { '[SignIn][Logingov][Service] JWT is malformed' }
 
       it 'raises a jwt malformed error with expected message',
@@ -408,7 +407,7 @@ describe SignIn::Logingov::Service do
     end
 
     context 'when the JWK is malformed' do
-      let(:expected_error) { SignIn::Logingov::Errors::PublicJWKError }
+      let(:expected_error) { SignIn::OAuth::Errors::PublicJWKError }
       let(:expected_error_message) { '[SignIn][Logingov][Service] Public JWK is malformed' }
 
       it 'raises a jwt malformed error with expected message',

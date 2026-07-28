@@ -21,33 +21,25 @@ describe SignIn::Idme::Service do
     }
   end
   let(:user_info) do
-    OpenStruct.new(
-      {
-        iss: idme_originating_url,
-        sub: user_uuid,
-        aud: idme_client_id,
-        exp: expiration_time,
-        iat: current_time,
-        credential_aal_highest: 2,
-        credential_ial_highest: 'classic_loa3',
-        birth_date:,
-        email:,
-        emails_confirmed:,
+    SignIn::OAuth::UserInfo.new(
+      sub: user_uuid,
+      email:,
+      all_emails: emails_confirmed,
+      multifactor:,
+      first_name:,
+      last_name:,
+      ssn:,
+      birth_date:,
+      phone_number: phone,
+      address: {
         street:,
-        zip:,
+        postal_code: zip,
         state: address_state,
         city:,
-        phone:,
-        fname: first_name,
-        social: ssn,
-        lname: last_name,
-        level_of_assurance: 3,
-        mname: middle_name,
-        multifactor:,
-        credential_aal: 2,
-        credential_ial: 'classic_loa3',
-        uuid: user_uuid
-      }.compact
+        country: 'USA'
+      },
+      level_of_assurance: 3,
+      credential_ial: 'classic_loa3'
     )
   end
 
@@ -329,7 +321,7 @@ describe SignIn::Idme::Service do
          vcr: { cassette_name: 'identity/idme_200_all_emails_responses' } do
         token_user_info = subject.user_info(token)
         expect(token_user_info).to eq(user_info)
-        expect(token_user_info.emails_confirmed).to eq(emails_confirmed)
+        expect(token_user_info.all_emails).to eq(emails_confirmed)
       end
     end
 
@@ -366,7 +358,7 @@ describe SignIn::Idme::Service do
 
     context 'when the JWT has expired' do
       let(:current_time) { expiration_time + 100 }
-      let(:expected_error) { SignIn::Idme::Errors::JWTExpiredError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTExpiredError }
       let(:expected_error_message) { '[SignIn][Idme][Service] JWT has expired' }
 
       it 'raises a jwe expired error with expected message', vcr: { cassette_name: 'identity/idme_200_responses' } do
@@ -375,7 +367,7 @@ describe SignIn::Idme::Service do
     end
 
     context 'when an issue occurs with the JWE decryption' do
-      let(:expected_error) { SignIn::Idme::Errors::JWEDecodeError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWEDecodeError }
       let(:expected_error_message) { '[SignIn][Idme][Service] JWE is malformed' }
       let(:malformed_jwe) { OpenStruct.new({ body: 'some-malformed-jwe'.to_json }) }
 
@@ -389,7 +381,7 @@ describe SignIn::Idme::Service do
     end
 
     context 'when the JWT decoding does not match expected verification' do
-      let(:expected_error) { SignIn::Idme::Errors::JWTVerificationError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTVerificationError }
       let(:expected_error_message) { '[SignIn][Idme][Service] JWT body does not match signature' }
 
       it 'raises a jwe decode error with expected message',
@@ -399,7 +391,7 @@ describe SignIn::Idme::Service do
     end
 
     context 'when the JWT is malformed' do
-      let(:expected_error) { SignIn::Idme::Errors::JWTDecodeError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTDecodeError }
       let(:expected_error_message) { '[SignIn][Idme][Service] JWT is malformed' }
 
       it 'raises a jwt malformed error with expected message',
@@ -409,7 +401,7 @@ describe SignIn::Idme::Service do
     end
 
     context 'when the JWK is malformed' do
-      let(:expected_error) { SignIn::Idme::Errors::PublicJWKError }
+      let(:expected_error) { SignIn::OAuth::Errors::PublicJWKError }
       let(:expected_error_message) { '[SignIn][Idme][Service] Public JWK is malformed' }
 
       it 'raises a jwt malformed error with expected message', vcr: { cassette_name: 'identity/idme_jwks_malformed' } do
@@ -515,32 +507,17 @@ describe SignIn::Idme::Service do
       let(:type) { SignIn::Constants::Auth::IDME }
       let(:service_name) { SignIn::Constants::Auth::IDME }
       let(:user_info) do
-        OpenStruct.new(
-          {
-            iss: idme_originating_url,
-            sub: user_uuid,
-            aud: idme_client_id,
-            exp: expiration_time,
-            iat: current_time,
-            credential_aal_highest: 2,
-            credential_ial_highest: 'classic_loa3',
-            birth_date:,
-            email:,
-            fname: first_name,
-            social: ssn,
-            lname: last_name,
-            street:,
-            phone:,
-            zip:,
-            state: address_state,
-            city:,
-            level_of_assurance: 3,
-            mname: middle_name,
-            multifactor:,
-            credential_aal: 2,
-            credential_ial: 'classic_loa3',
-            uuid: user_uuid
-          }
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          all_emails: emails_confirmed,
+          multifactor:,
+          first_name:,
+          last_name:,
+          ssn:,
+          birth_date:,
+          phone_number: phone,
+          address: expected_address
         )
       end
       let(:expected_address) do
@@ -566,8 +543,8 @@ describe SignIn::Idme::Service do
         expect(subject.normalized_attributes(user_info, credential_level)).to eq(expected_attributes)
       end
 
-      context 'and at least one field in address is not defined' do
-        let(:street) { nil }
+      context 'and the address is not defined' do
+        let(:expected_address) { nil }
 
         it 'does not return an address object' do
           expect(subject.normalized_attributes(user_info, credential_level)[:address]).to be_nil
@@ -580,25 +557,14 @@ describe SignIn::Idme::Service do
       let(:authn_context) { SignIn::Constants::Auth::IDME_MHV_LOA3 }
       let(:service_name) { SignIn::Constants::Auth::MHV }
       let(:user_info) do
-        OpenStruct.new(
-          {
-            iss: idme_originating_url,
-            sub: user_uuid,
-            aud: idme_client_id,
-            exp: expiration_time,
-            iat: current_time,
-            credential_aal_highest: 2,
-            credential_ial_highest: 'classic_loa3',
-            email:,
-            mhv_uuid: mhv_credential_uuid,
-            mhv_icn:,
-            mhv_assurance:,
-            level_of_assurance: 3,
-            multifactor:,
-            credential_aal: 2,
-            credential_ial: 'classic_loa3',
-            uuid: user_uuid
-          }
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          all_emails: emails_confirmed,
+          multifactor:,
+          mhv_icn:,
+          mhv_credential_uuid:,
+          mhv_assurance:
         )
       end
       let(:mhv_credential_uuid) { 'some-mhv-credential-uuid' }

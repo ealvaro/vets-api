@@ -248,16 +248,15 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:token) { 'some-token' }
             let(:logingov_uuid) { 'some-logingov_uuid' }
             let(:user_info) do
-              OpenStruct.new(
-                {
-                  verified_at: '1-1-2022',
-                  sub: logingov_uuid,
-                  social_security_number: '123456789',
-                  birthdate: '2022-01-01',
-                  given_name: 'some-name',
-                  family_name: 'some-family-name',
-                  email: 'some-email'
-                }
+              SignIn::OAuth::UserInfo.new(
+                verified_at: '1-1-2022',
+                sub: logingov_uuid,
+                ssn: '123456789',
+                birth_date: '2022-01-01',
+                first_name: 'some-name',
+                last_name: 'some-family-name',
+                multifactor: true,
+                email: 'some-email'
               )
             end
 
@@ -325,10 +324,10 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                 end
                 let(:mpi_profile) do
                   build(:mpi_profile,
-                        ssn: user_info.social_security_number,
-                        birth_date: Formatters::DateFormatter.format_date(user_info.birthdate),
-                        given_names: [user_info.given_name],
-                        family_name: user_info.family_name)
+                        ssn: user_info.ssn,
+                        birth_date: Formatters::DateFormatter.format_date(user_info.birth_date),
+                        given_names: [user_info.first_name],
+                        family_name: user_info.last_name)
                 end
                 let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
@@ -406,23 +405,23 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:idme_uuid) { 'some-idme-uuid' }
             let(:type) { SignIn::Constants::Auth::IDME }
             let(:user_info) do
-              OpenStruct.new(
+              SignIn::OAuth::UserInfo.new(
                 sub: idme_uuid,
                 level_of_assurance:,
                 credential_ial:,
-                social: '123456789',
+                ssn: '123456789',
                 birth_date: '2022-01-01',
-                fname: 'some-name',
-                lname: 'some-family-name',
+                first_name: 'some-name',
+                last_name: 'some-family-name',
                 email: 'some-email'
               )
             end
             let(:mpi_profile) do
               build(:mpi_profile,
-                    ssn: user_info.social,
+                    ssn: user_info.ssn,
                     birth_date: Formatters::DateFormatter.format_date(user_info.birth_date),
-                    given_names: [user_info.fname],
-                    family_name: user_info.lname)
+                    given_names: [user_info.first_name],
+                    family_name: user_info.last_name)
             end
             let(:response) { OpenStruct.new(access_token: token) }
             let(:level_of_assurance) { LOA::THREE }
@@ -606,32 +605,30 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:clear_uuid) { 'some-clear-uuid' }
             let(:user_verification) { create(:clear_user_verification, clear_uuid:) }
             let(:address) do
-              { line1: '123 Test St', line2: 'Apt. A', city: 'Test City',
+              { street: '123 Test St', street2: 'Apt. A', city: 'Test City',
                 state: 'NY', postal_code: '12345', country: 'USA' }
             end
             let(:type) { SignIn::Constants::Auth::CLEAR }
-            let(:dob) { { day: 1, month: 1, year: 1990 } }
-            let(:traits) do
-              { first_name: 'John', middle_name: 'Mark', last_name: 'Doe', dob:,
-                ssn9: '123-45-6789', phone: '+14082222222', email: 'found@clearme.com', address: }
-            end
             let(:user_info) do
-              OpenStruct.new(
+              SignIn::OAuth::UserInfo.new(
                 sub: clear_uuid,
-                level_of_assurance:,
-                credential_ial:,
-                social: '123456789',
+                email: 'found@clearme.com',
                 first_name: 'John',
+                middle_name: 'Mark',
                 last_name: 'Doe',
-                email: 'some-email',
-                traits:
+                ssn: '123-45-6789',
+                birth_date: '1990-01-01',
+                phone_number: '+14082222222',
+                address:,
+                level_of_assurance:,
+                credential_ial:
               )
             end
 
             let(:mpi_profile) do
               build(:mpi_profile,
-                    ssn: user_info.social,
-                    birth_date: Formatters::DateFormatter.format_date(dob),
+                    ssn: user_info.ssn,
+                    birth_date: user_info.birth_date,
                     given_names: [user_info.first_name],
                     family_name: user_info.last_name)
             end
@@ -718,11 +715,11 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:backing_idme_uuid) { 'some-backing-idme-uuid' }
             let(:mhv_uuid) { 'some-mhv-uuid' }
             let(:user_info) do
-              OpenStruct.new(
+              SignIn::OAuth::UserInfo.new(
                 sub: backing_idme_uuid,
                 level_of_assurance:,
                 credential_ial:,
-                mhv_uuid:,
+                mhv_credential_uuid: mhv_uuid,
                 mhv_icn:,
                 mhv_assurance:,
                 email: 'some-email'
@@ -738,7 +735,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:mpi_profile) do
               build(:mpi_profile,
                     icn: user_info.mhv_icn,
-                    mhv_ids: [user_info.mhv_uuid])
+                    mhv_ids: [user_info.mhv_credential_uuid])
             end
 
             before do

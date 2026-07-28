@@ -14,7 +14,9 @@ module V0
         state_payload = logingov_service.decode_logout_state(state)
         validate_logout_redirect_uri!(state_payload['client_id'], state_payload['logout_redirect'])
 
-        render body: logingov_service.render_logout_redirect(state), content_type: 'text/html'
+        logout_redirect_url = logingov_service.render_logout_redirect(state)
+        render body: ::SignIn::RedirectUrlGenerator.new(redirect_uri: logout_redirect_url).perform,
+               content_type: 'text/html'
       rescue => e
         sign_in_logger.error('logingov_logout_proxy error', exception: e)
 

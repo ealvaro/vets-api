@@ -29,6 +29,8 @@ module SignIn
     end
 
     def original_redirect_uri_with_params
+      return redirect_uri if params_hash.blank?
+
       "#{redirect_uri}?#{params_hash.to_query}"
     end
 

@@ -28,13 +28,11 @@ describe SignIn::Clear::Configuration do
     end
   end
 
-  describe '#verification_session_path' do
-    subject { described_class.instance.verification_session_path(verification_id) }
+  describe '#userinfo_path' do
+    subject { described_class.instance.userinfo_path }
 
-    let(:verification_id) { 'verify_abc123' }
-
-    it 'builds the v1 verification session path' do
-      expect(subject).to eq('v1/verification_sessions/verify_abc123')
+    it 'returns the v1 verification sessions path' do
+      expect(subject).to eq('v1/verification_sessions')
     end
   end
 end

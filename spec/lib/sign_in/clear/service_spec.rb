@@ -22,8 +22,7 @@ describe SignIn::Clear::Service do
     let(:expected_authorization_page) { "#{base_path}/integrations/oauth2/auth" }
     let(:expected_scope) { CGI.escape('offline openid offline_access') }
     let(:expected_log) do
-      "[SignIn][Clear][Service] Rendering auth, state: #{state}, acr: #{SignIn::Constants::Auth::CLEAR_IAL2}, " \
-        "operation: #{SignIn::Constants::Auth::AUTHORIZE}"
+      "[SignIn][Clear][Service] Rendering auth, state: #{state}, operation: #{SignIn::Constants::Auth::AUTHORIZE}"
     end
     let(:code_verifier) { 'some-code-verifier' }
     let(:expected_code_challenge) do
@@ -83,7 +82,7 @@ describe SignIn::Clear::Service do
     let(:code_verifier) { 'some-code-verifier' }
     let(:expected_log) { "[SignIn][Clear][Service] Token Success, code: #{code}" }
 
-    before { create(:clear_code_container, state:, code_verifier:) }
+    before { SignIn::Clear::CodeContainer.new(state:, code_verifier:).save! }
 
     context 'when the request is successful' do
       around { |example| VCR.use_cassette('identity/clear_200_responses') { example.run } }
@@ -129,7 +128,7 @@ describe SignIn::Clear::Service do
     end
 
     context 'when no code verifier exists for the state' do
-      let(:expected_error) { SignIn::Clear::Errors::CodeVerifierNotFoundError }
+      let(:expected_error) { SignIn::OAuth::Errors::CodeVerifierNotFoundError }
       let(:expected_error_message) { '[SignIn][Clear][Service] Code verifier not found' }
 
       before { SignIn::Clear::CodeContainer.find(state).destroy }
@@ -166,23 +165,87 @@ describe SignIn::Clear::Service do
 
       let(:code_verifier) { 'some-code-verifier' }
       let(:access_token) do
-        create(:clear_code_container, state:, code_verifier:)
+        SignIn::Clear::CodeContainer.new(state:, code_verifier:).save!
         subject.token(code, state)[:access_token]
       end
 
-      it 'returns the verification session wrapped in an OpenStruct' do
+      it 'returns the verification session as a normalized user info object' do
         result = subject.user_info(access_token)
 
-        expect(result.user_id).to eq('nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q')
+        expect(result).to be_a(SignIn::OAuth::UserInfo)
         expect(result.sub).to eq('nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q')
-        expect(result.traits[:first_name]).to eq('John')
-        expect(result.traits[:address][:line1]).to eq('123 Test St')
+        expect(result.first_name).to eq('John')
+        expect(result.address[:street]).to eq('123 Test St')
+      end
+    end
+
+    context 'when mapping the verification session traits' do
+      let(:access_token) { JWT.encode({ 'verification_id' => verification_id }, nil, 'none') }
+      let(:dob) { { day: 1, month: 1, year: 1990 } }
+      let(:address) do
+        { line1: '123 Test St', line2: 'Apt. A', city: 'Test City',
+          state: 'NY', postal_code: '12345', country: 'US' }
+      end
+      let(:traits) do
+        { first_name: 'John', middle_name: 'Mark', last_name: 'Doe', dob:,
+          ssn9: '123-45-6789', phone: '+14082222222', email: 'found@clearme.com', address: }
+      end
+      let(:response_body) { { user_id: 'clear-user-id', traits: } }
+
+      before do
+        allow_any_instance_of(described_class).to receive(:perform).and_return(OpenStruct.new(body: response_body))
+      end
+
+      it 'maps the traits into a normalized user info object' do
+        result = subject.user_info(access_token)
+
+        expect(result).to have_attributes(
+          sub: 'clear-user-id', email: 'found@clearme.com', first_name: 'John',
+          middle_name: 'Mark', last_name: 'Doe', ssn: '123456789',
+          birth_date: '1990-01-01', phone_number: '+14082222222'
+        )
+        expect(result.address).to eq(street: '123 Test St', street2: 'Apt. A', postal_code: '12345',
+                                     state: 'NY', city: 'Test City', country: 'USA')
+      end
+
+      context 'when the address is blank' do
+        let(:address) { nil }
+
+        it 'sets the address to nil' do
+          expect(subject.user_info(access_token).address).to be_nil
+        end
+      end
+
+      context 'when the address country is not US' do
+        let(:address) do
+          { line1: '1 Main St', line2: nil, city: 'Toronto', state: 'ON', postal_code: 'M5V', country: 'CA' }
+        end
+
+        it 'passes the country code through unchanged' do
+          expect(subject.user_info(access_token).address[:country]).to eq('CA')
+        end
+      end
+
+      context 'when the dob is blank' do
+        let(:dob) { nil }
+
+        it 'sets the birth_date to nil' do
+          expect(subject.user_info(access_token).birth_date).to be_nil
+        end
+      end
+
+      context 'when the dob has a single-digit month and day' do
+        let(:dob) { { day: 5, month: 3, year: 2001 } }
+
+        it 'zero-pads the birth_date' do
+          expect(subject.user_info(access_token).birth_date).to eq('2001-03-05')
+        end
       end
     end
 
     context 'when the access token is a malformed JWT' do
       let(:access_token) { 'some-malformed-access-token' }
-      let(:expected_error) { SignIn::Clear::Errors::JWTDecodeError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTDecodeError }
       let(:expected_error_message) { '[SignIn][Clear][Service] Access token is malformed' }
 
       it 'raises a JWT decode error' do
@@ -194,7 +257,7 @@ describe SignIn::Clear::Service do
 
     context 'when the access token is valid but missing verification_id' do
       let(:access_token) { JWT.encode({ 'sub' => 'clear-user-id' }, nil, 'none') }
-      let(:expected_error) { SignIn::Clear::Errors::JWTDecodeError }
+      let(:expected_error) { SignIn::OAuth::Errors::JWTDecodeError }
       let(:expected_error_message) do
         '[SignIn][Clear][Service] verification_id missing from access token'
       end
@@ -230,18 +293,15 @@ describe SignIn::Clear::Service do
   describe '#normalized_attributes' do
     let(:credential_level) { OpenStruct.new(current_ial: 2, max_ial: 2, auto_uplevel: false) }
     let(:address) do
-      { line1: '123 Test St', line2: 'Apt. A', city: 'Test City',
-        state: 'NY', postal_code: '12345', country: 'USA' }
-    end
-    let(:dob) { { day: 1, month: 1, year: 1990 } }
-    let(:traits) do
-      { first_name: 'John', middle_name: 'Mark', last_name: 'Doe', dob:,
-        ssn9: '123-45-6789', phone: '+14082222222', email: 'found@clearme.com', address: }
+      { street: '123 Test St', street2: 'Apt. A', postal_code: '12345',
+        state: 'NY', city: 'Test City', country: 'USA' }
     end
     let(:user_info) do
-      OpenStruct.new(user_id: 'nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q',
-                     sub: 'nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q',
-                     traits:)
+      SignIn::OAuth::UserInfo.new(
+        sub: 'nYcNt2sQK1a093iTCctnMedTDHBgEGsoBUw7Sagb0Q',
+        email: 'found@clearme.com', first_name: 'John', middle_name: 'Mark', last_name: 'Doe',
+        ssn: '123456789', birth_date: '1990-01-01', phone_number: '+14082222222', address:
+      )
     end
     let(:attributes) { subject.normalized_attributes(user_info, credential_level) }
 
@@ -258,8 +318,7 @@ describe SignIn::Clear::Service do
         middle_name: 'Mark',
         last_name: 'Doe',
         phone_number: '+14082222222',
-        address: { street: '123 Test St', street2: 'Apt. A', postal_code: '12345',
-                   state: 'NY', city: 'Test City', country: 'USA' },
+        address:,
         csp_email: 'found@clearme.com',
         multifactor: true,
         service_name: 'clear',
@@ -273,50 +332,6 @@ describe SignIn::Clear::Service do
 
     it 'returns the expected attributes from the verification session' do
       expect(attributes).to eq(expected_attributes)
-    end
-
-    context 'when the address is blank' do
-      let(:address) { nil }
-
-      it 'sets the address to nil' do
-        expect(attributes[:address]).to be_nil
-      end
-    end
-
-    context 'when the address country is not US' do
-      let(:address) do
-        { line1: '1 Main St', line2: nil, city: 'Toronto', state: 'ON', postal_code: 'M5V', country: 'CA' }
-      end
-
-      it 'passes the country code through unchanged' do
-        expect(attributes[:address][:country]).to eq('CA')
-      end
-    end
-
-    context 'when the address country is US' do
-      let(:address) do
-        { line1: '1 Main St', line2: nil, city: 'Madison', state: 'WI', postal_code: '53711', country: 'US' }
-      end
-
-      it 'normalizes the country to USA' do
-        expect(attributes[:address][:country]).to eq('USA')
-      end
-    end
-
-    context 'when the dob is blank' do
-      let(:dob) { nil }
-
-      it 'sets the birth_date to nil' do
-        expect(attributes[:birth_date]).to be_nil
-      end
-    end
-
-    context 'when the dob has a single-digit month and day' do
-      let(:dob) { { day: 5, month: 3, year: 2001 } }
-
-      it 'zero-pads the birth_date' do
-        expect(attributes[:birth_date]).to eq('2001-03-05')
-      end
     end
   end
 end

@@ -17,10 +17,9 @@ describe MockedAuthentication::Credential::Service do
     let(:type) { 'some-type' }
     let(:operation) { 'some-operation' }
     let(:expected_redirect_url) { IdentitySettings.sign_in.mock_auth_url }
-    let(:meta_refresh_tag) { '<meta http-equiv="refresh" content="0;' }
 
-    it 'renders the oauth_get_form template with meta refresh tag' do
-      expect(subject.to_s).to include(meta_refresh_tag)
+    it 'returns the mock authorization url' do
+      expect(subject.to_s).to start_with("#{expected_redirect_url}?")
     end
 
     it 'renders state value' do
@@ -101,11 +100,30 @@ describe MockedAuthentication::Credential::Service do
     subject { mock_credential_instance.user_info(token) }
 
     let(:token) { mock_credential_info.credential_info_code }
-    let(:mock_credential_info) { create(:mock_credential_info) }
-    let(:expected_credential_info) { OpenStruct.new(mock_credential_info.credential_info) }
+    let(:mock_credential_info) { create(:mock_credential_info, credential_info:) }
 
-    it 'returns credential info from expected CredentialInfo object' do
-      expect(subject).to eq(expected_credential_info)
+    context 'when type is logingov' do
+      let(:type) { SignIn::Constants::Auth::LOGINGOV }
+      let(:credential_info) { { sub: 'some-sub', email: 'some-email', social_security_number: 'some-ssn' } }
+
+      it 'returns user info parsed by the logingov service' do
+        expect(subject).to be_a(SignIn::OAuth::UserInfo)
+        expect(subject.sub).to eq('some-sub')
+        expect(subject.email).to eq('some-email')
+        expect(subject.ssn).to eq('somessn')
+      end
+    end
+
+    context 'when type is idme' do
+      let(:type) { SignIn::Constants::Auth::IDME }
+      let(:credential_info) { { sub: 'some-sub', email: 'some-email', social: 'some-ssn' } }
+
+      it 'returns user info parsed by the idme service' do
+        expect(subject).to be_a(SignIn::OAuth::UserInfo)
+        expect(subject.sub).to eq('some-sub')
+        expect(subject.email).to eq('some-email')
+        expect(subject.ssn).to eq('somessn')
+      end
     end
   end
 
@@ -143,31 +161,20 @@ describe MockedAuthentication::Credential::Service do
     context 'when type is equal to logingov' do
       let(:type) { SignIn::Constants::Auth::LOGINGOV }
       let(:user_info) do
-        OpenStruct.new({
-                         sub: user_uuid,
-                         iss:,
-                         email:,
-                         all_emails:,
-                         email_verified: true,
-                         given_name: first_name,
-                         family_name: last_name,
-                         address:,
-                         birthdate: birth_date,
-                         social_security_number: ssn,
-                         verified_at:
-                       })
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          all_emails:,
+          multifactor:,
+          first_name:,
+          last_name:,
+          ssn:,
+          birth_date:,
+          address: expected_address,
+          verified_at:
+        )
       end
       let(:verified_at) { 'some-verified-at' }
-      let(:address) do
-        {
-          formatted: formatted_address,
-          street_address: street,
-          postal_code:,
-          region:,
-          locality:
-        }
-      end
-      let(:formatted_address) { "#{street}\n#{locality}, #{region} #{postal_code}" }
       let(:expected_standard_attributes) do
         {
           logingov_uuid: user_uuid,
@@ -209,36 +216,20 @@ describe MockedAuthentication::Credential::Service do
     context 'when type is equal to idme' do
       let(:type) { SignIn::Constants::Auth::IDME }
       let(:user_info) do
-        OpenStruct.new(
-          {
-            iss:,
-            sub: user_uuid,
-            aud:,
-            exp:,
-            iat:,
-            credential_aal_highest: 2,
-            credential_ial_highest: 'classic_loa3',
-            birth_date:,
-            email:,
-            street:,
-            zip: postal_code,
-            state: region,
-            city: locality,
-            phone:,
-            fname: first_name,
-            social: ssn,
-            lname: last_name,
-            level_of_assurance: 3,
-            multifactor:,
-            credential_aal: 2,
-            credential_ial: 'classic_loa3',
-            uuid: user_uuid
-          }
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          multifactor:,
+          first_name:,
+          last_name:,
+          ssn:,
+          birth_date:,
+          phone_number: phone,
+          address: expected_address,
+          level_of_assurance: 3,
+          credential_ial: 'classic_loa3'
         )
       end
-      let(:aud) { 'some-aud' }
-      let(:exp) { 'some-exp' }
-      let(:iat) { 'some-iat' }
       let(:authn_context) { LOA::IDME_LOA3 }
       let(:expected_address) do
         {
@@ -278,33 +269,20 @@ describe MockedAuthentication::Credential::Service do
     context 'when type is equal to mhv' do
       let(:type) { SignIn::Constants::Auth::MHV }
       let(:user_info) do
-        OpenStruct.new(
-          {
-            iss: user_uuid,
-            sub: user_uuid,
-            aud:,
-            exp:,
-            iat:,
-            credential_aal_highest: 2,
-            credential_ial_highest: 'classic_loa3',
-            email:,
-            mhv_uuid: mhv_credential_uuid,
-            mhv_icn:,
-            mhv_assurance:,
-            level_of_assurance: 3,
-            multifactor:,
-            credential_aal: 2,
-            credential_ial: 'classic_loa3',
-            uuid: user_uuid
-          }
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          multifactor:,
+          mhv_credential_uuid:,
+          mhv_icn:,
+          mhv_assurance:,
+          level_of_assurance: 3,
+          credential_ial: 'classic_loa3'
         )
       end
       let(:mhv_credential_uuid) { 'some-mhv-credential-uuid' }
       let(:mhv_icn) { 'some-mhv-icn' }
       let(:mhv_assurance) { 'some-mhv-assurance' }
-      let(:aud) { 'some-aud' }
-      let(:exp) { 'some-exp' }
-      let(:iat) { 'some-iat' }
       let(:authn_context) { LOA::IDME_MHV_LOA3 }
       let(:expected_attributes) do
         {

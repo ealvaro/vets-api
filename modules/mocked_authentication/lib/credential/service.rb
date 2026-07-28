@@ -9,9 +9,7 @@ module MockedAuthentication
       attr_accessor :type
 
       def render_auth(state:, acr:, operation: SignIn::Constants::Auth::AUTHORIZE)
-        renderer.render(template: 'oauth_get_form',
-                        locals: { url: redirect_uri_with_params(state, acr, operation) },
-                        format: :html)
+        redirect_uri_with_params(state, acr, operation)
       end
 
       def token(code, _state = nil)
@@ -20,20 +18,22 @@ module MockedAuthentication
         }.merge(logingov_acr(code))
       end
 
-      def user_info(token)
-        OpenStruct.new(mock_credential_info(token).credential_info)
-      end
+      delegate :normalized_attributes, to: :auth_service
 
-      def normalized_attributes(user_info, credential_level)
-        case type
-        when SignIn::Constants::Auth::LOGINGOV
-          logingov_auth_service.normalized_attributes(user_info, credential_level)
-        else
-          idme_auth_service(type).normalized_attributes(user_info, credential_level)
-        end
+      def user_info(token)
+        auth_service.build_user_info(mock_credential_info(token).credential_info)
       end
 
       private
+
+      def auth_service
+        case type
+        when SignIn::Constants::Auth::LOGINGOV
+          logingov_auth_service
+        else
+          idme_auth_service(type)
+        end
+      end
 
       def redirect_uri_with_params(state, acr, operation)
         "#{redirect_uri}?#{params_hash(state, acr, operation).to_query}"
@@ -78,14 +78,6 @@ module MockedAuthentication
 
       def logingov_auth_service
         @logingov_auth_service ||= SignIn::Logingov::Service.new
-      end
-
-      def renderer
-        @renderer ||= begin
-          renderer = ActionController::Base.renderer
-          renderer.controller.prepend_view_path(Rails.root.join('lib', 'sign_in', 'templates'))
-          renderer
-        end
       end
     end
   end
