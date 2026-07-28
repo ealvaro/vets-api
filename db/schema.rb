@@ -1066,6 +1066,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_000001) do
 
   create_table "evidence_submissions", force: :cascade do |t|
     t.datetime "acknowledgement_date"
+    t.string "caseflow_claim_id"
     t.integer "claim_id"
     t.datetime "created_at", null: false
     t.datetime "delete_date"
@@ -1085,6 +1086,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_000001) do
     t.datetime "va_notify_date"
     t.string "va_notify_id"
     t.string "va_notify_status"
+    t.index ["caseflow_claim_id"], name: "index_evidence_submissions_on_caseflow_claim_id"
     t.index ["claim_id"], name: "index_evidence_submissions_on_claim_id"
     t.index ["needs_kms_rotation"], name: "index_evidence_submissions_on_needs_kms_rotation"
     t.index ["user_account_id"], name: "index_evidence_submissions_on_user_account_id"
