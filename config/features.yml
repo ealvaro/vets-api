@@ -209,10 +209,6 @@ features:
     actor_type: user
     description: Enables on-demand VES eligibility checks for IVC CHAMPVA forms
     enable_in_development: true
-  benefits_documents_use_lighthouse:
-    actor_type: user
-    description: Use lighthouse instead of EVSS to upload benefits documents.
-    enable_in_development: false
   benefits_documents_lighthouse_provider:
     actor_type: user
     description: Enables the Lighthouse benefits documents provider in the provider registry.
@@ -2532,10 +2528,6 @@ features:
   rated_disabilities_sort_ab_test:
     actor_type: user
     description: Allows us to set up AB test of sorting on rated disabilities app
-  rated_disabilities_use_lighthouse:
-    actor_type: user
-    description: When enabled, the rated disabilities application uses Lighthouse instead of EVSS
-    enable_in_development: true
   saved_claim_pdf_overflow_tracking:
     actor_type: user
     description: When enabled, record metrics for claims which have overflow in the generated pdf
