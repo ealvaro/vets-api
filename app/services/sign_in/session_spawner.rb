@@ -9,31 +9,36 @@ module SignIn
                 :user_attributes,
                 :client_config,
                 :hashed_device_secret,
-                :refresh_creation
+                :refresh_creation,
+                :request_attributes
 
     validate :validate_user_account_lock!,
              :validate_credential_lock!,
              :validate_terms_of_use!
 
-    def initialize(current_session:, new_session_client_config:)
+    def initialize(current_session:, new_session_client_config:, request_attributes:)
       @credential_email = current_session.credential_email
       @user_verification = current_session.user_verification
       @user_attributes = current_session.user_attributes
       @client_config = new_session_client_config
       @hashed_device_secret = current_session.hashed_device_secret
       @refresh_creation = current_session.refresh_creation
+      @request_attributes = request_attributes
     end
 
     def perform
       validate!
-
-      SessionContainer.new(
-        session: create_new_session,
-        refresh_token:,
-        access_token: create_new_access_token,
-        anti_csrf_token:,
-        client_config:
-      )
+      ActiveRecord::Base.transaction do
+        session = create_new_session
+        create_session_record(session)
+        SessionContainer.new(
+          session:,
+          refresh_token:,
+          access_token: create_new_access_token,
+          anti_csrf_token:,
+          client_config:
+        )
+      end
     end
 
     private
@@ -110,6 +115,22 @@ module SignIn
         user_attributes:,
         hashed_device_secret:
       )
+    end
+
+    def create_session_record(session)
+      SessionRecord.create!(handle: session.handle,
+                            user_account: session.user_account,
+                            client_id: session.client_id,
+                            sign_in_ip: remote_ip,
+                            user_agent:)
+    end
+
+    def remote_ip
+      request_attributes[:remote_ip]
+    end
+
+    def user_agent
+      request_attributes[:user_agent]
     end
 
     def refresh_expiration_time

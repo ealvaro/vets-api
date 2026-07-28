@@ -73,6 +73,10 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     describe 'sign in service' do
+      let(:request_attributes) { { remote_ip:, user_agent: } }
+      let(:user_agent) { Faker::Internet.user_agent }
+      let(:remote_ip) { Faker::Internet.ip_v4_address }
+
       describe 'POST v0/sign_in/token' do
         let(:user_verification) { create(:user_verification) }
         let(:user_verification_id) { user_verification.id }
@@ -104,7 +108,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
         let(:client_config) { create(:client_config, enforced_terms: nil) }
         let(:session_container) do
-          SignIn::SessionCreator.new(validated_credential:).perform
+          SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
         end
         let(:refresh_token) do
           CGI.escape(SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform)
@@ -126,7 +130,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
         let(:client_config) { create(:client_config, enforced_terms: nil) }
         let(:session_container) do
-          SignIn::SessionCreator.new(validated_credential:).perform
+          SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
         end
         let(:refresh_token) do
           CGI.escape(SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform)
@@ -148,7 +152,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
         let(:client_config) { create(:client_config, enforced_terms: nil) }
         let(:session_container) do
-          SignIn::SessionCreator.new(validated_credential:).perform
+          SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
         end
         let(:access_token_object) { session_container.access_token }
         let!(:user) { create(:user, :loa3, uuid: access_token_object.user_uuid, middle_name: 'leo') }
@@ -171,7 +175,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         let(:validated_credential) { create(:validated_credential, user_verification:, client_config:) }
         let(:client_config) { create(:client_config, enforced_terms: nil) }
         let(:session_container) do
-          SignIn::SessionCreator.new(validated_credential:).perform
+          SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
         end
         let(:access_token_object) { session_container.access_token }
         let(:session) { session_container.session }

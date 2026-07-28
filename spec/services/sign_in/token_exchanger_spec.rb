@@ -4,7 +4,8 @@ require 'rails_helper'
 
 RSpec.describe SignIn::TokenExchanger, type: :model do
   subject(:token_exchanger) do
-    described_class.new(subject_token:, subject_token_type:, actor_token:, actor_token_type:, client_id:)
+    described_class.new(subject_token:, subject_token_type:, actor_token:, actor_token_type:, client_id:,
+                        request_attributes:)
   end
 
   let(:subject_token) { 'some-subject-token' }
@@ -12,6 +13,9 @@ RSpec.describe SignIn::TokenExchanger, type: :model do
   let(:actor_token) { 'some-actor-token' }
   let(:actor_token_type) { 'some-actor-token-type' }
   let(:client_id) { 'some-client-id' }
+  let(:request_attributes) { { remote_ip:, user_agent: } }
+  let(:user_agent) { Faker::Internet.user_agent }
+  let(:remote_ip) { Faker::Internet.ip_v4_address }
 
   describe '#perform' do
     context 'when subject_token is blank' do
@@ -208,6 +212,10 @@ RSpec.describe SignIn::TokenExchanger, type: :model do
                       token_exchanger_client_config = token_exchanger.perform.client_config
 
                       expect(token_exchanger_client_config).to eq(new_client_config)
+                    end
+
+                    it 'creates a session record' do
+                      expect { token_exchanger.perform }.to change(SignIn::SessionRecord, :count).by(1)
                     end
                   end
                 end

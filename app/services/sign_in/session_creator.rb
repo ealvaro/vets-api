@@ -2,23 +2,28 @@
 
 module SignIn
   class SessionCreator
-    attr_reader :validated_credential
+    attr_reader :validated_credential, :request_attributes
 
-    def initialize(validated_credential:)
+    def initialize(validated_credential:, request_attributes:)
       @validated_credential = validated_credential
+      @request_attributes = request_attributes
     end
 
     def perform
       validate_user_account_lock
       validate_credential_lock
       validate_terms_of_use
-      SessionContainer.new(session: create_new_session,
-                           refresh_token:,
-                           access_token: create_new_access_token,
-                           anti_csrf_token:,
-                           client_config:,
-                           device_secret:,
-                           web_sso_client: web_sso_session_id.present?)
+      ActiveRecord::Base.transaction do
+        session = create_new_session
+        create_session_record(session)
+        SessionContainer.new(session:,
+                             refresh_token:,
+                             access_token: create_new_access_token,
+                             anti_csrf_token:,
+                             client_config:,
+                             device_secret:,
+                             web_sso_client: web_sso_session_id.present?)
+      end
     end
 
     private
@@ -101,6 +106,14 @@ module SignIn
                            hashed_device_secret:)
     end
 
+    def create_session_record(session)
+      SessionRecord.create!(handle: session.handle,
+                            user_account: session.user_account,
+                            client_id: session.client_id,
+                            sign_in_ip: remote_ip,
+                            user_agent:)
+    end
+
     def refresh_created_time
       @refresh_created_time ||= web_sso_session_creation || Time.zone.now
     end
@@ -149,6 +162,14 @@ module SignIn
 
     def web_sso_session_creation
       OAuthSession.find_by(id: web_sso_session_id)&.refresh_creation
+    end
+
+    def remote_ip
+      request_attributes[:remote_ip]
+    end
+
+    def user_agent
+      request_attributes[:user_agent]
     end
   end
 end

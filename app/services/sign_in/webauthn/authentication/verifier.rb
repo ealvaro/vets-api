@@ -4,9 +4,10 @@ module SignIn
   module Webauthn
     module Authentication
       class Verifier
-        def initialize(authentication, challenge_id)
+        def initialize(authentication, challenge_id, request_attributes)
           @authentication = authentication
           @challenge_id   = challenge_id
+          @request_attributes = request_attributes
         end
 
         def perform
@@ -23,7 +24,7 @@ module SignIn
 
         private
 
-        attr_reader :authentication, :challenge_id, :challenge
+        attr_reader :authentication, :challenge_id, :challenge, :request_attributes
 
         def webauthn_credential
           @webauthn_credential ||= ::SignIn::WebauthnCredential.includes(:user_verification)
@@ -47,7 +48,7 @@ module SignIn
         end
 
         def create_session!
-          SessionCreator.new(validated_credential:).perform
+          SessionCreator.new(validated_credential:, request_attributes:).perform
         end
 
         def validated_credential

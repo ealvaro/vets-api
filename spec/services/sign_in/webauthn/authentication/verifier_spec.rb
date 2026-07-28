@@ -4,10 +4,13 @@ require 'rails_helper'
 
 RSpec.describe SignIn::Webauthn::Authentication::Verifier do
   describe '#perform' do
-    subject { described_class.new(authentication, challenge_id).perform }
+    subject { described_class.new(authentication, challenge_id, request_attributes).perform }
 
     let(:authentication) { { 'id' => 'some-authentication' } }
     let(:challenge_id) { 'some-challenge-id' }
+    let(:request_attributes) { { remote_ip:, user_agent: } }
+    let(:user_agent) { Faker::Internet.user_agent }
+    let(:remote_ip) { Faker::Internet.ip_v4_address }
     let(:challenge) { 'some-challenge' }
     let(:cache_key) { "#{SignIn::Webauthn::Authentication::OptionsGenerator::CACHE_KEY_PREFIX}:#{challenge_id}" }
     let(:memory_store) { ActiveSupport::Cache::MemoryStore.new }

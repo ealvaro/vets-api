@@ -15,6 +15,9 @@ RSpec.describe V0::SignIn::RevokeController, type: :controller do
     let(:enable_anti_csrf) { false }
     let(:user_verification) { user.user_verification }
     let(:user_account) { user.user_account }
+    let(:request_attributes) { { remote_ip:, user_agent: } }
+    let(:user_agent) { Faker::Internet.user_agent }
+    let(:remote_ip) { Faker::Internet.ip_v4_address }
     let(:validated_credential) do
       create(:validated_credential, user_verification:, client_config:)
     end
@@ -53,7 +56,7 @@ RSpec.describe V0::SignIn::RevokeController, type: :controller do
     context 'when session has been configured with anti csrf enabled' do
       let(:anti_csrf) { true }
       let(:session_container) do
-        SignIn::SessionCreator.new(validated_credential:).perform
+        SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
       end
       let(:refresh_token) do
         SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform
@@ -85,7 +88,7 @@ RSpec.describe V0::SignIn::RevokeController, type: :controller do
 
     context 'when refresh_token is encrypted correctly' do
       let(:session_container) do
-        SignIn::SessionCreator.new(validated_credential:).perform
+        SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
       end
       let(:refresh_token) do
         SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform

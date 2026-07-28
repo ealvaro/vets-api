@@ -57,6 +57,9 @@ RSpec.describe SignIn::Webauthn::AuthenticationsController, type: :controller do
     let(:user_account) { create(:user_account) }
     let(:session) { instance_double(SignIn::OAuthSession, user_account:) }
     let(:session_container) { instance_double(SignIn::SessionContainer, session:) }
+    let(:request_attributes) { { remote_ip:, user_agent: } }
+    let(:user_agent) { 'Rails Testing' }
+    let(:remote_ip) { '0.0.0.0' }
     let(:verifier) { instance_double(SignIn::Webauthn::Authentication::Verifier, perform: session_container) }
     let(:token_serializer) { instance_double(SignIn::TokenSerializer, perform: { access_token: 'some-access-token' }) }
 
@@ -77,7 +80,7 @@ RSpec.describe SignIn::Webauthn::AuthenticationsController, type: :controller do
       post :verify, params: { authentication:, challenge_id: }
 
       expect(SignIn::Webauthn::Authentication::Verifier).to have_received(:new)
-        .with('some-assertion', challenge_id)
+        .with('some-assertion', challenge_id, request_attributes)
     end
 
     it 'logs the authentication with user account context' do

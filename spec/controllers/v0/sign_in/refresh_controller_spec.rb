@@ -17,6 +17,9 @@ RSpec.describe V0::SignIn::RefreshController, type: :controller do
     let(:validated_credential) do
       create(:validated_credential, user_verification:, client_config:)
     end
+    let(:request_attributes) { { remote_ip:, user_agent: } }
+    let(:user_agent) { Faker::Internet.user_agent }
+    let(:remote_ip) { Faker::Internet.ip_v4_address }
     let(:authentication) { SignIn::Constants::Auth::API }
     let!(:client_config) { create(:client_config, authentication:, anti_csrf:, enforced_terms:) }
     let(:enforced_terms) { nil }
@@ -53,7 +56,7 @@ RSpec.describe V0::SignIn::RefreshController, type: :controller do
     context 'when session has been configured with anti csrf enabled' do
       let(:anti_csrf) { true }
       let(:session_container) do
-        SignIn::SessionCreator.new(validated_credential:).perform
+        SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
       end
       let(:refresh_token) do
         SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform
@@ -84,7 +87,7 @@ RSpec.describe V0::SignIn::RefreshController, type: :controller do
 
     context 'when refresh_token is the proper encrypted refresh token format' do
       let(:session_container) do
-        SignIn::SessionCreator.new(validated_credential:).perform
+        SignIn::SessionCreator.new(validated_credential:, request_attributes:).perform
       end
       let(:refresh_token) do
         SignIn::RefreshTokenEncryptor.new(refresh_token: session_container.refresh_token).perform

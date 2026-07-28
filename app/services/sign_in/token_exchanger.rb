@@ -4,7 +4,7 @@ module SignIn
   class TokenExchanger
     include ActiveModel::Validations
 
-    attr_reader :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id
+    attr_reader :subject_token, :subject_token_type, :actor_token, :actor_token_type, :client_id, :request_attributes
 
     validate :validate_subject_token!,
              :validate_subject_token_type!,
@@ -14,12 +14,14 @@ module SignIn
              :validate_shared_sessions_client!,
              :validate_device_sso!
 
-    def initialize(subject_token:, subject_token_type:, actor_token:, actor_token_type:, client_id:)
+    def initialize(subject_token:, subject_token_type:, actor_token:, actor_token_type:, client_id:, # rubocop:disable Metrics/ParameterLists
+                   request_attributes:)
       @subject_token = subject_token
       @subject_token_type = subject_token_type
       @actor_token = actor_token
       @actor_token_type = actor_token_type
       @client_id = client_id
+      @request_attributes = request_attributes
     end
 
     def perform
@@ -79,7 +81,7 @@ module SignIn
     end
 
     def create_new_session
-      SessionSpawner.new(current_session:, new_session_client_config:).perform
+      SessionSpawner.new(current_session:, new_session_client_config:, request_attributes:).perform
     end
 
     def new_session_client_config

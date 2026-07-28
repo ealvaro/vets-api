@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe SignIn::SessionCreator do
   let(:session_creator) do
-    SignIn::SessionCreator.new(validated_credential:)
+    SignIn::SessionCreator.new(validated_credential:, request_attributes:)
   end
 
   describe '#perform' do
@@ -12,6 +12,9 @@ RSpec.describe SignIn::SessionCreator do
 
     context 'when input object is a ValidatedCredential' do
       let(:validated_credential) { create(:validated_credential, client_config:, device_sso:) }
+      let(:request_attributes) { { remote_ip:, user_agent: } }
+      let(:user_agent) { Faker::Internet.user_agent }
+      let(:remote_ip) { Faker::Internet.ip_v4_address }
       let(:user_uuid) { validated_credential.user_verification.user_account.id }
       let(:client_id) { client_config.client_id }
       let(:client_config) { create(:client_config, refresh_token_duration:, access_token_attributes:, enforced_terms:) }
@@ -163,6 +166,35 @@ RSpec.describe SignIn::SessionCreator do
           expect(session.refresh_creation).to eq(expected_created_time)
           expect(session.client_id).to eq(client_id)
           expect(session.user_attributes_hash.values).to eq(expected_user_attributes.values)
+        end
+
+        context 'expected session record' do
+          it 'creates a session record with the expected fields matching the session' do
+            session = subject.session
+            session_record = SignIn::SessionRecord.find_by!(handle: session.handle)
+            expect(session_record.handle).to eq(session.handle)
+            expect(session_record.user_account).to eq(session.user_account)
+            expect(session_record.client_id).to eq(session.client_id)
+          end
+
+          it 'creates a session record with the expected fields matching the request attributes' do
+            session = subject.session
+            session_record = SignIn::SessionRecord.find_by!(handle: session.handle)
+            expect(session_record.sign_in_ip).to eq(remote_ip)
+            expect(session_record.user_agent).to eq(user_agent)
+          end
+
+          context 'the request attribute values are nil' do
+            let(:user_agent) { nil }
+            let(:remote_ip) { nil }
+
+            it 'still creates the session record' do
+              session = subject.session
+              session_record = SignIn::SessionRecord.find_by!(handle: session.handle)
+              expect(session_record.sign_in_ip).to eq(remote_ip)
+              expect(session_record.user_agent).to eq(user_agent)
+            end
+          end
         end
 
         context 'and client is configured for a short token expiration' do

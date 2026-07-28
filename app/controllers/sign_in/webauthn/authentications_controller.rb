@@ -17,8 +17,8 @@ module SignIn
       end
 
       def verify
-        session_container = Authentication::Verifier.new(authentication_params[:attest], challenge_id).perform
-
+        session_container = Authentication::Verifier.new(authentication_params[:attest], challenge_id,
+                                                         request_attributes).perform
         response_body = TokenSerializer.new(session_container:, cookies:).perform
         response_body[:verified] = true
 
@@ -38,6 +38,10 @@ module SignIn
 
       def challenge_id
         params.require(:challenge_id)
+      end
+
+      def request_attributes
+        { remote_ip: request.remote_ip, user_agent: request.user_agent }
       end
     end
   end

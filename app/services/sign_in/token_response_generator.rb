@@ -41,7 +41,8 @@ module SignIn
     def generate_client_tokens
       validated_credential = CodeValidator.new(code:, code_verifier:, client_assertion:, client_assertion_type:,
                                                client_id:, client_secret:).perform
-      session_container = SessionCreator.new(validated_credential:).perform
+
+      session_container = SessionCreator.new(validated_credential:, request_attributes:).perform
 
       UserAudit.logger.success(event: :sign_in, user_verification: validated_credential.user_verification)
       sign_in_logger.info('session created', session_container.access_token.to_s)
@@ -60,7 +61,7 @@ module SignIn
 
     def generate_token_exchange_response
       exchanged_container = TokenExchanger.new(subject_token:, subject_token_type:, actor_token:,
-                                               actor_token_type:, client_id:).perform
+                                               actor_token_type:, client_id:, request_attributes:).perform
 
       sign_in_logger.info('token exchanged', exchanged_container.access_token.to_s)
 

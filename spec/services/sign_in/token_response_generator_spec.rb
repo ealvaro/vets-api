@@ -7,7 +7,8 @@ RSpec.describe SignIn::TokenResponseGenerator do
     described_class.new(params:, cookies:, request_attributes:, client_secret_basic_credentials:)
   end
 
-  let(:request_attributes) { { remote_ip: } }
+  let(:request_attributes) { { remote_ip:, user_agent: } }
+  let(:user_agent) { Faker::Internet.user_agent }
   let(:remote_ip) { Faker::Internet.ip_v4_address }
   let(:cookies) { double('cookies') }
   let(:client_secret_basic_credentials) { {} }
