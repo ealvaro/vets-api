@@ -10,14 +10,14 @@ with their `case_id` and `status` in the payload.
 ## Key Features
 
 ### VES Integration
-The module includes a VES (Veterans Eligibility System) integration for the 10-10d form submissions. When enabled via feature flags, form data is automatically formatted and submitted to the VES API, which validates and processes CHAMPVA applications.
+The module includes a VES (Veterans Eligibility System) integration for CHAMPVA form submissions. Eligible form data is automatically formatted and submitted to the VES API, which validates and processes CHAMPVA applications.
 
 The VES integration follows a specific workflow:
 
-1. **Conditional Submission Logic**:
-   - VES submission only occurs for form 10-10d (CHAMPVA Application)
-   - The `champva_send_to_ves` feature flag must be enabled
-   - VES submission is currently only available in non-production environments
+1. **Conditional Submission Logic** (`should_process_ves?`):
+   - Form 10-10d (CHAMPVA Application) is **always** submitted to VES
+   - Standalone form 10-7959c (OHI) is submitted to VES only when the `champva_send_7959c_to_ves` flag is enabled
+   - There is no hard environment check; which VES endpoint is hit (real vs. mocked) is controlled per-environment via `Settings.ivc_champva_ves_api` configuration
 
 2. **Submission Ordering**:
    - The system first prepares both the PEGA submission (PDF generation) and VES submission (data formatting)
@@ -90,12 +90,12 @@ Current feature flags used to control functionality:
 
 | Flag | Purpose | Notes |
 |------|---------|-------|
-| `champva_send_to_ves` | Enables sending form submission data to the VES API | Long-running feature flag pending integration signoff from VES team |
 | `champva_fmp_single_file_upload` | Enables combining FMP form and supporting docs into a single PDF | Only applies to form 10-7959f-2 |
 | `champva_vanotify_custom_callback` | Enables custom callback for failure emails with VA Notify | |
 | `champva_vanotify_custom_confirmation_callback` | Enables custom callback for confirmation emails | |
 | `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads | |
 | `champva_claims_insurance_dates` | Uses the 12/31/2027 OMB revision of 10-7959A (requires `champva_form_versioning`); shared with FE | Adds beneficiary email, OHI effective/termination dates, signer email on the PDF and in Pega metadata |
+| `champva_send_7959c_to_ves` | Routes standalone 10-7959c (OHI) submissions to VES | 10-10d always routes to VES regardless of this flag |
 | (TODO) | Enables the endpoint to submit combined 10-10d/10-7959c form submissions | Feature is WIP |
 |`form1010d_extended`|Enables access to the combined 10-10d/10-7959c form experience (frontend) |This form is a WIP|
 

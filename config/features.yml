@@ -463,12 +463,9 @@ features:
   champva_log_all_s3_uploads:
     actor_type: user
     description: Enables logging for all s3 uploads using UUID or keys for monitoring
-  champva_send_to_ves:
-    actor_type: user
-    description: Enables sending form submission data to the VES API.
   champva_send_7959c_to_ves:
     actor_type: user
-    description: Enables sending 10-7959c OHI form data to the VES API. Requires champva_send_to_ves to also be enabled.
+    description: Enables sending 10-7959c OHI form data to the VES API.
   champva_store_request_json:
     actor_type: user
     description: Enables storing the original form request JSON in the database for debugging and VES request reconstruction.

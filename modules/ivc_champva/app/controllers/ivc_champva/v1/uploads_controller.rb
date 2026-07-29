@@ -156,38 +156,37 @@ module IvcChampva
       #
       # @return [Hash] response from build_json
       def handle_file_uploads_wrapper(form_id, parsed_form_data)
+        file_paths, metadata = get_file_paths_and_metadata(parsed_form_data)
+
         if should_process_ves?(form_id) && !docs_only_resubmission_flow_enabled?(parsed_form_data)
-          handle_ves_submission(form_id, parsed_form_data)
+          handle_ves_submission(form_id, file_paths, metadata, parsed_form_data)
         else
-          statuses, error_messages = handle_file_uploads(form_id, parsed_form_data)
+          statuses, error_messages = handle_file_uploads(form_id, file_paths, metadata, parsed_form_data)
           build_json(statuses, error_messages)
         end
       end
 
       # Determines if this form should be processed through VES flow
       def should_process_ves?(form_id)
-        return true if Flipper.enabled?(:champva_send_to_ves, @current_user) && form_id == 'vha_10_10d'
+        return true if form_id == 'vha_10_10d'
         return true if Flipper.enabled?(:champva_send_7959c_to_ves, @current_user) && form_id == 'vha_10_7959c'
 
         false
       end
 
       # Handles VES submission flow for supported forms (10-10D, 10-7959C standalone)
-      def handle_ves_submission(form_id, parsed_form_data)
-        # Get file_paths and metadata first so we have form_uuid available for VES
-        file_paths, metadata = get_file_paths_and_metadata(parsed_form_data)
-
+      def handle_ves_submission(form_id, file_paths, metadata, parsed_form_data)
         # Prepare VES request using form_uuid as application_uuid for consistency
         ves_request = prepare_ves_request(parsed_form_data, form_uuid: metadata['uuid'])
 
-        statuses, error_messages = upload_form(form_id, file_paths, metadata, parsed_form_data)
+        statuses, error_messages = handle_file_uploads(form_id, file_paths, metadata, parsed_form_data)
         response = build_json(statuses, error_messages)
 
         submit_to_ves(ves_request, metadata) if response[:status] == 200
 
         response
       ensure
-        ves_json_files = file_paths&.select { |p| p.end_with?('_ves.json') } || []
+        ves_json_files = file_paths&.select { |p| IvcChampva::FileNaming.ves_json?(p) } || []
         ves_json_files.each { |f| FileUtils.rm_f(f) }
       end
 
@@ -753,7 +752,7 @@ module IvcChampva
       def map_form_pdfs_to_ves_json(additional, file_paths, attachment_ids, ves_json, legacy_form_id)
         ves_basename = File.basename(ves_json[:path])
         file_paths.each_with_index do |fp, i|
-          next if fp.end_with?('.json')
+          next if IvcChampva::FileNaming.ves_json?(fp)
           next unless attachment_ids[i] == legacy_form_id
 
           clean_name = File.basename(fp).gsub('-tmp', '')
@@ -1175,52 +1174,7 @@ module IvcChampva
       end
 
       ##
-      # Handles file uploads with retry logic
-      #
-      # @param [String] form_id The ID of the current form, e.g., 'vha_10_10d' (see FORM_NUMBER_MAP)
-      # @param [Hash] parsed_form_data complete form submission data object
-      #
-      # @return [Array<Integer, String>] An array with 1 or more http status codes
-      #   and an array with 1 or more message strings.
-      # rubocop:disable Metrics/MethodLength
-      def handle_file_uploads(form_id, parsed_form_data)
-        Datadog::Tracing.trace('IVC Champva Forms - Upload Files Without VES Submission') do
-          on_failure = lambda do |e, attempt|
-            Rails.logger.error "Error handling file uploads (attempt #{attempt}): #{e.message}"
-            PersonalInformationLog.create(
-              data: parsed_form_data,
-              error_class: 'IvcChampva::V1::UploadsController#handle_file_uploads'
-            )
-          end
-
-          # set default values for statuses and error_messages to avoid nil reference errors
-          statuses = [500]
-          error_messages = ['Server error occurred']
-
-          file_paths = []
-          IvcChampva::Retry.do(1, retry_on: RETRY_ERROR_CONDITIONS, on_failure:) do
-            file_paths, metadata = get_file_paths_and_metadata(parsed_form_data)
-            options = { insert_db_row: true, current_user: @current_user, parsed_form_data: }
-            uploader = FileUploader.new(form_id, metadata, file_paths, **options)
-            hu_result = uploader.handle_uploads
-            # convert [[200, nil], [400, 'error']] -> [200, 400] and [nil, 'error'] arrays
-            statuses, error_messages = hu_result[0].is_a?(Array) ? hu_result.transpose : hu_result.map { |i| Array(i) }
-
-            # Since some or all of the files failed to upload to S3, trigger retry
-            raise StandardError, error_messages if error_messages.compact.length.positive?
-          end
-
-          [statuses, error_messages]
-        ensure
-          cleanup_supporting_doc_working_files(file_paths)
-        end
-      end
-      # rubocop:enable Metrics/MethodLength
-
-      ##
       # Wraps handle_uploads and includes retry logic when file uploads get non-200s.
-      #
-      # TODO: Rename this method once `champva_send_to_ves` feature flag is removed back to 'handle_file_uploads'
       #
       # @param [String] form_id The ID of the current form, e.g., 'vha_10_10d' (see FORM_NUMBER_MAP)
       # @param [Array<String>] file_paths The file paths of the files to upload
@@ -1230,13 +1184,13 @@ module IvcChampva
       # @return [Array<Integer, String>] An array with 1 or more http status codes
       #   and an array with 1 or more message strings.
       # rubocop:disable Metrics/MethodLength
-      def upload_form(form_id, file_paths, metadata, parsed_form_data = nil)
-        Datadog::Tracing.trace('IVC Champva Forms - Upload Files With VES Submission') do
+      def handle_file_uploads(form_id, file_paths, metadata, parsed_form_data = nil)
+        Datadog::Tracing.trace('IVC Champva Forms - Upload Files') do
           on_failure = lambda do |e, attempt|
             Rails.logger.error "Error handling file uploads (attempt #{attempt}): #{e.message}"
             PersonalInformationLog.create(
               data: parsed_form_data,
-              error_class: 'IvcChampva::V1::UploadsController#upload_form'
+              error_class: 'IvcChampva::V1::UploadsController#handle_file_uploads'
             )
           end
 

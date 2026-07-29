@@ -50,11 +50,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     Aws.config = @original_aws_config
   end
 
-  describe '#submit with flipper champva_send_to_ves enabled' do
+  describe '#submit VES flow' do
     before do
-      allow(Flipper).to receive(:enabled?)
-        .with(:champva_send_to_ves, @current_user)
-        .and_return(true)
       allow(Flipper).to receive(:enabled?)
         .with(:champva_update_datadog_tracking, @current_user)
         .and_return(false)
@@ -99,7 +96,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       it 'does VES processing only for form 10-10D' do
         controller = IvcChampva::V1::UploadsController.new
         allow(controller).to receive_messages(handle_file_uploads: [[200], nil],
-                                              upload_form: [[200], nil],
                                               get_file_paths_and_metadata: [['path'], {}],
                                               params: ActionController::Parameters.new(data))
         allow(controller).to receive(:render)
@@ -159,7 +155,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       it 'returns an error and does not proceed when handle_file_uploads fails' do
         if data['form_number'] == '10-10D'
           controller = IvcChampva::V1::UploadsController.new
-          allow(controller).to receive_messages(upload_form: [[400], 'oh no'],
+          allow(controller).to receive_messages(handle_file_uploads: [[400], 'oh no'],
                                                 get_file_paths_and_metadata: [['path'], {}],
                                                 params: ActionController::Parameters.new(data))
           allow(controller).to receive(:render)
@@ -219,9 +215,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     before do
       # Mirror the setup from the passing tests, but enable champva_update_datadog_tracking
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_send_to_ves, anything)
-        .and_return(true)
-      allow(Flipper).to receive(:enabled?)
         .with(:champva_update_datadog_tracking, @current_user)
         .and_return(true)
     end
@@ -275,29 +268,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         'api.ivc_champva_form.10_7959f_1.submission',
         hash_including(:tags)
       )
-    end
-  end
-
-  describe '#submit with flipper champva_send_to_ves disabled' do
-    before do
-      allow(Flipper).to receive(:enabled?)
-        .with(:champva_send_to_ves, @current_user)
-        .and_return(false)
-    end
-
-    forms.each do |form|
-      fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', form)
-      data = JSON.parse(fixture_path.read)
-
-      it 'does not format data for VES' do
-        post '/ivc_champva/v1/forms', params: data
-        expect(IvcChampva::VesDataFormatter).not_to have_received(:format_for_request)
-      end
-
-      it 'does not submit to VES' do
-        post '/ivc_champva/v1/forms', params: data
-        expect(ves_client).not_to have_received(:submit_1010d)
-      end
     end
   end
 
@@ -412,30 +382,19 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     let(:controller) { IvcChampva::V1::UploadsController.new }
 
     context 'when form is vha_10_10d' do
-      it 'returns true when champva_send_to_ves is enabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
-
+      it 'returns true' do
         expect(controller.send(:should_process_ves?, 'vha_10_10d')).to be true
-      end
-
-      it 'returns false when champva_send_to_ves is disabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
-
-        expect(controller.send(:should_process_ves?, 'vha_10_10d')).to be false
       end
     end
 
     context 'when form is vha_10_7959c (standalone OHI)' do
       it 'returns true when champva_send_7959c_to_ves is enabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(true)
 
         expect(controller.send(:should_process_ves?, 'vha_10_7959c')).to be true
       end
 
       it 'returns false when champva_send_7959c_to_ves is disabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
 
         expect(controller.send(:should_process_ves?, 'vha_10_7959c')).to be false
@@ -444,7 +403,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     context 'when form is other type' do
       it 'returns false' do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(true)
 
         expect(controller.send(:should_process_ves?, 'vha_10_7959f_1')).to be false
@@ -458,35 +416,37 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       { 'form_number' => '10-10D-EXTENDED', 'submission_type' => 'existing' }
     end
 
-    it 'skips VES when docs-only flow is enabled even if VES flipper is on' do
-      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
+    it 'skips VES when docs-only flow is enabled' do
       allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
       allow(Flipper).to receive(:enabled?)
         .with(:form1010d_enhanced_flow_enabled, anything)
         .and_return(true)
 
       expect(controller).not_to receive(:handle_ves_submission)
-      allow(controller).to receive(:handle_file_uploads).with('vha_10_10d', docs_only_payload).and_return([[200], nil])
-      allow(controller).to receive(:build_json).and_return({ json: {}, status: 200 })
+      allow(controller).to receive_messages(get_file_paths_and_metadata: [['path'], {}],
+                                            build_json: { json: {}, status: 200 })
+      allow(controller).to receive(:handle_file_uploads)
+        .with('vha_10_10d', anything, anything, docs_only_payload)
+        .and_return([[200], nil])
 
       result = controller.send(:handle_file_uploads_wrapper, 'vha_10_10d', docs_only_payload)
       expect(result[:status]).to eq(200)
     end
 
-    it 'skips VES when CST docs-only flow is enabled even if VES flipper is on' do
+    it 'skips VES when CST docs-only flow is enabled' do
       cst_docs_only_payload = docs_only_payload.merge('claim_id' => SecureRandom.uuid)
 
-      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
       allow(Flipper).to receive(:enabled?)
         .with(:champva_cst_file_uploader_docs_only_resubmission, anything)
         .and_return(true)
 
       expect(controller).not_to receive(:handle_ves_submission)
+      allow(controller).to receive_messages(get_file_paths_and_metadata: [['path'], {}],
+                                            build_json: { json: {}, status: 200 })
       allow(controller).to receive(:handle_file_uploads)
-        .with('vha_10_10d', cst_docs_only_payload)
+        .with('vha_10_10d', anything, anything, cst_docs_only_payload)
         .and_return([[200], nil])
-      allow(controller).to receive(:build_json).and_return({ json: {}, status: 200 })
 
       result = controller.send(:handle_file_uploads_wrapper, 'vha_10_10d', cst_docs_only_payload)
       expect(result[:status]).to eq(200)
@@ -579,9 +539,11 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     data = JSON.parse(fixture_path.read)
 
     before do
-      # Disable VES submission for these tests - they focus on S3/PEGA upload, not VES
-      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
+      # These tests focus on S3/PEGA upload; stub VES so 10-10D-EXTENDED submissions
+      # route through VES without hitting the real client.
       allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, anything).and_return(false)
+      allow(IvcChampva::VesApi::Client).to receive(:new).and_return(ves_client)
+      allow(ves_client).to receive(:submit_1010d).and_return(double('response', status: 200, body: ''))
     end
 
     it 'uploads a PDF file to S3' do
@@ -1503,7 +1465,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     before do
       allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:champva_log_all_s3_uploads, anything).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:champva_enable_ocr_on_submit, anything).and_return(false)
@@ -1694,49 +1655,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
   describe '#handle_file_uploads' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
     let(:form_id) { 'vha_10_10d' }
-    let(:parsed_form_data) do
-      JSON.parse(Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read)
-    end
-    let(:file_paths) { ['/path/to/file1.pdf', '/path/to/file2.pdf'] }
-    let(:metadata) { { 'attachment_ids' => %w[id1 id2], 'uuid' => SecureRandom.uuid } }
-    let(:file_uploader) { instance_double(IvcChampva::FileUploader, metadata:) }
-
-    before do
-      allow(controller).to receive(:get_file_paths_and_metadata).and_return([file_paths, metadata])
-      allow(IvcChampva::FileUploader).to receive(:new).and_return(file_uploader)
-      allow(controller).to receive(:instance_variable_get).with('@current_user').and_return(nil)
-    end
-
-    context 'when the retry method fails outside the retry block' do
-      before do
-        allow(IvcChampva::Retry).to receive(:do).and_raise(StandardError.new('Catastrophic failure'))
-      end
-
-      it 'raises the error' do
-        expect do
-          controller.send(:handle_file_uploads, form_id, parsed_form_data)
-        end.to raise_error(StandardError, 'Catastrophic failure')
-      end
-    end
-
-    context 'when the retry method executes successfully' do
-      before do
-        allow(IvcChampva::Retry).to receive(:do).and_yield
-        allow(file_uploader).to receive(:handle_uploads).and_return([[200, nil]])
-      end
-
-      it 'returns the values from handle_uploads' do
-        statuses, error_messages = controller.send(:handle_file_uploads, form_id,
-                                                   parsed_form_data)
-        expect(statuses).to eq([200])
-        expect(error_messages).to eq([nil])
-      end
-    end
-  end
-
-  describe '#upload_form' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:form_id) { 'vha_10_10d' }
     let(:file_paths) { ['/path/to/file1.pdf', '/path/to/file2.pdf'] }
     let(:metadata) { { 'attachment_ids' => %w[id1 id2], 'uuid' => SecureRandom.uuid } }
     let(:file_uploader) { instance_double(IvcChampva::FileUploader, metadata:) }
@@ -1753,7 +1671,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
       it 'raises the error' do
         expect do
-          controller.send(:upload_form, form_id, file_paths, metadata)
+          controller.send(:handle_file_uploads, form_id, file_paths, metadata)
         end.to raise_error(StandardError, 'Catastrophic failure')
       end
     end
@@ -1765,7 +1683,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       end
 
       it 'returns the values from handle_uploads' do
-        statuses, error_messages = controller.send(:upload_form, form_id, file_paths, metadata)
+        statuses, error_messages = controller.send(:handle_file_uploads, form_id, file_paths, metadata)
         expect(statuses).to eq([200])
         expect(error_messages).to eq([nil])
       end

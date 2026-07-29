@@ -85,7 +85,6 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
       :champva_cst_file_uploader_docs_only_resubmission, any_args
     ).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled, any_args).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, any_args).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_send_ves_to_pega, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_mpi_validation, any_args).and_return(false)

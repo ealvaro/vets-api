@@ -62,13 +62,7 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
       JSON.parse(Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json').read)
     end
 
-    context 'with flipper champva_send_to_ves enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:champva_send_to_ves, anything)
-          .and_return(true)
-      end
-
+    context 'when submitting form 10-10D' do
       it 'uploads a PDF file to S3 and submits to VES for form 10-10D' do
         # Allow for transaction_uuid= to be called but preserve the original 'fake-id' value
         allow(ves_request).to receive(:transaction_uuid).and_return('fake-id')
@@ -165,25 +159,6 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
         expect(ves_client).not_to have_received(:submit_1010d)
       end
     end
-
-    context 'with flipper champva_send_to_ves disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:champva_send_to_ves, anything)
-          .and_return(false)
-        allow(Flipper).to receive(:enabled?)
-          .with(:champva_send_ves_to_pega, anything)
-          .and_return(false)
-      end
-
-      it 'does not submit to VES' do
-        post '/ivc_champva/v1/forms', params: form_data
-
-        expect(IvcChampva::VesDataFormatter).not_to have_received(:format_for_request)
-        expect(ves_client).not_to have_received(:submit_1010d)
-        expect(response).to have_http_status(:ok)
-      end
-    end
   end
 
   describe 'retry logic' do
@@ -211,14 +186,14 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
 
       expect(IvcChampva::Retry).to receive(:do).and_yield
 
-      controller.send(:handle_file_uploads, form_id, parsed_form_data)
+      controller.send(:handle_file_uploads, form_id, file_paths, metadata, parsed_form_data)
     end
 
     it 'correctly handles successful uploads' do
       allow(file_uploader).to receive(:handle_uploads).and_return([200, nil])
       allow(IvcChampva::Retry).to receive(:do).and_yield
 
-      statuses, error_messages = controller.send(:handle_file_uploads, form_id, parsed_form_data)
+      statuses, error_messages = controller.send(:handle_file_uploads, form_id, file_paths, metadata, parsed_form_data)
 
       expect(statuses).to eq([200])
       expect(error_messages).to eq([])
@@ -228,9 +203,9 @@ RSpec.describe 'IvcChampva::V1::Forms::VesUploads', type: :request do
       # Use the actual controller method but simplify the test
       # Instead of testing the complex behavior of handling errors with actual values
       # just verify that the correct method (handle_file_uploads) is called
-      expect(controller).to receive(:handle_file_uploads).with(form_id, parsed_form_data)
+      expect(controller).to receive(:handle_file_uploads).with(form_id, file_paths, metadata, parsed_form_data)
 
-      controller.send(:handle_file_uploads, form_id, parsed_form_data)
+      controller.send(:handle_file_uploads, form_id, file_paths, metadata, parsed_form_data)
     end
   end
 

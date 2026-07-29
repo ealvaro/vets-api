@@ -74,7 +74,6 @@ RSpec.describe 'IVC CHAMPVA Integration Failure Scenarios', type: :request do
   describe 'VES Integration Failure Scenarios' do
     context 'when VES API fails' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
         # Mock VES to fail with any error (connection, HTTP, timeout, etc.)
         stub_request(:post, %r{.*/ves-vfmp-app-svc/champva-applications})
           .to_raise(Faraday::ConnectionFailed.new('Connection refused'))
@@ -99,7 +98,6 @@ RSpec.describe 'IVC CHAMPVA Integration Failure Scenarios', type: :request do
 
     context 'when VES API returns HTTP error' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(true)
         stub_request(:post, %r{.*/ves-vfmp-app-svc/champva-applications})
           .to_return(status: 500, body: 'Internal Server Error')
         allow(Rails.logger).to receive(:error)
@@ -117,25 +115,6 @@ RSpec.describe 'IVC CHAMPVA Integration Failure Scenarios', type: :request do
           .at_least(:once)
 
         # Form submission should still succeed despite VES failure
-        expect(response).to have_http_status(:ok)
-        expect(response.parsed_body).to be_a(Hash)
-      end
-    end
-
-    context 'when VES feature flag is disabled' do
-      before do
-        # Reset WebMock to clear any previous stubs
-        WebMock.reset!
-        # Explicitly disable the VES feature flag
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:champva_send_to_ves, anything).and_return(false)
-      end
-
-      it 'does not attempt VES submission and form succeeds normally' do
-        post '/ivc_champva/v1/forms', params: simple_form_data
-
-        # Should not make any VES requests
-        expect(WebMock).not_to have_requested(:post, %r{.*/ves-vfmp-app-svc/champva-applications})
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body).to be_a(Hash)
       end
