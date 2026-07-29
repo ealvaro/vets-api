@@ -19,8 +19,13 @@ class FormSubmission < ApplicationRecord
       select('form_submissions.id, form_submissions.form_type, la.benefits_intake_uuid, form_submissions.created_at')
         .from('form_submissions')
         .joins(
-          "LEFT JOIN (#{FormSubmissionAttempt.latest_attempts.to_sql}) AS la " \
-          'ON form_submissions.id = la.form_submission_id'
+          'LEFT JOIN LATERAL (' \
+          '  SELECT benefits_intake_uuid' \
+          '  FROM form_submission_attempts' \
+          '  WHERE form_submission_id = form_submissions.id' \
+          '  ORDER BY created_at DESC, id DESC' \
+          '  LIMIT 1' \
+          ') AS la ON true'
         )
         .order('form_submissions.id')
         .where(user_account:)

@@ -15,6 +15,51 @@ RSpec.describe FormSubmission, feature: :form_submission, type: :model do
     it { is_expected.to validate_presence_of(:form_type) }
   end
 
+  describe '.with_latest_benefits_intake_uuid' do
+    it 'scopes form_submission_attempts with a LATERAL join per form_submission.id' do
+      sql = described_class.with_latest_benefits_intake_uuid(user_account).to_sql
+
+      expect(sql).to include('LEFT JOIN LATERAL')
+      expect(sql).to include('form_submission_id = form_submissions.id')
+      expect(sql).to include('ORDER BY created_at DESC, id DESC')
+      expect(sql).not_to include('DISTINCT ON')
+    end
+
+    it 'does not return submissions belonging to other user accounts' do
+      create(:form_submission, user_account:, form_type: 'FORM-A')
+      other_user = create(:user_account)
+      other_submission = create(:form_submission, user_account: other_user, form_type: 'FORM-Z')
+      create(:form_submission_attempt, form_submission: other_submission, benefits_intake_uuid: SecureRandom.uuid)
+
+      results = described_class.with_latest_benefits_intake_uuid(user_account).to_a
+
+      expect(results.map(&:id)).not_to include(other_submission.id)
+      expect(results.map(&:form_type)).to eq(['FORM-A'])
+    end
+
+    it 'breaks created_at ties by choosing the attempt with the greater id' do
+      form_submission = create(:form_submission, user_account:, form_type: 'FORM-A')
+      shared_time = Time.current
+      older_id_attempt = create(
+        :form_submission_attempt,
+        form_submission:,
+        benefits_intake_uuid: SecureRandom.uuid,
+        created_at: shared_time
+      )
+      newer_id_attempt = create(
+        :form_submission_attempt,
+        form_submission:,
+        benefits_intake_uuid: SecureRandom.uuid,
+        created_at: shared_time
+      )
+
+      result = described_class.with_latest_benefits_intake_uuid(user_account).first
+
+      expect(newer_id_attempt.id).to be > older_id_attempt.id
+      expect(result.benefits_intake_uuid).to eq(newer_id_attempt.benefits_intake_uuid)
+    end
+  end
+
   describe 'user form submission statuses' do
     before do
       @fsa, @fsb, @fsc = create_list(:form_submission, 3, user_account:)
