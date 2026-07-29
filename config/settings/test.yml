@@ -977,6 +977,7 @@ maintenance:
     vic: P7LW3MS
     vre: ~
     vre_ch31_eligibility: ~
+    vre_ch31_tracker: ~
 mcp:
   notifications:
     batch_size: 100
