@@ -1414,7 +1414,7 @@ sharepoint:
     client_id: fake_sharepoint_client_id
     client_secret: fake_sharepoint_client_secret
     drive_id: fake_drive_id
-    filepath: 'Survey Responses'
+    filepath: 'DEV ONLY/test/Survey Responses'
     mock: false
     scope: https://graph.microsoft.com/.default
     sharepoint_graph_url: https://graph.microsoft.com

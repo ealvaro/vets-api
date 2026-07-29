@@ -110,7 +110,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
         expect(rows[1][2]).to eq('How was your experience?')
         expect(rows[1][3]).to eq('Great')
         expect(rows[1][4]).to eq('iOS')
-        expect(captured_path).to eq('Survey Responses/give_feedback')
+        expect(captured_path).to eq('DEV ONLY/test/Survey Responses/give_feedback')
         expect(captured_filename).to match(/\Agive_feedback_\d{8}_\d{9}\.csv\z/)
 
         # Verify only giveFeedback rows were deleted
