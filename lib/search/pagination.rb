@@ -40,6 +40,21 @@ module Search
       pagination_object
     end
 
+    # Calculates the Search.gov `offset` query param for a requested page number.
+    # This is the true determinant of which upstream result window is fetched:
+    # any page <= 1 maps to offset 0 (first page), and the offset is capped at
+    # OFFSET_LIMIT. Shared by the request services and the results cache key so
+    # they stay aligned.
+    #
+    # @param page [Integer, String, nil] the requested page number
+    # @return [Integer]
+    def self.offset_for(page)
+      page = page.to_i
+      return 0 if page <= 1
+
+      [(page - 1) * ENTRIES_PER_PAGE, OFFSET_LIMIT].min
+    end
+
     private
 
     def current_page

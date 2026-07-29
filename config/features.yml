@@ -2559,6 +2559,10 @@ features:
     actor_type: user
     description: Enable frontend application and cta for Search Representative application
     enable_in_development: true
+  search_results_cache:
+    actor_type: cookie_id
+    description: Enables read-through caching of Search.gov results to reduce upstream calls and ease Search.gov rate limiting. TTL is controlled by Settings.search.results_cache_ttl_seconds. Note; /v0/search is unauthenticated and no actor is passed, so per-actor targeting has no effect; roll out via boolean (fully on/off) or percentage_of_time.
+    enable_in_development: false
   search_results_ui_update:
     actor_type: user
     description: Enables the updated search results UI

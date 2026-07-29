@@ -18,7 +18,8 @@ module V0
     # For example, the app/controllers/v0/prescriptions_controller.rb.
     #
     def index
-      response = search_service.results
+      response = cached_results
+
       options = { meta: { pagination: response.pagination } }
 
       render json: SearchSerializer.new(response, options)
@@ -74,16 +75,79 @@ module V0
       nil
     end
 
+    # Returns the search results, using a read-through cache when the
+    # :search_results_cache flag is enabled. Only successful responses are
+    # cached (upstream errors raise before the block returns, so failures are
+    # never stored). The raw response body is cached (a plain Hash) rather than
+    # the response object to avoid coupling the cache to model internals.
+    #
+    # @return [Search::ResultsResponse]
+    def cached_results
+      return search_service.results unless Flipper.enabled?(:search_results_cache)
+
+      body = Rails.cache.fetch(results_cache_key, expires_in: results_cache_ttl) do
+        search_service.results.body
+      end
+
+      Search::ResultsResponse.new(200, Search::ResultsResponse.pagination_object(body), body:)
+    end
+
+    # Cache key derived from the (sanitized) query, the upstream request offset,
+    # and the active upstream backend. The query is hashed so raw user input is
+    # never written to the cache key. Keying on the offset (via the same
+    # Search::Pagination.offset_for the services use) keeps the cache aligned
+    # with the actual upstream request: an omitted page, `page=0`, and `page=1`
+    # all resolve to offset 0, and very high pages that clamp to the max offset
+    # share one entry. The backend discriminator prevents an entry cached under
+    # one Search.gov backend from being served after the :search_use_v2_gsa flag
+    # flips (both backends run concurrently during a cookie-based rollout).
+    #
+    # @return [String]
+    def results_cache_key
+      offset = Search::Pagination.offset_for(page)
+      digest = Digest::SHA256.hexdigest("#{query}\x00#{offset}")
+      "search_results:#{search_backend}:#{digest}"
+    end
+
+    # TTL for cached results, sourced from Settings so it can be tuned via
+    # Param Store without a deploy. Falls back to 1 hour when unset or invalid.
+    #
+    # @return [Integer]
+    def results_cache_ttl
+      ttl = Settings.search&.results_cache_ttl_seconds.to_i
+      ttl.positive? ? ttl : 1.hour.to_i
+    end
+
     def search_params
       params.permit(:query, :page)
     end
 
     def search_service
-      @search_service ||= if Flipper.enabled?(:search_use_v2_gsa)
+      @search_service ||= if v2_gsa_backend?
                             SearchGsa::Service.new(query, page)
                           else
                             Search::Service.new(query, page)
                           end
+    end
+
+    # Short token identifying the active upstream backend. Derived from the same
+    # memoized flag check that selects the service, so the cache key can never
+    # disagree with the backend that produced the body without instantiating a
+    # service just to compute the key (which would run on cache hits too).
+    #
+    # @return [String]
+    def search_backend
+      v2_gsa_backend? ? 'gsa' : 'default'
+    end
+
+    # Memoized decision for which upstream Search.gov backend to use. Single
+    # source of truth shared by #search_service and #search_backend.
+    #
+    # @return [Boolean]
+    def v2_gsa_backend?
+      return @v2_gsa_backend if defined?(@v2_gsa_backend)
+
+      @v2_gsa_backend = Flipper.enabled?(:search_use_v2_gsa)
     end
 
     # Returns a sanitized, permitted version of the passed query params.

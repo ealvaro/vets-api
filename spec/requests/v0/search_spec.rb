@@ -12,6 +12,7 @@ Rspec.describe 'V0::Search', type: :request do
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:search_results_cache).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:search_skip_known_bots).and_return(false)
   end
 
@@ -206,6 +207,112 @@ Rspec.describe 'V0::Search', type: :request do
         pagination = body.dig('meta', 'pagination')
         expect(pagination['total_entries']).to eq(0)
         expect(pagination['current_page']).to eq(0)
+      end
+    end
+  end
+
+  describe 'GET /v0/search with results caching' do
+    context 'when the :search_results_cache flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:search_results_cache).and_return(true)
+        Rails.cache.clear
+      end
+
+      after { Rails.cache.clear }
+
+      around do |example|
+        original_store = Rails.cache
+        Rails.cache = ActiveSupport::Cache::MemoryStore.new
+        example.run
+      ensure
+        Rails.cache = original_store
+      end
+
+      it 'calls the search service on a cache miss and serves the second identical request from cache' do
+        VCR.use_cassette('search/success') do
+          expect(Search::Service).to receive(:new).once.and_call_original
+
+          get '/v0/search', params: { query: 'benefits' }
+          expect(response).to have_http_status(:ok)
+          first_body = response.body
+
+          get '/v0/search', params: { query: 'benefits' }
+          expect(response).to have_http_status(:ok)
+          expect(response.body).to eq(first_body)
+        end
+      end
+
+      it 'caches requests for different queries separately' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        expect(Search::Service).to receive(:new).twice.and_call_original
+
+        get '/v0/search', params: { query: 'benefits' }
+        get '/v0/search', params: { query: 'education' }
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'caches different pages of the same query separately' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        expect(Search::Service).to receive(:new).twice.and_call_original
+
+        get '/v0/search', params: { query: 'benefits', page: 1 }
+        get '/v0/search', params: { query: 'benefits', page: 2 }
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'treats an omitted page and page=1 as the same cache entry' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        # Both requests map to the first page upstream, so the service is only
+        # instantiated once; the second request is served from cache.
+        expect(Search::Service).to receive(:new).once.and_call_original
+
+        get '/v0/search', params: { query: 'benefits' }
+        get '/v0/search', params: { query: 'benefits', page: 1 }
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      it 'caches each upstream backend separately so a flag flip does not cross-serve results' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+        stub_request(:get, /#{Settings.search_gsa.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        # Same query and page, but each backend is a distinct upstream, so each
+        # must produce its own cache entry rather than reusing the other's.
+        allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
+        expect(Search::Service).to receive(:new).once.and_call_original
+        get '/v0/search', params: { query: 'benefits' }
+
+        allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(true)
+        expect(SearchGsa::Service).to receive(:new).once.and_call_original
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when the :search_results_cache flag is disabled' do
+      it 'calls the search service for every request' do
+        VCR.use_cassette('search/success') do
+          expect(Search::Service).to receive(:new).twice.and_call_original
+
+          get '/v0/search', params: { query: 'benefits' }
+          get '/v0/search', params: { query: 'benefits' }
+        end
       end
     end
   end

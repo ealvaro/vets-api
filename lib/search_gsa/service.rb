@@ -70,17 +70,12 @@ module SearchGsa
       Settings.search.access_key
     end
 
-    # Calculate the offset parameter based on the requested page number
+    # Calculate the offset parameter based on the requested page number.
+    # Delegated to Search::Pagination.offset_for so the request offset and the
+    # results cache key share a single source of truth.
     #
     def offset
-      if page <= 1
-        # We want first page of results
-        0
-      else
-        # Max offset for search API is 999
-        # If there are 20 results and the user requests page 3, there will be an empty result set
-        [((page - 1) * limit), 999].min
-      end
+      Search::Pagination.offset_for(page)
     end
 
     def limit

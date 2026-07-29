@@ -144,4 +144,23 @@ describe Search::Pagination do
       expect(subject.object).to include('current_page' => 0, 'total_pages' => 0, 'total_entries' => 0)
     end
   end
+
+  describe '.offset_for' do
+    it 'returns 0 for the first page and its equivalents', :aggregate_failures do
+      expect(described_class.offset_for(nil)).to eq 0
+      expect(described_class.offset_for(0)).to eq 0
+      expect(described_class.offset_for(1)).to eq 0
+      expect(described_class.offset_for('1')).to eq 0
+      expect(described_class.offset_for(-5)).to eq 0
+    end
+
+    it 'calculates the offset from the requested page and entries per page', :aggregate_failures do
+      expect(described_class.offset_for(2)).to eq 10
+      expect(described_class.offset_for('3')).to eq 20
+    end
+
+    it 'caps the offset at OFFSET_LIMIT for very high page numbers' do
+      expect(described_class.offset_for(10_000)).to eq Search::Pagination::OFFSET_LIMIT
+    end
+  end
 end

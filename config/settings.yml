@@ -1378,6 +1378,9 @@ search:
   # Set/override via Parameter Store: search__bot_user_agent_regex
   bot_user_agent_regex: <%= ENV['search__bot_user_agent_regex'] %>
   mock_search: <%= ENV['search__mock_search'] %>
+  # TTL (in seconds) for the Search.gov results cache. Set via Param Store to
+  # tune cache duration without a deploy. Blank/unset falls back to 1 hour.
+  results_cache_ttl_seconds: <%= ENV['search__results_cache_ttl_seconds'] %>
   url: <%= ENV['search__url'] %>
 search_click_tracking:
   access_key: <%= ENV['search_click_tracking__access_key'] %>
