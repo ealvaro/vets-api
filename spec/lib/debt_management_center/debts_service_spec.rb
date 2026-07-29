@@ -187,29 +187,8 @@ RSpec.describe DebtManagementCenter::DebtsService do
       allow(bgs_request).to receive(:find_person_by_participant_id).with(user:).and_return(bgs_response)
     end
 
-    context 'when dmc_file_number_padding is enabled for the user' do
-      let(:debts) { [{ 'fileNumber' => '12345678', 'currentAR' => 123.45 }] }
-      let(:response) { instance_double(Faraday::Response, body: debts) }
-
+    context 'with a valid file number' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(true)
-        expect(service).to receive(:perform).with(
-          :post,
-          Settings.dmc.debts_endpoint,
-          { fileNumber: ' 12345678' },
-          nil,
-          { timeout: 30 }
-        ).and_return(response)
-      end
-
-      it 'pads the file number in the DMC request payload and returns the debts' do
-        expect(fetch_debts).to eq(debts)
-      end
-    end
-
-    context 'when dmc_file_number_padding is disabled for the user' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(false)
         expect(service).to receive(:perform).with(
           :post,
           Settings.dmc.debts_endpoint,
@@ -219,7 +198,7 @@ RSpec.describe DebtManagementCenter::DebtsService do
         ).and_return(response)
       end
 
-      it 'does not change the file number in the DMC request payload' do
+      it 'returns the debts' do
         expect(fetch_debts).to eq([])
       end
     end
@@ -229,7 +208,6 @@ RSpec.describe DebtManagementCenter::DebtsService do
       let(:ssn) { '' }
 
       before do
-        allow(Flipper).to receive(:enabled?).with(:dmc_file_number_padding, user).and_return(true)
         expect(service).to receive(:perform).with(
           :post,
           Settings.dmc.debts_endpoint,
@@ -239,7 +217,7 @@ RSpec.describe DebtManagementCenter::DebtsService do
         ).and_return(response)
       end
 
-      it 'does not pad the DMC request payload with spaces' do
+      it 'falls back to the SSN in the DMC request payload' do
         expect(fetch_debts).to eq([])
       end
     end

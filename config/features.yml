@@ -4025,10 +4025,6 @@ features:
   identity_passkey_enabled:
     actor_type: user
     description: Enables passkey functionality for selected users and phased rollout.
-  dmc_file_number_padding:
-    actor_type: user
-    description: Pads DMC file numbers shorter than nine characters with leading spaces
-    enable_in_development: true
   ct_vettec_v2:
     actor_type: user
     description: Enables vet tec 2.0 funcionality in Comparison Tool

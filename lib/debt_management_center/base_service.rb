@@ -36,13 +36,6 @@ module DebtManagementCenter
       @user.ssn
     end
 
-    def dmc_file_number
-      return @file_number if @file_number.blank?
-      return @file_number unless Flipper.enabled?(:dmc_file_number_padding, @user)
-
-      @file_number.to_s.rjust(9, ' ')
-    end
-
     def with_monitoring_and_error_handling(&)
       with_monitoring(2, &)
     rescue => e
