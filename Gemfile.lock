@@ -1229,7 +1229,7 @@ GEM
       addressable
       faraday (>= 1.9, < 3)
       nokogiri (>= 1.13.9)
-    waterdrop (2.10.2)
+    waterdrop (2.10.3)
       karafka-core (>= 2.5.12, < 3.0.0)
       karafka-rdkafka (>= 0.24.0)
       zeitwerk (~> 2.3)
