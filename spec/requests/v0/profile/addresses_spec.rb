@@ -176,6 +176,16 @@ RSpec.describe 'V0::Profile::Addresses', type: :request do
         end
       end
 
+      context 'when an address id is submitted that does not belong to the current user' do
+        it 'rejects the request without forwarding it to VAProfile', :aggregate_failures do
+          expect_any_instance_of(VAProfile::ContactInformation::V2::Service).not_to receive(:put_address)
+
+          put('/v0/profile/addresses', params: build(:va_profile_address, id: 999_999).to_json, headers:)
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
       context 'with a validation key' do
         let(:address) do
           build(:va_profile_address, :override, country_name: nil)
@@ -300,7 +310,7 @@ RSpec.describe 'V0::Profile::Addresses', type: :request do
           'created_at' => '2019-10-25T17:06:15.000Z',
           'effective_end_date' => nil,
           'effective_start_date' => '2020-02-10T17:40:15.000Z',
-          'id' => 138_225,
+          'id' => 124,
           'international_postal_code' => nil,
           'province' => nil,
           'source_system_user' => nil,

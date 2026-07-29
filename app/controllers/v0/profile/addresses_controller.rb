@@ -29,7 +29,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'address',
           address_params,
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('AddressesController#update request completed', sso_logging_info)
       end
@@ -38,7 +38,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'address',
           add_effective_end_date(address_params),
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('AddressesController#destroy request completed', sso_logging_info)
       end

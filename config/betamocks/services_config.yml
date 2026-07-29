@@ -1302,6 +1302,15 @@
     - :method: :get
       :path: "/contact-information-hub/contact-information/v2/*/*"
       :file_path: "vet360/contact_information_hub/default"
+    - :method: :put
+      :path: "/contact-information-hub/contact-information/v2/*/*/*"
+      :file_path: "vet360/contact_information_hub/transaction"
+    - :method: :post
+      :path: "/contact-information-hub/contact-information/v2/*/*/*"
+      :file_path: "vet360/contact_information_hub/transaction"
+    - :method: :get
+      :path: "/contact-information-hub/contact-information/v2/*/*/*"
+      :file_path: "vet360/contact_information_hub/transaction_status"
 
 # MHV Unified Health Data security service
 - :name: "MHV UHD Security"

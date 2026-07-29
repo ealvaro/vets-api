@@ -29,7 +29,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'telephone',
           telephone_params,
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('TelephonesController#update request completed', sso_logging_info)
       end
@@ -38,7 +38,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'telephone',
           add_effective_end_date(telephone_params),
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('TelephonesController#destroy request completed', sso_logging_info)
       end

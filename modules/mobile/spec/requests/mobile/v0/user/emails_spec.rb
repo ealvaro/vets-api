@@ -143,7 +143,7 @@ RSpec.describe 'Mobile::V0::User::Email', type: :request do
                            VCR::MATCH_EVERYTHING) do
             VCR.use_cassette('va_profile/v2/contact_information/delete_email_success', VCR::MATCH_EVERYTHING) do
               delete '/mobile/v0/user/emails',
-                     params: { id: nil, emailAddress: 'person42@example.com' }.to_json,
+                     params: { id: 318_927, emailAddress: 'person42@example.com' }.to_json,
                      headers: sis_headers(json: true)
             end
           end

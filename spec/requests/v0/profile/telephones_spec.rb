@@ -103,7 +103,7 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
   end
 
   describe 'PUT /v0/profile/telephones' do
-    let(:telephone) { build(:telephone, id: 42) }
+    let(:telephone) { build(:telephone, id: 790) }
 
     context 'with a 200 response' do
       it 'matches the telephone schema', :aggregate_failures do
@@ -133,6 +133,16 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
       end
     end
 
+    context 'when a telephone id is submitted that does not belong to the current user' do
+      it 'rejects the request without forwarding it to VAProfile', :aggregate_failures do
+        expect_any_instance_of(VAProfile::ContactInformation::V2::Service).not_to receive(:put_telephone)
+
+        put('/v0/profile/telephones', params: build(:telephone, id: 999_999).to_json, headers:)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
     context 'with a validation issue' do
       it 'matches the errors schema', :aggregate_failures do
         telephone.phone_number = ''
@@ -159,7 +169,7 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
       let(:time) { Time.zone.parse('2020-01-17T04:21:59.000Z') }
       let(:telephone) do
         build(:telephone,
-              id: 17_259,
+              id: 790,
               vet360_id: user.vet360_id,
               effective_end_date: Time.now.utc.iso8601,
               phone_number: '5551234')
@@ -205,7 +215,7 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
       Timecop.return
     end
 
-    let(:telephone) { build(:telephone, id: 42) }
+    let(:telephone) { build(:telephone, id: 790) }
 
     it 'calls update_telephone' do
       expect_any_instance_of(VAProfile::ContactInformation::V2::Service).to receive(:update_telephone)
@@ -227,7 +237,7 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
       Timecop.return
     end
 
-    let(:telephone) { build(:telephone, source_system_user: user.icn, id: 42) }
+    let(:telephone) { build(:telephone, source_system_user: user.icn, id: 790) }
 
     context 'when the method is DELETE' do
       it 'effective_end_date gets appended to the request body', :aggregate_failures do
@@ -264,7 +274,7 @@ RSpec.describe 'V0::Profile::Telephones', type: :request do
                 country_code: '44',
                 area_code: nil,
                 phone_number: '2045675000',
-                id: 42)
+                id: 790)
         end
 
         it 'effective_end_date gets appended to the request body', :aggregate_failures do

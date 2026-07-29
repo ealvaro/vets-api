@@ -29,7 +29,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'email',
           email_address_params,
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('EmailAddressesController#update request completed', sso_logging_info)
       end
@@ -38,7 +38,7 @@ module V0
         write_to_vet360_and_render_transaction!(
           'email',
           add_effective_end_date(email_address_params),
-          http_verb: 'put'
+          http_verb: 'update'
         )
         Rails.logger.info('EmailAddressesController#destroy request completed', sso_logging_info)
       end

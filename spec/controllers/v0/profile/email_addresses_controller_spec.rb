@@ -15,7 +15,7 @@ RSpec.describe V0::Profile::EmailAddressesController, type: :controller do
     {
       email_address: 'test@example.com',
       confirmation_date: '2023-01-01T00:00:00.000Z',
-      id: 123,
+      id: 318_927,
       transaction_id: 'b2fab2b5-6af0-45e1-a9e2-394347af9123'
     }
   end
@@ -238,7 +238,7 @@ RSpec.describe V0::Profile::EmailAddressesController, type: :controller do
             .with(
               'email',
               hash_including(effective_end_date: expected_time),
-              http_verb: 'put'
+              http_verb: 'update'
             )
 
           VCR.use_cassette('va_profile/v2/contact_information/delete_email_success') do
@@ -312,20 +312,20 @@ RSpec.describe V0::Profile::EmailAddressesController, type: :controller do
         end
       end
 
-      it 'uses PUT for update action' do
+      it 'uses synthetic UPDATE verb for update action' do
         expect_any_instance_of(V0::Profile::EmailAddressesController)
           .to receive(:write_to_vet360_and_render_transaction!)
-          .with('email', anything, http_verb: 'put')
+          .with('email', anything, http_verb: 'update')
 
         VCR.use_cassette('va_profile/v2/contact_information/put_email_success') do
           put :update, params: email_params_with_id
         end
       end
 
-      it 'uses PUT for destroy action' do
+      it 'uses synthetic UPDATE verb for destroy action' do
         expect_any_instance_of(V0::Profile::EmailAddressesController)
           .to receive(:write_to_vet360_and_render_transaction!)
-          .with('email', anything, http_verb: 'put')
+          .with('email', anything, http_verb: 'update')
 
         VCR.use_cassette('va_profile/v2/contact_information/delete_email_success') do
           delete :destroy, params: email_params_with_id

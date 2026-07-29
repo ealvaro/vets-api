@@ -232,7 +232,7 @@ RSpec.describe 'Mobile::V0::User::Address', type: :request do
           'created_at' => '2019-10-25T17:06:15.000Z',
           'effective_end_date' => nil,
           'effective_start_date' => '2020-02-10T17:40:15.000Z',
-          'id' => 138_225,
+          'id' => 124,
           'international_postal_code' => nil,
           'province' => nil,
           'source_system_user' => nil,

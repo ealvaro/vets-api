@@ -2058,7 +2058,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:put, '/v0/profile/email_addresses', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/put_email_success') do
-          email_address = build(:email, id: 42)
+          email_address = build(:email, id: 318_927)
 
           expect(subject).to validate(
             :put,
@@ -2073,7 +2073,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:delete, '/v0/profile/email_addresses', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/delete_email_success') do
-          email_address = build(:email, id: 42)
+          email_address = build(:email, id: 318_927)
 
           expect(subject).to validate(
             :delete,
@@ -2088,7 +2088,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:post, '/v0/profile/telephones/create_or_update', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/put_telephone_success') do
-          telephone = build(:telephone)
+          telephone = build(:telephone, id: 790)
           expect(subject).to validate(
             :post,
             '/v0/profile/telephones/create_or_update',
@@ -2117,7 +2117,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:put, '/v0/profile/telephones', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/put_telephone_success') do
-          telephone = build(:telephone, id: 42)
+          telephone = build(:telephone, id: 790)
 
           expect(subject).to validate(
             :put,
@@ -2132,7 +2132,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:delete, '/v0/profile/telephones', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/delete_telephone_success') do
-          telephone = build(:telephone, id: 42)
+          telephone = build(:telephone, id: 790)
 
           expect(subject).to validate(
             :delete,
@@ -2271,7 +2271,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       it 'supports va_profile create or update address api' do
         expect(subject).to validate(:post, '/v0/profile/addresses/create_or_update', 401)
         VCR.use_cassette('va_profile/v2/contact_information/put_address_success') do
-          address = build(:va_profile_address, id: 15_035)
+          address = build(:va_profile_address, id: 577_127)
 
           expect(subject).to validate(
             :post,
@@ -2301,7 +2301,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:put, '/v0/profile/addresses', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/put_address_success') do
-          address = build(:va_profile_address, id: 15_035)
+          address = build(:va_profile_address, id: 577_127)
 
           expect(subject).to validate(
             :put,
@@ -2316,7 +2316,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
         expect(subject).to validate(:delete, '/v0/profile/addresses', 401)
 
         VCR.use_cassette('va_profile/v2/contact_information/delete_address_success') do
-          address = build(:va_profile_address, id: 15_035)
+          address = build(:va_profile_address, id: 577_127)
 
           expect(subject).to validate(
             :delete,

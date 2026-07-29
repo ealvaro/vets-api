@@ -2,6 +2,7 @@
 
 require 'common/client/concerns/monitoring'
 require 'common/client/errors'
+require 'common/exceptions/forbidden'
 require 'va_profile/service'
 require 'va_profile/stats'
 require 'va_profile/person_settings/service'
@@ -280,7 +281,13 @@ module VAProfile
 
         def update_model(model, attr, method_name)
           contact_info = VAProfileRedis::V2::ContactInformation.for_user(@user)
-          model.id = contact_info.public_send(attr)&.id
+          own_id = contact_info.public_send(attr)&.id
+
+          if model.id.present? && model.id != own_id
+            raise Common::Exceptions::Forbidden.new(detail: 'The provided id does not belong to the current user')
+          end
+
+          model.id = own_id
           verb = model.id.present? ? 'put' : 'post'
 
           public_send("#{verb}_#{method_name}", model)

@@ -136,7 +136,7 @@ RSpec.describe 'V0::Profile::EmailAddresses', type: :request do
       it 'matches the email address schema', :aggregate_failures do
         VCR.use_cassette('va_profile/v2/contact_information/put_email_success') do
           put('/v0/profile/email_addresses',
-              params: { id: 42, email_address: 'person42@example.com' }.to_json, headers:)
+              params: { id: 318_927, email_address: 'person42@example.com' }.to_json, headers:)
 
           expect(response).to have_http_status(:ok)
           expect(response).to match_response_schema('va_profile/transaction_response')
@@ -146,7 +146,7 @@ RSpec.describe 'V0::Profile::EmailAddresses', type: :request do
       it 'matches the email address camel-inflected schema', :aggregate_failures do
         VCR.use_cassette('va_profile/v2/contact_information/put_email_success') do
           put('/v0/profile/email_addresses',
-              params: { id: 42, email_address: 'person42@example.com' }.to_json,
+              params: { id: 318_927, email_address: 'person42@example.com' }.to_json,
               headers: headers_with_camel)
 
           expect(response).to have_http_status(:ok)
@@ -158,7 +158,7 @@ RSpec.describe 'V0::Profile::EmailAddresses', type: :request do
         VCR.use_cassette('va_profile/v2/contact_information/put_email_success') do
           expect do
             put('/v0/profile/email_addresses',
-                params: { id: 42, email_address: 'person42@example.com' }.to_json, headers:)
+                params: { id: 318_927, email_address: 'person42@example.com' }.to_json, headers:)
           end.to change(AsyncTransaction::VAProfile::EmailTransaction, :count).from(0).to(1)
         end
       end
@@ -168,8 +168,19 @@ RSpec.describe 'V0::Profile::EmailAddresses', type: :request do
           expect_any_instance_of(Common::RedisStore).to receive(:destroy)
 
           put('/v0/profile/email_addresses',
-              params: { id: 42, email_address: 'person42@example.com' }.to_json, headers:)
+              params: { id: 318_927, email_address: 'person42@example.com' }.to_json, headers:)
         end
+      end
+    end
+
+    context 'when an email id is submitted that does not belong to the current user' do
+      it 'rejects the request without forwarding it to VAProfile', :aggregate_failures do
+        expect_any_instance_of(VAProfile::ContactInformation::V2::Service).not_to receive(:put_email)
+
+        put('/v0/profile/email_addresses',
+            params: { id: 999_999, email_address: 'person42@example.com' }.to_json, headers:)
+
+        expect(response).to have_http_status(:forbidden)
       end
     end
 
