@@ -18,11 +18,14 @@ module DecisionReviews
 
       def create
         req_body_obj = normalize_area_code_for_lighthouse_schema(request_body_hash)
+        update2026 = nod_form_update2026?(req_body_obj)
         nod_response_body = AppealSubmission.submit_nod(
           current_user: @current_user,
           request_body_hash: req_body_obj,
           decision_review_service:
         )
+
+        log_appeal_record_created(nod_response_body, update2026)
 
         render json: nod_response_body
       rescue => e
@@ -34,6 +37,35 @@ module DecisionReviews
       end
 
       private
+
+      # The 2026 form update (decision_review_nod_form_update_2026) removes the
+      # VHA-appeal question and adds the "request a decision as soon as
+      # possible" docket-switch waiver. The frontend submit transformer always
+      # includes the `requestDecisionAsap` key (even when false) for updated
+      # submissions and never for legacy ones, so key presence identifies the
+      # updated flow without an explicit payload flag.
+      def nod_form_update2026?(req_body_obj)
+        req_body_obj.dig('data', 'attributes')&.key?('requestDecisionAsap') || false
+      end
+
+      def log_appeal_record_created(nod_response_body, update2026)
+        submitted_appeal_uuid = nod_response_body.dig('data', 'id')
+        appeal_submission_id = AppealSubmission.find_by(submitted_appeal_uuid:)&.id
+        ::Rails.logger.info(
+          message: 'Notice of Disagreement Appeal Record Created',
+          form_id: '10182',
+          update2026:,
+          appeal_submission_id:,
+          lighthouse_submission: {
+            id: submitted_appeal_uuid
+          }
+        )
+      rescue => e
+        ::Rails.logger.error(
+          message: 'Failed to log Notice of Disagreement record creation',
+          error_class: e.class.name
+        )
+      end
 
       def error_class(method:, exception_class:)
         "#{self.class.name}##{method} exception #{exception_class} (NOD_V1)"

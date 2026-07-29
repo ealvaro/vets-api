@@ -111,6 +111,33 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements', type: :request do
                                  'valid_NOD_create_request.json').read
     end
 
+    let(:record_created_log_message) { 'Notice of Disagreement Appeal Record Created' }
+
+    def expect_record_created_log(update2026:)
+      logged_messages = []
+      allow(Rails.logger).to receive(:info) { |args| logged_messages << args }
+
+      subject
+
+      expect(response).to be_successful
+      parsed_response = JSON.parse(response.body)
+      id = parsed_response['data']['id']
+      appeal_submission = AppealSubmission.find_by(submitted_appeal_uuid: id)
+
+      record_created_log = logged_messages.find do |args|
+        args.is_a?(Hash) && args[:message] == record_created_log_message
+      end
+      expect(record_created_log).to eq(
+        message: record_created_log_message,
+        form_id: '10182',
+        update2026:,
+        appeal_submission_id: appeal_submission.id,
+        lighthouse_submission: {
+          id:
+        }
+      )
+    end
+
     context 'when valid data is submitted' do
       it 'creates an NOD and logs to StatsD and logger' do
         VCR.use_cassette('decision_review/NOD-CREATE-RESPONSE-200_V1') do
@@ -153,6 +180,46 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements', type: :request do
           # SavedClaim should be created with request data
           saved_claim = SavedClaim::NoticeOfDisagreement.find_by(guid: id)
           expect(JSON.parse(saved_claim.form)).to eq(test_request_body)
+        end
+      end
+
+      it 'logs the record created message with update2026 false for a legacy submission' do
+        VCR.use_cassette('decision_review/NOD-CREATE-RESPONSE-200_V1') do
+          expect_record_created_log(update2026: false)
+        end
+      end
+    end
+
+    context 'when a 2026 form update submission is made' do
+      let(:test_request_body) do
+        body = JSON.parse Rails.root.join('spec', 'fixtures', 'notice_of_disagreements',
+                                          'valid_NOD_create_request.json').read
+        # The 2026-updated frontend flow always includes `requestDecisionAsap`
+        # (even when false) and omits `appealingVhaDenial`
+        body['data']['attributes']['requestDecisionAsap'] = false
+        body
+      end
+
+      it 'logs the record created message with update2026 true and the submission ids' do
+        VCR.use_cassette('decision_review/NOD-CREATE-RESPONSE-200_V1') do
+          expect_record_created_log(update2026: true)
+        end
+      end
+    end
+
+    context 'when the record created log fails' do
+      it 'still returns a successful response' do
+        VCR.use_cassette('decision_review/NOD-CREATE-RESPONSE-200_V1') do
+          allow(AppealSubmission).to receive(:find_by).and_raise(StandardError, 'db hiccup')
+          allow(Rails.logger).to receive(:error)
+          expect(Rails.logger).to receive(:error).with(
+            message: 'Failed to log Notice of Disagreement record creation',
+            error_class: 'StandardError'
+          )
+
+          subject
+
+          expect(response).to be_successful
         end
       end
     end
