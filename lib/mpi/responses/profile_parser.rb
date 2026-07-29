@@ -49,6 +49,9 @@ module MPI
 
       PATIENT_RELATIONSHIP_XPATH = 'patientPerson/personalRelationship'
 
+      STATSD_KEY_PREFIX = 'api.mvi.caregiver'
+      CAREGIVER_PERSON_TYPES = %w[CG CGP CGS CGG].freeze
+
       def initialize(response)
         @transaction_id = response.response_headers['x-global-transaction-id']
         @original_body = locate_element(response.body, BODY_XPATH)
@@ -108,6 +111,7 @@ module MPI
         }
         mpi_attribute_validations(profile_identity_hash, profile_ids_hash)
         log_mpi_relationships(misc_hash[:relationships]) if misc_hash[:relationships].present?
+        log_mpi_caregiver_person_types(profile_identity_hash[:person_types], misc_hash[:relationships])
 
         MPI::Models::MviProfile.new(profile_identity_hash.merge(profile_ids_hash).merge(misc_hash))
       end
@@ -216,6 +220,32 @@ module MPI
       def log_mpi_relationships(relationships)
         Rails.logger.info('[MPI][Responses][ProfileParser] Relationships detected',
                           { person_types: relationships.map(&:person_types) })
+      end
+
+      # Emits DataDog StatsD counters scoped to caregiver identity types (CG, CGP, CGS, CGG).
+      # Fires only when the logged-in user's own MPI person_types include a caregiver type.
+      # Tracks:
+      #   - api.mvi.caregiver.person_type_present (tagged by type) — caregiver login count by identity type
+      #   - api.mvi.caregiver.relationship_type (tagged by rel type) — count of relationship role codes
+      #     present for caregivers with relationships
+      #   - api.mvi.caregiver.without_relationships — count of caregiver logins where MPI returned no relationship data
+      def log_mpi_caregiver_person_types(person_types, relationships)
+        caregiver_types = Array(person_types) & CAREGIVER_PERSON_TYPES
+        return if caregiver_types.empty?
+
+        if relationships.present?
+          relationships.flat_map(&:person_types).compact.uniq.each do |rel_type|
+            StatsD.increment("#{STATSD_KEY_PREFIX}.relationship_type",
+                             tags: ["relationship_type:#{rel_type}"])
+          end
+        else
+          StatsD.increment("#{STATSD_KEY_PREFIX}.without_relationships")
+        end
+
+        caregiver_types.each do |person_type|
+          StatsD.increment("#{STATSD_KEY_PREFIX}.person_type_present",
+                           tags: ["person_type:#{person_type}"])
+        end
       end
 
       def log_inactive_mhv_ids(mhv_ids, active_mhv_ids)

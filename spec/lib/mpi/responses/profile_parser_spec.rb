@@ -330,6 +330,107 @@ describe MPI::Responses::ProfileParser do
     end
   end
 
+  context 'given a valid response with caregiver person_types' do
+    let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_with_relationship_response.xml')) }
+
+    describe '#parse' do
+      context 'when the user has caregiver person_types and relationships are present' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[CG CGP])
+        end
+
+        it 'increments a StatsD counter for each caregiver person_type' do
+          expect(StatsD).to receive(:increment)
+            .with('api.mvi.caregiver.person_type_present', tags: ['person_type:CG'])
+          expect(StatsD).to receive(:increment)
+            .with('api.mvi.caregiver.person_type_present', tags: ['person_type:CGP'])
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          parser.parse
+        end
+
+        it 'increments a StatsD counter for each relationship type' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).to receive(:increment)
+            .with('api.mvi.caregiver.relationship_type', tags: ['relationship_type:DEL'])
+          parser.parse
+        end
+
+        it 'does not increment caregiver_without_relationships' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+      end
+
+      context 'when the user has caregiver person_types and no relationships' do
+        let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_response.xml')) }
+
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[CGP])
+        end
+
+        it 'increments caregiver_without_relationships' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+
+        it 'does not increment caregiver_relationship_type' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          parser.parse
+        end
+      end
+
+      context 'when the user has caregiver person_types and an empty relationships array' do
+        before do
+          allow(parser).to receive_messages(parse_person_type: %w[CGP], parse_relationships: [])
+        end
+
+        it 'increments caregiver_without_relationships' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+
+        it 'does not increment caregiver_relationship_type' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          parser.parse
+        end
+      end
+
+      context 'when the user has no caregiver person_types' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[VET DEP])
+        end
+
+        it 'does not increment any caregiver StatsD counters' do
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+      end
+
+      context 'when the user has nil person_types' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(nil)
+        end
+
+        it 'does not increment any caregiver StatsD counters' do
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+      end
+    end
+  end
+
   context 'with no subject element' do
     let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_no_subject_response.xml')) }
     let(:mpi_profile) { build(:mpi_profile_response, :missing_attrs) }
