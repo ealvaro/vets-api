@@ -2,13 +2,12 @@
 
 require 'rails_helper'
 
-describe MebApi::DGI::Letters::Configuration do
+describe MebApi::DGI::Forms::Configuration do
   subject(:config) { described_class.instance }
 
   let(:mock_enabled) { false }
 
   before do
-    # stub nested Settings without using receive_message_chain
     allow(Settings.dgi.vets).to receive_messages(
       url: 'https://example.com',
       mock: mock_enabled
@@ -20,16 +19,16 @@ describe MebApi::DGI::Letters::Configuration do
     config.instance_variable_set(:@conn, nil)
   end
 
+  it 'returns base_path' do
+    expect(config.base_path).to eq('https://example.com')
+  end
+
+  it 'returns service_name' do
+    expect(config.service_name).to eq('DGI')
+  end
+
   context 'when mock is disabled' do
     let(:mock_enabled) { false }
-
-    it 'returns base_path' do
-      expect(config.base_path).to eq('https://example.com')
-    end
-
-    it 'returns service_name' do
-      expect(config.service_name).to eq('DGI/Letters')
-    end
 
     it 'indicates mock is disabled' do
       expect(config).not_to be_mock_enabled
@@ -51,7 +50,7 @@ describe MebApi::DGI::Letters::Configuration do
 
   describe 'error handling middleware' do
     let(:error_response_body) do
-      { code: '_VAD_503', detail: 'VADIR service unavailable', source: 'DGI' }.to_json
+      { code: '_EXT_503', detail: 'External service unavailable', source: 'DGI' }.to_json
     end
     let(:breakers_service) do
       instance_double(Breakers::Service, latest_outage: nil, add_success: nil, add_error: nil,
@@ -77,14 +76,14 @@ describe MebApi::DGI::Letters::Configuration do
         allow(Flipper).to receive(:enabled?).with(:dgi_meb_rudisill_flow_partition).and_return(true)
       end
 
-      it 'uses raise_custom_error middleware with DGI prefix' do
+      it 'uses raise_custom_error middleware with DGI prefix inherited from parent' do
         connection = config.connection
-        stub_request(:get, 'https://example.com/test')
+        stub_request(:post, 'https://example.com/forms/submit')
           .to_return(status: 503, body: error_response_body, headers: { 'Content-Type' => 'application/json' })
 
-        expect { connection.get('/test') }
+        expect { connection.post('/forms/submit') }
           .to raise_error(Common::Exceptions::BackendServiceException) { |e|
-            expect(e.errors.first[:code]).to eq('DGI_VAD_503')
+            expect(e.errors.first[:code]).to eq('DGI_EXT_503')
             expect(e.status_code).to eq(503)
           }
       end
@@ -95,12 +94,12 @@ describe MebApi::DGI::Letters::Configuration do
         allow(Flipper).to receive(:enabled?).with(:dgi_meb_rudisill_flow_partition).and_return(false)
       end
 
-      it 'uses standard Faraday::Response::RaiseError' do
+      it 'uses standard Faraday::Response::RaiseError inherited from parent' do
         connection = config.connection
-        stub_request(:get, 'https://example.com/test')
+        stub_request(:post, 'https://example.com/forms/submit')
           .to_return(status: 503, body: error_response_body, headers: { 'Content-Type' => 'application/json' })
 
-        expect { connection.get('/test') }.to raise_error(Faraday::ServerError)
+        expect { connection.post('/forms/submit') }.to raise_error(Faraday::ServerError)
       end
     end
   end

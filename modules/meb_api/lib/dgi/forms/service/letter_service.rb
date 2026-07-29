@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'common/client/base'
-require 'dgi/forms/configuration/letter_configuration'
+require 'dgi/letters/configuration'
 require 'dgi/service'
 require 'authentication_token_service'
 

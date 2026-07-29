@@ -233,6 +233,18 @@ en:
         detail: "An outage has been reported on the %{service} since %{since}"
         code: 503
         status: 503
+      DGI_VAD_503:
+        <<: *defaults
+        title: VADIR service unavailable
+        detail: ~
+        code: DGI_VAD_503
+        status: 503
+      DGI_EXT_503:
+        <<: *defaults
+        title: External service unavailable
+        detail: ~
+        code: DGI_EXT_503
+        status: 503
       gateway_timeout: &gateway_timeout
         <<: *defaults
         title: Gateway timeout

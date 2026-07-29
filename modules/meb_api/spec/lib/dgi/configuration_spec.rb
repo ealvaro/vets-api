@@ -2,17 +2,11 @@
 
 require 'rails_helper'
 
-describe MebApi::DGI::Letters::Configuration do
+describe MebApi::DGI::Configuration do
   subject(:config) { described_class.instance }
 
-  let(:mock_enabled) { false }
-
   before do
-    # stub nested Settings without using receive_message_chain
-    allow(Settings.dgi.vets).to receive_messages(
-      url: 'https://example.com',
-      mock: mock_enabled
-    )
+    allow(Settings.dgi.vets).to receive(:url).and_return('https://example.com')
   end
 
   after do
@@ -20,28 +14,16 @@ describe MebApi::DGI::Letters::Configuration do
     config.instance_variable_set(:@conn, nil)
   end
 
-  context 'when mock is disabled' do
-    let(:mock_enabled) { false }
-
-    it 'returns base_path' do
-      expect(config.base_path).to eq('https://example.com')
-    end
-
-    it 'returns service_name' do
-      expect(config.service_name).to eq('DGI/Letters')
-    end
-
-    it 'indicates mock is disabled' do
-      expect(config).not_to be_mock_enabled
-    end
+  it 'returns base_path' do
+    expect(config.base_path).to eq('https://example.com')
   end
 
-  context 'when mock is enabled' do
-    let(:mock_enabled) { true }
+  it 'returns service_name' do
+    expect(config.service_name).to eq('DGI')
+  end
 
-    it 'indicates mock is enabled' do
-      expect(config).to be_mock_enabled
-    end
+  it 'indicates mock is disabled by default' do
+    expect(config).not_to be_mock_enabled
   end
 
   it 'memoizes the Faraday connection' do
@@ -51,7 +33,7 @@ describe MebApi::DGI::Letters::Configuration do
 
   describe 'error handling middleware' do
     let(:error_response_body) do
-      { code: '_VAD_503', detail: 'VADIR service unavailable', source: 'DGI' }.to_json
+      { code: '_EXT_503', detail: 'External service unavailable', source: 'DGI' }.to_json
     end
     let(:breakers_service) do
       instance_double(Breakers::Service, latest_outage: nil, add_success: nil, add_error: nil,
@@ -84,8 +66,20 @@ describe MebApi::DGI::Letters::Configuration do
 
         expect { connection.get('/test') }
           .to raise_error(Common::Exceptions::BackendServiceException) { |e|
-            expect(e.errors.first[:code]).to eq('DGI_VAD_503')
+            expect(e.errors.first[:code]).to eq('DGI_EXT_503')
             expect(e.status_code).to eq(503)
+          }
+      end
+
+      it 'handles 503 errors with custom DGI error codes' do
+        connection = config.connection
+        stub_request(:post, 'https://example.com/api/endpoint')
+          .to_return(status: 503, body: error_response_body, headers: { 'Content-Type' => 'application/json' })
+
+        expect { connection.post('/api/endpoint') }
+          .to raise_error(Common::Exceptions::BackendServiceException) { |e|
+            expect(e.errors.first[:code]).to eq('DGI_EXT_503')
+            expect(e.errors.first[:detail]).to eq('External service unavailable')
           }
       end
     end
