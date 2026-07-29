@@ -135,10 +135,34 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
       expect(result.first.status).to eq('claimReceived')
     end
 
-    it 'maps eligibility denial statuses to complete' do
+    it 'returns complete when all applicants have eligibility resolved' do
+      transaction_uuid = SecureRandom.uuid
+      submission = create(
+        :ivc_champva_form,
+        form_uuid: SecureRandom.uuid,
+        form_number: '10-10D',
+        transaction_uuid:
+      )
+      create(:ivc_champva_applicant, transaction_uuid:, eligibility_resolved: true)
+
+      dataset = double(
+        'Dataset',
+        submissions?: true,
+        submissions: [submission],
+        intake_statuses?: false,
+        intake_statuses: nil
+      )
+
+      result = formatter.format_data(dataset)
+
+      expect(result.first.status).to eq('complete')
+    end
+
+    it 'does not return complete based on PEGA status alone' do
       [
         'eligiblity denied/additional information needed',
-        'eligibility denied/additional information needed'
+        'eligibility denied/additional information needed',
+        'Eligible - issued a card'
       ].each do |status|
         submission = create(
           :ivc_champva_form,
@@ -154,30 +178,9 @@ describe Forms::SubmissionStatuses::Formatters::IvcChampvaFormatter,
           intake_statuses: nil
         )
         result = formatter.format_data(dataset)
-        expect(result.first.status).to eq('complete'),
-                                       "expected '#{status}' to map to complete"
+        expect(result.first.status).not_to eq('complete'),
+                                           "expected '#{status}' not to map to complete via PEGA status alone"
       end
-    end
-
-    it 'maps PEGA terminal determination statuses to complete' do
-      submission = create(
-        :ivc_champva_form,
-        form_uuid: SecureRandom.uuid,
-        form_number: '10-10D',
-        pega_status: 'Eligible - issued a card'
-      )
-
-      dataset = double(
-        'Dataset',
-        submissions?: true,
-        submissions: [submission],
-        intake_statuses?: false,
-        intake_statuses: nil
-      )
-
-      result = formatter.format_data(dataset)
-
-      expect(result.first.status).to eq('complete')
     end
 
     it 'uses PEGA status precedence over VES and S3 statuses' do

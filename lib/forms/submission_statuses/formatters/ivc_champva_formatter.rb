@@ -24,19 +24,6 @@ module Forms
           # PEGA statuses requiring applicant action — non-terminal, maps to claimReceived
           'additional documentation requested' => 'claimReceived',
 
-          # PEGA eligibility denial statuses — terminal, maps to complete
-          # Both misspelled (current Pega API) and correctly-spelled (future-proof) variants included
-          'eligiblity denied/additional information needed' => 'complete',
-          'eligibility denied/additional information needed' => 'complete',
-
-          # PEGA terminal/determination statuses
-          'eligible - issued a card' => 'complete',
-          'duplicate application' => 'complete',
-          'eligible - reissued a card' => 'complete',
-          'processed - eligiblity determination unknown' => 'complete',
-          'processed - eligibility determination unknown' => 'complete',
-          'document identification error' => 'complete',
-
           # VES statuses
           'ok' => 'pending',
           'internal_server_error' => 'error',
@@ -84,6 +71,8 @@ module Forms
         end
 
         def normalize_status(submission)
+          return 'complete' if IvcChampvaApplicant.all_resolved_for?(submission.transaction_uuid)
+
           {
             pega_status: submission.pega_status,
             ves_status: submission.ves_status,

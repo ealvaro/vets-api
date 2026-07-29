@@ -35,16 +35,6 @@ module BenefitsClaims
           # Applicant action required — non-terminal; applicant may respond and receive a follow-up status
           'additional documentation requested'
         ].freeze
-        COMPLETE_STATUSES = [
-          'eligiblity denied/additional information needed',  # misspelled — current Pega API
-          'eligibility denied/additional information needed', # correctly-spelled — future-proof
-          'eligible - issued a card',
-          'duplicate application',
-          'eligible - reissued a card',
-          'processed - eligiblity determination unknown',
-          'processed - eligibility determination unknown',
-          'document identification error'
-        ].freeze
         INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d_supporting_doc-\d+\.pdf\z/i
 
         def self.build_claim_response(records, user = nil)
@@ -85,13 +75,18 @@ module BenefitsClaims
 
         def self.status_for(records)
           representative = pick_representative(records)
+          return 'complete' if IvcChampvaApplicant.all_resolved_for?(representative&.transaction_uuid)
+
           normalize_status(representative&.pega_status, form_uuid: representative&.form_uuid)
         end
 
+        # Returns true when VES has been queried (at least one applicant exists) and every
+        # applicant for the given transaction UUID has received an eligibility determination.
         def self.close_date_for(record)
+          return format_date(record.updated_at) if IvcChampvaApplicant.all_resolved_for?(record&.transaction_uuid)
+
           normalized = record&.pega_status.to_s.downcase.strip
-          terminal = PROCESSED_STATUSES.include?(normalized) || COMPLETE_STATUSES.include?(normalized)
-          return nil unless normalized.present? && terminal
+          return nil unless normalized.present? && PROCESSED_STATUSES.include?(normalized)
 
           format_date(record.updated_at)
         end
@@ -133,7 +128,6 @@ module BenefitsClaims
           return 'pending' if normalized.blank?
           return 'vbms' if PROCESSED_STATUSES.include?(normalized)
           return 'claimReceived' if CLAIM_RECEIVED_STATUSES.include?(normalized)
-          return 'complete' if COMPLETE_STATUSES.include?(normalized)
 
           Rails.logger.warn(
             '[BenefitsClaims::Providers::IvcChampva::ClaimBuilder] Unrecognized pega_status received',

@@ -197,12 +197,30 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
     end
   end
 
-  describe '#close_date_for complete statuses' do
+  describe '#close_date_for' do
     let(:claim_id) { SecureRandom.uuid }
 
-    it 'returns a close_date for a COMPLETE_STATUSES pega_status' do
+    it 'returns a close_date when all applicants have eligibility resolved' do
+      record = create(:ivc_champva_form, form_uuid: claim_id, transaction_uuid: SecureRandom.uuid,
+                                         email: 'primary@example.com', pega_status: nil, created_at: 1.day.ago)
+      create(:ivc_champva_applicant, transaction_uuid: record.transaction_uuid, eligibility_resolved: true)
+
+      result = provider.get_claim(claim_id)
+      expect(result.dig('data', 'attributes', 'closeDate')).to eq(record.updated_at.to_date.iso8601)
+    end
+
+    it 'returns nil when applicants are not yet resolved' do
+      record = create(:ivc_champva_form, form_uuid: claim_id, transaction_uuid: SecureRandom.uuid,
+                                         email: 'primary@example.com', pega_status: nil, created_at: 1.day.ago)
+      create(:ivc_champva_applicant, transaction_uuid: record.transaction_uuid, eligibility_resolved: false)
+
+      result = provider.get_claim(claim_id)
+      expect(result.dig('data', 'attributes', 'closeDate')).to be_nil
+    end
+
+    it 'returns a close_date for processed pega_status when no applicants exist' do
       record = create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                         pega_status: 'Eligible - Issued a Card', created_at: 1.day.ago)
+                                         pega_status: 'Processed', created_at: 1.day.ago)
       result = provider.get_claim(claim_id)
       expect(result.dig('data', 'attributes', 'closeDate')).to eq(record.updated_at.to_date.iso8601)
     end

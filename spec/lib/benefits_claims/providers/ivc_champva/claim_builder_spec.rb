@@ -39,17 +39,14 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       expect(described_class.normalize_status('additional documentation requested')).to eq('claimReceived')
     end
 
-    it 'maps eligibility denial statuses to complete' do
+    it 'treats former Pega eligibility denial statuses as unrecognized (error) now that complete is applicant-driven' do
       [
         'eligiblity denied/additional information needed',
-        'eligibility denied/additional information needed'
+        'eligibility denied/additional information needed',
+        'Eligible - issued a card'
       ].each do |status|
-        expect(described_class.normalize_status(status)).to eq('complete')
+        expect(described_class.normalize_status(status)).to eq('error')
       end
-    end
-
-    it 'maps complete statuses to complete' do
-      expect(described_class.normalize_status('Eligible - issued a card')).to eq('complete')
     end
 
     it 'returns pending for blank status' do
@@ -59,6 +56,31 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
 
     it 'returns error for unrecognized statuses' do
       expect(described_class.normalize_status('Some Unknown Status')).to eq('error')
+    end
+  end
+
+  describe 'IvcChampvaApplicant.all_resolved_for?' do
+    let(:transaction_uuid) { SecureRandom.uuid }
+
+    it 'returns true when all applicants have eligibility_resolved = true' do
+      create(:ivc_champva_applicant, transaction_uuid:, eligibility_resolved: true)
+      create(:ivc_champva_applicant, transaction_uuid:, eligibility_resolved: true)
+      expect(IvcChampvaApplicant.all_resolved_for?(transaction_uuid)).to be(true)
+    end
+
+    it 'returns false when any applicant has eligibility_resolved = false' do
+      create(:ivc_champva_applicant, transaction_uuid:, eligibility_resolved: true)
+      create(:ivc_champva_applicant, transaction_uuid:, eligibility_resolved: false)
+      expect(IvcChampvaApplicant.all_resolved_for?(transaction_uuid)).to be(false)
+    end
+
+    it 'returns false when no applicants exist for the transaction' do
+      expect(IvcChampvaApplicant.all_resolved_for?(transaction_uuid)).to be(false)
+    end
+
+    it 'returns false when transaction_uuid is blank' do
+      expect(IvcChampvaApplicant.all_resolved_for?(nil)).to be(false)
+      expect(IvcChampvaApplicant.all_resolved_for?('')).to be(false)
     end
   end
 
