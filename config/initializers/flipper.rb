@@ -11,7 +11,8 @@ require 'flipper/instrumentation/event_subscriber'
 FLIPPER_FEATURE_CONFIG = YAML.safe_load(Rails.root.join('config', 'features.yml').read)
 
 Rails.application.configure do
-  config.flipper.test_help = false
+  # Limit test_help behavior to test only.
+  config.flipper.test_help = Rails.env.test?
   config.flipper.log = false
   config.middleware.insert_before ActionDispatch::Executor, Flipper::UI::ActorsValueNormalizer
 end
@@ -23,17 +24,19 @@ Rails.application.reloader.to_prepare do
   # Modify Flipper::UI::Action to use our custom views
   Flipper::UI::Action.prepend(Flipper::UI::ActionPatch)
 
-  Flipper.configure do |config|
-    config.default do
-      activerecord_adapter = Flipper::Adapters::ActiveRecord.new
-      cache = Rails.cache
-      expires_in = 1.minute
+  unless Rails.env.test?
+    Flipper.configure do |config|
+      config.default do
+        activerecord_adapter = Flipper::Adapters::ActiveRecord.new
+        cache = Rails.cache
+        expires_in = 1.minute
 
-      # Flipper settings will be stored in postgres and cached in memory for 1 minute in production/staging
-      cached_adapter = Flipper::Adapters::ActiveSupportCacheStore.new(activerecord_adapter, cache, expires_in)
-      instrumented = Flipper::Adapters::Instrumented.new(cached_adapter, instrumenter: ActiveSupport::Notifications)
+        # Flipper settings will be stored in postgres and cached in memory for 1 minute in production/staging
+        cached_adapter = Flipper::Adapters::ActiveSupportCacheStore.new(activerecord_adapter, cache, expires_in)
+        instrumented = Flipper::Adapters::Instrumented.new(cached_adapter, instrumenter: ActiveSupport::Notifications)
 
-      Flipper.new(instrumented, instrumenter: ActiveSupport::Notifications)
+        Flipper.new(instrumented, instrumenter: ActiveSupport::Notifications)
+      end
     end
   end
 
@@ -50,6 +53,9 @@ Rails.application.reloader.to_prepare do
   end
 
   Rails.application.config.after_initialize do
+    # In test, Flipper::TestHelp manages adapter setup and per-example resets.
+    next if Rails.env.test?
+
     # Skip feature initialization if using rake task setup (FLIPPER_USE_RAKE_SETUP=true)
     # When enabled, features are initialized via `rake features:setup` instead of during app boot
     if ActiveModel::Type::Boolean.new.cast(ENV.fetch('FLIPPER_USE_RAKE_SETUP', nil))
@@ -84,6 +90,20 @@ Rails.application.reloader.to_prepare do
       Rails.logger.error "Error processing Flipper features: #{e.message}"
       # make sure we can still run rake tasks before table has been created
       nil
+    end
+  end
+
+  if Rails.env.test? && defined?(RSpec)
+    feature_keys = FLIPPER_FEATURE_CONFIG.fetch('features', {}).keys.freeze
+
+    RSpec.configure do |config|
+      config.append_before(:each) do
+        # TestHelp resets Flipper state before each example, so re-enable configured
+        # features to preserve legacy default-on expectations in specs.
+        feature_keys.each do |feature|
+          Flipper.enable(feature)
+        end
+      end
     end
   end
 end

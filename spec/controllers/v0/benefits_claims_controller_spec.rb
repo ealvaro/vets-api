@@ -40,7 +40,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     # Allow Flipper calls to work normally, but stub our specific flag
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?)
-      .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, user)
+      .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, instance_of(User))
       .and_return(true)
     allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_website).and_return(true)

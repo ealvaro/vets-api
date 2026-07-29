@@ -44,15 +44,21 @@ class FeatureTogglesService
       FLIPPER_FEATURE_CONFIG['features']
         .map { |name, config| { name:, enabled: false, actor_type: config['actor_type'] } }
         .tap do |features|
-          # Update enabled to true if globally enabled
-          feature_gates.each do |row|
-            feature = features.find { |f| f[:name] == row['feature_name'] }
-            next unless feature # Ignore features not in config/features.yml
-
-            feature[:gate_key] = row['gate_key'] # Add gate_key for use in add_feature_gate_values
-            feature[:enabled] = true if row['gate_key'] == 'boolean' && row['value'] == 'true'
-          end
+          apply_gate_rows(features)
         end
+    end
+  end
+
+  def apply_gate_rows(features)
+    rows = feature_gates
+    rows = flipper_gate_rows if Rails.env.test? && rows.empty?
+
+    rows.each do |row|
+      feature = features.find { |f| f[:name] == row['feature_name'] }
+      next unless feature # Ignore features not in config/features.yml
+
+      feature[:gate_key] = row['gate_key'] # Add gate_key for use in add_feature_gate_values
+      feature[:enabled] = true if row['gate_key'] == 'boolean' && row['value'] == 'true'
     end
   end
 
@@ -110,5 +116,50 @@ class FeatureTogglesService
       FROM flipper_features
       LEFT JOIN flipper_gates ON flipper_features.key = flipper_gates.feature_key
     SQL
+  end
+
+  # Fallback for adapters without SQL-backed flipper_features/flipper_gates rows
+  # (e.g., Flipper::Adapters::Memory in test-help mode).
+  def flipper_gate_rows
+    FLIPPER_FEATURE_CONFIG.fetch('features', {}).keys.flat_map do |feature_name|
+      flipper_rows_for_feature(feature_name)
+    end
+  end
+
+  def flipper_rows_for_feature(feature_name)
+    feature = Flipper[feature_name]
+    rows = []
+    add_boolean_row(rows, feature_name, feature)
+    add_actor_row(rows, feature_name, feature)
+    add_percentage_row(rows, feature_name, 'percentage_of_actors', feature.percentage_of_actors_value)
+    add_percentage_row(rows, feature_name, 'percentage_of_time', feature.percentage_of_time_value)
+    rows
+  end
+
+  def add_boolean_row(rows, feature_name, feature)
+    return unless feature.enabled?
+
+    rows << { 'feature_name' => feature_name, 'gate_key' => 'boolean', 'value' => 'true' }
+  end
+
+  def add_actor_row(rows, feature_name, feature)
+    return if feature.actors_value.blank?
+
+    rows << {
+      'feature_name' => feature_name,
+      'gate_key' => 'actors',
+      'value' => feature.actors_value
+    }
+  end
+
+  def add_percentage_row(rows, feature_name, gate_key, raw_value)
+    value = raw_value.to_i
+    return unless value.positive?
+
+    rows << {
+      'feature_name' => feature_name,
+      'gate_key' => gate_key,
+      'value' => value.to_s
+    }
   end
 end

@@ -3,6 +3,8 @@
 require 'rails_helper'
 require_relative '../../../modules/claims_api/spec/support/fake_vbms'
 require 'claims_api/vbms_uploader'
+require Rails.root.join('modules', 'claims_evidence_api', 'lib', 'claims_evidence_api', 'service', 'search').to_s
+require Rails.root.join('modules', 'claims_evidence_api', 'lib', 'claims_evidence_api', 'uploader').to_s
 
 RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
   let(:user_object) { create(:evss_user, :loa3) }

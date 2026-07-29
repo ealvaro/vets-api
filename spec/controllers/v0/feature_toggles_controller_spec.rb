@@ -3,14 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe V0::FeatureTogglesController, type: :controller do
-  before(:all) do
+  before do
     @feature_name = 'this_is_only_a_test'
     @feature_name_camel = @feature_name.camelize(:lower)
-    @cached_enabled_val = Flipper.enabled?(@feature_name)
     Flipper.enable(@feature_name) # rubocop:disable Project/ForbidFlipperToggleInSpecs
   end
 
-  after(:all) do
+  after do
     Flipper.disable(@feature_name) # rubocop:disable Project/ForbidFlipperToggleInSpecs
   end
 

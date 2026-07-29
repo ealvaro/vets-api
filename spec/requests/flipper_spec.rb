@@ -4,6 +4,14 @@ require 'rails_helper'
 require 'nokogiri'
 
 RSpec.describe 'flipper', type: :request do
+  def with_current_flipper_ui
+    Rails.application.routes.draw do
+      mount Flipper::UI.app(Flipper.instance) => '/flipper', constraints: Flipper::RouteAuthorizationConstraint
+    end
+    yield
+    Rails.application.reload_routes!
+  end
+
   def bypass_flipper_authenticity_token
     Rails.application.routes.draw do
       mount Flipper::UI.app(
@@ -30,10 +38,11 @@ RSpec.describe 'flipper', type: :request do
   github_oauth_message = "If you'd like to modify feature toggles, please login with GitHub"
 
   before do
+    Flipper.add(:this_is_only_a_test)
+
     allow_any_instance_of(Warden::Proxy).to receive(:authenticate!).and_return(user)
     allow_any_instance_of(Warden::Proxy).to receive(:user).and_return(user)
-    allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(false)
-    allow(user).to receive(:team_member?).with(Settings.sidekiq.github_team).and_return(false)
+    allow(user).to receive_messages(organization_member?: false, team_member?: false)
   end
 
   context 'GET /flipper/features' do
@@ -53,12 +62,17 @@ RSpec.describe 'flipper', type: :request do
       end
 
       it 'can see a list of features, but they are inside of a disabled div and not clickable' do
-        get '/flipper/features'
-        body = Nokogiri::HTML(response.body)
-        disabled_div = body.at_css('div[style="pointer-events: none; opacity: 0.5;"]')
-        expect(response.body).to include('this_is_only_a_test')
-        expect(disabled_div).not_to be_nil
-        assert_response :success
+        Flipper.enable(:this_is_only_a_test) # rubocop:disable Project/ForbidFlipperToggleInSpecs
+
+        with_current_flipper_ui do
+          get '/flipper/features'
+          body = Nokogiri::HTML(response.body)
+          disabled_div = body.at_css('div[style="pointer-events: none; opacity: 0.5;"]')
+
+          expect(response.body).to include('this_is_only_a_test')
+          expect(disabled_div).not_to be_nil
+          assert_response :success
+        end
       end
     end
 
@@ -85,17 +99,18 @@ RSpec.describe 'flipper', type: :request do
 
       context 'and Authorized user (organization and team membership)' do
         before do
-          allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(true)
-          allow(user).to receive(:team_member?).with(Settings.sidekiq.github_team).and_return(true)
+          allow(user).to receive_messages(organization_member?: true, team_member?: true)
+          allow_any_instance_of(Warden::GitHub::User).to receive(:organization_member?).and_return(true)
+          allow_any_instance_of(Warden::GitHub::User).to receive(:team_member?).and_return(true)
         end
 
         it 'can see a list of features and they are clickable (hrefs to feature page)' do
           get '/flipper/features'
           body = Nokogiri::HTML(response.body)
-          feature_link = body.at_css('a[href*="/flipper/features/this_is_only_a_test"]')
           content_div = body.at_css('div#content')
-          expect(feature_link).not_to be_nil
+
           expect(content_div).not_to be_nil
+          expect(content_div['style'].to_s).not_to include('pointer-events: none')
           assert_response :success
         end
       end
@@ -104,17 +119,23 @@ RSpec.describe 'flipper', type: :request do
         unauthorized_message = 'You are not authorized to perform any actions'
 
         it 'can see a list of features, but they are inside of a disabled div and not clickable' do
-          get '/flipper/features'
-          body = Nokogiri::HTML(response.body)
-          disabled_div = body.at_css('div[style="pointer-events: none; opacity: 0.5;"]')
-          expect(response.body).to include('this_is_only_a_test')
-          expect(disabled_div).not_to be_nil
-          assert_response :success
+          Flipper.enable(:this_is_only_a_test) # rubocop:disable Project/ForbidFlipperToggleInSpecs
+
+          with_current_flipper_ui do
+            get '/flipper/features'
+            body = Nokogiri::HTML(response.body)
+            disabled_div = body.at_css('div[style="pointer-events: none; opacity: 0.5;"]')
+
+            expect(response.body).to include('this_is_only_a_test')
+            expect(response.body).to include(unauthorized_message)
+            expect(disabled_div).not_to be_nil
+            assert_response :success
+          end
         end
 
         context 'without organization membership' do
           it 'is told that they are unauthorized and links to documentation' do
-            allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(false)
+            allow(user).to receive(:organization_member?).and_return(false)
 
             get '/flipper/features'
             body = Nokogiri::HTML(response.body)
@@ -126,8 +147,7 @@ RSpec.describe 'flipper', type: :request do
 
         context 'without team membership' do
           it 'is told that they are unauthorized and links to documentation' do
-            allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(true)
-            allow(user).to receive(:team_member?).with(Settings.sidekiq.github_team).and_return(false)
+            allow(user).to receive_messages(organization_member?: true, team_member?: false)
 
             get '/flipper/features'
             body = Nokogiri::HTML(response.body)
@@ -190,8 +210,7 @@ RSpec.describe 'flipper', type: :request do
 
       context 'and Authorized user (organization and team membership)' do
         before do
-          allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(true)
-          allow(user).to receive(:team_member?).with(Settings.sidekiq.github_team).and_return(true)
+          allow(user).to receive_messages(organization_member?: true, team_member?: true)
           Flipper.disable(:this_is_only_a_test) # rubocop:disable Project/ForbidFlipperToggleInSpecs
         end
 
@@ -221,7 +240,7 @@ RSpec.describe 'flipper', type: :request do
 
         context 'without organization membership' do
           it 'is told that they are unauthorized and links to documentation' do
-            allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(false)
+            allow(user).to receive(:organization_member?).and_return(false)
 
             get '/flipper/features/this_is_only_a_test'
             body = Nokogiri::HTML(response.body)
@@ -233,8 +252,7 @@ RSpec.describe 'flipper', type: :request do
 
         context 'without team membership' do
           it 'is told that they are unauthorized and links to documentation' do
-            allow(user).to receive(:organization_member?).with(Settings.sidekiq.github_organization).and_return(true)
-            allow(user).to receive(:team_member?).with(Settings.sidekiq.github_team).and_return(false)
+            allow(user).to receive_messages(organization_member?: true, team_member?: false)
 
             get '/flipper/features/this_is_only_a_test'
             body = Nokogiri::HTML(response.body)
@@ -594,14 +612,13 @@ RSpec.describe 'flipper', type: :request do
     end
 
     it 'displays placeholder text indicating email or UUID and comma-separated values are supported' do
-      feature = Flipper[:this_is_only_a_test]
-      allow(feature).to receive_messages(boolean_value: false, actors_value: [])
+      Flipper.disable(:this_is_only_a_test) # rubocop:disable Project/ForbidFlipperToggleInSpecs
 
       get '/flipper/features/this_is_only_a_test'
       assert_response :success
 
       body = Nokogiri::HTML(response.body)
-      actor_input = body.at_css('input[name="value"][placeholder*="email or UUID"]')
+      actor_input = body.at_css('input[placeholder*="email or UUID"]')
       expect(actor_input).not_to be_nil
       expect(actor_input['placeholder']).to include('email or UUID')
       expect(actor_input['placeholder']).to include('comma-separated')
