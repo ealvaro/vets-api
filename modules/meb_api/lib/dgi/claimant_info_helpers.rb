@@ -25,10 +25,13 @@ module ClaimantInfoHelpers
 
     benefit_type = data['benefit_or_source_type']
 
+    # Sum ch33_days_used and vettec_days_used to get total days used
+    total_days_used = (data['ch33_days_used'] || 0) + (data['vettec_days_used'] || 0)
+
     result = {
       benefit_type:,
       amount_received: convert_to_months_and_days(data['ch33_original_entitled_days']),
-      amount_used: convert_to_months_and_days(data['ch33_days_used']),
+      amount_used: convert_to_months_and_days(total_days_used),
       amount_left: convert_to_months_and_days(data['ch33_days_remaining']),
       eligibility_percentage: data['percentage_benefit'],
       benefit_end_date: data['delimiting_date']
@@ -54,7 +57,7 @@ module ClaimantInfoHelpers
         amount_received: convert_to_months_and_days(entitlement['orig_entitled_days']),
         amount_used: convert_to_months_and_days(entitlement['days_used']),
         amount_left: convert_to_months_and_days(entitlement['days_remaining']),
-        benefit_end_date: benefit.dig('eligibility_result', 'delimiting_date')
+        benefit_end_date: benefit.dig('eligibility_result', 'eligibility_period', 'delimiting_date')
       }
     end
   end

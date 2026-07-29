@@ -137,7 +137,7 @@ describe AutomationSerializer, type: :serializer do
           'amount_received' => { 'months' => 36, 'days' => 0 },
           'amount_used' => { 'months' => 5, 'days' => 8 },
           'amount_left' => { 'months' => 30, 'days' => 22 },
-          'benefit_end_date' => nil
+          'benefit_end_date' => '2019-06-01'
         },
         {
           'benefit_type' => 'CH33',
