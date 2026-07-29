@@ -613,6 +613,41 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
       end
     end
 
+    context 'when a VistA allergy has a recorder.reference to a sibling Practitioner entry' do
+      let(:allergies_sample_response) do
+        {
+          'vista' => {
+            'resourceType' => 'Bundle',
+            'entry' => [
+              {
+                'resource' => {
+                  'resourceType' => 'AllergyIntolerance',
+                  'id' => 'vista-allergy-with-provider',
+                  'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+                  'code' => { 'text' => 'PENICILLIN' },
+                  'recorder' => { 'reference' => 'Practitioner/b4b76108-25ba-44ca-b615-5396f577047d' }
+                }
+              },
+              {
+                'resource' => {
+                  'resourceType' => 'Practitioner',
+                  'id' => 'b4b76108-25ba-44ca-b615-5396f577047d',
+                  'name' => [{ 'family' => 'BORLAND', 'given' => ['VICTORIA'] }]
+                }
+              }
+            ]
+          },
+          'oracle-health' => { 'resourceType' => 'Bundle', 'entry' => [] }
+        }
+      end
+
+      it 'resolves the practitioner name from the sibling entry' do
+        allergy = service.get_single_allergy('vista-allergy-with-provider')
+
+        expect(allergy.provider).to eq('VICTORIA BORLAND')
+      end
+    end
+
     context 'error handling' do
       it 'handles unknown errors' do
         uhd_service = double

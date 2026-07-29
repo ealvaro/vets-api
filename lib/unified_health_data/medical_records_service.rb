@@ -197,7 +197,8 @@ module UnifiedHealthData
         filtered = combined_records.find { |record| record['resource']['id'] == allergy_id }
         return nil unless filtered
 
-        allergy_adapter.parse_single_allergy(filtered)
+        practitioners = allergy_adapter.build_practitioner_lookup(combined_records)
+        allergy_adapter.parse_single_allergy(filtered, practitioners:)
       end
     end
 

@@ -512,4 +512,108 @@ RSpec.describe 'AllergyAdapter' do
       end
     end
   end
+
+  # Regression coverage for https://va.ghe.com/software/va.gov-team/issues/144840
+  # VistA allergies only provide a recorder.reference (no inline display), pointing at a
+  # sibling Practitioner entry elsewhere in the same SCDF response.
+  describe 'VistA practitioner resolution (issue 144840)' do
+    let(:vista_practitioner_resource) do
+      {
+        'resourceType' => 'Practitioner',
+        'id' => 'b4b76108-25ba-44ca-b615-5396f577047d',
+        'name' => [
+          { 'family' => 'BORLAND', 'given' => ['VICTORIA'] }
+        ]
+      }
+    end
+
+    let(:vista_practitioner_entry) do
+      { 'resource' => vista_practitioner_resource }
+    end
+
+    let(:vista_allergy_with_recorder_reference) do
+      {
+        'resource' => {
+          'resourceType' => 'AllergyIntolerance',
+          'id' => 'vista-allergy-with-provider',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'PENICILLIN' },
+          'recorder' => { 'reference' => 'Practitioner/b4b76108-25ba-44ca-b615-5396f577047d' }
+        }
+      }
+    end
+
+    it 'resolves the provider name from a sibling Practitioner entry via parse_single_allergy' do
+      parsed_allergy = adapter.parse_single_allergy(
+        vista_allergy_with_recorder_reference,
+        practitioners: { vista_practitioner_resource['id'] => vista_practitioner_resource }
+      )
+
+      expect(parsed_allergy.provider).to eq('VICTORIA BORLAND')
+    end
+
+    it 'resolves the provider name end-to-end through parse when given the full record set' do
+      parsed_allergies = adapter.parse([vista_allergy_with_recorder_reference, vista_practitioner_entry])
+
+      expect(parsed_allergies.length).to eq(1)
+      expect(parsed_allergies.first.provider).to eq('VICTORIA BORLAND')
+    end
+
+    it 'returns nil provider when the referenced Practitioner entry is not present' do
+      parsed_allergy = adapter.parse_single_allergy(vista_allergy_with_recorder_reference)
+
+      expect(parsed_allergy.provider).to be_nil
+    end
+
+    it 'does not raise and returns nil provider when recorder has no reference' do
+      record = vista_allergy_with_recorder_reference.deep_dup
+      record['resource'].delete('recorder')
+
+      parsed_allergy = adapter.parse_single_allergy(record)
+
+      expect(parsed_allergy.provider).to be_nil
+    end
+
+    it 'does not incorrectly resolve a provider via a nil id when a Practitioner entry has a blank id' do
+      allergy_without_recorder = vista_allergy_with_recorder_reference.deep_dup
+      allergy_without_recorder['resource'].delete('recorder')
+      practitioner_with_blank_id = {
+        'resource' => {
+          'resourceType' => 'Practitioner',
+          'id' => nil,
+          'name' => [{ 'family' => 'BORLAND', 'given' => ['VICTORIA'] }]
+        }
+      }
+
+      parsed_allergies = adapter.parse([allergy_without_recorder, practitioner_with_blank_id])
+
+      expect(parsed_allergies.first.provider).to be_nil
+    end
+
+    it 'excludes Practitioner entries with a blank id from the lookup' do
+      practitioner_with_blank_id = {
+        'resource' => { 'resourceType' => 'Practitioner', 'id' => '', 'name' => [{ 'family' => 'DOE' }] }
+      }
+
+      lookup = adapter.send(:build_practitioner_lookup, [practitioner_with_blank_id, vista_practitioner_entry])
+
+      expect(lookup).to eq({ vista_practitioner_resource['id'] => vista_practitioner_resource })
+    end
+
+    it 'falls back to an inline recorder.display when no Practitioner entry matches (Oracle Health)' do
+      record = {
+        'resource' => {
+          'resourceType' => 'AllergyIntolerance',
+          'id' => 'oh-allergy-with-display',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'LATEX' },
+          'recorder' => { 'reference' => 'Practitioner/63662034', 'display' => 'Smith,John' }
+        }
+      }
+
+      parsed_allergy = adapter.parse_single_allergy(record)
+
+      expect(parsed_allergy.provider).to eq('John Smith')
+    end
+  end
 end

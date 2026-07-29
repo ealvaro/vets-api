@@ -26,6 +26,8 @@ module UnifiedHealthData
       def parse(records, filter_by_status: true)
         return [] if records.blank?
 
+        practitioners = build_practitioner_lookup(records)
+
         filtered = records.select do |record|
           resource = record['resource']
           next false unless resource && resource['resourceType'] == 'AllergyIntolerance'
@@ -37,7 +39,7 @@ module UnifiedHealthData
           end
           true
         end
-        parsed = filtered.map { |record| parse_single_allergy(record, filter_by_status: false) }
+        parsed = filtered.map { |record| parse_single_allergy(record, filter_by_status: false, practitioners:) }
         parsed.compact
       end
 
@@ -49,8 +51,11 @@ module UnifiedHealthData
       # @param record [Hash] A single FHIR entry record
       # @param filter_by_status [Boolean] When true, also requires 'active' clinical status.
       #   Defaults to true.
+      # @param practitioners [Hash] Practitioner resources keyed by id, used to resolve a
+      #   VistA allergy's recorder.reference (see #build_practitioner_lookup). Defaults to
+      #   empty, in which case only an inline recorder.display (Oracle Health) is used.
       # @return [UnifiedHealthData::Allergy, nil] Parsed allergy object or nil if filtered/invalid
-      def parse_single_allergy(record, filter_by_status: true)
+      def parse_single_allergy(record, filter_by_status: true, practitioners: {})
         return nil if record.nil? || record['resource'].nil?
 
         resource = record['resource']
@@ -75,8 +80,25 @@ module UnifiedHealthData
           location: extract_location(resource), # No contained array or location names in samples
           observedHistoric: extract_observed_historic(resource), # Only in VistA data
           notes: extract_allergy_comments(resource),
-          provider: extract_allergy_provider(resource)
+          provider: extract_allergy_provider(resource, practitioners)
         )
+      end
+
+      # Builds a lookup of Practitioner resources by id from the full (unfiltered) set of
+      # bundle entries, so a VistA allergy's recorder.reference can be resolved to a sibling
+      # Practitioner entry elsewhere in the same SCDF response (VistA does not inline a
+      # display name the way Oracle Health does).
+      #
+      # @param records [Array] Array of FHIR entry records (any resourceType)
+      # @return [Hash] Practitioner resources keyed by their FHIR id
+      def build_practitioner_lookup(records)
+        records.each_with_object({}) do |record, lookup|
+          resource = record['resource']
+          next unless resource && resource['resourceType'] == 'Practitioner'
+          next if resource['id'].blank?
+
+          lookup[resource['id']] = resource
+        end
       end
 
       private
@@ -157,20 +179,23 @@ module UnifiedHealthData
         end
       end
 
-      def extract_allergy_provider(resource)
-        # TODO: This won't work, allergy samples have no contained array
+      # Extracts and formats the recording practitioner's name.
+      #
+      # Oracle Health inlines the name as recorder.display. VistA only provides a
+      # recorder.reference (e.g. "Practitioner/abc123") pointing at a sibling Practitioner
+      # entry elsewhere in the same SCDF response, so we resolve it via the practitioners
+      # lookup (see #build_practitioner_lookup) before falling back to an inline display.
+      #
+      # @param resource [Hash] FHIR AllergyIntolerance resource
+      # @param practitioners [Hash] Practitioner resources keyed by id
+      # @return [String, nil] formatted practitioner name, or nil if unavailable
+      def extract_allergy_provider(resource, practitioners = {})
+        practitioner_id = resource.dig('recorder', 'reference')&.split('/')&.last
+        practitioner_name = practitioners[practitioner_id]&.dig('name', 0)
 
-        # reference = resource.dig('recorder', 'reference')
-        # return nil unless reference && resource['contained']
-        # provider = find_contained(
-        #   record,
-        #   reference,
-        #   FHIR_RESOURCE_TYPES[:PRACTITIONER]
-        # )
-        # name = provider['name']&.find { |n| n['text'] }
-        # format_practitioner_name(name) if name
+        return format_practitioner_name(practitioner_name) if practitioner_name
 
-        format_practitioner_name(resource['recorder']['display'])
+        format_practitioner_name(resource.dig('recorder', 'display'))
       rescue
         nil
       end
