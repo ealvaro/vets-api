@@ -49,7 +49,11 @@ module IvcChampva
                               index: })
       end
 
-      sorted_uploads = if Flipper.enabled?(:champva_supporting_docs_ordering)
+      ohi_supporting_documents_present = parsed_form_data['supporting_docs']&.any? do |doc|
+        doc['attachment_id'].in?(IvcChampva::Constants::OHI_ATTACHMENT_IDS)
+      end
+
+      sorted_uploads = if Flipper.enabled?(:champva_supporting_docs_ordering) && ohi_supporting_documents_present
                          # Keep created_at ordering, but break ties by original supporting_docs order
                          # to stay aligned with attachment file ordering.
                          cached_uploads.sort_by { |h| [h[:created_at], h[:index]] }

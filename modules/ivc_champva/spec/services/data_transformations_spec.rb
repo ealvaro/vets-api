@@ -173,7 +173,7 @@ RSpec.describe IvcChampva::DataTransformations do
       expect { form.supporting_document_ids(invalid_data) }.to raise_error(NoMethodError)
     end
 
-    it 'keeps original supporting_docs order when created_at timestamps are equal and flipper is enabled' do
+    it 'keeps original order for equal created_at values when OHI docs are present' do
       equal_time = Time.zone.now
       tie_break_data = {
         'supporting_docs' => [
@@ -193,6 +193,29 @@ RSpec.describe IvcChampva::DataTransformations do
 
       result = form.supporting_document_ids(tie_break_data)
       expect(result).to eq(['Front of insurance card', 'VA form 10-7959c'])
+    end
+
+    it 'preserves created_at-only ordering when flipper is enabled but OHI docs are not present' do
+      earlier_time = Time.zone.now
+      later_time = earlier_time + 1.second
+      non_ohi_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code1', 'attachment_id' => 'Birth certificate' },
+          { 'confirmation_code' => 'code2', 'attachment_id' => 'Marriage certificate' }
+        ]
+      }
+
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code1')
+        .and_return(double('Record1', created_at: earlier_time, file: double(id: 'file2')))
+      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
+        .with(guid: 'code2')
+        .and_return(double('Record2', created_at: later_time, file: double(id: 'file1')))
+
+      result = form.supporting_document_ids(non_ohi_data)
+      expect(result).to eq(['Birth certificate', 'Marriage certificate'])
     end
 
     it 'preserves created_at-only ordering when created_at timestamps are equal and flipper is disabled' do

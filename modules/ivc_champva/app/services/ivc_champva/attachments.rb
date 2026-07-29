@@ -99,19 +99,29 @@ module IvcChampva
     def supporting_document_paths(supporting_documents)
       confirmation_codes = supporting_documents.filter_map { |doc| doc['confirmation_code'] }
       persistent_attachments = PersistentAttachment.where(guid: confirmation_codes)
+      return [] unless persistent_attachments.any?
 
-      ordered_attachments = if Flipper.enabled?(:champva_supporting_docs_ordering)
+      deterministic_ordering_enabled = Flipper.enabled?(:champva_supporting_docs_ordering) &&
+                                       ohi_supporting_documents?(supporting_documents)
+
+      ordered_attachments = if deterministic_ordering_enabled
                               code_positions = confirmation_codes.each_with_index.to_h
 
                               # Ensure we create the PDFs in the same order the attachments were uploaded
-                              persistent_attachments&.sort_by do |pa|
+                              persistent_attachments.sort_by do |pa|
                                 [pa.created_at, code_positions[pa.guid] || Float::INFINITY]
                               end
                             else
-                              persistent_attachments&.sort_by(&:created_at)
+                              persistent_attachments.sort_by(&:created_at)
                             end
 
-      ordered_attachments&.map(&:to_pdf) || []
+      ordered_attachments.map(&:to_pdf)
+    end
+
+    def ohi_supporting_documents?(supporting_documents)
+      supporting_documents.any? do |doc|
+        doc['attachment_id'].in?(IvcChampva::Constants::OHI_ATTACHMENT_IDS)
+      end
     end
 
     def generate_additional_pdf(additional_data, index)

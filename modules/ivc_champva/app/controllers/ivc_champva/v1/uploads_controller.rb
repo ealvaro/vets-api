@@ -1030,7 +1030,11 @@ module IvcChampva
 
       def applicants_with_ohi(applicants)
         applicants.select do |item|
-          item.key?('health_insurance') || item.key?('medicare')
+          health_insurance = item['health_insurance']
+          medicare = item['medicare']
+
+          (health_insurance.is_a?(Array) && health_insurance.any?) ||
+            (medicare.is_a?(Array) && medicare.any?)
         end
       end
 

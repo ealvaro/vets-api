@@ -222,7 +222,9 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads - submit_champva_app_merged', typ
         applicants = [
           { 'first_name' => 'John', 'health_insurance' => [{}] },
           { 'first_name' => 'Jane' },
-          { 'first_name' => 'Bob' }
+          { 'first_name' => 'Bob' },
+          { 'first_name' => 'Chris', 'health_insurance' => [] },
+          { 'first_name' => 'Pat', 'medicare' => [] }
         ]
 
         result = controller.send(:applicants_with_ohi, applicants)

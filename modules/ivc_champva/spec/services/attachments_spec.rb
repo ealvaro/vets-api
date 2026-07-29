@@ -156,8 +156,8 @@ RSpec.describe IvcChampva::Attachments do
     let(:data) do
       {
         'supporting_docs' => [
-          { 'confirmation_code' => 'code-front' },
-          { 'confirmation_code' => 'code-7959c' }
+          { 'confirmation_code' => 'code-front', 'attachment_id' => 'Front of health insurance card' },
+          { 'confirmation_code' => 'code-7959c', 'attachment_id' => 'VA form 10-7959c' }
         ]
       }
     end
@@ -191,12 +191,88 @@ RSpec.describe IvcChampva::Attachments do
       expect(attachments).to eq(['tmp/front.pdf', 'tmp/10-7959c.pdf'])
     end
 
+    it 'treats vha_10_7959c attachment id as OHI for deterministic ordering when flipper is enabled' do
+      variant_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code-front', 'attachment_id' => 'Front of health insurance card' },
+          { 'confirmation_code' => 'code-7959c', 'attachment_id' => 'vha_10_7959c' }
+        ]
+      }
+      variant_instance = TestClass.new(form_id, uuid, variant_data)
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      attachments = variant_instance.send(:get_attachments)
+
+      expect(attachments).to eq(['tmp/front.pdf', 'tmp/10-7959c.pdf'])
+    end
+
     it 'uses created_at ordering when flipper is disabled' do
       allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(false)
 
       attachments = test_instance.send(:get_attachments)
 
       expect(attachments).to eq(['tmp/10-7959c.pdf', 'tmp/front.pdf'])
+    end
+
+    it 'uses created_at ordering when flipper is enabled but no 10-7959c supporting doc is present' do
+      no_ohi_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code-front', 'attachment_id' => 'Front of health insurance card' },
+          { 'confirmation_code' => 'code-back', 'attachment_id' => 'Back of health insurance card' }
+        ]
+      }
+      no_ohi_instance = TestClass.new(form_id, uuid, no_ohi_data)
+      front = double('PersistentAttachment', guid: 'code-front', created_at: Time.zone.now, to_pdf: 'tmp/front.pdf')
+      back = double(
+        'PersistentAttachment',
+        guid: 'code-back',
+        created_at: front.created_at - 1.second,
+        to_pdf: 'tmp/back.pdf'
+      )
+
+      allow(PersistentAttachment).to receive(:where)
+        .with(guid: %w[code-front code-back])
+        .and_return([back, front])
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      attachments = no_ohi_instance.send(:get_attachments)
+
+      expect(attachments).to eq(['tmp/back.pdf', 'tmp/front.pdf'])
+    end
+
+    it 'uses created_at ordering for non-OHI docs when flipper is disabled' do
+      non_ohi_data = {
+        'supporting_docs' => [
+          { 'confirmation_code' => 'code-a', 'attachment_id' => 'Birth certificate' },
+          { 'confirmation_code' => 'code-b', 'attachment_id' => 'Marriage certificate' }
+        ]
+      }
+      non_ohi_instance = TestClass.new(form_id, uuid, non_ohi_data)
+      attachment_a = double('PersistentAttachment', guid: 'code-a', created_at: Time.zone.now, to_pdf: 'tmp/a.pdf')
+      attachment_b = double('PersistentAttachment',
+                            guid: 'code-b',
+                            created_at: attachment_a.created_at - 1.second,
+                            to_pdf: 'tmp/b.pdf')
+
+      allow(PersistentAttachment).to receive(:where)
+        .with(guid: %w[code-a code-b])
+        .and_return([attachment_b, attachment_a])
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(false)
+
+      attachments = non_ohi_instance.send(:get_attachments)
+
+      expect(attachments).to eq(['tmp/b.pdf', 'tmp/a.pdf'])
+    end
+
+    it 'returns no supporting paths when persistent attachments are missing' do
+      allow(PersistentAttachment).to receive(:where)
+        .with(guid: %w[code-front code-7959c])
+        .and_return([])
+      allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
+
+      attachments = test_instance.send(:get_attachments)
+
+      expect(attachments).to eq([])
     end
   end
 
