@@ -545,6 +545,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           502
         )
         service.instance_variable_set(:@current_step, 'get_appointment')
+        service.instance_variable_set(:@station_number, '123')
         service.send(:log_submission_failure, error:)
 
         expect(Rails.logger).to have_received(:error).with(
@@ -555,6 +556,8 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             correlation_id: be_present,
             failed_step: 'get_appointment',
             error_class: 'Common::Exceptions::BackendServiceException',
+            error_code: 'VA900',
+            station_number: '123',
             http_status: 502,
             error_detail: 'Appointment could not be found or created'
           )
@@ -575,6 +578,40 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
         expect(Rails.logger).not_to have_received(:error)
       end
     end
+
+    it 'logs a submission attempt with station_number for each claim submission' do
+      allow(Rails.logger).to receive(:info)
+      mock_successful_flow
+
+      service.submit_claim
+
+      expect(Rails.logger).to have_received(:info).with(
+        hash_including(
+          message: "#{CheckIn::Constants::LOG_PREFIX}: Submission attempt",
+          station_number: test_station_number,
+          facility_type:,
+          check_in_uuid:,
+          correlation_id: be_present
+        )
+      )
+    end
+
+    it 'logs a submission attempt without station_number when station is missing' do
+      allow(Rails.logger).to receive(:info)
+      allow(redis_client).to receive(:station_number).with(uuid: check_in_uuid).and_return(nil)
+
+      expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
+
+      expect(Rails.logger).to have_received(:info).with(
+        satisfy do |payload|
+          payload[:message] == "#{CheckIn::Constants::LOG_PREFIX}: Submission attempt" &&
+            payload[:facility_type] == facility_type &&
+            payload[:check_in_uuid] == check_in_uuid &&
+            payload[:correlation_id].present? &&
+            !payload.key?(:station_number)
+        end
+      )
+    end
   end
 
   describe 'StatsD metrics' do
@@ -591,7 +628,10 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
 
           service.submit_claim
 
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE)
         end
       end
@@ -604,7 +644,10 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
 
           service.submit_claim
 
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE)
         end
       end
@@ -618,7 +661,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_APPOINTMENT_ERROR).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:empty_response']
+          ).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
 
@@ -631,7 +681,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_APPOINTMENT_ERROR).once
-            expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+              tags: ['error_type:empty_response']
+            ).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
+              tags: ['station_number:500']
+            ).once
             expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS)
           end
         end
@@ -644,7 +701,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_CLAIM_CREATE_ERROR).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:empty_response']
+          ).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
 
@@ -657,7 +721,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_CLAIM_CREATE_ERROR).once
-            expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+              tags: ['error_type:empty_response']
+            ).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
+              tags: ['station_number:500']
+            ).once
             expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS)
           end
         end
@@ -670,7 +741,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_EXPENSE_ADD_ERROR).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:http']
+          ).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
 
@@ -683,7 +761,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_EXPENSE_ADD_ERROR).once
-            expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+              tags: ['error_type:http']
+            ).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
+              tags: ['station_number:500']
+            ).once
             expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS)
           end
         end
@@ -696,7 +781,14 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_CLAIM_SUBMIT_ERROR).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:http']
+          ).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
 
@@ -709,9 +801,45 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_CLAIM_SUBMIT_ERROR).once
-            expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+              tags: ['error_type:http']
+            ).once
+            expect(StatsD).to have_received(:increment).with(
+              CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
+              tags: ['station_number:500']
+            ).once
             expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS)
           end
+        end
+      end
+
+      context 'when session ICN is missing' do
+        before do
+          allow(redis_client).to receive(:icn).with(uuid: check_in_uuid).and_return(nil)
+        end
+
+        it 'increments validation and claim failure metrics' do
+          expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
+
+          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_VALIDATION_ERROR).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
+        end
+      end
+
+      context 'when session station number is missing' do
+        before do
+          allow(redis_client).to receive(:station_number).with(uuid: check_in_uuid).and_return(nil)
+        end
+
+        it 'increments validation and claim failure metrics' do
+          expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
+
+          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_VALIDATION_ERROR).once
+          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
         end
       end
     end
@@ -735,7 +863,10 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_DUPLICATE).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
       end
@@ -760,7 +891,10 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_DUPLICATE).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS)
         end
       end
@@ -783,7 +917,10 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect { service.submit_claim }.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_DUPLICATE).once
-          expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE).once
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
+            tags: ['station_number:500']
+          ).once
           expect(StatsD).not_to have_received(:increment).with(CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS)
         end
       end

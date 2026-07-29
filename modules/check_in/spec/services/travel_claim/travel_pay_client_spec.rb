@@ -486,7 +486,11 @@ RSpec.describe TravelClaim::TravelPayClient do
     end
 
     context 'when API request fails' do
-      it 'logs error details' do
+      before do
+        allow(StatsD).to receive(:increment)
+      end
+
+      it 'logs error details and increments request error metric' do
         with_settings(Settings.check_in.travel_reimbursement_api_v2,
                       claims_url_v2:, claims_base_path_v2:) do
           allow(client).to receive(:perform).and_raise(
@@ -508,6 +512,50 @@ RSpec.describe TravelClaim::TravelPayClient do
               http_status: 500,
               error_class: 'Common::Exceptions::BackendServiceException'
             )
+          )
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:http']
+          )
+        end
+      end
+
+      it 'tags request error as timeout for GatewayTimeout' do
+        with_settings(Settings.check_in.travel_reimbursement_api_v2,
+                      claims_url_v2:, claims_base_path_v2:) do
+          allow(client).to receive(:perform).and_raise(Common::Exceptions::GatewayTimeout)
+
+          expect do
+            client.send_appointment_request(
+              veis_token: test_veis_token,
+              btsss_token: test_btsss_token
+            )
+          end.to raise_error(Common::Exceptions::GatewayTimeout)
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:timeout']
+          )
+        end
+      end
+
+      it 'tags request error as timeout for HTTP 504' do
+        with_settings(Settings.check_in.travel_reimbursement_api_v2,
+                      claims_url_v2:, claims_base_path_v2:) do
+          allow(client).to receive(:perform).and_raise(
+            Common::Exceptions::BackendServiceException.new('TEST', {}, 504, 'Gateway Timeout')
+          )
+
+          expect do
+            client.send_appointment_request(
+              veis_token: test_veis_token,
+              btsss_token: test_btsss_token
+            )
+          end.to raise_error(Common::Exceptions::BackendServiceException)
+
+          expect(StatsD).to have_received(:increment).with(
+            CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+            tags: ['error_type:timeout']
           )
         end
       end

@@ -69,6 +69,7 @@ module TravelClaim
     #
     def submit_claim
       validate_parameters
+      log_submission_attempt
       result = process_claim_submission
 
       send_notification_if_enabled if result['success']
@@ -179,6 +180,7 @@ module TravelClaim
 
       unless appointment_id
         increment_error_metric(APPOINTMENT_ERROR)
+        increment_empty_response_metric
         raise_backend_service_exception('Appointment could not be found or created', response.status)
       end
 
@@ -204,6 +206,7 @@ module TravelClaim
 
       unless claim_id
         increment_error_metric(CLAIM_CREATE_ERROR)
+        increment_empty_response_metric
         raise_backend_service_exception('Failed to create claim', response.status)
       end
 
@@ -228,6 +231,7 @@ module TravelClaim
 
       unless response.status == 200
         increment_error_metric(EXPENSE_ADD_ERROR)
+        increment_request_error_metric(RequestErrorMetrics::ERROR_TYPE_HTTP)
         raise_backend_service_exception('Failed to add expense', response.status)
       end
     end
@@ -250,6 +254,7 @@ module TravelClaim
 
       unless response.status == 200
         increment_error_metric(CLAIM_SUBMIT_ERROR)
+        increment_request_error_metric(RequestErrorMetrics::ERROR_TYPE_HTTP)
         raise_backend_service_exception('Failed to submit claim', response.status)
       end
 
@@ -312,7 +317,7 @@ module TravelClaim
     def icn
       @icn ||= begin
         value = redis_client.icn(uuid: @check_in_uuid)
-        raise_backend_service_exception('Patient ICN not found in session', 400, 'VA906') if value.blank?
+        raise_validation_error('Patient ICN not found in session', 'VA906') if value.blank?
 
         value
       end
@@ -327,10 +332,39 @@ module TravelClaim
     def station_number
       @station_number ||= begin
         value = redis_client.station_number(uuid: @check_in_uuid)
-        raise_backend_service_exception('Station number not found in session', 400, 'VA907') if value.blank?
+        raise_validation_error('Station number not found in session', 'VA907') if value.blank?
 
         value
       end
+    end
+
+    ##
+    # Logs each unique claim submission attempt for Datadog.
+    # Always emitted (not flipper-gated) so station widgets work in production.
+    # Station is included only when already known or safely readable from Redis—
+    # this must not raise (e.g. VA907) or otherwise change control flow.
+    #
+    def log_submission_attempt
+      log_data = {
+        message: "#{CheckIn::Constants::LOG_PREFIX}: Submission attempt",
+        facility_type: @facility_type,
+        check_in_uuid: @check_in_uuid,
+        correlation_id:
+      }
+      station = station_number_for_logging
+      log_data[:station_number] = station if station.present?
+
+      Rails.logger.info(log_data)
+    end
+
+    def station_number_for_logging
+      return @station_number if @station_number.present?
+
+      value = redis_client.station_number(uuid: @check_in_uuid)
+      @station_number = value if value.present?
+      value
+    rescue
+      nil
     end
 
     ##
@@ -350,6 +384,8 @@ module TravelClaim
         error_class: error.class.name
       }
 
+      log_data[:station_number] = @station_number if @station_number.present?
+      log_data[:error_code] = error.key if error.respond_to?(:key)
       log_data[:http_status] = error.original_status if error.respond_to?(:original_status)
 
       if error.respond_to?(:response_values) && error.response_values[:detail].present?
@@ -499,7 +535,7 @@ module TravelClaim
     # Increments the appropriate success metric based on facility type
     #
     def increment_success_metric
-      increment_metric_by_facility_type(
+      increment_outcome_metric(
         CheckIn::Constants::CIE_STATSD_BTSSS_V1_SUCCESS,
         CheckIn::Constants::OH_STATSD_BTSSS_V1_SUCCESS
       )
@@ -509,10 +545,34 @@ module TravelClaim
     # Increments the general failure metric based on facility type
     #
     def increment_failure_metric
-      increment_metric_by_facility_type(
+      increment_outcome_metric(
         CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
         CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE
       )
+    end
+
+    def increment_empty_response_metric
+      increment_request_error_metric(RequestErrorMetrics::ERROR_TYPE_EMPTY_RESPONSE)
+    end
+
+    def increment_request_error_metric(error_type)
+      RequestErrorMetrics.increment(facility_type: @facility_type, error_type:)
+    end
+
+    def increment_outcome_metric(cie_metric, oh_metric)
+      metric = @facility_type&.downcase == 'oh' ? oh_metric : cie_metric
+      tags = station_metric_tags
+      if tags.empty?
+        StatsD.increment(metric)
+      else
+        StatsD.increment(metric, tags:)
+      end
+    end
+
+    def station_metric_tags
+      return [] if @station_number.blank?
+
+      ["station_number:#{@station_number}"]
     end
 
     ##

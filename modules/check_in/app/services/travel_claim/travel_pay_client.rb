@@ -58,8 +58,7 @@ module TravelClaim
                 build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
-      log_external_api_error(operation: 'find_or_add_appointment', api_path: path, error: e)
-      enrich_and_reraise_if_needed(e)
+      handle_api_exception(operation: 'find_or_add_appointment', api_path: path, error: e)
     end
 
     ##
@@ -78,8 +77,7 @@ module TravelClaim
                 build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
-      log_external_api_error(operation: 'create_claim', api_path: path, error: e)
-      enrich_and_reraise_if_needed(e)
+      handle_api_exception(operation: 'create_claim', api_path: path, error: e)
     end
 
     ##
@@ -100,8 +98,7 @@ module TravelClaim
                 build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
-      log_external_api_error(operation: 'add_mileage_expense', api_path: path, error: e)
-      enrich_and_reraise_if_needed(e)
+      handle_api_exception(operation: 'add_mileage_expense', api_path: path, error: e)
     end
 
     ##
@@ -118,8 +115,7 @@ module TravelClaim
         perform(:get, path, nil, build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
-      log_external_api_error(operation: 'get_claim', api_path: path, error: e)
-      enrich_and_reraise_if_needed(e)
+      handle_api_exception(operation: 'get_claim', api_path: path, error: e)
     end
 
     ##
@@ -136,11 +132,16 @@ module TravelClaim
         perform(:patch, path, nil, build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
-      log_external_api_error(operation: 'submit_claim', api_path: path, error: e)
-      enrich_and_reraise_if_needed(e)
+      handle_api_exception(operation: 'submit_claim', api_path: path, error: e)
     end
 
     private
+
+    def handle_api_exception(operation:, api_path:, error:)
+      RequestErrorMetrics.increment_for_exception(facility_type: @facility_type, error:)
+      log_external_api_error(operation:, api_path:, error:)
+      enrich_and_reraise_if_needed(error)
+    end
 
     def api_version
       if Flipper.enabled?(:check_in_experience_use_btsss_v2_claim_submission_endpoints)
