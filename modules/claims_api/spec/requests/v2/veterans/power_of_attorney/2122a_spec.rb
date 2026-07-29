@@ -199,8 +199,6 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122a', type: :request do
               before do
                 allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController)
                   .to receive(:user_profile).and_return(user_profile)
-                allow_any_instance_of(ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController)
-                  .to receive(:current_poa).and_return('123')
                 allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
                   .to receive(:validate_poa_code_exists!).and_return(nil)
                 allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)

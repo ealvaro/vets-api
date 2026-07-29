@@ -10,17 +10,36 @@ module ClaimsApi
     def initialize(user)
       @user = user
 
-      if current_poa_code.present?
-        self.power_of_attorney = ::PowerOfAttorney.new(code: current_poa_code,
+      if extracted_poa_code.present?
+        self.power_of_attorney = ::PowerOfAttorney.new(code: extracted_poa_code,
                                                        begin_date: current_poa_information[:begin_date],
                                                        end_date: current_poa_information[:end_date])
       end
-      self.previous_power_of_attorney = ::PowerOfAttorney.new(code: previous_poa_code) if previous_poa_code.present?
+      if extracted_previous_poa_code.present?
+        self.previous_power_of_attorney = ::PowerOfAttorney.new(code: extracted_previous_poa_code)
+      end
+    end
+
+    def current_poa_code(respect_expiration: false)
+      if respect_expiration && power_of_attorney.try(:end_date).present?
+        expiration_date = Date.strptime(power_of_attorney.end_date, '%m/%d/%Y')
+        return nil if expiration_date < Time.zone.today
+      end
+
+      power_of_attorney.try(:code)
+    end
+
+    def previous_poa_code
+      previous_power_of_attorney&.code
+    end
+
+    def poa_begin_date
+      power_of_attorney.try(:begin_date)
     end
 
     private
 
-    def current_poa_code
+    def extracted_poa_code
       return nil unless current_poa_information.present? && current_poa_information[:person_org_name].present?
 
       current_poa_information[:person_org_name]&.split&.first
@@ -30,8 +49,8 @@ module ClaimsApi
       @current_poa_information ||= claimant_web_service.find_poa_by_participant_id(@user.participant_id)
     end
 
-    def previous_poa_code
-      return @previous_poa_code if @previous_poa_code.present?
+    def extracted_previous_poa_code
+      return @extracted_previous_poa_code if @extracted_previous_poa_code.present?
 
       poa_history = bgs_org_service.find_poa_history_by_ptcpnt_id(@user.participant_id)
       return nil if poa_history.blank? || poa_history[:person_poa_history].blank?
@@ -42,7 +61,7 @@ module ClaimsApi
       poa_history = poa_history.select { |poa| poa[:begin_dt].present? }.sort_by { |poa| poa[:begin_dt] }.reverse
       poa_codes = poa_history.pluck(:legacy_poa_cd)
 
-      @previous_poa_code = poa_codes.delete_if { |poa_code| poa_code == current_poa_code }.first
+      @extracted_previous_poa_code = poa_codes.delete_if { |poa_code| poa_code == extracted_poa_code }.first
     end
 
     def bgs_org_service

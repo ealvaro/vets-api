@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'bgs/power_of_attorney_verifier'
 require 'claims_api/dependent_claimant_validation'
 
 module ClaimsApi
@@ -44,7 +43,7 @@ module ClaimsApi
             attributes = {
               status: ClaimsApi::PowerOfAttorney::PENDING,
               auth_headers:, form_data: form_attributes,
-              current_poa: power_of_attorney_verifier.current_poa_code,
+              current_poa: poa_lookup.current_poa_code,
               header_hash:, cid: token.payload['cid']
             }
             attributes.merge!({ source_data: }) unless token.client_credentials_token?
@@ -120,12 +119,12 @@ module ClaimsApi
                               message: "POA not found, poa: #{@power_of_attorney&.id}"
           end
 
-          unless power_of_attorney_verifier.current_poa_code
+          unless poa_lookup.current_poa_code
             claims_v1_logging('poa_v1_active', message: "POA not found, poa: #{@power_of_attorney&.id}")
             raise ::Common::Exceptions::ResourceNotFound.new(detail: 'POA not found')
           end
 
-          representative_info = build_representative_info(power_of_attorney_verifier.current_poa_code)
+          representative_info = build_representative_info(poa_lookup.current_poa_code)
 
           render json: {
             data: {
@@ -140,10 +139,10 @@ module ClaimsApi
                     last_name: representative_info[:last_name],
                     organization_name: representative_info[:organization_name],
                     phone_number: representative_info[:phone_number],
-                    poa_code: power_of_attorney_verifier.current_poa_code
+                    poa_code: poa_lookup.current_poa_code
                   }
                 },
-                previous_poa: power_of_attorney_verifier.previous_poa_code
+                previous_poa: poa_lookup.previous_poa_code
               }
             }
           }
@@ -202,13 +201,13 @@ module ClaimsApi
         end
 
         def current_poa_begin_date
-          return nil if power_of_attorney_verifier.current_poa.try(:begin_date).blank?
+          return nil if poa_lookup.poa_begin_date.blank?
 
-          Date.strptime(power_of_attorney_verifier.current_poa.begin_date, '%m/%d/%Y')
+          Date.strptime(poa_lookup.poa_begin_date, '%m/%d/%Y')
         end
 
-        def power_of_attorney_verifier
-          @verifier ||= BGS::PowerOfAttorneyVerifier.new(target_veteran)
+        def poa_lookup
+          @poa_lookup ||= ClaimsApi::PoaLookupService.new(target_veteran)
         end
 
         def header_hash

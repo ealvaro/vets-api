@@ -5,7 +5,6 @@ require Rails.root.join('spec', 'rswag_override.rb').to_s
 require 'rails_helper'
 require_relative '../../../rails_helper'
 require_relative '../../../support/swagger_shared_components/v1'
-require 'bgs/power_of_attorney_verifier'
 require 'bgs_service/person_web_service'
 
 Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagger/claims_api/v1/swagger.json' do
@@ -140,7 +139,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             data
           end
 
-          let(:bgs_poa_verifier) { BGS::PowerOfAttorneyVerifier.new(nil) }
+          let(:poa_lookup_stub) { instance_double(ClaimsApi::PoaLookupService) }
 
           before do |example|
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
@@ -153,8 +152,8 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
               .to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
             allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
               .to receive(:check_request_ssn_matches_mpi).and_return(nil)
-            allow(BGS::PowerOfAttorneyVerifier).to receive(:new).and_return(bgs_poa_verifier)
-            allow(bgs_poa_verifier).to receive(:current_poa_code).and_return(nil)
+            allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup_stub)
+            allow(poa_lookup_stub).to receive(:current_poa_code).and_return(nil)
 
             mock_acg(scopes) do
               submit_request(example.metadata)
@@ -746,7 +745,7 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
                                             'power_of_attorney', 'active.json').read)
 
           let(:scopes) { %w[claim.read claim.write] }
-          let(:bgs_poa_verifier) { BGS::PowerOfAttorneyVerifier.new(nil) }
+          let(:poa_lookup_stub) { instance_double(ClaimsApi::PoaLookupService) }
           let(:representative_info) do
             {
               first_name: 'Jane',
@@ -762,9 +761,10 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
             create(:representative, first_name: 'Abraham', last_name: 'Lincoln', poa_codes: %w[A01])
 
             mock_acg(scopes) do
-              allow(BGS::PowerOfAttorneyVerifier).to receive(:new).and_return(bgs_poa_verifier)
-              expect(bgs_poa_verifier).to receive(:current_poa_code).and_return('A01').exactly(3).times
-              expect(bgs_poa_verifier).to receive(:previous_poa_code).and_return(nil)
+              allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup_stub)
+              expect(poa_lookup_stub).to receive(:current_poa_code).and_return('A01').exactly(3).times
+              expect(poa_lookup_stub).to receive(:previous_poa_code).and_return(nil)
+              allow(poa_lookup_stub).to receive_messages(power_of_attorney: nil, poa_begin_date: nil)
               expect_any_instance_of(
                 ClaimsApi::V1::Forms::PowerOfAttorneyController
               ).to receive(:build_representative_info).and_return(representative_info)
@@ -824,14 +824,15 @@ Rspec.describe 'Power of Attorney', openapi_spec: 'modules/claims_api/app/swagge
                                             'default.json').read)
 
           let(:scopes) { %w[claim.read claim.write] }
-          let(:bgs_poa_verifier) { BGS::PowerOfAttorneyVerifier.new(nil) }
+          let(:poa_lookup_stub) { instance_double(ClaimsApi::PoaLookupService) }
 
           before do |example|
             stub_poa_verification
             stub_claims_api_poa_lookup
 
             mock_acg(scopes) do
-              allow(BGS::PowerOfAttorneyVerifier).to receive(:new).and_return(bgs_poa_verifier)
+              allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup_stub)
+              allow(poa_lookup_stub).to receive_messages(power_of_attorney: nil, current_poa_code: nil)
               allow(Veteran::Service::Representative).to receive(:for_user).and_return(true)
               submit_request(example.metadata)
             end
