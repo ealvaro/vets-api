@@ -3752,11 +3752,14 @@ features:
     enable_in_development: true
   survivors_benefits_form_enabled:
     actor_type: user
-    description: Enables the Medical Expense Reports form (Form 21P-534EZ)
+    description: Enables the Survivors Benefits form (Form 21P-534EZ)
     enable_in_development: true
   survivors_benefits_browser_monitoring_enabled:
     actor_type: user
-    description: Medical Expense Reports Datadog RUM monitoring
+    description: Survivors Benefits Datadog RUM monitoring
+  survivors_benefits_browser_rum_specific:
+    actor_type: user
+    description: Temporary feature as RUM is added and tested for Form 21P-534EZ
   survivors_benefits_error_email_notification:
     actor_type: cookie_id
     description: Toggle sending of the Action Needed email notification
