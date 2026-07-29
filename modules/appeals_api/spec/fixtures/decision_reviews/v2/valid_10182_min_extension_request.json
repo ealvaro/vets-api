@@ -12,6 +12,7 @@
       },
       "boardReviewOption": "evidence_submission",
       "requestingExtension": true,
+      "requestDecisionAsap": false,
       "extensionReason": "good cause substantive reason",
       "appealingVhaDenial": false
     }

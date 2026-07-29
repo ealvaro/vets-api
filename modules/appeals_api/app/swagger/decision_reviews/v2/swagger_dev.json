@@ -2497,6 +2497,7 @@
                                 },
                                 "boardReviewOption": "evidence_submission",
                                 "requestingExtension": false,
+                                "requestDecisionAsap": false,
                                 "appealingVhaDenial": false
                               }
                             },
@@ -2576,6 +2577,7 @@
                                 "hearingTypePreference": "central_office",
                                 "requestingExtension": true,
                                 "extensionReason": "good cause substantive reason",
+                                "requestDecisionAsap": false,
                                 "appealingVhaDenial": true
                               }
                             },
@@ -2719,6 +2721,7 @@
                         },
                         "boardReviewOption": "evidence_submission",
                         "requestingExtension": false,
+                        "requestDecisionAsap": false,
                         "appealingVhaDenial": false
                       }
                     },
@@ -2786,6 +2789,7 @@
                         "boardReviewOption": "hearing",
                         "hearingTypePreference": "central_office",
                         "requestingExtension": true,
+                        "requestDecisionAsap": false,
                         "extensionReason": "good cause substantive reason",
                         "appealingVhaDenial": true
                       }
@@ -3225,6 +3229,7 @@
                         },
                         "boardReviewOption": "evidence_submission",
                         "requestingExtension": false,
+                        "requestDecisionAsap": false,
                         "appealingVhaDenial": false
                       }
                     },
@@ -3293,6 +3298,7 @@
                         "hearingTypePreference": "central_office",
                         "requestingExtension": true,
                         "extensionReason": "good cause substantive reason",
+                        "requestDecisionAsap": false,
                         "appealingVhaDenial": true
                       }
                     },
@@ -8069,6 +8075,10 @@
                     "minLength": 1,
                     "maxLength": 2300,
                     "description": "Explanation why you believe there is good cause for the extension. If an extensionReason is provided, requestingExtension must be true."
+                  },
+                  "requestDecisionAsap":{
+                    "type": "boolean",
+                    "description": "Set to true to request a decision."
                   },
                   "appealingVhaDenial": {
                     "type": "boolean",

@@ -183,6 +183,87 @@ describe AppealsApi::PdfConstruction::Generator do
           end
         end
       end
+
+      context 'June2026' do
+        let(:generated_pdf) { described_class.new(nod, pdf_version: 'june2026').generate }
+        let(:expected_pdf) { fixture_filepath("decision_reviews/v2/pdfs/june2026/#{fixture_name}") }
+
+        after { FileUtils.rm_f(generated_pdf) }
+
+        include_examples 'shared NOD v2 and v3 generator examples', 'june2026'
+
+        # Test condition where issues overflow because the issues description is too long
+        # to fit on the form
+        context 'issues description length overflow' do
+          let(:fixture_name) { 'expected_10182_min_issues_desc_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_issues_length_overflow, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        # Test condition where issues overflow because the issues disagreement area is too long
+        # to fit on the form
+        context 'issues disagreement area length overflow' do
+          let(:fixture_name) { 'expected_10182_min_issues_area_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_issues_long_disagreement_area, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        # Test condition where issues overflow because there are too many to fit on form
+        context 'issues count overflow' do
+          let(:fixture_name) { 'expected_10182_min_issues_count_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_6_issues, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        context 'long rep name overflow' do
+          let(:fixture_name) { 'expected_10182_min_rep_name_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_long_rep_name, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        context 'long email overflow' do
+          let(:fixture_name) { 'expected_10182_min_long_email_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_long_email, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        context 'extension request overflow' do
+          let(:fixture_name) { 'expected_10182_min_extension_request_overflow.pdf' }
+          let(:nod) { create(:min_nod_v2_extension_request, created_at: '2021-02-03T14:15:16Z') }
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+
+        context 'request decision' do
+          let(:fixture_name) { 'expected_10182_request_decision.pdf' }
+          let(:nod) do
+            create(:notice_of_disagreement_v2, created_at: '2021-02-03T14:15:16Z') do |appeal|
+              appeal.form_data['data']['attributes']['requestDecisionAsap'] = true
+            end
+          end
+
+          it 'generates the expected pdf' do
+            expect(generated_pdf).to match_pdf expected_pdf
+          end
+        end
+      end
     end
   end
 end

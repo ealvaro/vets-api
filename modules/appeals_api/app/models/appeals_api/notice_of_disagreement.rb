@@ -106,6 +106,10 @@ module AppealsApi
       data_attributes['requestingExtension'] && extension_reason.present?
     end
 
+    def request_decision_asap?
+      data_attributes['requestDecisionAsap']
+    end
+
     def extension_reason
       data_attributes['extensionReason']
     end

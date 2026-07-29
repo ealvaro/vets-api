@@ -49,6 +49,7 @@
       "hearingTypePreference": "central_office",
       "requestingExtension": true,
       "extensionReason": "good cause substantive reason",
+      "requestDecisionAsap": false,
       "appealingVhaDenial": true
     }
   },

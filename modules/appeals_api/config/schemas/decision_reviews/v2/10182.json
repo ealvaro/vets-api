@@ -126,6 +126,10 @@
                   "maxLength": 2300,
                   "description": "Explanation why you believe there is good cause for the extension. If an extensionReason is provided, requestingExtension must be true."
                 },
+                "requestDecisionAsap":{
+                    "type": "boolean",
+                    "description": "Set to true to request a decision."
+                  },
                 "appealingVhaDenial": {
                   "type": "boolean",
                   "description": "Set to true if you are appealing a denial of benefits by the Veterans Health Administration (VHA)."

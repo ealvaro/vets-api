@@ -15,6 +15,7 @@
       },
       "boardReviewOption": "evidence_submission",
       "requestingExtension": false,
+      "requestDecisionAsap": false,
       "appealingVhaDenial": false
     }
   },
