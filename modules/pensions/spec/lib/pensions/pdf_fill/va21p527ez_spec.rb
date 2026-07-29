@@ -16,8 +16,6 @@ describe Pensions::PdfFill::Va21p527ez do
   end
 
   context 'when pension_pdf_form_alignment flipper is disabled' do
-    before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(false) }
-
     it_behaves_like 'a form filler', {
       form_id: described_class::FORM_ID,
       factory: :pensions_saved_claim,
@@ -26,15 +24,12 @@ describe Pensions::PdfFill::Va21p527ez do
       output_pdf_fixture_dir: 'modules/pensions/spec/fixtures',
       use_ocr: true,
       ocr_end_page: 7,
-      fill_options: { extras_redesign: true, omit_esign_stamp: true }
+      fill_options: { extras_redesign: true, omit_esign_stamp: true },
+      flipper_states: { pension_pdf_form_alignment: false }
     }
   end
 
   context 'when pension_pdf_form_alignment flipper is enabled' do
-    let(:fixture_path) { 'modules/pensions/spec/fixtures' }
-
-    before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(true) }
-
     it_behaves_like 'a form filler', {
       form_id: described_class::FORM_ID,
       factory: :pensions_saved_claim,
@@ -43,7 +38,8 @@ describe Pensions::PdfFill::Va21p527ez do
       output_pdf_fixture_dir: 'modules/pensions/spec/fixtures/v2',
       use_ocr: true,
       ocr_end_page: 7,
-      fill_options: { extras_redesign: true, omit_esign_stamp: true }
+      fill_options: { extras_redesign: true, omit_esign_stamp: true },
+      flipper_states: { pension_pdf_form_alignment: true }
     }
   end
 

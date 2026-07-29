@@ -37,7 +37,7 @@ module Pensions
         'homeAcreageValue' => {
           limit: 9,
           question_num: 9,
-          question_suffix: 'C',
+          question_suffix: 'E',
           question_label: 'Value of Land Over Two Acres',
           question_text: 'VALUE OF LAND OVER TWO ACRES',
           key: 'home_acreage_value',
@@ -68,7 +68,7 @@ module Pensions
           },
           'receiverOverflow' => {
             question_num: 9,
-            question_suffix: '(1)',
+            question_suffix: 'H',
             question_label: 'Payment Recipient',
             question_text: 'PAYMENT RECIPIENT'
           },
@@ -76,7 +76,7 @@ module Pensions
             key: "dependent_name[#{ITERATOR}]",
             limit: 24,
             question_num: 9,
-            question_suffix: '(1)',
+            question_suffix: 'H',
             question_label: "Child's Name",
             question_text: 'CHILD NAME'
           },
@@ -86,7 +86,7 @@ module Pensions
           },
           'typeOfIncomeOverflow' => {
             question_num: 9,
-            question_suffix: '(2)',
+            question_suffix: 'H',
             question_label: 'Income Type',
             question_text: 'INCOME TYPE'
           },
@@ -94,7 +94,7 @@ module Pensions
             key: "income_type_other[#{ITERATOR}]",
             limit: 26,
             question_num: 9,
-            question_suffix: '(2)',
+            question_suffix: 'H',
             question_label: 'Other Income Type Explanation',
             question_text: 'OTHER INCOME TYPE EXPLANATION'
           },
@@ -103,7 +103,7 @@ module Pensions
             key: "income_payer[#{ITERATOR}]",
             limit: 21,
             question_num: 9,
-            question_suffix: '(3)',
+            question_suffix: 'H',
             question_label: 'Payer Name',
             question_text: 'PAYER NAME'
           },
@@ -111,7 +111,7 @@ module Pensions
           'amount' => {
             limit: 10,
             question_num: 9,
-            question_suffix: '(4)',
+            question_suffix: 'H',
             question_label: 'Current Gross Monthly Income',
             question_text: 'CURRENT GROSS MONTHLY INCOME',
             key: "gross_monthly_income[#{ITERATOR}]",

@@ -82,7 +82,8 @@ end
 #   test_data_types: %w[simple]
 # }
 RSpec.shared_examples 'a form filler' do |options|
-  form_id, factory, test_data_types, run_at = options.values_at(:form_id, :factory, :test_data_types, :run_at)
+  form_id, factory, test_data_types, run_at, flipper_states = options.values_at(:form_id, :factory, :test_data_types,
+                                                                                :run_at, :flipper_states)
   test_data_types ||= %w[simple kitchen_sink overflow]
 
   describe PdfFill::Filler, type: :model do
@@ -119,6 +120,11 @@ RSpec.shared_examples 'a form filler' do |options|
             allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(false)
             # Defaulting this to true so that we avoid fixture issues with the no-SSN pdf filler logic
             allow(Flipper).to receive(:enabled?).with(:va_dependents_no_ssn).and_return(true)
+            if flipper_states.present?
+              flipper_states.each do |flipper, state|
+                allow(Flipper).to receive(:enabled?).with(flipper).and_return(state)
+              end
+            end
           end
 
           it 'fills the form correctly' do

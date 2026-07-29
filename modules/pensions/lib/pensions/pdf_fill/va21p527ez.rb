@@ -87,6 +87,7 @@ module Pensions
         { question_number: '7b', question_text: 'Spouse\'s Prior Marital History' },
         { question_number: '8', question_text: 'Dependent Children' },
         { question_number: '9', question_text: 'Income and Assets' },
+        { question_number: '9h', question_text: 'Income Sources' },
         { question_number: '10', question_text: 'Care Expenses' },
         { question_number: '10b', question_text: 'Medical Expenses' },
         { question_number: '11', question_text: 'Direct Deposit Information' },
