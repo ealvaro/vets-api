@@ -76,7 +76,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
   describe '#show' do
     before do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
     end
 
     it 'returns expanded claim details on success' do
@@ -86,10 +85,8 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
 
         get "/travel_pay/v0/claims/#{claim_id}", headers: { 'Authorization' => 'Bearer vagov_token' }
         actual_claim_num = JSON.parse(response.body)['claimNumber']
-        documents_array = JSON.parse(response.body)['documents']
 
         expect(response).to have_http_status(:ok)
-        expect(documents_array).to be_empty
         expect(actual_claim_num).to eq(expected_claim_num)
       end
     end
@@ -103,9 +100,8 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
       end
     end
 
-    it 'appends document information if claims management flipper is on' do
+    it 'appends document information' do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(true)
 
       VCR.use_cassette('travel_pay/show/success_details', match_requests_on: %i[method path]) do
         claim_id = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
@@ -119,7 +115,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
 
     it 'returns a ServiceUnavailable response if feature flag turned off' do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
 
       get '/travel_pay/v0/claims/123', headers: { 'Authorization' => 'Bearer vagov_token' }
       expect(response).to have_http_status(:service_unavailable)

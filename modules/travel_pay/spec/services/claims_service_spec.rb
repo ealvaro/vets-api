@@ -197,21 +197,7 @@ describe TravelPay::ClaimsService do
         .and_return(document_ids_response)
     end
 
-    it 'returns expanded claim details when passed a valid id' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
-      claim_id = '73611905-71bf-46ed-b1ec-e790593b8565'
-      actual_claim = service.get_claim_details(claim_id)
-
-      expect(actual_claim['expenses']).not_to be_empty
-      expect(actual_claim['appointment']).not_to be_empty
-      expect(actual_claim['totalCostRequested']).to eq(20.00)
-      expect(actual_claim['documents']).to be_empty
-      expect(actual_claim['claimStatus']).to eq('Pre approved for payment')
-    end
-
     it 'includes an empty document array if document call fails' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(true)
-
       allow_any_instance_of(TravelPay::DocumentsClient)
         .to receive(:get_document_ids)
         .and_raise(Common::Exceptions::ResourceNotFound.new(
@@ -233,8 +219,7 @@ describe TravelPay::ClaimsService do
       expect(actual_claim['claimStatus']).to eq('Pre approved for payment')
     end
 
-    it 'includes document summary info when include_documents flag is true' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(true)
+    it 'includes document summary info' do
       claim_id = '73611905-71bf-46ed-b1ec-e790593b8565'
       actual_claim = service.get_claim_details(claim_id)
 
@@ -274,8 +259,6 @@ describe TravelPay::ClaimsService do
     end
 
     it 'overwrites expenseType with name value for parking expenses' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
-
       # Create claim data with a Parking expense where expenseType is "Other" but name is "Parking"
       claim_data_with_parking = claim_details_data.deep_dup
       claim_data_with_parking['data']['expenses'] = [
@@ -302,8 +285,6 @@ describe TravelPay::ClaimsService do
     end
 
     it 'overwrites expenseType only for parking expenses, not other expense types' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
-
       claim_data_mixed = claim_details_data.deep_dup
       claim_data_mixed['data']['expenses'] = [
         {
@@ -340,8 +321,6 @@ describe TravelPay::ClaimsService do
     end
 
     it 'does not overwrite expenseType when name is blank' do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, instance_of(User)).and_return(false)
-
       claim_data_blank_name = claim_details_data.deep_dup
       claim_data_blank_name['data']['expenses'] = [
         {
@@ -902,7 +881,6 @@ describe TravelPay::ClaimsService do
       end
 
       before do
-        allow(Flipper).to receive(:enabled?).with(:travel_pay_claims_management, user).and_return(true)
         allow_any_instance_of(TravelPay::DocumentsClient)
           .to receive(:get_document_ids)
           .and_return(double(body: documents_with_decision_letter))

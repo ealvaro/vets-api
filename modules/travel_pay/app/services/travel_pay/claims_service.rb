@@ -165,20 +165,14 @@ module TravelPay
     end
 
     def get_document_summaries(auth_session, claim_id)
-      documents = []
-      if include_documents?
-        begin
-          documents_response = documents_client.get_document_ids(auth_session, claim_id)
-          documents = documents_response.body['data'] || []
-        rescue => e
-          Rails.logger.error(message:
-          "#{e}. Could not retrieve document summary for requested claim.")
-          # Because we're appending documents to the claim details we need to rescue and return the details,
-          # even if we don't get documents
-          documents = []
-        end
-      end
-      documents
+      documents_response = documents_client.get_document_ids(auth_session, claim_id)
+      documents_response.body['data'] || []
+    rescue => e
+      Rails.logger.error(message:
+      "#{e}. Could not retrieve document summary for requested claim.")
+      # Because we're appending documents to the claim details we need to rescue and return the details,
+      # even if we don't get documents
+      []
     end
 
     def find_decision_letter_document(claim)
@@ -259,10 +253,6 @@ module TravelPay
         "#{e}. Retrieved #{data.size} of #{total_record_count} claims, ending on page #{page_number}.")
         build_claims_response({ **claims, status: 206 })
       end
-    end
-
-    def include_documents?
-      Flipper.enabled?(:travel_pay_claims_management, @user)
     end
 
     def client
