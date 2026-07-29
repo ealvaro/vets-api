@@ -1593,6 +1593,9 @@ features:
   form214502:
     actor_type: user
     description: Enable the form 21-4502
+  form214502_error_validation_fix:
+    actor_type: user
+    description: Enables a fix for error validation showing improperly for 21-4502
   form214502_new_form_flow:
     actor_type: user
     description: Enables the new flow for the 21-4502 form
