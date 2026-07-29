@@ -262,6 +262,7 @@ app/models/form_profiles/va_10272.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_10278.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_108678.rb @software/benefits-intake-pingwind
 app/models/form_profiles/va_1330m.rb @software/bah-mbs-selfserv
+app/models/form_profiles/va_1990ez.rb @software/my-education-benefits
 app/models/form_profiles/va_2010206.rb @software/platform-va-product-forms
 app/models/form_profiles/va_2122.rb @software/accredited-representative-crew
 app/models/form_profiles/va_2122a.rb @software/accredited-representative-crew
