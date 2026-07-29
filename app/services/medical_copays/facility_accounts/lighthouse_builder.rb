@@ -6,7 +6,6 @@ module MedicalCopays
       FACILITY_IDENTIFIER_SYSTEM = 'https://api.va.gov/services/fhir/v0/r4/NamingSystem/va-facility-identifier'
       STATION_PREFIX = 'vha_'
       ORG_CACHE_STATSD_KEY = 'api.mcp.facility_accounts.org_cache'
-      PAYMENT_DUE_DAYS = 25
 
       def initialize(lighthouse_service:)
         @lighthouse_service = lighthouse_service
@@ -25,7 +24,7 @@ module MedicalCopays
             current_balance: FacilityAccount.sum_balances(station_invoices),
             past_due_balance: FacilityAccount.sum_balances(station_invoices.select { |invoice| past_due?(invoice) }),
             statement_date:,
-            due_date: statement_date + PAYMENT_DUE_DAYS
+            due_date: statement_date + FacilityAccount::PAYMENT_DUE_DAYS
           )
         end
       end
@@ -45,7 +44,7 @@ module MedicalCopays
       end
 
       def past_due?(invoice)
-        statement_date_for(invoice) + PAYMENT_DUE_DAYS < Time.zone.today
+        statement_date_for(invoice) + FacilityAccount::PAYMENT_DUE_DAYS < Time.zone.today
       end
 
       def statement_date_for(invoice)

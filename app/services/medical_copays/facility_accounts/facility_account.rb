@@ -6,6 +6,7 @@ module MedicalCopays
       include Vets::Model
 
       STATION_ID_PATTERN = /\A\d{3}/
+      PAYMENT_DUE_DAYS = 25
 
       def self.sum_balances(items)
         items.reduce(BigDecimal('0')) do |sum, item|

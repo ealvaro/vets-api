@@ -30,6 +30,27 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
 
       expect(service.accounts).to eq({ total_current_balance: 0.3, facilities: })
     end
+
+    context 'when served from VBS' do
+      let(:lighthouse_copays_enabled) { false }
+      let(:vbs_service) { instance_double(MedicalCopays::VBS::Service) }
+      let(:vbs_builder) { MedicalCopays::FacilityAccounts::VBSBuilder.new(vbs_service:) }
+
+      before do
+        statements = [
+          { 'pSFacilityNum' => '757', 'pSStatementDate' => '12112025', 'pHNewBalance' => 105.24 },
+          { 'pSFacilityNum' => '534', 'pSStatementDate' => '12112025', 'pHNewBalance' => 15.0 }
+        ]
+        allow(vbs_service).to receive(:get_copays).and_return({ data: statements, status: 200 })
+      end
+
+      it 'totals the current balance across the statement facilities' do
+        result = service.accounts
+
+        expect(result[:facilities].map(&:current_balance)).to contain_exactly(105.24, 15.0)
+        expect(result[:total_current_balance]).to eq(120.24)
+      end
+    end
   end
 
   describe 'feature gating' do
