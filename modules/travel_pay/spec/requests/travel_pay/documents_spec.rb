@@ -26,7 +26,6 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
                                              btsss_token: 'btsss_token'))
     sign_in(user)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
   end
 
   # GET /travel_pay/v0/claims/:claim_id/documents/:id
@@ -324,49 +323,6 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
         expect(response).to have_http_status(:service_unavailable)
         body = JSON.parse(response.body)
         expect(body['errors'].first['detail']).to include('Travel Pay document endpoint unavailable per feature toggle')
-      end
-    end
-  end
-
-  context 'with unified error handling disabled (legacy)' do
-    before do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
-                                                instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_complex_claims,
-                                                instance_of(User)).and_return(true)
-      allow_any_instance_of(TravelPay::V0::DocumentsController)
-        .to receive(:service).and_return(service)
-    end
-
-    describe '#show' do
-      it 'renders legacy error response for Faraday::Error' do
-        error = Faraday::Error.new('Server error')
-        allow(error).to receive(:response).and_return({ status: 500 })
-        allow(service).to receive(:download_document).and_raise(error)
-
-        get(doc_path)
-
-        expect(response).to have_http_status(:internal_server_error)
-        body = JSON.parse(response.body)
-        expect(body['error']).to eq('Error downloading document')
-      end
-    end
-
-    describe '#destroy' do
-      before do
-        allow_any_instance_of(TravelPay::V0::DocumentsController).to receive(:current_user).and_return(user)
-      end
-
-      it 'renders legacy error for Faraday::ClientError' do
-        error = Faraday::ClientError.new('Bad request')
-        allow(error).to receive(:response).and_return({ status: 400, body: 'invalid document' })
-        allow(service).to receive(:delete_document).and_raise(error)
-
-        delete(doc_path)
-
-        expect(response).to have_http_status(:bad_request)
-        body = JSON.parse(response.body)
-        expect(body['errors'].first['detail']).to eq('invalid document')
       end
     end
   end

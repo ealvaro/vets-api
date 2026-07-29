@@ -13,14 +13,6 @@ module TravelPay
       def index
         claims = claims_service.get_claims_by_date_range(params)
         render json: claims, status: claims[:metadata]['status']
-      rescue Faraday::ResourceNotFound => e
-        raise if unified_error_handling_enabled?
-
-        handle_resource_not_found_error(e.message, e.response[:request][:headers]['X-Correlation-ID'])
-      rescue Faraday::Error => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
       end
 
       def show
@@ -33,12 +25,7 @@ module TravelPay
         return if performed?
 
         if claim.nil?
-          if unified_error_handling_enabled?
-            raise Common::Exceptions::ResourceNotFound.new(detail: "Claim not found. ID provided: #{params[:id]}")
-          end
-
-          handle_resource_not_found_error("Claim not found. ID provided: #{params[:id]}", nil)
-          return
+          raise Common::Exceptions::ResourceNotFound.new(detail: "Claim not found. ID provided: #{params[:id]}")
         end
 
         render json: claim, status: :ok
@@ -73,19 +60,6 @@ module TravelPay
 
       def fetch_claim_details(claim_id)
         claims_service.get_claim_details(claim_id)
-      rescue Faraday::ResourceNotFound => e
-        raise if unified_error_handling_enabled?
-
-        handle_resource_not_found_error(e.message, e.response[:request][:headers]['X-Correlation-ID'])
-        nil
-      rescue Faraday::Error => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
-      rescue ArgumentError => e
-        raise if unified_error_handling_enabled?
-
-        raise Common::Exceptions::BadRequest, message: e.message
       end
 
       def execute_smoc_transaction
@@ -99,11 +73,6 @@ module TravelPay
         Rails.logger.info(message: 'SMOC transaction END')
         increment_smoc_statsd('success')
         submitted_claim
-      rescue ArgumentError, Faraday::Error => e
-        increment_smoc_statsd('failure')
-        raise if unified_error_handling_enabled?
-
-        legacy_handle_smoc_error(e)
       rescue
         increment_smoc_statsd('failure')
         raise
@@ -114,15 +83,6 @@ module TravelPay
           message = 'Travel Pay mileage expense submission unavailable per feature toggle'
           Rails.logger.error(message:)
           raise Common::Exceptions::ServiceUnavailable, message:
-        end
-      end
-
-      def legacy_handle_smoc_error(e)
-        case e
-        when ArgumentError
-          raise Common::Exceptions::BadRequest, detail: e.message
-        when Faraday::Error
-          TravelPay::ServiceError.raise_mapped_error(e)
         end
       end
 
@@ -145,17 +105,6 @@ module TravelPay
 
           true
         end
-      end
-
-      def handle_resource_not_found_error(message, cid)
-        Rails.logger.error("Resource not found: #{message}")
-        render(
-          json: {
-            error: 'Not found',
-            correlation_id: cid
-          },
-          status: :not_found
-        )
       end
     end
   end

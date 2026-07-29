@@ -9,7 +9,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
   before do
     sign_in(user)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
   end
 
   describe '#index' do
@@ -213,38 +212,6 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
           post('/travel_pay/v0/claims', headers:, params:)
 
           expect(response).to have_http_status(expected_status)
-        end
-      end
-    end
-  end
-
-  context 'with unified error handling disabled (legacy)' do
-    before do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
-                                                instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_submit_mileage_expense,
-                                                instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade,
-                                                instance_of(User)).and_return(false)
-    end
-
-    describe '#create (SMOC)' do
-      it 'uses legacy error handling for Faraday::ServerError' do
-        allow_any_instance_of(TravelPay::AuthManager).to receive(:authorize)
-          .and_return(TravelPay::AuthSession.new(veis_token: 'vt', btsss_token: 'bt'))
-        allow_any_instance_of(TravelPay::ClaimsService).to receive(:submit_claim)
-          .and_raise(Faraday::ServerError.new('500 Internal Server Error'))
-
-        VCR.use_cassette('travel_pay/submit/success', match_requests_on: %i[method path]) do
-          headers = { 'Authorization' => 'Bearer vagov_token' }
-          params = { 'appointment_date_time' => '2024-01-01T16:45:34.465Z',
-                     'facility_station_number' => '123',
-                     'appointment_type' => 'Other',
-                     'is_complete' => false }
-
-          post('/travel_pay/v0/claims', headers:, params:)
-
-          expect(response).to have_http_status(:internal_server_error)
         end
       end
     end

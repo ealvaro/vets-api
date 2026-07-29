@@ -17,8 +17,6 @@ module ErrorHandling
   private
 
   def render_error(e)
-    raise unless unified_error_handling_enabled?
-
     exception = normalize_exception(e)
     log_exception(e, exception)
 
@@ -27,10 +25,6 @@ module ErrorHandling
     response_body[:meta] = { correlation_id: cid } if cid.present?
 
     render json: response_body, status: exception.status_code
-  end
-
-  def unified_error_handling_enabled?
-    Flipper.enabled?(:travel_pay_unified_error_handling, current_user)
   end
 
   def log_exception(original, exception)

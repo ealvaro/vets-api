@@ -13,7 +13,6 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_complex_claims, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_heic_conversion, user).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
 
     # Mock authentication to provide tokens for VCR cassettes
     auth_manager_double = instance_double(
@@ -709,50 +708,5 @@ RSpec.describe TravelPay::V0::ExpensesController, type: :request do
 
   def expense_path(expense_type, id = nil)
     "/travel_pay/v0/expenses/#{expense_type}/#{id || expense_id}"
-  end
-
-  context 'with unified error handling disabled (legacy)' do
-    let(:expenses_service) { instance_double(TravelPay::ExpensesService) }
-
-    before do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
-                                                instance_of(User)).and_return(false)
-      allow_any_instance_of(TravelPay::V0::ExpensesController).to receive(:current_user).and_return(user)
-      allow(TravelPay::ExpensesService).to receive(:new).and_return(expenses_service)
-    end
-
-    describe '#update' do
-      before do
-        allow_any_instance_of(TravelPay::V0::ExpensesController)
-          .to receive(:create_and_validate_expense).and_return(double(to_service_params: {}))
-      end
-
-      it 'uses legacy error handling for BackendServiceException' do
-        allow(expenses_service).to receive(:update_expense).and_raise(
-          Common::Exceptions::BackendServiceException.new(nil, { status: 502 }, 502)
-        )
-
-        patch "/travel_pay/v0/expenses/other/#{expense_id}",
-              params: { purchase_date: 1.day.ago.iso8601, description: 'test' }
-
-        expect(response).to have_http_status(:bad_gateway)
-        body = JSON.parse(response.body)
-        expect(body['error']).to eq('Error updating expense')
-      end
-    end
-
-    describe '#destroy' do
-      it 'uses legacy error handling for BackendServiceException' do
-        allow(expenses_service).to receive(:delete_expense).and_raise(
-          Common::Exceptions::BackendServiceException.new(nil, { status: 502 }, 502)
-        )
-
-        delete expense_path('other')
-
-        expect(response).to have_http_status(:bad_gateway)
-        body = JSON.parse(response.body)
-        expect(body['error']).to eq('Error deleting expense')
-      end
-    end
   end
 end

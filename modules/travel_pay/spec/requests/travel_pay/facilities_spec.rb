@@ -35,7 +35,6 @@ RSpec.describe TravelPay::V0::FacilitiesController, type: :request do
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?)
       .with(:travel_pay_enable_user_created_appointments, instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
     allow_any_instance_of(TravelPay::AuthManager).to receive(:authorize).and_return(auth_session)
     allow_any_instance_of(TravelPay::ContactClient).to receive(:get_contact)
       .and_return(Faraday::Response.new(status: 200, body: contact_body))
@@ -177,24 +176,6 @@ RSpec.describe TravelPay::V0::FacilitiesController, type: :request do
         expect(parsed['errors']).to be_present
         expect(parsed['errors'].first['code']).to eq('BTSSS-API_CONNECTION_TIMEOUT')
       end
-    end
-  end
-
-  context 'with unified error handling disabled (legacy)' do
-    before do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
-                                                instance_of(User)).and_return(false)
-    end
-
-    it 'renders legacy error response for BackendServiceException' do
-      allow_any_instance_of(TravelPay::FacilitiesClient).to receive(:get_related_facilities)
-        .and_raise(Common::Exceptions::BackendServiceException.new(nil, { detail: 'BTSSS error' }, 503))
-
-      get '/travel_pay/v0/facilities/related', headers: { 'Authorization' => 'Bearer vagov_token' }
-
-      expect(response).to have_http_status(:service_unavailable)
-      parsed = JSON.parse(response.body)
-      expect(parsed['error']).to eq('Error retrieving facilities')
     end
   end
 end

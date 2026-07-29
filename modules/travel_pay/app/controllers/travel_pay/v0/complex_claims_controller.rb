@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'logging/monitor'
-
 module TravelPay
   module V0
     class ComplexClaimsController < ApplicationController
@@ -25,18 +23,6 @@ module TravelPay
 
         increment_submit_statsd('success')
         render json: submitted_claim, status: :created
-      rescue Common::Exceptions::BackendServiceException => e
-        increment_submit_statsd('failure')
-        raise if unified_error_handling_enabled?
-
-        monitor.track_request(:error, "BTSSS error submitting complex claim: #{e.message}",
-                              'travel_pay.claims.complex.submit.backend_error')
-        render json: { error: 'Error submitting complex claim' }, status: e.original_status || :bad_gateway
-      rescue Faraday::Error => e
-        increment_submit_statsd('failure')
-        raise if unified_error_handling_enabled?
-
-        legacy_handle_submit_error(e)
       rescue
         increment_submit_statsd('failure')
         raise
@@ -49,21 +35,6 @@ module TravelPay
         claim_id = create_claim(appt_id, 'Complex')
         increment_statsd(appointment_source, 'success')
         render json: { claimId: claim_id }, status: :created
-      rescue Common::Exceptions::ResourceNotFound => e
-        increment_statsd(appointment_source, 'failure')
-        raise if unified_error_handling_enabled?
-
-        legacy_handle_create_not_found(e)
-      rescue Common::Exceptions::BackendServiceException => e
-        increment_statsd(appointment_source, 'failure')
-        raise if unified_error_handling_enabled?
-
-        legacy_handle_create_backend_error(e)
-      rescue Faraday::Error => e
-        increment_statsd(appointment_source, 'failure')
-        raise if unified_error_handling_enabled?
-
-        legacy_handle_create_faraday_error(e)
       rescue
         increment_statsd(appointment_source, 'failure') if appointment_source
         raise
@@ -118,58 +89,6 @@ module TravelPay
 
       def allowed_claim_keys
         appointments_v4_enabled? ? base_required_fields + v4_additional_fields : base_required_fields
-      end
-
-      # Handles Faraday errors for both client (4xx) and server (5xx)
-      # e: the Faraday error
-      # default_message: fallback message if response body is missing
-      # log_prefix: optional prefix for log message
-      def handle_faraday_error(e, default_message, log_prefix: '')
-        error_type = e.is_a?(Faraday::ClientError) ? 'client' : 'server'
-        Rails.logger.error("#{log_prefix}Faraday #{error_type} error: #{e.message}")
-
-        http_status = e.response&.dig(:status) ||
-                      (e.is_a?(Faraday::ClientError) ? :bad_request : :internal_server_error)
-        message = if e.response&.dig(:body).present?
-                    e.response[:body]
-                  else
-                    default_message
-                  end
-
-        render json: { errors: [{ detail: message }] }, status: http_status
-      end
-
-      def legacy_handle_submit_error(e)
-        case e
-        when Faraday::ClientError
-          handle_faraday_error(e, 'Invalid request for complex claim', log_prefix: 'Submitting complex claim: ')
-        when Faraday::ServerError
-          handle_faraday_error(e, 'Server error submitting complex claim', log_prefix: 'Submitting complex claim: ')
-        else
-          handle_faraday_error(e, 'Error creating complex claim', log_prefix: 'Submitting complex claim: ')
-        end
-      end
-
-      def legacy_handle_create_faraday_error(e)
-        Rails.logger.error("Faraday error creating complex claim: #{e.message}")
-        status_code = (e.respond_to?(:response) && e.response && e.response[:status]) || :internal_server_error
-        render json: { error: 'Error creating complex claim' }, status: status_code
-      end
-
-      def legacy_handle_create_not_found(e)
-        monitor.track_request(:error, "Appointment not found: #{e.message}",
-                              'travel_pay.claims.complex.create.not_found')
-        render json: { error: e.message }, status: :not_found
-      end
-
-      def legacy_handle_create_backend_error(e)
-        monitor.track_request(:error, "BTSSS error creating complex claim: #{e.message}",
-                              'travel_pay.claims.complex.create.backend_error')
-        render json: { error: 'Error creating complex claim' }, status: e.original_status || :bad_gateway
-      end
-
-      def monitor
-        @monitor ||= Logging::Monitor.new('travel-pay-complex-claims')
       end
 
       def validated_claim_params!

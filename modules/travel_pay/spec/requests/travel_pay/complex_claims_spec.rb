@@ -32,7 +32,6 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
     sign_in(user)
     allow_any_instance_of(TravelPay::V0::ComplexClaimsController).to receive(:current_user).and_return(user)
     allow(Flipper).to receive(:enabled?).with(:travel_pay_power_switch, instance_of(User)).and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling, instance_of(User)).and_return(true)
   end
 
   # POST /travel_pay/v0/complex_claims/
@@ -812,98 +811,6 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
         body = JSON.parse(response.body)
         expect(body['errors'].first['detail'])
           .to include('Travel Pay complex claim endpoint unavailable per feature toggle')
-      end
-    end
-  end
-
-  context 'with unified error handling disabled (legacy)' do
-    before do
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_unified_error_handling,
-                                                instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_complex_claims,
-                                                instance_of(User)).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:travel_pay_appt_add_v4_upgrade,
-                                                instance_of(User)).and_return(false)
-    end
-
-    describe '#submit' do
-      let(:claims_service) { instance_double(TravelPay::ClaimsService) }
-
-      before do
-        allow_any_instance_of(TravelPay::V0::ComplexClaimsController)
-          .to receive(:claims_service).and_return(claims_service)
-      end
-
-      it 'uses legacy error handling for Faraday::ClientError' do
-        error = Faraday::ClientError.new('Bad request', { status: 400, body: 'invalid claim' })
-        allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
-
-        patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
-
-        expect(response).to have_http_status(:bad_request)
-        body = JSON.parse(response.body)
-        expect(body['errors'].first['detail']).to eq('invalid claim')
-      end
-
-      it 'uses legacy error handling for Faraday::ServerError' do
-        error = Faraday::ServerError.new('Service unavailable', { status: 503, body: '' })
-        allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
-
-        patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
-
-        expect(response).to have_http_status(:service_unavailable)
-        body = JSON.parse(response.body)
-        expect(body['errors'].first['detail']).to eq('Server error submitting complex claim')
-      end
-
-      it 'renders upstream status for BackendServiceException' do
-        allow(StatsD).to receive(:increment)
-        error = Common::Exceptions::BackendServiceException.new(
-          nil, { status: 500, detail: 'Unable to refresh appointment data.', code: 'VA900', source: nil }, 500
-        )
-        allow(claims_service).to receive(:submit_claim).with(claim_id).and_raise(error)
-
-        patch("/travel_pay/v0/complex_claims/#{claim_id}/submit")
-
-        expect(response).to have_http_status(:internal_server_error)
-        expect(JSON.parse(response.body)['error']).to eq('Error submitting complex claim')
-        expect(StatsD).to have_received(:increment)
-          .with('travel_pay.claims.complex.submit.backend_error', tags: anything)
-      end
-    end
-
-    describe '#create' do
-      let(:appts_service_double) { instance_double(TravelPay::AppointmentsService) }
-
-      before do
-        allow_any_instance_of(TravelPay::V0::ComplexClaimsController)
-          .to receive(:appts_service).and_return(appts_service_double)
-      end
-
-      it 'renders upstream status for BackendServiceException' do
-        allow(StatsD).to receive(:increment)
-        error = Common::Exceptions::BackendServiceException.new(
-          nil, { status: 500, detail: 'Unable to refresh appointment data.', code: 'VA900', source: nil }, 500
-        )
-        allow(appts_service_double).to receive(:find_or_create_appointment).and_raise(error)
-
-        post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
-
-        expect(response).to have_http_status(:internal_server_error)
-        expect(JSON.parse(response.body)['error']).to eq('Error creating complex claim')
-        expect(StatsD).to have_received(:increment)
-          .with('travel_pay.claims.complex.create.backend_error', tags: anything)
-      end
-
-      it 'renders not_found for ResourceNotFound and fires monitor metric' do
-        allow(StatsD).to receive(:increment)
-        allow(appts_service_double).to receive(:find_or_create_appointment).and_return(nil)
-
-        post('/travel_pay/v0/complex_claims', params: params_v2, as: :json)
-
-        expect(response).to have_http_status(:not_found)
-        expect(StatsD).to have_received(:increment)
-          .with('travel_pay.claims.complex.create.not_found', tags: anything)
       end
     end
   end

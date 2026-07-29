@@ -13,15 +13,6 @@ module TravelPay
         appointments = appointments_service.search_appointments(search_params)
         Rails.logger.info(message: 'Travel Pay appointment search END')
         render json: { data: appointments }, status: :ok
-      rescue Common::Exceptions::BackendServiceException => e
-        raise if unified_error_handling_enabled?
-
-        Rails.logger.error("TravelPay: BTSSS error searching appointments: #{e.message}")
-        render json: { error: 'Error searching appointments' }, status: e.original_status
-      rescue Faraday::Error => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
       end
 
       def create
@@ -29,15 +20,6 @@ module TravelPay
         appointment = appointments_service.create_appointment(create_params)
         Rails.logger.info(message: 'Travel Pay appointment create END')
         render json: { data: appointment }, status: :created
-      rescue Common::Exceptions::BackendServiceException => e
-        raise if unified_error_handling_enabled?
-
-        Rails.logger.error("TravelPay: BTSSS error creating appointment: #{e.message}")
-        render json: { error: 'Error creating appointment' }, status: e.original_status
-      rescue Faraday::Error => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
       end
 
       private

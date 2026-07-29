@@ -27,14 +27,6 @@ module TravelPay
         Rails.logger.info(message: 'Travel Pay expense retrieval END')
 
         render json: expense, status: :ok
-      rescue ArgumentError => e
-        raise if unified_error_handling_enabled?
-
-        raise Common::Exceptions::BadRequest, detail: e.message
-      rescue Faraday::Error => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
       end
 
       def create
@@ -49,16 +41,6 @@ module TravelPay
         increment_expense_statsd(params[:expense_type], 'success')
 
         render json: created_expense, status: :created
-      rescue ArgumentError => e
-        increment_expense_statsd(params[:expense_type], 'failure')
-        raise if unified_error_handling_enabled?
-
-        raise Common::Exceptions::BadRequest, detail: e.message
-      rescue Faraday::Error => e
-        increment_expense_statsd(params[:expense_type], 'failure')
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
       rescue
         increment_expense_statsd(params[:expense_type], 'failure')
         raise
@@ -74,19 +56,6 @@ module TravelPay
         response_data = expense_service.update_expense(expense_id, expense_type, expense_params_for_service(expense))
 
         render json: { id: response_data['id'] }, status: :ok
-      rescue ArgumentError => e
-        raise if unified_error_handling_enabled?
-
-        raise Common::Exceptions::BadRequest, detail: e.message
-      rescue Faraday::ClientError, Faraday::ServerError => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
-      rescue Common::Exceptions::BackendServiceException => e
-        raise if unified_error_handling_enabled?
-
-        Rails.logger.error("Error updating expense: #{e.message}")
-        render json: { error: 'Error updating expense' }, status: e.original_status
       end
 
       def destroy
@@ -99,19 +68,6 @@ module TravelPay
         response_data = expense_service.delete_expense(expense_id:, expense_type:)
 
         render json: { id: response_data['id'] }, status: :ok
-      rescue ArgumentError => e
-        raise if unified_error_handling_enabled?
-
-        raise Common::Exceptions::BadRequest, detail: e.message
-      rescue Faraday::ClientError, Faraday::ServerError => e
-        raise if unified_error_handling_enabled?
-
-        TravelPay::ServiceError.raise_mapped_error(e)
-      rescue Common::Exceptions::BackendServiceException => e
-        raise if unified_error_handling_enabled?
-
-        Rails.logger.error("Error deleting expense: #{e.message}")
-        render json: { error: 'Error deleting expense' }, status: e.original_status
       end
 
       private
