@@ -3428,6 +3428,10 @@ features:
   mgib_verifications_maintenance:
     actor_type: user
     description: Used to show  maintenance alert for MGIB Verifications
+  search_skip_known_bots:
+    actor_type: cookie_id
+    description: When enabled, short-circuits known crawler/bot User-Agents on /v0/search with a 204 so they do not hit the rate-limited upstream Search.gov API. The matched User-Agent regex is configured via Settings.search.bot_user_agent_regex (Parameter Store overridable).
+    enable_in_development: false
   search_use_v2_gsa:
     actor_type: cookie_id
     description: Swaps the Search Service's for one with an updated api.gsa.gov address

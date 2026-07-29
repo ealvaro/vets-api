@@ -10,7 +10,65 @@ Rspec.describe 'V0::Search', type: :request do
   let(:inflection_header) { { 'X-Key-Inflection' => 'camel' } }
 
   before do
+    allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:search_skip_known_bots).and_return(false)
+  end
+
+  describe 'GET /v0/search with known bot short-circuit' do
+    let(:bot_headers) { { 'User-Agent' => 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)' } }
+    let(:browser_headers) do
+      { 'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) ' \
+                        'Chrome/120.0.0.0 Safari/537.36' }
+    end
+
+    context 'when the flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:search_skip_known_bots).and_return(true)
+        allow(Settings.search).to receive(:bot_user_agent_regex).and_return('bingbot|Googlebot|crawler|spider')
+      end
+
+      it 'returns 204 and does not call the search service for a known bot User-Agent' do
+        expect(Search::Service).not_to receive(:new)
+        expect(SearchGsa::Service).not_to receive(:new)
+
+        get '/v0/search', params: { query: 'benefits' }, headers: bot_headers
+
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it 'processes the request normally for a standard browser User-Agent' do
+        VCR.use_cassette('search/success') do
+          get '/v0/search', params: { query: 'benefits' }, headers: browser_headers
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      it 'processes the request normally when the configured regex is blank' do
+        allow(Settings.search).to receive(:bot_user_agent_regex).and_return('')
+
+        VCR.use_cassette('search/success') do
+          get '/v0/search', params: { query: 'benefits' }, headers: bot_headers
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    context 'when the flag is disabled' do
+      before do
+        allow(Settings.search).to receive(:bot_user_agent_regex).and_return('bingbot|Googlebot|crawler|spider')
+      end
+
+      it 'processes the request normally even for a known bot User-Agent' do
+        VCR.use_cassette('search/success') do
+          get '/v0/search', params: { query: 'benefits' }, headers: bot_headers
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
   end
 
   describe 'GET /v0/search' do

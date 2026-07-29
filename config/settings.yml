@@ -1373,6 +1373,10 @@ schema_contract:
 search:
   access_key: <%= ENV['search__access_key'] %>
   affiliate: va
+  # Regex (case-insensitive) matched against the request User-Agent to short-circuit
+  # known crawler/bot traffic before it reaches the rate-limited Search.gov API.
+  # Set/override via Parameter Store: search__bot_user_agent_regex
+  bot_user_agent_regex: <%= ENV['search__bot_user_agent_regex'] %>
   mock_search: <%= ENV['search__mock_search'] %>
   url: <%= ENV['search__url'] %>
 search_click_tracking:
