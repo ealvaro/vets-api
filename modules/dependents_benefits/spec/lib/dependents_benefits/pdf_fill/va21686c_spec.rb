@@ -264,16 +264,18 @@ RSpec.describe DependentsBenefits::PdfFill::Va21686c do
     end
 
     context 'when street3 not present' do
-      let(:street3) { nil }
+      let(:street3) { '' }
 
       context 'when no overflow' do
         let(:street) { '123 Main Street' }
         let(:street2) { 'Rm 5' }
 
-        it 'does not mutate address' do
+        it 'ensures street3 deleted' do
           expect(street.length).to be < described_class::STREET_LIMIT
           expect(street2.length).to be < described_class::STREET_2_LIMIT
-          expect { handle_overflow }.not_to(change { address })
+          expect(street3).to eq('')
+          handle_overflow
+          expect(address).not_to have_key('street3')
         end
       end
 

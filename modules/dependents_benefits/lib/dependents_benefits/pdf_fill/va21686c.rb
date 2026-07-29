@@ -1684,6 +1684,8 @@ module DependentsBenefits
               'street3' => [street, street2, street3].compact.join("\n")
             }
           )
+        else
+          address.delete('street3')
         end
       end
 
