@@ -201,14 +201,12 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
                   allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
-                  allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email)
-                                                      .and_return(false)
-                  allow(VANotify::EmailJob).to receive(:perform_async)
+                  allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
                   subject = instance
                   subject.after_submit(user)
 
-                  expect(VANotify::EmailJob).to have_received(:perform_async).with(
+                  expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
                     'test@sample.com',
                     'form21_10203_confirmation_email_template_id',
                     {
@@ -217,7 +215,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                       'confirmation_number' => subject.education_benefits_claim.confirmation_number,
                       'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                     },
-                    Settings.vanotify.services.va_gov.api_key,
+                    'Settings.vanotify.services.va_gov.api_key',
                     callback_options
                   )
                 end
@@ -421,13 +419,12 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
               allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
-              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email).and_return(false)
-              allow(VANotify::EmailJob).to receive(:perform_async)
+              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
               subject = instance
               subject.after_submit(nil)
 
-              expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
                 'test@sample.com',
                 'form21_10203_confirmation_email_template_id',
                 {
@@ -436,7 +433,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   'confirmation_number' => subject.education_benefits_claim.confirmation_number,
                   'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                 },
-                Settings.vanotify.services.va_gov.api_key,
+                'Settings.vanotify.services.va_gov.api_key',
                 callback_options
               )
             end
@@ -630,14 +627,12 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
                 it 'sends the confirmation email with the form email with the callback paarameters' do
                   allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
-                  allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email)
-                                                      .and_return(false)
-                  allow(VANotify::EmailJob).to receive(:perform_async)
+                  allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
                   subject = instance
                   subject.after_submit(user)
 
-                  expect(VANotify::EmailJob).to have_received(:perform_async).with(
+                  expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
                     'test@sample.com',
                     'form21_10203_confirmation_email_template_id',
                     {
@@ -646,7 +641,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                       'confirmation_number' => subject.education_benefits_claim.confirmation_number,
                       'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                     },
-                    Settings.vanotify.services.va_gov.api_key,
+                    'Settings.vanotify.services.va_gov.api_key',
                     callback_options
                   )
                 end
@@ -881,13 +876,12 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
 
             it 'sends the confirmation email with the form email with the callback paarameters' do
               allow(Flipper).to receive(:enabled?).with(:form21_10203_confirmation_email).and_return(true)
-              allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_benefits_confirmation_email).and_return(false)
-              allow(VANotify::EmailJob).to receive(:perform_async)
+              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
               subject = instance
               subject.after_submit(nil)
 
-              expect(VANotify::EmailJob).to have_received(:perform_async).with(
+              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
                 'test@sample.com',
                 'form21_10203_confirmation_email_template_id',
                 {
@@ -896,7 +890,7 @@ RSpec.describe SavedClaim::EducationBenefits::VA10203 do
                   'confirmation_number' => subject.education_benefits_claim.confirmation_number,
                   'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
                 },
-                Settings.vanotify.services.va_gov.api_key,
+                'Settings.vanotify.services.va_gov.api_key',
                 callback_options
               )
             end

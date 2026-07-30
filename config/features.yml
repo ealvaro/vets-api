@@ -3524,11 +3524,6 @@ features:
     description: >-
       If enabled, SubmitCareerCounselingJob will use VANotify::V2::QueueEmailJob instead of
       VANotify::EmailJob for confirmation emails
-  va_notify_v2_edu_benefits_confirmation_email:
-    actor_type: user
-    description: >-
-      If enabled, education benefits confirmation emails will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
   va_notify_v2_edu_career_counseling_failure_email:
     actor_type: user
     description: >-
