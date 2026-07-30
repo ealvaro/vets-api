@@ -5,7 +5,10 @@ module SignIn
     include Sidekiq::Job
 
     def perform
-      expired_oauth_sessions.destroy_all
+      sessions = expired_oauth_sessions
+      handles = sessions.pluck(:handle)
+      sessions.destroy_all
+      SessionRecord.sign_out(handles)
     end
 
     private

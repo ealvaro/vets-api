@@ -16,5 +16,26 @@ RSpec.describe SignIn::DeleteExpiredSessionsJob do
     it 'does not delete active oauth sessions' do
       expect { job.perform }.not_to change(active_oauth_session, :reload)
     end
+
+    context 'when session records exist for the sessions' do
+      let!(:expired_session_record) do
+        create(:session_record, handle: expired_oauth_session.handle,
+                                user_account: expired_oauth_session.user_account,
+                                client_id: expired_oauth_session.client_id)
+      end
+      let!(:active_session_record) do
+        create(:session_record, handle: active_oauth_session.handle,
+                                user_account: active_oauth_session.user_account,
+                                client_id: active_oauth_session.client_id)
+      end
+
+      it 'stamps signed_out_at on session records for expired sessions' do
+        expect { job.perform }.to change { expired_session_record.reload.signed_out_at }.from(nil)
+      end
+
+      it 'does not stamp signed_out_at on session records for active sessions' do
+        expect { job.perform }.not_to change { active_session_record.reload.signed_out_at }.from(nil)
+      end
+    end
   end
 end
