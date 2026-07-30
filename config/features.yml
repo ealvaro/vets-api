@@ -3467,11 +3467,6 @@ features:
   va_notify_v2_contact_info_change:
     actor_type: user
     description: If enabled, VAProfile::ContactInformation::V2::Service will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
-  va_notify_v2_form0994_confirmation_email:
-    actor_type: user
-    description: >-
-      If enabled, VA0994#send_confirmation_email will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
   va_notify_v2_form1010cg_submission:
     actor_type: user
     description: If enabled, Form1010cg::SubmissionJob will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob

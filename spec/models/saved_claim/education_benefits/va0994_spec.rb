@@ -41,37 +41,16 @@ RSpec.describe SavedClaim::EducationBenefits::VA0994 do
           }
         end
 
-        context 'when va_notify_v2_form0994_confirmation_email is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form0994_confirmation_email).and_return(false)
-          end
+        it 'sends email via V2 QueueEmailJob' do
+          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
-          it 'sends email via V1 EmailJob' do
-            claim.after_submit(user)
-            expect(VANotify::EmailJob).to have_received(:perform_async).with(
-              'test@test.com',
-              'form0994_confirmation_email_template_id',
-              expected_personalisation
-            )
-          end
-        end
-
-        context 'when va_notify_v2_form0994_confirmation_email is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form0994_confirmation_email).and_return(true)
-            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-          end
-
-          it 'sends email via V2 QueueEmailJob' do
-            claim.after_submit(user)
-            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
-              'test@test.com',
-              'form0994_confirmation_email_template_id',
-              expected_personalisation,
-              'Settings.vanotify.services.va_gov.api_key'
-            )
-            expect(VANotify::EmailJob).not_to have_received(:perform_async)
-          end
+          claim.after_submit(user)
+          expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+            'test@test.com',
+            'form0994_confirmation_email_template_id',
+            expected_personalisation,
+            'Settings.vanotify.services.va_gov.api_key'
+          )
         end
       end
 
@@ -92,37 +71,16 @@ RSpec.describe SavedClaim::EducationBenefits::VA0994 do
           }
         end
 
-        context 'when va_notify_v2_form0994_confirmation_email is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form0994_confirmation_email).and_return(false)
-          end
+        it 'sends email via V2 QueueEmailJob' do
+          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
-          it 'sends email via V1 EmailJob' do
-            claim.after_submit(user)
-            expect(VANotify::EmailJob).to have_received(:perform_async).with(
-              'test@test.com',
-              'form0994_extra_action_confirmation_email_template_id',
-              expected_personalisation
-            )
-          end
-        end
-
-        context 'when va_notify_v2_form0994_confirmation_email is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_form0994_confirmation_email).and_return(true)
-            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-          end
-
-          it 'sends email via V2 QueueEmailJob' do
-            claim.after_submit(user)
-            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
-              'test@test.com',
-              'form0994_extra_action_confirmation_email_template_id',
-              expected_personalisation,
-              'Settings.vanotify.services.va_gov.api_key'
-            )
-            expect(VANotify::EmailJob).not_to have_received(:perform_async)
-          end
+          claim.after_submit(user)
+          expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+            'test@test.com',
+            'form0994_extra_action_confirmation_email_template_id',
+            expected_personalisation,
+            'Settings.vanotify.services.va_gov.api_key'
+          )
         end
       end
     end

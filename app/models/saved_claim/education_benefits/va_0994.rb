@@ -30,11 +30,7 @@ class SavedClaim::EducationBenefits::VA0994 < SavedClaim::EducationBenefits
       'regional_office_address' => regional_office_address
     }
 
-    if Flipper.enabled?(:va_notify_v2_form0994_confirmation_email)
-      api_key_path = 'Settings.vanotify.services.va_gov.api_key'
-      VANotify::V2::QueueEmailJob.enqueue(email, email_template, personalisation, api_key_path)
-    else
-      VANotify::EmailJob.perform_async(email, email_template, personalisation)
-    end
+    api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+    VANotify::V2::QueueEmailJob.enqueue(email, email_template, personalisation, api_key_path)
   end
 end
