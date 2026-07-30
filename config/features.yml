@@ -209,6 +209,10 @@ features:
     actor_type: user
     description: Enables on-demand VES eligibility checks for IVC CHAMPVA forms
     enable_in_development: true
+  cst_multi_document_provider:
+    actor_type: user
+    description: When enabled, route CST document uploads through the multi-provider document upload router.
+    enable_in_development: false
   benefits_documents_lighthouse_provider:
     actor_type: user
     description: Enables the Lighthouse benefits documents provider in the provider registry.

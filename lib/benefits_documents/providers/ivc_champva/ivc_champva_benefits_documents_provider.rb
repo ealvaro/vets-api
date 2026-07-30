@@ -47,11 +47,19 @@ module BenefitsDocuments
             record = IvcChampvaForm.find_by(id: claim_id.to_i)
             raise Common::Exceptions::ResourceNotFound if record.blank?
 
-            return record
+            return verify_claim_ownership!(record)
           end
 
           record = IvcChampvaForm.where(form_uuid: claim_id).order(updated_at: :desc).first
           raise Common::Exceptions::ResourceNotFound if record.blank?
+
+          verify_claim_ownership!(record)
+        end
+
+        def verify_claim_ownership!(record)
+          if record.submitted_by_icn.present? && record.submitted_by_icn != @current_user&.icn
+            raise Common::Exceptions::ResourceNotFound
+          end
 
           record
         end

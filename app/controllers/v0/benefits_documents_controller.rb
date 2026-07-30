@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'lighthouse/benefits_documents/service'
+require 'benefits_documents/providers/document_upload_router'
 
 module V0
   class BenefitsDocumentsController < ApplicationController
@@ -28,7 +29,11 @@ module V0
     private
 
     def service
-      BenefitsDocuments::Service.new(@current_user)
+      if Flipper.enabled?(:cst_multi_document_provider, @current_user)
+        BenefitsDocuments::Providers::DocumentUploadRouter.new(@current_user)
+      else
+        BenefitsDocuments::Service.new(@current_user)
+      end
     end
   end
 end

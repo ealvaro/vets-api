@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'benefits_documents/providers/document_upload_router'
 require 'lighthouse/benefits_documents/service'
 require 'lighthouse/service_exception'
 
@@ -34,6 +35,38 @@ RSpec.describe V0::BenefitsDocumentsController, type: :controller do
         post(:create, params: { file:, benefits_claim_id: 1, document_type: 'L015' })
 
         expect(response).to have_http_status(:accepted)
+      end
+    end
+
+    context 'when multi-document provider routing is disabled' do
+      it 'queues the upload through the legacy Lighthouse service' do
+        file = Rack::Test::UploadedFile.new(Tempfile.new('banana.pdf'))
+        service = instance_double(BenefitsDocuments::Service)
+
+        allow(Flipper).to receive(:enabled?).with(:cst_multi_document_provider, anything).and_return(false)
+        allow(BenefitsDocuments::Service).to receive(:new).and_return(service)
+        allow(service).to receive(:queue_document_upload).and_return({ jid: 12 })
+
+        post(:create, params: { file:, benefits_claim_id: 1, document_type: 'L015' })
+
+        expect(response).to have_http_status(:accepted)
+        expect(service).to have_received(:queue_document_upload)
+      end
+    end
+
+    context 'when multi-document provider routing is enabled' do
+      it 'queues the upload through the document upload router' do
+        file = Rack::Test::UploadedFile.new(Tempfile.new('banana.pdf'))
+        router = instance_double(BenefitsDocuments::Providers::DocumentUploadRouter)
+
+        allow(Flipper).to receive(:enabled?).with(:cst_multi_document_provider, anything).and_return(true)
+        allow(BenefitsDocuments::Providers::DocumentUploadRouter).to receive(:new).and_return(router)
+        allow(router).to receive(:queue_document_upload).and_return({ jid: 12 })
+
+        post(:create, params: { file:, benefits_claim_id: 1, document_type: 'L015' })
+
+        expect(response).to have_http_status(:accepted)
+        expect(router).to have_received(:queue_document_upload)
       end
     end
 

@@ -5,8 +5,9 @@ require 'rails_helper'
 RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocumentsProvider do
   subject(:provider) { described_class.new(user) }
 
+  let(:user_icn) { '1012667145V762142' }
   let(:user_account) { create(:user_account) }
-  let(:user) { create(:user, :loa3, :accountable, user_account:) }
+  let(:user) { create(:user, :loa3, :accountable, user_account:, icn: user_icn) }
   let(:uploaded_file) { instance_double(ActionDispatch::Http::UploadedFile, original_filename: 'note.pdf') }
   let(:attachment) do
     instance_double(
@@ -40,7 +41,8 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         IvcChampvaForm,
         id: 42,
         form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim'
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: user_icn
       )
       where_scope = instance_double(ActiveRecord::Relation)
       ordered_scope = instance_double(ActiveRecord::Relation)
@@ -61,7 +63,13 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
     end
 
     it 'supports numeric claim IDs that map directly to ivc_champva_form ids' do
-      form_record = instance_double(IvcChampvaForm, id: 123, form_number: '10-7959A', form_uuid: 'uuid-claim')
+      form_record = instance_double(
+        IvcChampvaForm,
+        id: 123,
+        form_number: '10-7959A',
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: user_icn
+      )
       allow(IvcChampvaForm).to receive(:find_by).with(id: form_record.id).and_return(form_record)
 
       result = provider.queue_document_upload(
@@ -73,12 +81,41 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       expect(PersistentAttachments::MilitaryRecords).to have_received(:new).with(form_id: '10-7959A')
     end
 
+    it 'raises resource not found when a numeric claim ID belongs to another user' do
+      form_record = instance_double(
+        IvcChampvaForm,
+        id: 123,
+        submitted_by_icn: '1012667145V762143'
+      )
+      allow(IvcChampvaForm).to receive(:find_by).with(id: form_record.id).and_return(form_record)
+
+      expect do
+        provider.queue_document_upload(claim_id: form_record.id.to_s, file: uploaded_file)
+      end.to raise_error(Common::Exceptions::ResourceNotFound)
+    end
+
+    it 'supports legacy claim records without a submitted ICN' do
+      form_record = instance_double(
+        IvcChampvaForm,
+        id: 123,
+        form_number: '10-7959A',
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: nil
+      )
+      allow(IvcChampvaForm).to receive(:find_by).with(id: form_record.id).and_return(form_record)
+
+      result = provider.queue_document_upload(claim_id: form_record.id.to_s, file: uploaded_file)
+
+      expect(result).to eq({ jid: 'guid-123' })
+    end
+
     it 'raises unprocessable entity for unsupported CHAMPVA form numbers' do
       form_record = instance_double(
         IvcChampvaForm,
         id: 99,
         form_number: 'NOT-SUPPORTED',
-        form_uuid: 'uuid-claim'
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: user_icn
       )
       where_scope = instance_double(ActiveRecord::Relation)
       ordered_scope = instance_double(ActiveRecord::Relation)
@@ -96,7 +133,8 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         IvcChampvaForm,
         id: 42,
         form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim'
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: user_icn
       )
       where_scope = instance_double(ActiveRecord::Relation)
       ordered_scope = instance_double(ActiveRecord::Relation)
@@ -115,7 +153,8 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         IvcChampvaForm,
         id: 42,
         form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim'
+        form_uuid: 'uuid-claim',
+        submitted_by_icn: user_icn
       )
       where_scope = instance_double(ActiveRecord::Relation)
       ordered_scope = instance_double(ActiveRecord::Relation)
