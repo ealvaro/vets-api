@@ -8,6 +8,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
   let(:user_icn) { '1012667145V762142' }
   let(:user_account) { create(:user_account) }
   let(:user) { create(:user, :loa3, :accountable, user_account:, icn: user_icn) }
+  let(:docs_only_resubmission_service) { instance_double(IvcChampva::DocsOnlyResubmissionService) }
   let(:uploaded_file) { instance_double(ActionDispatch::Http::UploadedFile, original_filename: 'note.pdf') }
   let(:attachment) do
     instance_double(
@@ -29,7 +30,10 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       format_date_for_mailers: 'May 1, 2026'
     )
     allow(EvidenceSubmission).to receive(:create)
-    allow(Rails.application).to receive(:call).and_return([200, {}, []])
+    allow(IvcChampva::DocsOnlyResubmissionService).to receive(:new)
+      .with(current_user: user)
+      .and_return(docs_only_resubmission_service)
+    allow(docs_only_resubmission_service).to receive(:call).and_return({ json: {}, status: 200 })
     allow(Flipper).to receive(:enabled?)
       .with(:benefits_documents_ivc_champva_docs_only_resubmission, user)
       .and_return(true)
@@ -64,7 +68,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       expect(result).to eq({ jid: 'guid-123' })
       expect(PersistentAttachments::MilitaryRecords).to have_received(:new).with(form_id: '10-10D-EXTENDED')
       expect(attachment).to have_received(:file=).with(uploaded_file)
-      expect(Rails.application).to have_received(:call)
+      expect(docs_only_resubmission_service).to have_received(:call)
     end
 
     it 'supports supplemental CHAMPVA form numbers' do
@@ -135,16 +139,31 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       end.to raise_error(Common::Exceptions::UnprocessableEntity)
     end
 
-    it 'raises unprocessable entity when docs-only resubmission endpoint fails' do
+    it 'raises unprocessable entity when docs-only resubmission fails' do
       stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
-      allow(Rails.application).to receive(:call).and_return([422, {}, ['bad']])
+      allow(docs_only_resubmission_service).to receive(:call)
+        .and_return({ json: { error_message: 'bad' }, status: 422 })
 
       expect do
         provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
-      end.to raise_error(Common::Exceptions::UnprocessableEntity)
+      end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
+        expect(error.errors.first[:detail]).to eq('CHAMPVA docs-only resubmission failed: bad')
+      }
     end
 
-    it 'does not call docs-only resubmission endpoint when the flag is disabled' do
+    it 'uses a generic error detail when docs-only resubmission returns no error message' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+      allow(docs_only_resubmission_service).to receive(:call)
+        .and_return({ json: {}, status: 500 })
+
+      expect do
+        provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
+      end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
+        expect(error.errors.first[:detail]).to eq('CHAMPVA docs-only resubmission failed')
+      }
+    end
+
+    it 'does not call docs-only resubmission service when the flag is disabled' do
       stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
       allow(Flipper).to receive(:enabled?)
         .with(:benefits_documents_ivc_champva_docs_only_resubmission, user)
@@ -153,7 +172,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       result = provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
 
       expect(result).to eq({ jid: 'guid-123' })
-      expect(Rails.application).not_to have_received(:call)
+      expect(docs_only_resubmission_service).not_to have_received(:call)
     end
 
     it 'unlocks password-protected PDF uploads before attachment validation' do

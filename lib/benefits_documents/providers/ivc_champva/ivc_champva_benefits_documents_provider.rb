@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'pdf_forms'
-require 'rack/mock'
 require 'tempfile'
 require 'benefits_documents/providers/benefits_documents_provider'
 require 'lighthouse/benefits_documents/constants'
@@ -163,18 +162,15 @@ module BenefitsDocuments
           return unless Flipper.enabled?(DOCS_ONLY_RESUBMISSION_FLAG, @current_user)
 
           payload = docs_only_resubmission_payload(claim_record, attachment, params)
+          response = ::IvcChampva::DocsOnlyResubmissionService.new(current_user: @current_user).call(payload)
+          return if response[:status].to_i == 200
 
-          env = Rack::MockRequest.env_for(
-            '/ivc_champva/v1/forms/docs_only_resubmission',
-            method: 'POST',
-            'CONTENT_TYPE' => 'application/json',
-            input: payload.to_json
-          )
-          status, = Rails.application.call(env)
-          return if status.to_i == 200
+          error_message = response.dig(:json, :error_message)
+          detail = 'CHAMPVA docs-only resubmission failed'
+          detail = "#{detail}: #{error_message}" if error_message.present?
 
           raise Common::Exceptions::UnprocessableEntity.new(
-            detail: 'CHAMPVA docs-only resubmission failed',
+            detail:,
             source: self.class.name
           )
         end
@@ -184,14 +180,14 @@ module BenefitsDocuments
           uploaded_name = uploaded_file_name(params[:file], attachment)
 
           {
-            form_number: '10-10D-EXTENDED',
-            submission_type: 'existing',
-            claim_id: claim_record.form_uuid,
-            supporting_docs: [
+            'form_number' => '10-10D-EXTENDED',
+            'submission_type' => 'existing',
+            'claim_id' => claim_record.form_uuid,
+            'supporting_docs' => [
               {
-                confirmation_code: attachment.guid,
-                attachment_id:,
-                name: uploaded_name
+                'confirmation_code' => attachment.guid,
+                'attachment_id' => attachment_id,
+                'name' => uploaded_name
               }
             ]
           }
