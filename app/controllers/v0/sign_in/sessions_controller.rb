@@ -25,6 +25,7 @@ module V0
         end
 
         session.destroy!
+        ::SignIn::SessionRecord.sign_out(session.handle)
 
         sign_in_logger.info('destroy', destroy_session_logger_context(session))
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_DESTROY_SESSION_SUCCESS)

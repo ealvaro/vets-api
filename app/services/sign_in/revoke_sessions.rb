@@ -15,7 +15,10 @@ module SignIn
     private
 
     def delete_sessions!
-      OAuthSession.where(user_account: session.user_account).where.not(handle: session.handle).destroy_all
+      sessions = OAuthSession.where(user_account: session.user_account).where.not(handle: session.handle)
+      handles = sessions.pluck(:handle)
+      sessions.destroy_all
+      SessionRecord.sign_out(handles)
     end
   end
 end

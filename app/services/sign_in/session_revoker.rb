@@ -79,11 +79,15 @@ module SignIn
       detect_token_theft if refresh_token
     ensure
       session.destroy!
+      SessionRecord.sign_out(session.handle)
     end
 
     def delete_device_sessions
       hashed_device_secret = get_hash(device_secret)
-      OAuthSession.where(hashed_device_secret:).destroy_all
+      sessions = OAuthSession.where(hashed_device_secret:)
+      handles = sessions.pluck(:handle)
+      sessions.destroy_all
+      SessionRecord.sign_out(handles)
     end
   end
 end

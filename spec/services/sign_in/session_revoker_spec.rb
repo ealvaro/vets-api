@@ -27,6 +27,19 @@ RSpec.describe SignIn::SessionRevoker do
             session_revoker.perform
             expect(SignIn::OAuthSession.all).to eq([])
           end
+
+          context 'and the connected session has a companion record' do
+            let!(:connected_record) { create(:session_record, handle: connected_session.handle) }
+
+            it 'stamps the connected session record' do
+              expect { subject }.to change { connected_record.reload.signed_out_at }.from(nil)
+            end
+
+            it 'does not delete the connected session record' do
+              subject
+              expect(SignIn::SessionRecord.exists?(connected_record.id)).to be(true)
+            end
+          end
         end
 
         context 'and no other sessions exist with the same device_secret' do
@@ -43,6 +56,27 @@ RSpec.describe SignIn::SessionRevoker do
         it 'does not attempt to destroy any other sessions' do
           expect_any_instance_of(SignIn::OAuthSession).to receive(:destroy!).once.and_call_original
           session_revoker.perform
+        end
+      end
+    end
+
+    shared_examples 'companion session record stamping' do
+      context 'and a companion session record exists' do
+        let!(:session_record) { create(:session_record, handle: session_handle) }
+
+        it 'stamps signed_out_at' do
+          expect { subject }.to change { session_record.reload.signed_out_at }.from(nil)
+        end
+
+        it 'does not delete the companion record' do
+          subject
+          expect(SignIn::SessionRecord.exists?(session_record.id)).to be(true)
+        end
+      end
+
+      context 'and no companion session record exists' do
+        it 'revokes without raising' do
+          expect { subject }.not_to raise_error
         end
       end
     end
@@ -126,6 +160,7 @@ RSpec.describe SignIn::SessionRevoker do
             end
 
             it_behaves_like 'device_secret session revoker'
+            it_behaves_like 'companion session record stamping'
           end
 
           context 'and token hash in session does not match input refresh token or its stored parent' do
@@ -141,6 +176,20 @@ RSpec.describe SignIn::SessionRevoker do
               expect { try(subject) }.to raise_error(StandardError)
                 .and change(SignIn::OAuthSession, :count).from(1).to(0)
             end
+
+            context 'and a companion session record exists' do
+              let!(:session_record) { create(:session_record, handle: session_handle) }
+
+              it 'stamps signed_out_at even though the revoke raises' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+                expect(session_record.reload.signed_out_at).to be_present
+              end
+
+              it 'does not delete the companion record' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+                expect(SignIn::SessionRecord.exists?(session_record.id)).to be(true)
+              end
+            end
           end
         end
 
@@ -151,6 +200,15 @@ RSpec.describe SignIn::SessionRevoker do
 
           it 'raises a session not authorized error' do
             expect { subject }.to raise_error(expected_error, expected_error_message)
+          end
+
+          context 'and a companion session record exists' do
+            let!(:session_record) { create(:session_record, handle: session_handle) }
+
+            it 'does not stamp signed_out_at' do
+              expect { try(subject) }.to raise_error(StandardError)
+              expect(session_record.reload.signed_out_at).to be_nil
+            end
           end
         end
       end
@@ -238,6 +296,7 @@ RSpec.describe SignIn::SessionRevoker do
           end
 
           it_behaves_like 'device_secret session revoker'
+          it_behaves_like 'companion session record stamping'
         end
 
         context 'and session is expired' do

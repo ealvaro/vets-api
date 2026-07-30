@@ -52,6 +52,7 @@ module SignIn
     def detect_token_theft
       unless refresh_token_in_session? || parent_refresh_token_in_session?
         session.destroy!
+        SignIn::SessionRecord.sign_out(session.handle)
         raise Errors::TokenTheftDetectedError.new message: 'Token theft detected'
       end
     end

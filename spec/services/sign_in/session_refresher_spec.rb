@@ -285,6 +285,26 @@ RSpec.describe SignIn::SessionRefresher do
               expect { try(subject) }.to raise_error(StandardError)
                 .and change(SignIn::OAuthSession, :count).from(1).to(0)
             end
+
+            context 'and a companion session record exists' do
+              let!(:session_record) { create(:session_record, handle: session_handle) }
+
+              it 'stamps signed_out_at before raising' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+                expect(session_record.reload.signed_out_at).to be_present
+              end
+
+              it 'does not delete the companion record' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+                expect(SignIn::SessionRecord.exists?(session_record.id)).to be(true)
+              end
+            end
+
+            context 'and no companion session record exists' do
+              it 'still raises the theft error' do
+                expect { subject }.to raise_error(expected_error, expected_error_message)
+              end
+            end
           end
         end
 

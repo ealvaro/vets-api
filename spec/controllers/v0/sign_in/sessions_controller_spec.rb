@@ -159,6 +159,14 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
       end
 
       it_behaves_like 'error response'
+
+      context 'and the target session has a companion record' do
+        let!(:target_record) { create(:session_record, handle: target_session.handle) }
+
+        it 'does not stamp the companion record' do
+          expect { subject }.not_to change { target_record.reload.signed_out_at }
+        end
+      end
     end
 
     context 'and the caller owns the target session' do
@@ -200,6 +208,35 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
 
       it 'triggers statsd increment for successful call' do
         expect { subject }.to trigger_statsd_increment(statsd_success)
+      end
+
+      context 'and companion session records exist' do
+        let!(:target_record) { create(:session_record, handle: target_session.handle, user_account:) }
+        let!(:current_record) { create(:session_record, handle: current_session.handle, user_account:) }
+
+        it 'stamps signed_out_at on the target session record' do
+          expect { subject }.to change { target_record.reload.signed_out_at }.from(nil)
+        end
+
+        it "does not stamp the caller's own session record" do
+          expect { subject }.not_to change { current_record.reload.signed_out_at }
+        end
+
+        it 'does not delete the target session record' do
+          subject
+          expect(SignIn::SessionRecord.exists?(target_record.id)).to be(true)
+        end
+
+        it 'still returns ok status' do
+          expect(subject).to have_http_status(expected_status)
+        end
+      end
+
+      context 'and no companion session record exists' do
+        it 'destroys the session and returns ok status' do
+          expect { subject }.to change(SignIn::OAuthSession, :count).by(-1)
+          expect(subject).to have_http_status(expected_status)
+        end
       end
     end
   end

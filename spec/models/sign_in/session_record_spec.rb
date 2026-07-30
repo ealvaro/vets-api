@@ -133,4 +133,96 @@ RSpec.describe SignIn::SessionRecord, type: :model do
       end
     end
   end
+
+  describe '.sign_out' do
+    let!(:record) { create(:session_record) }
+
+    context 'with a handle matching an active record' do
+      it 'stamps signed_out_at' do
+        expect { described_class.sign_out(record.handle) }
+          .to change { record.reload.signed_out_at }.from(nil)
+      end
+
+      it 'does not delete the record' do
+        expect { described_class.sign_out(record.handle) }
+          .not_to change(described_class, :count)
+      end
+
+      it 'returns the number of records stamped' do
+        expect(described_class.sign_out(record.handle)).to eq(1)
+      end
+    end
+
+    context 'when the record is already signed out' do
+      let!(:record) { create(:session_record, signed_out_at: 3.days.ago) }
+
+      it 'does not overwrite the original timestamp' do
+        expect { described_class.sign_out(record.handle) }
+          .not_to change { record.reload.signed_out_at }
+      end
+
+      it 'returns zero' do
+        expect(described_class.sign_out(record.handle)).to eq(0)
+      end
+    end
+
+    context 'when no record matches the handle' do
+      it 'does not raise' do
+        expect { described_class.sign_out(SecureRandom.uuid) }.not_to raise_error
+      end
+
+      it 'returns zero' do
+        expect(described_class.sign_out(SecureRandom.uuid)).to eq(0)
+      end
+
+      it 'leaves existing records untouched' do
+        expect { described_class.sign_out(SecureRandom.uuid) }
+          .not_to change { record.reload.signed_out_at }
+      end
+    end
+
+    context 'with an empty array' do
+      it 'returns zero without stamping anything' do
+        expect(described_class.sign_out([])).to eq(0)
+        expect(record.reload.signed_out_at).to be_nil
+      end
+    end
+
+    context 'with a nil handle' do
+      it 'returns zero without stamping anything' do
+        expect(described_class.sign_out(nil)).to eq(0)
+        expect(record.reload.signed_out_at).to be_nil
+      end
+    end
+
+    context 'with multiple handles' do
+      let!(:other) { create(:session_record) }
+      let!(:untouched) { create(:session_record) }
+
+      it 'stamps every matching record' do
+        described_class.sign_out([record.handle, other.handle])
+
+        expect(record.reload.signed_out_at).to be_present
+        expect(other.reload.signed_out_at).to be_present
+      end
+
+      it 'returns the number stamped' do
+        expect(described_class.sign_out([record.handle, other.handle])).to eq(2)
+      end
+
+      it 'leaves non-matching records alone' do
+        expect { described_class.sign_out([record.handle, other.handle]) }
+          .not_to change { untouched.reload.signed_out_at }
+      end
+
+      it 'updates each row once when a handle repeats' do
+        expect(described_class.sign_out([record.handle, record.handle])).to eq(1)
+      end
+
+      it 'stamps in a single query' do
+        expect(described_class).to receive(:where).once.and_call_original
+        described_class.sign_out([record.handle, other.handle])
+      end
+    end
+  end
 end

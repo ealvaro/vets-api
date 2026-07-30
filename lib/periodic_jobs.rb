@@ -170,6 +170,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Log when a client or service account config contains an expired, expiring, or self-signed certificate
   mgr.register('0 4 * * *', 'SignIn::CertificateCheckerJob')
 
+  # Purge SignIn::SessionRecords signed out more than 30 days ago
+  mgr.register('0 4 * * *', 'SignIn::SessionRecordCleanUpJob')
+
   # Weekly logs of maintenance windows
   mgr.register('0 13 * * 1', 'Mobile::V0::WeeklyMaintenanceWindowLogger')
 
