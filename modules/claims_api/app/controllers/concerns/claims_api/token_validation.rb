@@ -102,12 +102,26 @@ module ClaimsApi
         last_name = mpi_profile&.profile&.family_name
         first_name = mpi_profile&.profile&.given_names&.first
         claims_user.first_name_last_name(first_name, last_name)
-        middle_name = mpi_profile&.profile&.given_names&.second
+        middle_name = resolve_middle_name(mpi_profile, act)
         claims_user.middle_name = middle_name unless middle_name.nil?
         suffix = mpi_profile&.profile&.suffix
         claims_user.suffix = suffix unless suffix.nil?
       end
       claims_user
+    end
+
+    def resolve_middle_name(mpi_profile, act)
+      mpi_middle_name = mpi_profile&.profile&.given_names&.second
+      return mpi_middle_name if mpi_middle_name.present?
+
+      if act['middle_name'].present?
+        ClaimsApi::Logger.log 'token_validation',
+                              message: 'MPI missing middle name, using token act fallback',
+                              level: :info
+        return act['middle_name']
+      end
+
+      nil
     end
   end
 end

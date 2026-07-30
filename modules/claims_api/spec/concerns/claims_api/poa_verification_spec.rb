@@ -173,4 +173,112 @@ describe ClaimsApi::PoaVerification do
       end
     end
   end
+
+  # Reproduces the James Foster / OGC 49053 scenario:
+  # Two different reps with the same first+last name, overlapping POA codes.
+  context 'ambiguous rep scenario — two reps share a name and a POA code' do
+    before do
+      create(:representative, :vso,
+             representative_id: '49053',
+             first_name: 'James', last_name: 'Foster', middle_initial: 'P',
+             poa_codes: %w[074 077 064 034 007 097],
+             phone: '555-555-0101',
+             email: 'james.foster@example.com',
+             address_line1: '123 Main St',
+             city: 'Lincoln', state_code: 'NE', zip_code: '68516',
+             country_code_iso3: 'USA')
+      create(:representative, :vso,
+             representative_id: '15182',
+             first_name: 'James', last_name: 'Foster', middle_initial: 'D',
+             poa_codes: %w[074 083 085 017 086],
+             phone: '555-555-0102',
+             email: 'james.d.foster@example.com',
+             address_line1: '456 Oak Ave', address_line2: 'Ste 2',
+             city: 'Clearwater', state_code: 'FL', zip_code: '33765',
+             country_code_iso3: 'USA')
+    end
+
+    context 'without middle name or email — disambiguation relies on POA code' do
+      subject do
+        klass = Class.new do
+          include ClaimsApi::PoaVerification
+          def initialize
+            super
+            @current_user = ClaimsApi::ClaimsUser.new('test')
+            @current_user.first_name_last_name('James', 'Foster')
+          end
+        end
+        klass.new
+      end
+
+      it 'errors for shared POA code (074)' do
+        expect do
+          subject.valid_poa_code_for_current_user?('074')
+        end.to raise_error(Common::Exceptions::UnprocessableEntity)
+      end
+
+      it 'succeeds for unique POA code (034)' do
+        expect(subject.valid_poa_code_for_current_user?('034')).to be(true)
+      end
+    end
+
+    context 'with middle name — disambiguates regardless of POA code' do
+      subject do
+        klass = Class.new do
+          include ClaimsApi::PoaVerification
+          def initialize
+            super
+            @current_user = ClaimsApi::ClaimsUser.new('test')
+            @current_user.first_name_last_name('James', 'Foster')
+            @current_user.middle_name = 'Patrick'
+          end
+        end
+        klass.new
+      end
+
+      it 'succeeds for shared POA code (074)' do
+        expect(subject.valid_poa_code_for_current_user?('074')).to be(true)
+      end
+    end
+
+    context 'with matching email — disambiguates when middle name is missing' do
+      subject do
+        klass = Class.new do
+          include ClaimsApi::PoaVerification
+          def initialize
+            super
+            @current_user = ClaimsApi::ClaimsUser.new('test')
+            @current_user.first_name_last_name('James', 'Foster')
+            @current_user.email = 'james.foster@example.com'
+          end
+        end
+        klass.new
+      end
+
+      it 'succeeds for shared POA code (074)' do
+        expect(subject.valid_poa_code_for_current_user?('074')).to be(true)
+      end
+    end
+
+    context 'with non-matching email and no middle name — still ambiguous' do
+      subject do
+        klass = Class.new do
+          include ClaimsApi::PoaVerification
+          def initialize
+            super
+            @current_user = ClaimsApi::ClaimsUser.new('test')
+            @current_user.first_name_last_name('James', 'Foster')
+            @current_user.email = 'personal@example.com'
+          end
+        end
+        klass.new
+      end
+
+      it 'errors for shared POA code (074)' do
+        expect do
+          subject.valid_poa_code_for_current_user?('074')
+        end.to raise_error(Common::Exceptions::UnprocessableEntity)
+      end
+    end
+  end
 end

@@ -68,6 +68,7 @@ module ClaimsApi
           find_by_suffix(poa_code) ||
           find_by_middle_initial(poa_code) ||
           find_by_poa_code(poa_code) ||
+          find_by_email(poa_code) ||
           handle_not_found(reps_by_first_and_last_name, poa_code)
       end
 
@@ -134,6 +135,19 @@ module ClaimsApi
         )
 
         exactly_one_rep_match?(reps_by_poa_code, poa_code)
+      end
+
+      def find_by_email(poa_code)
+        return false if @current_user.email.blank?
+
+        reps_by_email = ::Veteran::Service::Representative.where(
+          'lower(first_name) = ? AND lower(last_name) = ? AND lower(email) = ?',
+          @current_user.first_name&.downcase,
+          @current_user.last_name&.downcase,
+          @current_user.email&.downcase
+        )
+
+        exactly_one_rep_match?(reps_by_email, poa_code)
       end
 
       def handle_not_found(reps, poa_code)
