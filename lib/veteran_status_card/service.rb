@@ -29,6 +29,10 @@ module VeteranStatusCard
     UNKNOWN_SSC_MESSAGE = 'ineligible_unknown_ssc'
     CURRENTLY_SERVING_SSC_MESSAGE = 'ineligible_currently_serving_ssc'
     UNCAUGHT_SSC_MESSAGE = 'ineligible_uncaught_ssc'
+    # DoD Summary lookup failed (VAProfile::MilitaryPersonnel raised), distinct from:
+    # - UNCAUGHT_SSC_MESSAGE: a real SSC code we don't recognize
+    # - blank SSC with no error: no DoD summary on file / no SSC returned
+    SERVICE_ERROR_SSC_MESSAGE = 'ineligible_service_error_ssc'
 
     # Confirmed SSC messages — two categories matching Mural source of truth
     ELIGIBLE_HONORABLE_SSC_MESSAGE = 'eligible_honorable_ssc'
@@ -317,7 +321,9 @@ module VeteranStatusCard
                           veteran_status: confirmed ? CONFIRMED_TEXT : NOT_CONFIRMED_TEXT,
                           not_confirmed_reason: vet_verification_status[:reason],
                           confirmation_status: confirmation_status_upcase,
-                          service_summary_code: ssc_code,
+                          # Don't log an SSC value we don't actually have confidence in when the
+                          # VA Profile call itself failed
+                          service_summary_code: @military_personnel_error ? nil : ssc_code,
                           user_message: confirmed ? CONFIRMED_MESSAGE : @user_message
                         })
     end
@@ -406,8 +412,15 @@ module VeteranStatusCard
         @confirmation_status = UNKNOWN_SSC_MESSAGE
         unknown_eligibility_response
       else
-        @confirmation_status = UNCAUGHT_SSC_MESSAGE
-        unknown_eligibility_response
+        # military_personnel_response raising (e.g. VAProfile 502) is distinct from a call
+        # that succeeded but simply had no SSC to give us or returned a code we don't recognize
+        if @military_personnel_error
+          @confirmation_status = SERVICE_ERROR_SSC_MESSAGE
+          something_went_wrong_response
+        else
+          @confirmation_status = UNCAUGHT_SSC_MESSAGE
+          unknown_eligibility_response
+        end
       end
     end
 
@@ -542,10 +555,12 @@ module VeteranStatusCard
       return @military_personnel_response if defined?(@military_personnel_response)
       return @military_personnel_response = nil if @user.edipi.blank?
 
+      @military_personnel_error = false
       @military_personnel_response = begin
         military_personnel_service.get_dod_service_summary
       rescue => e
         Rails.logger.error("VAProfile::MilitaryPersonnel (DoD Summary) error: #{e.message}", backtrace: e.backtrace)
+        @military_personnel_error = true
         nil
       end
     end

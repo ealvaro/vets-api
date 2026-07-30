@@ -457,6 +457,36 @@ RSpec.describe VeteranStatusCard::Service do
           end
         end
 
+        context 'with blank SSC code but no service error (DoD had nothing to give us)' do
+          let(:veteran_status) { 'not confirmed' }
+          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+          let(:dod_service_summary_model) { nil }
+
+          it 'still logs UNCAUGHT_SSC_MESSAGE to StatsD, not the service error message' do
+            subject.status_card
+
+            expect(StatsD).to have_received(:increment).with('veteran_status_card.ineligible_uncaught_ssc')
+            expect(StatsD).not_to have_received(:increment).with('veteran_status_card.ineligible_service_error_ssc')
+          end
+        end
+
+        context 'when the DoD Summary call raises (service error)' do
+          let(:veteran_status) { 'not confirmed' }
+          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+
+          before do
+            allow(military_personnel_service).to receive(:get_dod_service_summary)
+              .and_raise(StandardError.new('DoD summary failed'))
+            allow(Rails.logger).to receive(:error)
+          end
+
+          it 'logs SERVICE_ERROR_SSC_MESSAGE to StatsD' do
+            subject.status_card
+
+            expect(StatsD).to have_received(:increment).with('veteran_status_card.ineligible_service_error_ssc')
+          end
+        end
+
         context 'with PERSON_NOT_FOUND reason (no @ineligible_message set)' do
           let(:veteran_status) { 'not confirmed' }
           let(:not_confirmed_reason) { 'PERSON_NOT_FOUND' }
@@ -652,6 +682,50 @@ RSpec.describe VeteranStatusCard::Service do
             expect(Rails.logger).to have_received(:info).with(
               '[VeteranStatusCard::Service] VSC Card Result',
               hash_including(user_message: VeteranStatusCard::Service::UNKNOWN_ELIGIBILITY_MESSAGE)
+            )
+          end
+        end
+
+        context 'when SSC code is blank but no service error' do
+          let(:veteran_status) { 'not confirmed' }
+          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+          let(:dod_service_summary_model) { nil }
+
+          it 'still logs user_message: unknown_eligibility' do
+            subject.status_card
+
+            expect(Rails.logger).to have_received(:info).with(
+              '[VeteranStatusCard::Service] VSC Card Result',
+              hash_including(user_message: VeteranStatusCard::Service::UNKNOWN_ELIGIBILITY_MESSAGE)
+            )
+          end
+        end
+
+        context 'when the DoD Summary call raises (service error)' do
+          let(:veteran_status) { 'not confirmed' }
+          let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+
+          before do
+            allow(military_personnel_service).to receive(:get_dod_service_summary)
+              .and_raise(StandardError.new('DoD summary failed'))
+            allow(Rails.logger).to receive(:error)
+          end
+
+          it 'logs user_message: something_went_wrong' do
+            subject.status_card
+
+            expect(Rails.logger).to have_received(:info).with(
+              '[VeteranStatusCard::Service] VSC Card Result',
+              hash_including(user_message: VeteranStatusCard::Service::SOMETHING_WENT_WRONG_MESSAGE)
+            )
+          end
+
+          it 'does not log the SSC value' do
+            subject.status_card
+
+            expect(Rails.logger).to have_received(:info).with(
+              '[VeteranStatusCard::Service] VSC Card Result',
+              hash_including(service_summary_code: nil)
             )
           end
         end
@@ -880,6 +954,44 @@ RSpec.describe VeteranStatusCard::Service do
               expect(result[:attributes][:service_summary_code]).to eq(code)
             end
           end
+        end
+      end
+
+      context 'when the DoD Summary call raises (service error, not just a blank code)' do
+        let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+
+        before do
+          allow(military_personnel_service).to receive(:get_dod_service_summary)
+            .and_raise(StandardError.new('DoD summary failed'))
+          allow(Rails.logger).to receive(:error)
+        end
+
+        it 'returns veteran_status_alert with SOMETHING_WENT_WRONG_RESPONSE, not the unknown eligibility message' do
+          result = subject.status_card
+
+          expect(result[:type]).to eq('veteran_status_alert')
+          expect(result[:attributes][:header]).to eq(VeteranStatusCard::Constants::SOMETHING_WENT_WRONG_RESPONSE[:title])
+          expect(result[:attributes][:body]).to eq(VeteranStatusCard::Constants::SOMETHING_WENT_WRONG_RESPONSE[:message])
+          expect(result[:attributes][:alert_type]).to eq(VeteranStatusCard::Constants::SOMETHING_WENT_WRONG_RESPONSE[:status])
+          expect(result[:attributes][:veteran_status]).to eq('not confirmed')
+          expect(result[:attributes][:not_confirmed_reason]).to eq('MORE_RESEARCH_REQUIRED')
+          expect(result[:attributes][:confirmation_status]).to eq('INELIGIBLE_SERVICE_ERROR_SSC')
+          expect(result[:attributes][:service_summary_code]).to eq('')
+        end
+      end
+
+      context 'when the DoD Summary call succeeds but has no data (not a service error)' do
+        let(:not_confirmed_reason) { 'MORE_RESEARCH_REQUIRED' }
+        let(:dod_service_summary_model) { nil }
+
+        it 'still returns UNKNOWN_ELIGIBILITY_RESPONSE, matching pre-existing behavior' do
+          result = subject.status_card
+
+          expect(result[:type]).to eq('veteran_status_alert')
+          expect(result[:attributes][:header]).to eq(VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_RESPONSE[:title])
+          expect(result[:attributes][:body]).to eq(VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_RESPONSE[:message])
+          expect(result[:attributes][:alert_type]).to eq(VeteranStatusCard::Constants::UNKNOWN_ELIGIBILITY_RESPONSE[:status])
+          expect(result[:attributes][:confirmation_status]).to eq('INELIGIBLE_UNCAUGHT_SSC')
         end
       end
     end
