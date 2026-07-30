@@ -3,7 +3,7 @@
 RSpec::Matchers.define :match_pdf_fields do
   match(notify_expectation_failures: true) do |actual|
     fields = [actual, expected].map do |path|
-      PdfForms.new(Settings.binaries.pdftk).get_fields(path).map do |field|
+      PdfFill::Filler::PDF_FORMS.get_fields(path).map do |field|
         { name: field.name, value: field.value }
       end
     end

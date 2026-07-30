@@ -484,7 +484,8 @@ RSpec.describe BGS::DependentService do
 
     before do
       allow(SavedClaim::DependencyClaim).to receive(:find).and_return(claim)
-      allow(claim).to receive_messages(submittable_686?: true, submittable_674?: true, process_pdf: pdf_path)
+      allow(claim).to receive_messages(submittable_686?: true, submittable_674?: true, process_pdf: pdf_path,
+                                       to_pdf: pdf_path)
 
       allow(ClaimsEvidenceApi::Uploader).to receive(:new).with(folder_identifier).and_return(uploader)
       allow(PDFUtilities::PDFStamper).to receive(:new).and_return(stamper)
