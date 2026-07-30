@@ -1147,6 +1147,7 @@ lib/pdf_utilities @software/va-platform-backend
 lib/periodic_jobs.rb @software/va-platform-backend
 lib/persistent_attachments @software/benefits-lifestage
 lib/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
+lib/README.md @software/va-platform-backend
 lib/reports/uploader.rb @software/govcio-vfep-codereviewers
 lib/request_context_middleware.rb @software/octo-identity
 lib/res @software/benefits-non-disability
