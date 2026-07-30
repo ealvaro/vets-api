@@ -10,7 +10,7 @@ properties:
     type: string
     enum:
       - giveFeedback
-      - RxIntercept
+      - intercept
     description: Type of survey being submitted
     example: 'giveFeedback'
   surveyData:

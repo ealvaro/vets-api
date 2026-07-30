@@ -71,7 +71,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
           metadata: { 'os' => 'Android' }
         )
         Mobile::SurveyResponse.create!(
-          survey_type: 'RxIntercept',
+          survey_type: 'intercept',
           user_uuid: SecureRandom.uuid,
           survey_data: {
             'q01' => {
@@ -115,7 +115,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         # Verify only giveFeedback rows were deleted
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(0)
-        expect(Mobile::SurveyResponse.where(survey_type: 'RxIntercept').count).to eq(1)
+        expect(Mobile::SurveyResponse.where(survey_type: 'intercept').count).to eq(1)
       end
     end
 

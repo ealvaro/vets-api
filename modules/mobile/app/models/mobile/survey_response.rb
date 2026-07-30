@@ -5,7 +5,7 @@ module Mobile
     has_kms_key
     has_encrypted :survey_data, type: :json, key: :kms_key, **lockbox_options
 
-    VALID_SURVEY_TYPES = %w[giveFeedback RxIntercept].freeze
+    VALID_SURVEY_TYPES = %w[giveFeedback intercept].freeze
 
     validates :survey_type, presence: true, inclusion: { in: VALID_SURVEY_TYPES }
     validates :user_uuid, :survey_data, presence: true
