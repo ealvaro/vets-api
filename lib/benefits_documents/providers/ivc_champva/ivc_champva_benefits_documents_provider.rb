@@ -13,7 +13,16 @@ module BenefitsDocuments
       class IvcChampvaBenefitsDocumentsProvider
         include BenefitsDocuments::Providers::BenefitsDocumentsProvider
 
-        SUPPORTED_FORM_IDS = %w[10-10D 10-10D-EXTENDED 10-7959C 10-7959F-2 10-7959A].freeze
+        SUPPORTED_FORM_IDS = %w[
+          10-10D
+          10-10D-EXTENDED
+          10-10D-SUPPLEMENTAL
+          10-10D-SUPPLEMENTAL-EXISTING
+          10-10D-SUPPLEMENTAL-ENROLLMENT
+          10-7959C
+          10-7959F-2
+          10-7959A
+        ].freeze
         DOCS_ONLY_RESUBMISSION_FLAG = :benefits_documents_ivc_champva_docs_only_resubmission
 
         def initialize(current_user)
@@ -96,7 +105,8 @@ module BenefitsDocuments
         end
 
         def file_inputs_are_valid?(file, password)
-          file_param_valid = file.present? && file.is_a?(String) && File.extname(file).downcase == '.pdf'
+          file_param_valid = file.present? && file.respond_to?(:tempfile) && file.respond_to?(:original_filename) &&
+                             File.extname(file.original_filename.to_s).downcase == '.pdf'
           password_param_valid = password.present? && password.is_a?(String)
           file_param_valid && password_param_valid
         end

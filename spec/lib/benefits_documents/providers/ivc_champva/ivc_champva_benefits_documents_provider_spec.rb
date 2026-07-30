@@ -36,19 +36,24 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
   end
 
   describe '#queue_document_upload' do
-    it 'routes UUID claim IDs to CHAMPVA form records and uploads as military records attachment' do
+    def stub_champva_form_record(form_number:, form_uuid: 'uuid-claim', id: 42)
       form_record = instance_double(
         IvcChampvaForm,
-        id: 42,
-        form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim',
+        id:,
+        form_number:,
+        form_uuid:,
         submitted_by_icn: user_icn
       )
       where_scope = instance_double(ActiveRecord::Relation)
       ordered_scope = instance_double(ActiveRecord::Relation)
-      allow(IvcChampvaForm).to receive(:where).with(form_uuid: 'uuid-claim').and_return(where_scope)
+      allow(IvcChampvaForm).to receive(:where).with(form_uuid:).and_return(where_scope)
       allow(where_scope).to receive(:order).with(updated_at: :desc).and_return(ordered_scope)
       allow(ordered_scope).to receive(:first).and_return(form_record)
+      form_record
+    end
+
+    it 'routes UUID claim IDs to CHAMPVA form records and uploads as military records attachment' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
 
       result = provider.queue_document_upload(
         claim_id: 'uuid-claim',
@@ -60,6 +65,19 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       expect(PersistentAttachments::MilitaryRecords).to have_received(:new).with(form_id: '10-10D-EXTENDED')
       expect(attachment).to have_received(:file=).with(uploaded_file)
       expect(Rails.application).to have_received(:call)
+    end
+
+    it 'supports supplemental CHAMPVA form numbers' do
+      stub_champva_form_record(form_number: '10-10D-SUPPLEMENTAL-EXISTING')
+
+      result = provider.queue_document_upload(
+        claim_id: 'uuid-claim',
+        file: uploaded_file
+      )
+
+      expect(result).to eq({ jid: 'guid-123' })
+      expect(PersistentAttachments::MilitaryRecords).to have_received(:new)
+        .with(form_id: '10-10D-SUPPLEMENTAL-EXISTING')
     end
 
     it 'supports numeric claim IDs that map directly to ivc_champva_form ids' do
@@ -110,18 +128,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
     end
 
     it 'raises unprocessable entity for unsupported CHAMPVA form numbers' do
-      form_record = instance_double(
-        IvcChampvaForm,
-        id: 99,
-        form_number: 'NOT-SUPPORTED',
-        form_uuid: 'uuid-claim',
-        submitted_by_icn: user_icn
-      )
-      where_scope = instance_double(ActiveRecord::Relation)
-      ordered_scope = instance_double(ActiveRecord::Relation)
-      allow(IvcChampvaForm).to receive(:where).with(form_uuid: 'uuid-claim').and_return(where_scope)
-      allow(where_scope).to receive(:order).with(updated_at: :desc).and_return(ordered_scope)
-      allow(ordered_scope).to receive(:first).and_return(form_record)
+      stub_champva_form_record(form_number: 'NOT-SUPPORTED', id: 99)
 
       expect do
         provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
@@ -129,18 +136,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
     end
 
     it 'raises unprocessable entity when docs-only resubmission endpoint fails' do
-      form_record = instance_double(
-        IvcChampvaForm,
-        id: 42,
-        form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim',
-        submitted_by_icn: user_icn
-      )
-      where_scope = instance_double(ActiveRecord::Relation)
-      ordered_scope = instance_double(ActiveRecord::Relation)
-      allow(IvcChampvaForm).to receive(:where).with(form_uuid: 'uuid-claim').and_return(where_scope)
-      allow(where_scope).to receive(:order).with(updated_at: :desc).and_return(ordered_scope)
-      allow(ordered_scope).to receive(:first).and_return(form_record)
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
       allow(Rails.application).to receive(:call).and_return([422, {}, ['bad']])
 
       expect do
@@ -149,18 +145,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
     end
 
     it 'does not call docs-only resubmission endpoint when the flag is disabled' do
-      form_record = instance_double(
-        IvcChampvaForm,
-        id: 42,
-        form_number: '10-10D-EXTENDED-EXISTING',
-        form_uuid: 'uuid-claim',
-        submitted_by_icn: user_icn
-      )
-      where_scope = instance_double(ActiveRecord::Relation)
-      ordered_scope = instance_double(ActiveRecord::Relation)
-      allow(IvcChampvaForm).to receive(:where).with(form_uuid: 'uuid-claim').and_return(where_scope)
-      allow(where_scope).to receive(:order).with(updated_at: :desc).and_return(ordered_scope)
-      allow(ordered_scope).to receive(:first).and_return(form_record)
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
       allow(Flipper).to receive(:enabled?)
         .with(:benefits_documents_ivc_champva_docs_only_resubmission, user)
         .and_return(false)
@@ -169,6 +154,60 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
 
       expect(result).to eq({ jid: 'guid-123' })
       expect(Rails.application).not_to have_received(:call)
+    end
+
+    it 'unlocks password-protected PDF uploads before attachment validation' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+      tempfile = instance_double(Tempfile, path: '/tmp/source.pdf', unlink: true)
+      unlocked_tempfile = instance_double(Tempfile, path: '/tmp/unlocked.pdf')
+      pdf_file = instance_double(
+        ActionDispatch::Http::UploadedFile,
+        original_filename: 'locked.pdf',
+        tempfile:
+      )
+      pdftk = double('PdfForms')
+
+      allow(pdf_file).to receive(:tempfile=)
+      allow(Tempfile).to receive(:new).and_return(unlocked_tempfile)
+      allow(PdfForms).to receive(:new).and_return(pdftk)
+      allow(pdftk).to receive(:call_pdftk)
+
+      result = provider.queue_document_upload(
+        claim_id: 'uuid-claim',
+        file: pdf_file,
+        password: 'secret'
+      )
+
+      expect(result).to eq({ jid: 'guid-123' })
+      expect(pdftk).to have_received(:call_pdftk)
+        .with('/tmp/source.pdf', 'input_pw', 'secret', 'output', '/tmp/unlocked.pdf')
+      expect(tempfile).to have_received(:unlink)
+      expect(pdf_file).to have_received(:tempfile=).with(unlocked_tempfile)
+      expect(attachment).to have_received(:file=).with(pdf_file)
+    end
+
+    it 'raises unprocessable entity when a PDF password is incorrect' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+      tempfile = instance_double(Tempfile, path: '/tmp/source.pdf')
+      unlocked_tempfile = instance_double(Tempfile, path: '/tmp/unlocked.pdf')
+      pdf_file = instance_double(
+        ActionDispatch::Http::UploadedFile,
+        original_filename: 'locked.pdf',
+        tempfile:
+      )
+      pdftk = double('PdfForms')
+
+      allow(Tempfile).to receive(:new).and_return(unlocked_tempfile)
+      allow(PdfForms).to receive(:new).and_return(pdftk)
+      allow(pdftk).to receive(:call_pdftk).and_raise(PdfForms::PdftkError)
+
+      expect do
+        provider.queue_document_upload(
+          claim_id: 'uuid-claim',
+          file: pdf_file,
+          password: 'wrong'
+        )
+      end.to raise_error(Common::Exceptions::UnprocessableEntity)
     end
   end
 end
