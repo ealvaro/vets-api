@@ -47,7 +47,7 @@ app/controllers/concerns/traceable.rb @software/va-platform-backend
 app/controllers/concerns/vet360 @software/vfs-authenticated-experience-backend
 app/controllers/flipper_controller.rb @software/va-platform-backend
 app/controllers/gids_controller.rb @software/va-platform-backend
-app/controllers/preneeds_controller.rb @software/bah-mbs-selfserv
+app/controllers/preneeds_controller.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/controllers/sign_in @software/octo-identity
 app/controllers/sts @software/octo-identity
 app/controllers/v0/admin_controller.rb @software/va-platform-backend
@@ -122,7 +122,7 @@ app/controllers/v0/mpi_users_controller.rb @software/octo-identity
 app/controllers/v0/my_va @software/vfs-authenticated-experience-backend
 app/controllers/v0/onsite_notifications_controller.rb @software/vfs-authenticated-experience-backend
 app/controllers/v0/open_api_controller.rb @software/va-platform-backend
-app/controllers/v0/preneeds @software/bah-mbs-selfserv
+app/controllers/v0/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 app/controllers/v0/profile @software/vfs-authenticated-experience-backend
 app/controllers/v0/profile/contact_informations_controller.rb @software/vfs-authenticated-experience-backend
 app/controllers/v0/profile/contacts_controller.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
@@ -261,7 +261,7 @@ app/models/form_profiles/va_10203.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_10272.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_10278.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_108678.rb @software/benefits-intake-pingwind
-app/models/form_profiles/va_1330m.rb @software/bah-mbs-selfserv
+app/models/form_profiles/va_1330m.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/models/form_profiles/va_1990ez.rb @software/my-education-benefits
 app/models/form_profiles/va_2010206.rb @software/platform-va-product-forms
 app/models/form_profiles/va_2122.rb @software/accredited-representative-crew
@@ -331,8 +331,8 @@ app/models/persistent_attachments/military_records.rb @software/platform-va-prod
 app/models/persistent_attachments/va_form_documentation.rb @software/va-platform-backend
 app/models/persistent_attachments/va_form.rb @software/platform-va-product-forms
 app/models/personal_information_log.rb @software/va-platform-backend
-app/models/power_of_attorney.rb @software/bah-mbs-selfserv
-app/models/preneeds @software/bah-mbs-selfserv
+app/models/power_of_attorney.rb @software/bah-mbs-selfserv @software/va-platform-backend
+app/models/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 app/models/prescription_details.rb @software/vfs-mhv-integration
 app/models/prescription_documentation.rb @software/vfs-mhv-integration
 app/models/prescription_preference.rb @software/vfs-mhv-integration
@@ -441,7 +441,7 @@ app/serializers/async_transaction @software/vfs-authenticated-experience-backend
 app/serializers/async_transaction/base_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/backend_statuses_serializer.rb @software/va-platform-backend
 app/serializers/benefits_intake_submission_serializer.rb @software/benefits-lifestage
-app/serializers/cemetery_serializer.rb @software/bah-mbs-selfserv
+app/serializers/cemetery_serializer.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/serializers/communication_groups_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/contact_information_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/contact_serializer.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
@@ -483,10 +483,10 @@ app/serializers/persistent_attachment_va_form_serializer.rb @software/platform-v
 app/serializers/personal_information_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/post911_gi_bill_status_serializer.rb @software/govcio-vfep-codereviewers
 app/serializers/preferred_name_serializer.rb @software/vfs-authenticated-experience-backend
-app/serializers/preneed_attachment_serializer.rb @software/bah-mbs-selfserv
+app/serializers/preneed_attachment_serializer.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/serializers/rated_disabilities_serializer.rb @software/disability-benefits
 app/serializers/rating_info_serializer.rb @software/va-platform-backend
-app/serializers/receive_application_serializer.rb @software/bah-mbs-selfserv
+app/serializers/receive_application_serializer.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/serializers/saved_claim_serializer.rb @software/va-platform-backend
 app/serializers/scheduling_preferences_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/search_serializer.rb @software/va-platform-backend
@@ -554,7 +554,7 @@ app/sidekiq/dependents/form_686c_674_failure_email_job.rb @software/benefits-non
 app/sidekiq/education_form @software/govcio-vfep-codereviewers
 app/sidekiq/email_verification_job.rb @software/vfs-authenticated-experience-backend
 app/sidekiq/event_bus_gateway/ @software/benefits-management-tools-be
-app/sidekiq/evss/delete_old_claims.rb @software/bah-mbs-selfserv
+app/sidekiq/evss/delete_old_claims.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/sidekiq/evss/disability_compensation_form/ @software/disability-benefits
 app/sidekiq/evss/document_upload.rb @software/benefits-management-tools-be
 app/sidekiq/evss/failure_notification.rb @software/benefits-management-tools-be
@@ -603,7 +603,7 @@ app/sidekiq/load_average_days_for_claim_completion_job.rb @software/benefits-mic
 app/sidekiq/mhv @software/vfs-mhv-integration
 app/sidekiq/mhv/account_creator_job.rb @software/octo-identity
 app/sidekiq/pager_duty @software/va-platform-backend
-app/sidekiq/preneeds @software/bah-mbs-selfserv
+app/sidekiq/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 app/sidekiq/scanned_upload_purge_job.rb @software/platform-va-product-forms
 app/sidekiq/schema_contract @software/va-platform-backend
 app/sidekiq/sign_in @software/octo-identity
@@ -670,7 +670,7 @@ app/swagger/swagger/requests/medical_copays.rb @software/vsa-debt-resolution
 app/swagger/swagger/requests/mvi_users.rb @software/octo-identity
 app/swagger/swagger/requests/my_va @software/vfs-authenticated-experience-backend
 app/swagger/swagger/requests/onsite_notifications.rb @software/vfs-authenticated-experience-backend
-app/swagger/swagger/requests/preneeds_claims.rb @software/bah-mbs-selfserv
+app/swagger/swagger/requests/preneeds_claims.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/swagger/swagger/requests/profile.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 app/swagger/swagger/requests/search_click_tracking.rb @software/va-platform-backend
 app/swagger/swagger/requests/search.rb @software/va-platform-backend
@@ -740,7 +740,7 @@ app/uploaders/form1010cg/poa_uploader.rb @software/health-apps-backend
 app/uploaders/hca_attachment_uploader.rb @software/vfs-authenticated-experience-backend
 app/uploaders/lighthouse_document_uploader_base.rb @software/benefits-management-tools-be
 app/uploaders/lighthouse_document_uploader.rb @software/benefits-management-tools-be
-app/uploaders/preneed_attachment_uploader.rb @software/bah-mbs-selfserv
+app/uploaders/preneed_attachment_uploader.rb @software/bah-mbs-selfserv @software/va-platform-backend
 app/uploaders/set_aws_config.rb @software/va-platform-backend
 app/uploaders/simple_forms_api/ @software/platform-va-product-forms
 app/uploaders/supporting_evidence_attachment_uploader.rb @software/disability-benefits
@@ -820,8 +820,8 @@ config/form_profile_mappings/26-1880v3.yml @software/va-core-veteran-experiences
 config/form_profile_mappings/26-4555.yml @software/platform-va-product-forms
 config/form_profile_mappings/28-1900.yml @software/benefits-non-disability
 config/form_profile_mappings/28-8832.yml @software/benefits-non-disability
-config/form_profile_mappings/40-10007.yml @software/bah-mbs-selfserv
-config/form_profile_mappings/40-1330m.yml @software/bah-mbs-selfserv
+config/form_profile_mappings/40-10007.yml @software/bah-mbs-selfserv @software/va-platform-backend
+config/form_profile_mappings/40-1330m.yml @software/bah-mbs-selfserv @software/va-platform-backend
 config/form_profile_mappings/5655.yml @software/vsa-debt-resolution
 config/form_profile_mappings/686C-674-V2.yml @software/disability-benefits
 config/form_profile_mappings/686C-674.yml @software/disability-benefits
@@ -902,7 +902,7 @@ config/initializers/webauthn.rb @software/octo-identity
 config/locales @software/va-platform-backend
 config/mpi_schema @software/octo-identity
 config/openapi/openapi.json @software/benefits-optimization-aquia
-config/preneeds @software/bah-mbs-selfserv
+config/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 config/puma.rb @software/va-platform-backend
 config/redis.yml @software/va-platform-backend
 config/routes.rb @software/va-platform-backend
@@ -1146,7 +1146,7 @@ lib/pdf_info.rb @software/va-platform-backend
 lib/pdf_utilities @software/va-platform-backend
 lib/periodic_jobs.rb @software/va-platform-backend
 lib/persistent_attachments @software/benefits-lifestage
-lib/preneeds @software/bah-mbs-selfserv
+lib/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 lib/reports/uploader.rb @software/govcio-vfep-codereviewers
 lib/request_context_middleware.rb @software/octo-identity
 lib/res @software/benefits-non-disability
@@ -1395,7 +1395,7 @@ spec/controllers/v0/mhv_opt_in_flags_controller_spec.rb @software/octo-identity
 spec/controllers/v0/my_va/submission_statuses_controller_spec.rb @software/vfs-authenticated-experience-backend
 spec/controllers/v0/onsite_notifications_controller_spec.rb @software/vfs-authenticated-experience-backend
 spec/controllers/v0/open_api_controller_spec.rb @software/va-platform-backend
-spec/controllers/v0/preneeds @software/bah-mbs-selfserv
+spec/controllers/v0/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/controllers/v0/profile @software/vfs-authenticated-experience-backend
 spec/controllers/v0/profile/contacts_controller_spec.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 spec/controllers/v0/profile/payment_history_controller_spec.rb @software/benefits-management-tools-be @software/vsa-debt-resolution
@@ -1499,7 +1499,7 @@ spec/factories/pagerduty_services.rb @software/va-platform-backend
 spec/factories/persistent_attachments @software/benefits-non-disability @software/benefits-lifestage
 spec/factories/persistent_attachments.rb @software/platform-va-product-forms
 spec/factories/ppms @software/vfs-facilities-frontend
-spec/factories/preneeds @software/bah-mbs-selfserv
+spec/factories/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/factories/prescription_details.rb @software/vfs-mhv-integration
 spec/factories/prescription_preferences.rb @software/vfs-mhv-integration
 spec/factories/prescriptions.rb @software/vfs-mhv-integration
@@ -1622,7 +1622,7 @@ spec/fixtures/pdf_fill/5655 @software/vsa-debt-resolution
 spec/fixtures/pdf_fill/686C-674 @software/benefits-lifestage
 spec/fixtures/pdf_fill/686C-674-V2 @software/benefits-lifestage
 spec/fixtures/pension @software/benefits-lifestage
-spec/fixtures/preneeds @software/bah-mbs-selfserv
+spec/fixtures/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/fixtures/remediation/ @software/octo-benefits-portfolio-code-reviewers
 spec/fixtures/sign_in @software/octo-identity
 spec/fixtures/supplemental_claims @software/benefits-decision-reviews-be
@@ -1779,7 +1779,7 @@ spec/lib/pdf_utilities @software/va-platform-backend
 spec/lib/periodic_jobs_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage
 spec/lib/postgis_schema_roundtrip_spec.rb @software/va-platform-backend
-spec/lib/preneeds @software/bah-mbs-selfserv
+spec/lib/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/lib/request_context_middleware_spec.rb @software/octo-identity
 spec/lib/res/ch31_form_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/rubocop @software/va-platform-backend
@@ -1913,7 +1913,7 @@ spec/models/form_profiles/va10272_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/va10282_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/va10297_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/va108678_spec.rb @software/benefits-intake-pingwind
-spec/models/form_profiles/va1330m_spec.rb @software/bah-mbs-selfserv
+spec/models/form_profiles/va1330m_spec.rb @software/bah-mbs-selfserv @software/va-platform-backend
 spec/models/form_profiles/va2010206_spec.rb @software/platform-va-product-forms
 spec/models/form_profiles/va214138_spec.rb @software/platform-va-product-forms
 spec/models/form_profiles/va214140_spec.rb @software/benefits-intake-pingwind
@@ -1949,7 +1949,7 @@ spec/models/mpi_data_spec.rb @software/octo-identity
 spec/models/onsite_notification_spec.rb @software/vfs-authenticated-experience-backend
 spec/models/persistent_attachments @software/benefits-non-disability @software/benefits-lifestage
 spec/models/personal_information_log_spec.rb @software/va-platform-backend
-spec/models/preneeds @software/bah-mbs-selfserv
+spec/models/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/models/prescription_details_spec.rb @software/vfs-mhv-integration
 spec/models/prescription_spec.rb @software/vfs-mhv-integration
 spec/models/rate_limited_search_spec.rb @software/va-platform-backend
@@ -2044,7 +2044,7 @@ spec/requests/filter_parameter_logging_spec.rb @software/va-platform-backend
 spec/requests/flipper_spec.rb @software/va-platform-backend
 spec/requests/gids @software/va-platform-backend
 spec/requests/http_method_not_allowed_spec.rb @software/va-platform-backend
-spec/requests/preneeds @software/bah-mbs-selfserv
+spec/requests/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/requests/root_spec.rb @software/va-platform-backend
 spec/requests/statsd_middleware_spec.rb @software/vfs-mhv-integration
 spec/requests/swagger_spec.rb @software/va-platform-backend
@@ -2087,7 +2087,7 @@ spec/requests/v0/map_services_spec.rb @software/octo-identity
 spec/requests/v0/medical_copays_spec.rb @software/vsa-debt-resolution
 spec/requests/v0/mvi_users_spec.rb @software/octo-identity
 spec/requests/v0/my_va @software/vfs-authenticated-experience-backend
-spec/requests/v0/preneeds @software/bah-mbs-selfserv
+spec/requests/v0/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/requests/v0/profile @software/vfs-authenticated-experience-backend
 spec/requests/v0/profile/contacts_spec.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 spec/requests/v0/profile/full_name_spec.rb @software/vfs-authenticated-experience-backend
@@ -2122,7 +2122,7 @@ spec/serializers/appointment_serializer_spec.rb @software/vfs-vaos
 spec/serializers/async_transaction/base_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/backend_statuses_serializer_spec.rb @software/va-platform-backend
 spec/serializers/benefits_intake_submission_serializer_spec.rb @software/benefits-lifestage
-spec/serializers/cemetery_serializer_spec.rb @software/bah-mbs-selfserv
+spec/serializers/cemetery_serializer_spec.rb @software/bah-mbs-selfserv @software/va-platform-backend
 spec/serializers/central_mail_submission_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/communication_groups_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/contact_information_serializer_spec.rb @software/vfs-authenticated-experience-backend
@@ -2159,10 +2159,10 @@ spec/serializers/persistent_attachment_va_form_serializer_spec.rb @software/plat
 spec/serializers/personal_information_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/post911_gi_bill_status_serializer_spec.rb @software/govcio-vfep-codereviewers
 spec/serializers/preferred_name_serializer_spec.rb @software/vfs-authenticated-experience-backend
-spec/serializers/preneed_attachment_serializer_spec.rb @software/bah-mbs-selfserv
+spec/serializers/preneed_attachment_serializer_spec.rb @software/bah-mbs-selfserv @software/va-platform-backend
 spec/serializers/rated_disabilities_serializer_spec.rb @software/disability-benefits
 spec/serializers/rating_info_serializer_spec.rb @software/va-platform-backend
-spec/serializers/receive_application_serializer_spec.rb @software/bah-mbs-selfserv
+spec/serializers/receive_application_serializer_spec.rb @software/bah-mbs-selfserv @software/va-platform-backend
 spec/serializers/saved_claim_serializer_spec.rb @software/va-platform-backend
 spec/serializers/scheduling_preferences_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/search_serializer_spec.rb @software/va-platform-backend
@@ -2269,7 +2269,7 @@ spec/sidekiq/load_average_days_for_claim_completion_job_spec.rb @software/benefi
 spec/sidekiq/mhv @software/vfs-mhv-integration
 spec/sidekiq/mhv/account_creator_job_spec.rb @software/octo-identity
 spec/sidekiq/pager_duty @software/va-platform-backend
-spec/sidekiq/preneeds @software/bah-mbs-selfserv
+spec/sidekiq/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/sidekiq/process_file_job_spec.rb @software/va-platform-backend
 spec/sidekiq/scanned_upload_purge_job_spec.rb @software/platform-va-product-forms
 spec/sidekiq/schema_contract @software/va-platform-backend
@@ -2376,7 +2376,7 @@ spec/support/schemas_camelized/messages.json @software/vfs-mhv-integration
 spec/support/schemas_camelized/my_health/messaging @software/vfs-mhv-integration
 spec/support/schemas_camelized/my_health/prescriptions/v1 @software/vfs-mhv-integration
 spec/support/schemas_camelized/payment_information.json @software/vfs-authenticated-experience-backend
-spec/support/schemas_camelized/preneeds @software/bah-mbs-selfserv
+spec/support/schemas_camelized/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/support/schemas_camelized/prescription_base.json @software/vfs-mhv-integration
 spec/support/schemas_camelized/prescription.json @software/vfs-mhv-integration
 spec/support/schemas_camelized/prescriptions_filtered.json @software/vfs-mhv-integration
@@ -2464,7 +2464,7 @@ spec/support/schemas/personal_information_response.json @software/vfs-authentica
 spec/support/schemas/post911_gi_bill_status.json @software/govcio-vfep-codereviewers
 spec/support/schemas/preference.json @software/va-platform-backend
 spec/support/schemas/preferences.json @software/va-platform-backend
-spec/support/schemas/preneeds @software/bah-mbs-selfserv
+spec/support/schemas/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/support/schemas/prescription_base.json @software/vfs-mhv-integration
 spec/support/schemas/prescription.json @software/vfs-mhv-integration
 spec/support/schemas/prescriptions_filtered.json @software/vfs-mhv-integration
@@ -2610,7 +2610,7 @@ spec/support/vcr_cassettes/my_va @software/vfs-authenticated-experience-backend
 spec/support/vcr_cassettes/okta @software/lighthouse-pivot
 spec/support/vcr_cassettes/pagerduty @software/va-platform-backend
 spec/support/vcr_cassettes/phr_mgr_client @software/vfs-mhv-integration
-spec/support/vcr_cassettes/preneeds @software/bah-mbs-selfserv
+spec/support/vcr_cassettes/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/support/vcr_cassettes/RapidReadyForDecision_DisabilityCompensationJob @software/disability-benefits
 spec/support/vcr_cassettes/representation_management @software/lighthouse-dash
 spec/support/vcr_cassettes/rrd @software/va-platform-backend
