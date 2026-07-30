@@ -252,12 +252,78 @@ group :development, :test do
   gem 'yard'
 end
 
-# sidekiq enterprise requires a license key to download. In many cases, basic sidekiq is enough for local development
-if (Bundler::Settings.new(Bundler.app_config_path)['enterprise.contribsys.com'].nil? ||
-    Bundler::Settings.new(Bundler.app_config_path)['enterprise.contribsys.com']&.empty?) &&
-   ENV.fetch('BUNDLE_ENTERPRISE__CONTRIBSYS__COM', '').empty? && ENV.keys.grep(/DEPENDABOT/).empty?
+# sidekiq enterprise requires a license key to download. In many cases, basic sidekiq is enough for local development.
+# The license is consumed by Bundler here, BEFORE Rails boots, so Rails.application.credentials is unavailable.
+# Resolution order: env var -> `bundle config` -> encrypted credentials. First non-empty wins.
+def sidekiq_enterprise_license
+  env_license = ENV.fetch('BUNDLE_ENTERPRISE__CONTRIBSYS__COM', '')
+  return env_license unless env_license.empty?
+
+  # NOTE: `.blank?`/`.presence` are unavailable here — this runs under Bundler before ActiveSupport
+  # loads, so emptiness is checked with `to_s.empty?` rather than the Rails helpers.
+  bundle_config_license = Bundler::Settings.new(Bundler.app_config_path)['enterprise.contribsys.com'].to_s
+  return bundle_config_license unless bundle_config_license.empty?
+
+  decrypt_sidekiq_license_from_credentials
+rescue
+  # A missing/unreadable master key or malformed credentials must never break `bundle install`.
+  ''
+end
+
+# Decrypts config/credentials.yml.enc using only stdlib (openssl/base64).
+#
+# This deliberately does NOT use ActiveSupport::EncryptedConfiguration. Requiring ActiveSupport here
+# activates it and its dependencies (connection_pool, minitest, drb, logger, stringio) during
+# Bundler's resolution, before the bundle is set up. When several versions of those gems are
+# installed, RubyGems can't disambiguate them and prints a long "Unresolved or ambiguous specs
+# during Gem::Specification.reset" warning listing all five on every `bundle install`.
+#
+# `yaml` is likewise not required — it activates psych. We only need one scalar, so the value is
+# matched directly out of the decrypted YAML rather than parsed.
+#
+# The format is ActiveSupport::MessageEncryptor's: "payload--iv--auth_tag", each Base64-encoded,
+# AES-128-GCM with the raw 16-byte master key, wrapping a Marshal-dumped YAML string. GCM
+# authenticates the ciphertext, so tampered or wrong-key input raises before anything is parsed.
+def decrypt_sidekiq_license_from_credentials
+  require 'openssl'
+  require 'base64'
+
+  # NOTE: `.presence` is unavailable here — this runs under Bundler before ActiveSupport loads.
+  env_key = ENV.fetch('RAILS_MASTER_KEY', '')
+  key = env_key.empty? ? File.read(File.expand_path('config/master.key', __dir__)) : env_key
+  contents = File.read(File.expand_path('config/credentials.yml.enc', __dir__)).strip
+  payload, iv, auth_tag = contents.split('--').map { |part| Base64.strict_decode64(part) }
+
+  cipher = OpenSSL::Cipher.new('aes-128-gcm')
+  cipher.decrypt
+  cipher.key = [key.strip].pack('H*')
+  cipher.iv = iv
+  cipher.auth_tag = auth_tag
+  cipher.auth_data = ''
+
+  # The plaintext is a Marshal-dumped String, but Marshal.load is deliberately NOT used: it isn't
+  # needed to read one scalar, and avoiding it keeps deserialization of file-sourced bytes out of
+  # the build entirely. The Marshal header is a short prefix ahead of the YAML text, so the value
+  # is matched straight out of the decrypted bytes.
+  yaml = (cipher.update(payload) + cipher.final).force_encoding('BINARY')
+
+  # Scoped to the `sidekiq:` block so an `enterprise_license` key elsewhere can't be picked up.
+  sidekiq_block = yaml[/sidekiq:[ \t]*\r?\n((?:[ \t]+.*\r?\n?)*)/, 1].to_s
+  match = sidekiq_block.match(/enterprise_license:[ \t]*(?:"([^"]*)"|'([^']*)'|(\S+))/)
+  return '' unless match
+
+  (match[1] || match[2] || match[3]).to_s
+end
+
+sidekiq_license = sidekiq_enterprise_license
+if sidekiq_license.empty? && ENV.keys.grep(/DEPENDABOT/).empty?
   Bundler.ui.warn 'No credentials found to install Sidekiq Enterprise. This is fine for local development but you may not check in this Gemfile.lock with any Sidekiq gems removed. The README file in this directory contains more information.'
 else
+  # Bundler snapshots its settings before evaluating this Gemfile, so setting only the env var is
+  # too late — the gem *download* still 401s. Registering the credential with Bundler::Settings is
+  # what actually authenticates the enterprise source. The env var is set too, for child processes.
+  ENV['BUNDLE_ENTERPRISE__CONTRIBSYS__COM'] ||= sidekiq_license
+  Bundler.settings.temporary('enterprise.contribsys.com' => sidekiq_license)
   source 'https://enterprise.contribsys.com/' do
     gem 'sidekiq-ent'
     gem 'sidekiq-pro'

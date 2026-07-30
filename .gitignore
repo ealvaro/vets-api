@@ -131,3 +131,7 @@ staging.benefits_claims.pem
 
 # Ignore generated OpenAPI html documentation
 modules/mobile/docs/index.html
+
+# Ignore key files for decrypting credentials and more.
+/config/*.key
+

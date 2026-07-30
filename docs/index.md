@@ -45,9 +45,9 @@ For frontend, see [vets-website](https://va.ghe.com/software/vets-website) and [
        authn_requests_signed: false
      ```
 
-1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
+1. If you are developing features that need Sidekiq Enterprise, place the Rails master key at `config/master.key` (obtain it from AWS Parameter Store via the web console at [`/dsva-vagov/vets-api/utility/SIDEKIQ_RAILS_MASTER_KEY`](https://console.amazonaws-us-gov.com/systems-manager/parameters/%252Fdsva-vagov%252Fvets-api%252Futility%252FSIDEKIQ_RAILS_MASTER_KEY/description?region=us-gov-west-1&tab=Table), or from a teammate). The encrypted license in `config/credentials.yml.enc` is then decrypted automatically during `bundle install`. Do not commit `config/master.key`.
 
-   Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have a license configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
+   Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have the master key configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
 
    **DO NOT commit local Gemfile modifications that remove the `sidekiq-ent` and `sidekiq-pro` gems.**
 

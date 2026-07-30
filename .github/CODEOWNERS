@@ -765,6 +765,7 @@ config/cable.yml @software/va-platform-backend
 config/clamd.conf @software/va-platform-backend
 config/coe @software/va-core-veteran-experiences
 config/coverband.rb @software/va-platform-backend
+config/credentials.yml.enc @software/va-platform-backend
 config/database.yml @software/va-platform-backend
 config/environment.rb @software/va-platform-backend
 config/environments @software/va-platform-backend

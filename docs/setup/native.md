@@ -47,7 +47,7 @@ For example: `rvm install 3.3.12 -C --with-openssl-dir=/$(brew --prefix openssl@
    cd vets-api; bundle install
    ```
 
-   More information about installing _with_ Sidekiq Enterprise as well as our credentials are on the internal system [here](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
+   To install _with_ Sidekiq Enterprise, place the Rails master key at `config/master.key` before running `bundle install`. Obtain the key from AWS Parameter Store via the web console at [`/dsva-vagov/vets-api/utility/SIDEKIQ_RAILS_MASTER_KEY`](https://console.amazonaws-us-gov.com/systems-manager/parameters/%252Fdsva-vagov%252Fvets-api%252Futility%252FSIDEKIQ_RAILS_MASTER_KEY/description?region=us-gov-west-1&tab=Table) (or from a teammate). The encrypted license lives in `config/credentials.yml.enc`; do not commit `config/master.key`.
 
 1. Setup local databases and run schema migrations:
    ```bash

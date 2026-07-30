@@ -47,9 +47,11 @@ For frontend, see [vets-website](https://va.ghe.com/software/vets-website).
        authn_requests_signed: false
      ```
 
-1. If you are developing features that need Sidekiq Enterprise, you must have access to the va.gov-team-sensitive repo and [install the sidekiq enterprise license](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md)
+1. If you are developing features that need Sidekiq Enterprise, place the Rails master key at `config/master.key` so the encrypted Sidekiq license can be decrypted during `bundle install`.
 
-   Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have a license configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
+   Obtain the master key from AWS Parameter Store using the web console (open [`/dsva-vagov/vets-api/utility/SIDEKIQ_RAILS_MASTER_KEY`](https://console.amazonaws-us-gov.com/systems-manager/parameters/%252Fdsva-vagov%252Fvets-api%252Futility%252FSIDEKIQ_RAILS_MASTER_KEY/description?region=us-gov-west-1&tab=Table), show the SecureString value, and copy it into `config/master.key`), or from a teammate. Do not commit `config/master.key` — it is gitignored. Once the key is in place, no further steps are needed; `bundle install` reads the license from `config/credentials.yml.enc` automatically.
+
+   Sidekiq Enterprise is used for worker rate limiting and additional reliability in production and requires a license be configured on your development machine. If you do not have the master key configured, the open source version of Sidekiq will be installed instead. This is not an issue unless you are specifically developing features that need Sidekiq Enterprise.
 
    **DO NOT commit local Gemfile.lock modifications that remove the `sidekiq-ent` and `sidekiq-pro` gems.**
 

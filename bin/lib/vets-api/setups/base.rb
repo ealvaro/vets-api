@@ -87,22 +87,46 @@ module VetsApi
           return true
         end
 
+        return true if set_sidekiq_license_from_credentials
+
         print 'Enter Sidekiq Enterprise License or press enter/return to skip: '
         response = $stdin.gets.chomp
         if response && /\A[0-9a-fA-F]{8}:[0-9a-fA-F]{8}\z/.match?(response)
           print 'Setting Sidekiq Enterprise License... '
           ShellCommand.run_quiet("bundle config enterprise.contribsys.com #{response}")
-          if RbConfig::CONFIG['host_os'] =~ /mswin|msys|mingw|cygwin/i
-            ShellCommand.run_quiet("set BUNDLE_ENTERPRISE__CONTRIBSYS__COM=#{response}")
-          else
-            ShellCommand.run_quiet("BUNDLE_ENTERPRISE__CONTRIBSYS__COM=#{response}")
-          end
           puts 'Done'
         else
           puts
           puts "\e[1;4m**Please do not commit a Gemfile.lock that does not include sidekiq-pro and sidekiq-ent**\e[0m"
           puts
         end
+      end
+
+      # Sets the license via `bundle config` if a valid one is found in encrypted credentials.
+      # Returns true when set, false when no usable license is available.
+      def set_sidekiq_license_from_credentials
+        license = sidekiq_license_from_credentials
+        return false unless /\A[0-9a-fA-F]{8}:[0-9a-fA-F]{8}\z/.match?(license)
+
+        print 'Setting Sidekiq Enterprise License from encrypted credentials... '
+        ShellCommand.run_quiet("bundle config enterprise.contribsys.com #{license}")
+        puts 'Done'
+        true
+      end
+
+      # Reads the license from Rails encrypted credentials without a booted Rails app
+      # (bin/setup runs as a plain Ruby script before Rails is loaded).
+      def sidekiq_license_from_credentials
+        require 'active_support/encrypted_configuration'
+        credentials = ActiveSupport::EncryptedConfiguration.new(
+          config_path: File.expand_path('config/credentials.yml.enc', Dir.pwd),
+          key_path: File.expand_path('config/master.key', Dir.pwd),
+          env_key: 'RAILS_MASTER_KEY',
+          raise_if_missing_key: false
+        )
+        credentials.dig(:sidekiq, :enterprise_license).to_s
+      rescue
+        ''
       end
 
       def existing_settings

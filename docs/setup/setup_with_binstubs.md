@@ -38,7 +38,7 @@ If you are running vets-api via docker, running hybrid, OR want to test the full
 
 #### Sidekiq License 
 
-Although not required to run vets-api, if you plan to develop for vets-api, you'll need the sidekiq enterprise license, that can be found [here](https://va.ghe.com/software/va.gov-team-sensitive/blob/master/platform/engineering/sidekiq-enterprise-setup.md) Note: this is a private repo. 
+Although not required to run vets-api, if you plan to develop for vets-api, you'll need the Sidekiq Enterprise license. The license is stored encrypted in `config/credentials.yml.enc`; to decrypt it, place the Rails master key at `config/master.key`. Obtain the key from AWS Parameter Store via the web console at [`/dsva-vagov/vets-api/utility/SIDEKIQ_RAILS_MASTER_KEY`](https://console.amazonaws-us-gov.com/systems-manager/parameters/%252Fdsva-vagov%252Fvets-api%252Futility%252FSIDEKIQ_RAILS_MASTER_KEY/description?region=us-gov-west-1&tab=Table) (or from a teammate). Do not commit `config/master.key`. 
 
 ### Clone vets-api
 
