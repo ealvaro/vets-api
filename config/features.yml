@@ -4059,3 +4059,6 @@ features:
   enable_prefill_update_530ez:
     actor_type: user
     description: Enables prefill update for 21p-530ez form
+  va_dependents_674_term_section_redesign:
+    actor_type: user
+    description: Enables latest school term date flow in 21-674
