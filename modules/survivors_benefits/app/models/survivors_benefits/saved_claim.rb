@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'survivors_benefits/benefits_intake/submit_claim_job'
+require 'survivors_benefits/custodian_addendum'
+require 'survivors_benefits/helpers'
 require 'pdf_fill/filler'
 require 'pdf_fill/forms/va214138'
 
@@ -109,7 +111,7 @@ module SurvivorsBenefits
 
       form_data = form.present? ? parsed_form : {}
 
-      if cave_submissions.exists?
+      if cave_submissions.exists? || custodian_filing?(form_data)
         statement_pdf_path = fill_ancillary_pdf(form_data)
 
         folder = 'tmp/pdfs'
@@ -124,7 +126,19 @@ module SurvivorsBenefits
     end
 
     ##
-    # Fills a Form 21-4138 with the raw JSON from CAVE if the Claim has a CaveSubmission
+    # Whether a custodian is filing this claim on behalf of a child under 18. Such claims get a
+    # 21-4138 addendum even without a CaveSubmission, because the custodian's relationship to the
+    # child, address, and email have nowhere to go on the 21P-534EZ itself.
+    #
+    # @param form_data [Hash] the parsed claim form
+    # @return [Boolean]
+    def custodian_filing?(form_data)
+      SurvivorsBenefits::Helpers.custodian_filing?(form_data['claimantRelationship'])
+    end
+
+    ##
+    # Fills a Form 21-4138 addendum, documenting the custodian filing on a child's behalf and/or
+    # the fields a user corrected on CAVE-extracted documents.
     #
     def fill_ancillary_pdf(form_data)
       result = ::PdfFill::Forms::Va214138::PdfSchema.call(
@@ -138,10 +152,27 @@ module SurvivorsBenefits
           claimantInternationalPhone: claimant_international_phone(form_data),
           claimantEmailAddress: form_data['claimantEmail'] || form_data['veteranEmail'] || form_data['email'],
           claimantAddress: form_data['claimantAddress'] || form_data['veteranAddress'],
-          remarks: cave_change_log_remarks(form_data)
+          remarks: ancillary_remarks(form_data)
         }
       )
       filler.fill_ancillary_form(result.to_h, id, '21-4138', { extras_redesign: true })
+    end
+
+    ##
+    # Composes the 21-4138 Remarks from the custodian block and the CAVE change log, in that
+    # order. Either may be absent, but the caller only reaches here when at least one applies, so
+    # the result satisfies the PdfSchema's `required(:remarks).filled(:string)`.
+    #
+    # cave_change_log_remarks is skipped entirely when there are no CaveSubmissions — it persists
+    # the change log and forwards corrections to CAVE as side effects.
+    #
+    # @param form_data [Hash] the parsed claim form
+    # @return [String]
+    def ancillary_remarks(form_data)
+      [
+        SurvivorsBenefits::CustodianAddendum.remarks(form_data),
+        (cave_change_log_remarks(form_data) if cave_submissions.exists?)
+      ].compact_blank.join("\n\n")
     end
 
     ##

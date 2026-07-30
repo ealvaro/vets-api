@@ -92,6 +92,75 @@ RSpec.describe SurvivorsBenefits::SavedClaim do
         subject.to_pdf(nil, { extras_redesign: })
       end
     end
+
+    context 'when a custodian is filing for a child under 18' do
+      let(:claim) { create(:survivors_benefits_claim, :with_custodian) }
+      let(:base_pdf_path) { 'tmp/pdfs/base.pdf' }
+      let(:statement_pdf_path) { 'tmp/pdfs/statement.pdf' }
+      let(:combined_path) { "tmp/pdfs/#{SurvivorsBenefits::FORM_ID}_#{claim.guid}_combined.pdf" }
+
+      before do
+        allow(PdfFill::Filler).to receive_messages(fill_form: base_pdf_path,
+                                                   fill_ancillary_form: statement_pdf_path,
+                                                   merge_pdfs: nil)
+        allow(SurvivorsBenefits::PdfFill::Va21p534ez).to receive(:stamp_signature).and_return(combined_path)
+      end
+
+      it 'attaches a 21-4138 addendum even without a CaveSubmission' do
+        expect(PdfFill::Filler).to receive(:merge_pdfs).with(base_pdf_path, statement_pdf_path, combined_path)
+
+        expect(claim.to_pdf).to eq(combined_path)
+      end
+
+      it 'writes the custodian details into the 21-4138 remarks' do
+        expect(PdfFill::Filler).to receive(:fill_ancillary_form) do |form_data, claim_id, form_id, options|
+          expect(claim_id).to eq(claim.id)
+          expect(form_id).to eq('21-4138')
+          expect(options).to eq({ extras_redesign: true })
+          expect(form_data[:remarks]).to eq(
+            <<~REMARKS.chomp
+              ALTERNATE SIGNER (CUSTODIAN) INFORMATION
+              Custodian name: Jane Q Custodian
+              Relationship to child: Mother
+              Custodian address: 123 Main St Apt 4B, Springfield IL 62704, USA
+              Custodian email: jane.custodian@example.com
+            REMARKS
+          )
+          statement_pdf_path
+        end
+
+        claim.to_pdf
+      end
+
+      it 'puts the custodian block ahead of the CAVE change log when both apply' do
+        CaveSubmission.create!(saved_claim: claim, cave_response: { 'VETERAN_NAME' => 'JOHN E DOE' }.to_json)
+
+        expect(PdfFill::Filler).to receive(:fill_ancillary_form) do |form_data, *|
+          expect(form_data[:remarks]).to start_with("ALTERNATE SIGNER (CUSTODIAN) INFORMATION\n")
+          expect(form_data[:remarks]).to include("\n\nSYSTEM GENERATED TO DOCUMENT USER CHANGES\n")
+          expect(form_data[:remarks]).to include('Veteran name: OCR Extracted Value: JOHN E DOE;')
+          statement_pdf_path
+        end
+
+        claim.to_pdf
+      end
+    end
+
+    context 'when no custodian is filing and there is no CaveSubmission' do
+      let(:claim) { create(:survivors_benefits_claim) }
+
+      before do
+        allow(PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/base.pdf')
+        allow(SurvivorsBenefits::PdfFill::Va21p534ez).to receive(:stamp_signature).and_return('tmp/pdfs/base.pdf')
+      end
+
+      it 'does not attach a 21-4138 addendum' do
+        expect(PdfFill::Filler).not_to receive(:fill_ancillary_form)
+        expect(PdfFill::Filler).not_to receive(:merge_pdfs)
+
+        expect(claim.to_pdf).to eq('tmp/pdfs/base.pdf')
+      end
+    end
   end
 
   describe '#send_email' do

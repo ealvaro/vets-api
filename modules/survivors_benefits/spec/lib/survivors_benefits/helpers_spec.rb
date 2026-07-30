@@ -89,6 +89,23 @@ RSpec.describe SurvivorsBenefits::Helpers do
     end
   end
 
+  describe '#custodian_filing?' do
+    it 'is true for the custodian relationship enum value' do
+      expect(described_class.custodian_filing?('CUSTODIAN_FILING_FOR_CHILD_UNDER_18')).to be(true)
+    end
+
+    it 'is true for the humanized custodian relationship label written by section 2' do
+      expect(described_class.custodian_filing?('CUSTODIAN FILING FOR CHILD UNDER 18')).to be(true)
+    end
+
+    it 'is false for non-custodian relationships and blank values' do
+      expect(described_class.custodian_filing?('SURVIVING_SPOUSE')).to be(false)
+      expect(described_class.custodian_filing?('HELPLESS_ADULT_CHILD')).to be(false)
+      expect(described_class.custodian_filing?('Off')).to be(false)
+      expect(described_class.custodian_filing?(nil)).to be(false)
+    end
+  end
+
   describe '#signature_field_index_for_claimant_relationship' do
     it 'returns index 0 for the custodian relationship enum value' do
       result = described_class.signature_field_index_for_claimant_relationship('CUSTODIAN_FILING_FOR_CHILD_UNDER_18')

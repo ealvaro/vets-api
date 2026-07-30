@@ -112,6 +112,7 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
             section-9 section-9_1 section-9_2 section-9_3 section-9_4
             section-10 section-10_1 section-10_2 section-10_3
             section-11 section-11_1 section-11_2 section-11_3
+            section-12 section-12_1
           ]
           files.each do |file|
             f1 = File.read File.join(__dir__, 'input', "21P-534EZ_#{file}.json")
@@ -192,12 +193,58 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
       end
     end
 
+    # The output-fixture harness slices to the intersection of produced and expected keys, so it
+    # can only assert which widgets ARE written. These cover the other half: that the unused
+    # signature-date widget set stays empty.
+    shared_examples 'section12 acroform widget selection' do |subform|
+      def date_signed_keys(form_data)
+        merged_data = SurvivorsBenefits::PdfFill::Va21p534ez.new(form_data).merge_fields
+        hash_converter = PdfFill::Filler.make_hash_converter(
+          SurvivorsBenefits::FORM_ID, SurvivorsBenefits::PdfFill::Va21p534ez,
+          Utilities::DateParser.parse('2025-10-08'), {}
+        )
+        transformed = hash_converter.transform_data(
+          form_data: merged_data, pdftk_keys: SurvivorsBenefits::PdfFill::Va21p534ez.key
+        )
+        transformed.keys.grep(/Date_Signed_/)
+      end
+
+      it 'writes only the §14B widgets for a custodian' do
+        keys = date_signed_keys(
+          'veteranSocialSecurityNumber' => '123456789',
+          'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18',
+          'dateSigned' => '2024-01-01'
+        )
+
+        expect(keys).to contain_exactly(
+          "form1[0].#subform[#{subform}].Date_Signed_Month[0]",
+          "form1[0].#subform[#{subform}].Date_Signed_Day[0]",
+          "form1[0].#subform[#{subform}].Date_Signed_Year[0]"
+        )
+      end
+
+      it 'writes only the §12B widgets for non-custodian relationships' do
+        keys = date_signed_keys(
+          'veteranSocialSecurityNumber' => '123456789',
+          'claimantRelationship' => 'SURVIVING_SPOUSE',
+          'dateSigned' => '2024-01-01'
+        )
+
+        expect(keys).to contain_exactly(
+          "form1[0].#subform[#{subform}].Date_Signed_Month[1]",
+          "form1[0].#subform[#{subform}].Date_Signed_Day[1]",
+          "form1[0].#subform[#{subform}].Date_Signed_Year[1]"
+        )
+      end
+    end
+
     context 'when the 2025 feature flag is disabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_2025_version_enabled).and_return(false)
       end
 
       include_examples 'section12 date signed field selection'
+      include_examples 'section12 acroform widget selection', 218
     end
 
     context 'when the 2025 feature flag is enabled' do
@@ -206,6 +253,7 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
       end
 
       include_examples 'section12 date signed field selection'
+      include_examples 'section12 acroform widget selection', 163
     end
   end
 
@@ -319,6 +367,32 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
 
       result = described_class.stamp_signature(pdf_path, { 'claimantSignature' => 'Jane Doe' })
       expect(result).to eq(pdf_path)
+    end
+  end
+
+  describe '.signers_full_name' do
+    it 'prefers filingCustodianFullName over the residual yourName key' do
+      form_data = {
+        'filingCustodianFullName' => { 'first' => 'Jane', 'middle' => 'Quincy', 'last' => 'Custodian' },
+        'yourName' => { 'first' => 'Stale', 'last' => 'Value' }
+      }
+
+      expect(described_class.signers_full_name(form_data)).to eq('Jane Quincy Custodian')
+    end
+
+    it 'still reads yourName when no custodian is filing' do
+      expect(described_class.signers_full_name({ 'yourName' => { 'first' => 'Pat', 'last' => 'Spouse' } }))
+        .to eq('Pat Spouse')
+    end
+
+    it 'never falls back to claimantFullName, which holds the child name for a custodian filing' do
+      form_data = { 'claimantFullName' => { 'first' => 'Child', 'last' => 'Name' } }
+
+      expect(described_class.signers_full_name(form_data)).to eq('')
+    end
+
+    it 'returns an empty string for nil form data' do
+      expect(described_class.signers_full_name(nil)).to eq('')
     end
   end
 end

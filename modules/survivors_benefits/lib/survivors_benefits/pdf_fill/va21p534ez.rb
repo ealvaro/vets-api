@@ -215,10 +215,15 @@ module SurvivorsBenefits
           signers_full_name(form_data)
       end
 
+      # For a custodian filing, the frontend renames `yourName` to `filingCustodianFullName` but
+      # leaves the original key in the payload; prefer the canonical key so this keeps working if
+      # `your*` is ever pruned, which would otherwise stamp the *child's* name on §14A.
       def self.signers_full_name(form_data)
-        [form_data&.dig('yourName', 'first'),
-         form_data&.dig('yourName', 'middle'),
-         form_data&.dig('yourName', 'last')].compact_blank.join(' ')
+        # Deliberately no claimantFullName fallback: for a custodian filing that key holds the
+        # *child's* name, which must never land on the alternate-signer line.
+        name = form_data&.[]('filingCustodianFullName').presence || form_data&.[]('yourName')
+
+        [name&.[]('first'), name&.[]('middle'), name&.[]('last')].compact_blank.join(' ')
       end
 
       def self.stamp_pdf(pdf_path, signature_text, coordinates)

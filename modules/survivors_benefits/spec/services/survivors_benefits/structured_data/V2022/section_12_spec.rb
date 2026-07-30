@@ -62,6 +62,31 @@ RSpec.describe SurvivorsBenefits::StructuredData::V2022::Section12 do
       )
     end
 
+    it 'prefers filingCustodianFullName over the residual yourName key' do
+      form = {
+        'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18',
+        'filingCustodianFullName' => { 'first' => 'Jane', 'last' => 'Custodian' },
+        'yourName' => { 'first' => 'Stale', 'last' => 'Value' },
+        'claimantFullName' => { 'first' => 'Child', 'last' => 'Name' },
+        'dateSigned' => '2024-01-01'
+      }
+      service = SurvivorsBenefits::StructuredData::V2022::StructuredDataService.new(form)
+      service.build_section12
+      expect(service.fields['ALTERNATE_SIGNATURE']).to eq('Jane Custodian')
+    end
+
+    it 'never puts the child name on the alternate-signer line when yourName is pruned' do
+      form = {
+        'claimantRelationship' => 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18',
+        'filingCustodianFullName' => { 'first' => 'Jane', 'last' => 'Custodian' },
+        'claimantFullName' => { 'first' => 'Child', 'last' => 'Name' },
+        'dateSigned' => '2024-01-01'
+      }
+      service = SurvivorsBenefits::StructuredData::V2022::StructuredDataService.new(form)
+      service.build_section12
+      expect(service.fields['ALTERNATE_SIGNATURE']).to eq('Jane Custodian')
+    end
+
     it 'falls back to claimantFullName when yourName is absent' do
       form = {
         'claimantRelationship' => 'SURVIVING_SPOUSE',

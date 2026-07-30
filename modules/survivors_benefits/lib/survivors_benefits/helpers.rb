@@ -24,15 +24,22 @@ module SurvivorsBenefits
       Date.parse(date_string).strftime('%m/%d/%Y')
     end
 
+    # Whether the claim is being filed by a custodian on behalf of a child under 18.
+    #
+    # @param relationship [String, nil] the form's claimantRelationship
+    # @return [Boolean]
+    #
+    def custodian_filing?(relationship)
+      # Section 2 converts raw enum values into humanized radio labels; normalize
+      # both forms so this comparison works regardless of expansion order.
+      relationship.to_s.upcase.gsub(/\s+/, '_') == 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18'
+    end
+    module_function :custodian_filing?
+
     # Returns the PDF field index for claimant-signature/date widgets.
     # Custodian filing for a child under 18 uses the alternate widget set.
     def signature_field_index_for_claimant_relationship(relationship)
-      # Section 2 converts raw enum values into humanized radio labels; normalize
-      # both forms so this comparison works regardless of expansion order.
-      normalized_relationship = relationship.to_s.upcase.gsub(/\s+/, '_')
-      return 0 if normalized_relationship == 'CUSTODIAN_FILING_FOR_CHILD_UNDER_18'
-
-      1
+      custodian_filing?(relationship) ? 0 : 1
     end
     module_function :signature_field_index_for_claimant_relationship
 

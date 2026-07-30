@@ -48,7 +48,7 @@ module SurvivorsBenefits
           form_data['dateSigned'] || Time.zone.today.strftime('%Y-%m-%d')
         )
 
-        if signature_field_index_for_claimant_relationship(form_data['claimantRelationship']).zero?
+        if custodian_filing?(form_data['claimantRelationship'])
           form_data.delete('dateSigned')
           form_data['dateSignedAlt'] = date_signed
         else
