@@ -10,6 +10,8 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
     allow(Settings.mhv).to receive(:facility_range).and_return([[1, 999]])
     allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_vaos_alternate_route).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:appointments_consolidation, instance_of(User)).and_return(true)
+    allow(Flipper).to receive(:enabled?)
+      .with(:va_online_scheduling_mobile_presentation_filter_update, instance_of(User)).and_return(false)
     # Configure EPS settings
     allow(Settings.vaos.eps).to receive_messages(
       access_token_url: 'https://login.wellhive.com/oauth2/default/v1/token',

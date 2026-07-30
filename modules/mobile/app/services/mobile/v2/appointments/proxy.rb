@@ -31,8 +31,10 @@ module Mobile
           appointments = response[:data]
 
           unless Flipper.enabled?(:appointments_consolidation, @user)
-            filterer = VAOS::V2::AppointmentsPresentationFilter.new
-            appointments.keep_if { |appt| filterer.user_facing?(appt) }
+            filterer = VAOS::V2::AppointmentsPresentationFilter.new(user: @user)
+            kept, dropped = appointments.partition { |appt| filterer.user_facing?(appt) }
+            log_filtered_appointments(dropped) if dropped.any?
+            appointments = kept
           end
 
           appointments = vaos_v2_to_v0_appointment_adapter.parse(appointments)
@@ -48,6 +50,23 @@ module Mobile
 
         def vaos_v2_to_v0_appointment_adapter
           Mobile::V0::Adapters::VAOSV2Appointments.new
+        end
+
+        # Emits one summary log per request describing the appointments the
+        # presentation filter dropped so we can confirm the rollout of
+        # :va_online_scheduling_mobile_presentation_filter_update is behaving
+        # as expected. Gated on the same flag so we only pay for the log
+        # while the feature is enabled.
+        def log_filtered_appointments(dropped)
+          return unless Flipper.enabled?(:va_online_scheduling_mobile_presentation_filter_update, @user)
+
+          Rails.logger.info(
+            'Mobile presentation filter dropped appointments',
+            total_dropped: dropped.size,
+            cerner_dropped: dropped.count { |a| VAOS::AppointmentsHelper.cerner?(a) },
+            missing_created: dropped.count { |a| a[:created].blank? },
+            status_counts: dropped.map { |a| a[:status] }.tally
+          )
         end
       end
     end

@@ -502,6 +502,8 @@ describe VAOS::V2::AppointmentsService do
         allow(Flipper).to receive(:enabled?).with('schema_contract_appointments_index').and_return(true)
         allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:appointments_consolidation, instance_of(User)).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_mobile_presentation_filter_update, instance_of(User)).and_return(false)
       end
 
       after do
@@ -2671,6 +2673,100 @@ describe VAOS::V2::AppointmentsService do
 
     it 'raises an ArgumentError when the appointment nil' do
       expect { subject.send(:booked?, nil) }.to raise_error(ArgumentError, 'Appointment cannot be nil')
+    end
+  end
+
+  describe '#normalize_requested_periods' do
+    let(:requested_periods) { [{ start: '2024-01-01T00:00:00Z' }] }
+    let(:cerner_identifier) { [{ system: 'http://cerner.com/appointment', value: 'x' }] }
+    let(:non_cerner_identifier) { [{ system: 'http://va.gov/appointment', value: 'x' }] }
+
+    def cerner_appt(status:, end_time: nil)
+      { status:, end: end_time, identifier: cerner_identifier, requested_periods: requested_periods.dup }
+    end
+
+    context 'when the appointment is not from Cerner' do
+      it 'never clears requested_periods regardless of the flag' do
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_mobile_presentation_filter_update, user).and_return(true)
+        appt = { status: 'booked', identifier: non_cerner_identifier, requested_periods: requested_periods.dup }
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to eq(requested_periods)
+      end
+    end
+
+    context 'when :va_online_scheduling_mobile_presentation_filter_update is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_mobile_presentation_filter_update, user).and_return(false)
+      end
+
+      it 'clears requested_periods on a booked Cerner appointment' do
+        appt = cerner_appt(status: 'booked')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to be_nil
+      end
+
+      it 'preserves requested_periods for other confirmed statuses (legacy parity)' do
+        appt = cerner_appt(status: 'fulfilled')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to eq(requested_periods)
+      end
+
+      it 'preserves requested_periods on a proposed Cerner request' do
+        appt = cerner_appt(status: 'proposed')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to eq(requested_periods)
+      end
+    end
+
+    context 'when :va_online_scheduling_mobile_presentation_filter_update is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_mobile_presentation_filter_update, user).and_return(true)
+      end
+
+      described_class::CONFIRMED_STATUSES.each do |confirmed_status|
+        it "clears requested_periods when status is #{confirmed_status}" do
+          appt = cerner_appt(status: confirmed_status)
+
+          subject.send(:normalize_requested_periods, appt)
+
+          expect(appt[:requested_periods]).to be_nil
+        end
+      end
+
+      it 'clears requested_periods on a cancelled Cerner appointment that has :end (was a real appointment)' do
+        appt = cerner_appt(status: 'cancelled', end_time: '2024-01-01T01:00:00Z')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to be_nil
+      end
+
+      it 'preserves requested_periods on a cancelled Cerner request that has no :end' do
+        appt = cerner_appt(status: 'cancelled')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to eq(requested_periods)
+      end
+
+      it 'preserves requested_periods on a proposed Cerner request' do
+        appt = cerner_appt(status: 'proposed')
+
+        subject.send(:normalize_requested_periods, appt)
+
+        expect(appt[:requested_periods]).to eq(requested_periods)
+      end
     end
   end
 

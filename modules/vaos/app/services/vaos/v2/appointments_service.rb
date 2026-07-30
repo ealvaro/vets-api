@@ -23,6 +23,8 @@ module VAOS
 
       APPOINTMENTS_USE_VPG = :va_online_scheduling_use_vpg
       APPOINTMENTS_FETCH_OH_AVS = :va_online_scheduling_add_OH_avs
+      MOBILE_PRESENTATION_FILTER_UPDATE = :va_online_scheduling_mobile_presentation_filter_update
+      CONFIRMED_STATUSES = %w[booked fulfilled arrived checked-in].freeze
       APPOINTMENT_TYPES = {
         va: 'VA',
         cc_appointment: 'COMMUNITY_CARE_APPOINTMENT',
@@ -150,7 +152,10 @@ module VAOS
           end
           eps_before_facilities = extract_facility_identifiers(eps_before_appts)
 
-          filterer = AppointmentsPresentationFilter.new
+          # TODO: remove this filter from the web/service side once we trust the
+          # upstream VAOS response to only return user-facing appointments. The
+          # mobile proxy still invokes the same filter for its own callers.
+          filterer = AppointmentsPresentationFilter.new(user:)
           appointments.keep_if { |appt| filterer.user_facing?(appt) }
 
           eps_after_appts = appointments.select do |appt|
@@ -911,8 +916,7 @@ module VAOS
           remove_service_type(appointment)
         end
 
-        # set requestedPeriods to nil if the appointment is a booked cerner appointment per GH#62912
-        appointment[:requested_periods] = nil if booked?(appointment) && VAOS::AppointmentsHelper.cerner?(appointment)
+        normalize_requested_periods(appointment)
 
         convert_appointment_time(appointment)
 
@@ -956,6 +960,39 @@ module VAOS
         set_type_of_care(appointment)
       end
       # rubocop:enable Metrics/MethodLength
+
+      # Cerner/OH always populates requestedPeriods, even on records that
+      # have already been scheduled or completed, which makes the downstream
+      # presentation filter misclassify them as pending requests. Clear the
+      # field so those records are treated as appointments.
+      #
+      # Legacy behavior (flag off): only booked Cerner appointments are
+      # cleared.
+      #
+      # With :va_online_scheduling_mobile_presentation_filter_update enabled
+      # we also clear on the other confirmed statuses
+      # (fulfilled, arrived, checked-in) and on any Cerner record with an
+      # :end value, which covers cancelled real appointments.
+      def normalize_requested_periods(appointment)
+        return unless VAOS::AppointmentsHelper.cerner?(appointment)
+        return unless should_clear_requested_periods?(appointment)
+
+        appointment[:requested_periods] = nil
+      end
+
+      def should_clear_requested_periods?(appointment)
+        if mobile_presentation_filter_update_enabled?
+          appointment[:status].in?(CONFIRMED_STATUSES) || appointment[:end].present?
+        else
+          booked?(appointment)
+        end
+      end
+
+      def mobile_presentation_filter_update_enabled?
+        return @mobile_presentation_filter_update_enabled if defined?(@mobile_presentation_filter_update_enabled)
+
+        @mobile_presentation_filter_update_enabled = Flipper.enabled?(MOBILE_PRESENTATION_FILTER_UPDATE, user)
+      end
 
       def find_and_merge_provider_name(appointment)
         practitioners_list = appointment[:practitioners]

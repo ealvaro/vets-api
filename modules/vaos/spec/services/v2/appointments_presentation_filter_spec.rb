@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 describe VAOS::V2::AppointmentsPresentationFilter do
-  let(:filterer) { described_class.new }
+  let(:user) { nil }
+  let(:filterer) { described_class.new(user:) }
   let(:upcoming) { mock_appointment(id: 'upcoming', start: 1.day.from_now) }
   let(:past) { mock_appointment(id: 'past', start: 1.day.ago) }
   let(:cancelled) { mock_appointment(id: 'past', status: 'cancelled', start: 30.days.ago) }
@@ -23,6 +24,9 @@ describe VAOS::V2::AppointmentsPresentationFilter do
   end
 
   before do
+    allow(Flipper).to receive(:enabled?)
+      .with(:va_online_scheduling_mobile_presentation_filter_update, nil)
+      .and_return(false)
     Timecop.freeze
   end
 
@@ -61,6 +65,34 @@ describe VAOS::V2::AppointmentsPresentationFilter do
       it 'returns false if it does not have requested_periods' do
         request[:requested_periods] = []
         expect(filterer.user_facing?(request)).to be false
+      end
+
+      context 'when :va_online_scheduling_mobile_presentation_filter_update is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_mobile_presentation_filter_update, nil)
+            .and_return(true)
+        end
+
+        it 'keeps requests regardless of their created date' do
+          request[:created] = 200.days.ago.to_s
+          expect(filterer.user_facing?(request)).to be true
+        end
+
+        it 'keeps requests with no created date (Cerner/OH)' do
+          request[:created] = nil
+          expect(filterer.user_facing?(request)).to be true
+        end
+
+        it 'still drops request-shaped records with a non-request status' do
+          request[:status] = 'fulfilled'
+          expect(filterer.user_facing?(request)).to be false
+        end
+
+        it 'still drops records with no requested_periods and no start' do
+          malformed = mock_appointment(id: 'malformed', status: 'proposed')
+          expect(filterer.user_facing?(malformed)).to be false
+        end
       end
 
       describe 'date validations', :aggregate_errors do
