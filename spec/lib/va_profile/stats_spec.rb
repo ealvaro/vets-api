@@ -103,7 +103,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'telephones/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.success",
-            tags: ['contact_type:telephone']
+            tags: %w[source_app:unknown contact_type:telephone]
           )
       end
 
@@ -113,7 +113,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'emails/status/456') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: ['contact_type:email']
+            tags: %w[source_app:unknown contact_type:email]
           )
       end
 
@@ -123,7 +123,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'status/789') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.success",
-            tags: nil
+            tags: ['source_app:unknown']
           )
       end
     end
@@ -138,7 +138,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'addresses/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: %w[contact_type:address error_code:ADDR306]
+            tags: %w[source_app:unknown contact_type:address error_code:ADDR306]
           )
       end
 
@@ -151,7 +151,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'telephones/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.success",
-            tags: ['contact_type:telephone']
+            tags: %w[source_app:unknown contact_type:telephone]
           )
       end
 
@@ -161,7 +161,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'emails/status/456') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: ['contact_type:email']
+            tags: %w[source_app:unknown contact_type:email]
           )
       end
 
@@ -174,7 +174,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response) }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: ['error_code:CORE103']
+            tags: %w[source_app:unknown error_code:CORE103]
           )
       end
 
@@ -187,7 +187,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'addresses/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: ['contact_type:address']
+            tags: %w[source_app:unknown contact_type:address]
           )
       end
 
@@ -200,7 +200,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'addresses/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: ['contact_type:address']
+            tags: %w[source_app:unknown contact_type:address]
           )
       end
     end
@@ -212,7 +212,7 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'telephones/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.success",
-            tags: ['contact_type:telephone']
+            tags: %w[source_app:unknown contact_type:telephone]
           )
       end
 
@@ -225,9 +225,55 @@ describe VAProfile::Stats do
         expect { described_class.increment_transaction_results(response, path: 'addresses/status/123') }
           .to trigger_statsd_increment(
             "#{statsd_prefix}.posts_and_puts.failure",
-            tags: %w[contact_type:address error_code:ADDRVAL112]
+            tags: %w[source_app:unknown contact_type:address error_code:ADDRVAL112]
           )
       end
+    end
+
+    context 'when a Source-App-Name is present on the request' do
+      after { RequestStore.clear! }
+
+      it 'tags the metric with an allowlisted source app' do
+        RequestStore.store['additional_request_attributes'] = { 'source' => 'profile' }
+        response = raw_va_profile_transaction_response(failure_status)
+
+        expect { described_class.increment_transaction_results(response, path: 'addresses/status/123') }
+          .to trigger_statsd_increment(
+            "#{statsd_prefix}.posts_and_puts.failure",
+            tags: %w[source_app:profile contact_type:address]
+          )
+      end
+
+      it 'falls back to unknown for a value that is not in the allowlist' do
+        RequestStore.store['additional_request_attributes'] = { 'source' => 'totally-made-up-app' }
+        response = raw_va_profile_transaction_response(success_status)
+
+        expect { described_class.increment_transaction_results(response, path: 'telephones/status/123') }
+          .to trigger_statsd_increment(
+            "#{statsd_prefix}.posts_and_puts.success",
+            tags: %w[source_app:unknown contact_type:telephone]
+          )
+      end
+    end
+  end
+
+  describe '.source_app' do
+    after { RequestStore.clear! }
+
+    it 'returns the source when it is on the allowlist' do
+      RequestStore.store['additional_request_attributes'] = { 'source' => 'letters' }
+
+      expect(described_class.source_app).to eq('letters')
+    end
+
+    it 'returns unknown when the source is not on the allowlist' do
+      RequestStore.store['additional_request_attributes'] = { 'source' => 'not-a-real-app' }
+
+      expect(described_class.source_app).to eq(described_class::UNKNOWN_SOURCE_APP)
+    end
+
+    it 'returns unknown when no source is present' do
+      expect(described_class.source_app).to eq(described_class::UNKNOWN_SOURCE_APP)
     end
   end
 

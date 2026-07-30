@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'va_profile/service'
+require 'source_app_middleware'
 
 module VAProfile
   class Stats
@@ -8,6 +9,7 @@ module VAProfile
     FINAL_SUCCESS = %w[COMPLETED_SUCCESS COMPLETED_NO_CHANGES_DETECTED].freeze
     FINAL_FAILURE = %w[REJECTED COMPLETED_FAILURE].freeze
     KNOWN_CONTACT_TYPES = %w[address email telephone].freeze
+    UNKNOWN_SOURCE_APP = 'unknown'
 
     class << self
       # Triggers the associated StatsD.increment method for the VAProfile buckets that are
@@ -42,6 +44,17 @@ module VAProfile
         tags = build_tags(contact_type:, error_code: failure?(status) ? error_code_in(response) : nil)
 
         StatsD.increment("#{STATSD_KEY_PREFIX}.#{bucket1}.#{bucket_for(status)}", tags:)
+      end
+
+      # Reads the 'Source-App-Name' header and validates it against the middleware allowlist
+      # to prevent unbounded StatsD tag cardinality.
+      #
+      # @return [String] an allowlisted source app name, or 'unknown' when unavailable/invalid
+      def source_app
+        raw = RequestStore.store.dig('additional_request_attributes', 'source')
+        return UNKNOWN_SOURCE_APP if raw.blank?
+
+        SourceAppMiddleware::SOURCE_APP_NAMES.include?(raw) ? raw : UNKNOWN_SOURCE_APP
       end
 
       # Increments the associated StatsD bucket with the passed in exception error key.
@@ -100,7 +113,7 @@ module VAProfile
       end
 
       def build_tags(contact_type:, error_code: nil)
-        tags = []
+        tags = ["source_app:#{source_app}"]
         tags << "contact_type:#{contact_type}" if contact_type
         tags << "error_code:#{error_code}" if error_code
         tags.presence
