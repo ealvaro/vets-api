@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1474,6 +1474,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_000001) do
     t.datetime "updated_at", null: false
     t.string "ves_eligibility_reason"
     t.string "ves_eligibility_status"
+    t.date "ves_status_updated_date"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_applicants_on_needs_kms_rotation"
     t.index ["transaction_uuid", "applicant_icn_ciphertext"], name: "index_ivc_champva_applicants_on_txn_uuid_and_icn_ciphertext", unique: true
     t.index ["transaction_uuid"], name: "index_ivc_champva_applicants_on_transaction_uuid"
