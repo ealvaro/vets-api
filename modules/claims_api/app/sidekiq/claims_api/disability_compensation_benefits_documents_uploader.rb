@@ -8,9 +8,9 @@ module ClaimsApi
     LOG_TAG = 'Benefits_Documents_Uploader_job'
     sidekiq_options retry_for: 48.hours
 
-    def perform(claim_id, version = :v2)
+    def perform(claim_id, version = DisabilityCompensation::DisabilityDocumentService::DOCUMENT_UPLOAD_V2)
       @version = version
-      log_job_progress(claim_id, "#{version_prefix} BD upload job started")
+      log_job_progress(claim_id, "#{@version.upcase} BD upload job started")
 
       auto_claim = get_claim(claim_id)
 
@@ -25,7 +25,7 @@ module ClaimsApi
       # at this point in the workflow the claim is 'established'
       set_established_state_on_claim(auto_claim)
       clear_evss_response_for_claim(auto_claim)
-      log_job_progress(claim_id, "#{version_prefix} BD upload succeeded, Claim workflow finished")
+      log_job_progress(claim_id, "#{@version.upcase} BD upload succeeded, Claim workflow finished")
     # Temporary errors (returning HTML, connection timeout), retry call
     rescue => e
       set_errored_state_on_claim(auto_claim)
@@ -36,10 +36,6 @@ module ClaimsApi
     end
 
     private
-
-    def version_prefix
-      @version == :v1 ? 'V1' : 'V2'
-    end
 
     def get_file_body(auto_claim)
       if Settings.claims_api.benefits_documents.use_mocks
@@ -63,7 +59,7 @@ module ClaimsApi
     end
 
     def claim_bd_upload_document(claim, pdf_path)
-      DisabilityCompensation::DisabilityDocumentService.new.create_upload(claim:, pdf_path:)
+      DisabilityCompensation::DisabilityDocumentService.new.create_upload(claim:, pdf_path:, version: @version)
     end
   end
 end

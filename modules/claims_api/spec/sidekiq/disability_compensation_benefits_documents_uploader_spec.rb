@@ -71,6 +71,22 @@ RSpec.describe ClaimsApi::DisabilityCompensationBenefitsDocumentsUploader, type:
       end
     end
 
+    it 'forwards the version to DisabilityDocumentService for v1' do
+      expect_any_instance_of(
+        ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+      ).to receive(:create_upload).with(hash_including(version: 'v1')).and_return true
+
+      service.perform(claim.id, 'v1')
+    end
+
+    it 'forwards the version to DisabilityDocumentService for v2 (default)' do
+      expect_any_instance_of(
+        ClaimsApi::DisabilityCompensation::DisabilityDocumentService
+      ).to receive(:create_upload).with(hash_including(version: 'v2')).and_return true
+
+      service.perform(claim.id)
+    end
+
     it 'clears stale evss_response from a prior failed attempt' do
       claim.update!(evss_response: ['Prior upload error'], status: ClaimsApi::AutoEstablishedClaim::ERRORED)
 

@@ -65,5 +65,54 @@ describe ClaimsApi::DisabilityCompensation::DisabilityDocumentService do
         expect(data).not_to have_key('fileNumber')
       end
     end
+
+    context 'systemName by version' do
+      it 'defaults to the v2 systemName when no version is given' do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:)
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['systemName']).to eq('VA.gov')
+      end
+
+      it "uses the v2 systemName when version: 'v2' is given" do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:, version: 'v2')
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['systemName']).to eq('VA.gov')
+      end
+
+      it "uses the v1 systemName when version: 'v1' is given" do
+        result = subject.send(:generate_body, claim:, doc_type: 'L122', pdf_path:, version: 'v1')
+        params_json = result[:parameters].read
+        data = JSON.parse(params_json)['data']
+
+        expect(data['systemName']).to eq('Lighthouse')
+      end
+    end
+  end
+
+  describe '#document_upload_system_name' do
+    it 'returns the mapped systemName for a known version' do
+      expect(subject.send(:document_upload_system_name, 'v1')).to eq('Lighthouse')
+      expect(subject.send(:document_upload_system_name, 'v2')).to eq('VA.gov')
+    end
+
+    it 'normalizes case and surrounding whitespace' do
+      expect(subject.send(:document_upload_system_name, ' V1 ')).to eq('Lighthouse')
+    end
+
+    it 'raises ArgumentError for an unknown version' do
+      expect do
+        subject.send(:document_upload_system_name, 'v3')
+      end.to raise_error(ArgumentError, /Unknown document upload version/)
+    end
+
+    it 'raises ArgumentError for a nil version' do
+      expect do
+        subject.send(:document_upload_system_name, nil)
+      end.to raise_error(ArgumentError, /Unknown document upload version/)
+    end
   end
 end

@@ -43,8 +43,10 @@ module ClaimsApi
     end
 
     def claim_bd_upload_document(claim, doc_type, pdf_path, original_filename) # rubocop:disable Metrics/MethodLength
-      DisabilityCompensation::DisabilityDocumentService.new.create_upload(claim:, pdf_path:, doc_type:,
-                                                                          original_filename:)
+      DisabilityCompensation::DisabilityDocumentService.new.create_upload(
+        claim:, pdf_path:, doc_type:, original_filename:,
+        version: DisabilityCompensation::DisabilityDocumentService::DOCUMENT_UPLOAD_V1
+      )
     # Temporary errors (returning HTML, connection timeout), retry call
     rescue Faraday::ParsingError, Faraday::TimeoutError => e
       message = get_error_message(e)

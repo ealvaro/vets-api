@@ -114,7 +114,8 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
       tf = Tempfile.new(['pdf_path', '.pdf'], binmode: true)
       allow(Tempfile).to receive(:new).and_return tf
 
-      args = { claim: auto_claim, doc_type: 'L122', original_filename: 'extras.pdf', pdf_path: tf.path }
+      args = { claim: auto_claim, doc_type: 'L122', original_filename: 'extras.pdf', pdf_path: tf.path,
+               version: 'v1' }
       expect_any_instance_of(
         ClaimsApi::DisabilityCompensation::DisabilityDocumentService
       ).to receive(:create_upload).with(args).and_return true
@@ -126,7 +127,7 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
       allow(Tempfile).to receive(:new).and_return tf
 
       args = { claim: supporting_document.auto_established_claim, doc_type: 'L023',
-               original_filename: 'extras.pdf', pdf_path: tf.path }
+               original_filename: 'extras.pdf', pdf_path: tf.path, version: 'v1' }
       expect_any_instance_of(
         ClaimsApi::DisabilityCompensation::DisabilityDocumentService
       ).to receive(:create_upload).with(args).and_return true
@@ -148,6 +149,20 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
       expect(data).not_to have_key('fileNumber')
     end
 
+    it 'sends the v1-specific systemName in the upload body' do
+      upload_body = nil
+      allow_any_instance_of(ClaimsApi::BD).to receive(:upload_document) do |_instance, **args|
+        upload_body = args[:body]
+        { data: { success: true, requestId: 99 } }
+      end
+
+      subject.new.perform(auto_claim.id, 'claim')
+
+      params_json = upload_body[:parameters].read
+      data = JSON.parse(params_json)['data']
+      expect(data['systemName']).to eq('Lighthouse')
+    end
+
     it 'is an attachment resulting in error' do
       tf = Tempfile.new(['pdf_path', '.pdf'], binmode: true)
       allow(Tempfile).to receive(:new).and_return tf
@@ -160,7 +175,7 @@ RSpec.describe ClaimsApi::ClaimUploader, type: :job do
         ]
       }
       args = { claim: supporting_document.auto_established_claim, doc_type: 'L023',
-               original_filename: 'extras.pdf', pdf_path: tf.path }
+               original_filename: 'extras.pdf', pdf_path: tf.path, version: 'v1' }
       allow_any_instance_of(
         ClaimsApi::DisabilityCompensation::DisabilityDocumentService
       ).to(
