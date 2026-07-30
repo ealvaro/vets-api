@@ -1692,7 +1692,7 @@ features:
     enable_in_development: true
   clear_signin_enabled:
     actor_type: user
-    description: Enable/disable the clear sign-in button on the unified sign-in page. 
+    description: Enable/disable the clear sign-in button on the unified sign-in page.
     enable_in_development: true
   clear_stale_in_progress_reminders_sent:
     actor_type: user
@@ -2915,6 +2915,10 @@ features:
     actor_type: user
     enable_in_development: true
     description: Toggle to remove the redundant call to facility configurations when determining patient eligibility.
+  va_online_scheduling_community_care_provider_accessibility:
+    actor_type: user
+    enable_in_development: true
+    description: Toggle to use the new accessible user flow for choosing community care providers.
   vaos_appointment_notification_callback:
     actor_type: user
     enable_in_development: true
