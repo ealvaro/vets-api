@@ -225,4 +225,22 @@ RSpec.describe SignIn::SessionRecord, type: :model do
       end
     end
   end
+
+  describe '.touch_last_activity' do
+    let!(:record) { create(:session_record, last_activity_at: 1.hour.ago) }
+
+    context 'with a handle matching a record' do
+      it 'advances last_activity_at' do
+        expect { described_class.touch_last_activity(record.handle) }
+          .to change { record.reload.last_activity_at }
+      end
+    end
+
+    context 'when no record matches the handle' do
+      it 'does not update any records' do
+        expect { described_class.touch_last_activity(SecureRandom.uuid) }
+          .not_to change { described_class.order(:id).pluck(:last_activity_at) }
+      end
+    end
+  end
 end

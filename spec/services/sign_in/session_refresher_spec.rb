@@ -92,6 +92,17 @@ RSpec.describe SignIn::SessionRefresher do
               it 'returns a credential locked error' do
                 expect { subject }.to raise_error(expected_error, expected_error_message)
               end
+
+              context 'and a companion session record exists' do
+                let!(:session_record) do
+                  create(:session_record, handle: session_handle, last_activity_at: 1.hour.ago)
+                end
+
+                it 'does not advance last_activity_at' do
+                  expect { try(subject) }.to raise_error(expected_error)
+                    .and not_change { session_record.reload.last_activity_at }
+                end
+              end
             end
           end
 
@@ -179,6 +190,23 @@ RSpec.describe SignIn::SessionRefresher do
                   session.reload
                 end.to change(session, :hashed_refresh_token).from(session_hashed_refresh_token)
                                                              .to(double_hashed_refresh_token)
+              end
+
+              context 'and a companion session record exists' do
+                let!(:session_record) do
+                  create(:session_record, handle: session_handle, last_activity_at: 1.hour.ago)
+                end
+
+                it 'advances last_activity_at to the refresh time' do
+                  subject
+                  expect(session_record.reload.last_activity_at).to eq(Time.zone.now)
+                end
+              end
+
+              context 'and no companion session record exists' do
+                it 'refreshes without raising' do
+                  expect { subject }.not_to raise_error
+                end
               end
             end
 
@@ -287,7 +315,9 @@ RSpec.describe SignIn::SessionRefresher do
             end
 
             context 'and a companion session record exists' do
-              let!(:session_record) { create(:session_record, handle: session_handle) }
+              let!(:session_record) do
+                create(:session_record, handle: session_handle, last_activity_at: 1.hour.ago)
+              end
 
               it 'stamps signed_out_at before raising' do
                 expect { subject }.to raise_error(expected_error, expected_error_message)
@@ -297,6 +327,11 @@ RSpec.describe SignIn::SessionRefresher do
               it 'does not delete the companion record' do
                 expect { subject }.to raise_error(expected_error, expected_error_message)
                 expect(SignIn::SessionRecord.exists?(session_record.id)).to be(true)
+              end
+
+              it 'does not advance last_activity_at' do
+                expect { try(subject) }.to raise_error(expected_error)
+                  .and not_change { session_record.reload.last_activity_at }
               end
             end
 

@@ -17,6 +17,7 @@ module SignIn
       anti_csrf_check if anti_csrf_enabled_client?
       detect_token_theft
       update_session! if parent_refresh_token_in_session?
+      SessionRecord.touch_last_activity(session.handle)
       create_new_tokens
     end
 

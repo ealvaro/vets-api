@@ -21,6 +21,10 @@ module SignIn
       # rubocop:enable Rails/SkipsModelValidations
     end
 
+    def self.touch_last_activity(handle)
+      find_by(handle:)&.update(last_activity_at: Time.zone.now)
+    end
+
     private
 
     def confirm_client_id
