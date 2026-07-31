@@ -3,12 +3,12 @@
 require 'rails_helper'
 require 'dgi/claimant_info_helpers'
 
-class TestClass
+class ClaimantInfoTestClass
   include ClaimantInfoHelpers
 end
 
 RSpec.describe ClaimantInfoHelpers do
-  let(:test_instance) { TestClass.new }
+  let(:test_instance) { ClaimantInfoTestClass.new }
 
   describe '#map_non33' do
     context 'debugging path to delimiting_date' do
