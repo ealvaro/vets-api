@@ -15,6 +15,8 @@ class ApplicationRecord < ActiveRecord::Base
   def self.descendants_using_encryption
     Rails.application.eager_load!
     ApplicationRecord.descendants.select do |model|
+      next unless model.name
+
       model = model.name.constantize
       model.descendants.empty? &&
         model.respond_to?(:lockbox_attributes) &&
