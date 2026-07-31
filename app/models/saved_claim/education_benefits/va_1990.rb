@@ -43,12 +43,7 @@ class SavedClaim::EducationBenefits::VA1990 < SavedClaim::EducationBenefits
     }
 
     api_key_path = 'Settings.vanotify.services.va_gov.api_key'
-
-    if Flipper.enabled?(:va_notify_v2_form1990_confirmation_email)
-      VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, api_key_path)
-    else
-      VANotify::EmailJob.perform_async(email, template_id, personalisation)
-    end
+    VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, api_key_path)
   end
 
   def benefit_relinquished(parsed_form_data)
