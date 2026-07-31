@@ -1861,10 +1861,6 @@ features:
     actor_type: user
     description: If enabled along with mhv_blue_button_use_v2, Blue Button Care Summaries and Notes uses v2 (SCDF) endpoints.
     enable_in_development: false
-  mhv_medical_records_v2_prescriptions_for_blue_button:
-    actor_type: user
-    description: When enabled, Blue Button medication data uses the v2 prescriptions endpoint with v1 fallback when needed
-    enable_in_development: false
   mhv_accelerated_delivery_enabled:
     actor_type: user
     description: Control whether vets-api allows fetching MR data from LightHouse
