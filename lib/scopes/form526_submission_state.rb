@@ -10,16 +10,19 @@ module Scopes
     included do
       scope :pending_backup, lambda {
         where(submitted_claim_id: nil, backup_submitted_claim_status: nil)
-          .where.not(backup_submitted_claim_id: nil)
-          .where.missing(:form526_submission_remediations)
+          .where.not(backup_submitted_claim_id: nil).where.missing(:form526_submission_remediations)
           .where(arel_table[:created_at].gt(Form526Submission::MAX_PENDING_TIME.ago))
       }
       scope :in_process, lambda {
-        where(submitted_claim_id: nil)
-          .where(backup_submitted_claim_id: nil)
-          .where(arel_table[:created_at].gt(Form526Submission::MAX_PENDING_TIME.ago))
-          .where.not(id: remediated.pluck(:id))
-          .where.not(id: with_exhausted_backup_jobs.pluck(:id))
+        base = where(submitted_claim_id: nil).where(backup_submitted_claim_id: nil)
+                                             .where(arel_table[:created_at].gt(Form526Submission::MAX_PENDING_TIME.ago))
+        base_ids = base.pluck(:id)
+        # Scope the remediation lookup to this (small) candidate set so it reads only their
+        # rows via the form526_submission_id index instead of scanning/sorting the whole
+        # form526_submission_remediations table.
+        base_ids -= remediated(base_ids).pluck(:id)
+        base_ids -= with_exhausted_backup_jobs.pluck(:id)
+        where(id: base_ids)
       }
 
       scope :accepted_to_primary_path, lambda {
@@ -52,20 +55,23 @@ module Scopes
                                                       })
       }
 
-      scope :remediated, lambda {
-        # IDs of submissions whose most recent remediation succeeded.
+      scope :remediated, lambda { |within = nil|
+        # Submissions whose MOST RECENT remediation succeeded.
         #
-        # Computed from form526_submission_remediations alone via DISTINCT ON (a single
-        # scan + sort) rather than a GROUP BY + self-join that also scanned
-        # form526_submissions twice. The result is materialized to an id array (like the
-        # other scopes here) so the outer query is a plan-stable `id IN (...)` instead of
-        # an `id IN (subquery)` semi-join. The semi-join's cost was estimated
-        # inconsistently by the planner and intermittently flipped to a plan that timed out.
-        latest_remediations = Form526SubmissionRemediation
-                              .select('DISTINCT ON (form526_submission_id) form526_submission_id, success')
-                              .order(:form526_submission_id, created_at: :desc, id: :desc)
+        # Pass `within` (an array of submission ids) to restrict the lookup to a candidate
+        # set. The snapshot job only needs to exclude remediated submissions from a small
+        # `submitted_claim_id: nil` set, so scoping by form526_submission_id lets Postgres use
+        # the existing index and sort only that slice instead of the whole
+        # form526_submission_remediations table (which was intermittently timing out).
+        # With no argument it computes the full report, which success_type and the ad-hoc
+        # reporting scripts rely on.
+        remediations = Form526SubmissionRemediation.all
+        remediations = remediations.where(form526_submission_id: within) unless within.nil?
+        latest = remediations
+                 .select('DISTINCT ON (form526_submission_id) form526_submission_id, success')
+                 .order(:form526_submission_id, created_at: :desc, id: :desc)
         remediated_ids = Form526SubmissionRemediation
-                         .from(latest_remediations, :form526_submission_remediations)
+                         .from(latest, :form526_submission_remediations)
                          .where(success: true)
                          .pluck(:form526_submission_id)
         where(id: remediated_ids)
@@ -126,9 +132,12 @@ module Scopes
         # is already removed by the paranoid_success subtraction and does not need its own.
         ids = where(submitted_claim_id: nil).pluck(:id)
         ids -= accepted_to_backup_path.where(submitted_claim_id: nil).pluck(:id)
-        ids -= remediated.where(submitted_claim_id: nil).pluck(:id)
         ids -= paranoid_success.where(submitted_claim_id: nil).pluck(:id)
         ids -= incomplete_type.pluck(:id)
+        # remediated last, scoped to the remaining candidates so the remediation lookup reads
+        # only their rows (via the form526_submission_id index) instead of the whole
+        # form526_submission_remediations table.
+        ids -= remediated(ids).pluck(:id)
 
         where(id: ids, submitted_claim_id: nil)
       }
