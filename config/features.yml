@@ -1226,6 +1226,14 @@ features:
     actor_type: user
     description: enables sending the claim date to Lighthouse when submitting a Form 526EZ when present
     enable_in_development: true
+  disability_526_module_enabled:
+    actor_type: user
+    description: If enabled, Form 21-526EZ will use the backend module submission workflow.
+    enable_in_development: false
+  disability_526_all_claims_v2:
+    actor_type: user
+    description: If enabled, Form 21-526EZ will use the new v2 2027.01.01 workflow.
+    enable_in_development: false
   education_reports_cleanup:
     actor_type: user
     description: Updates to the daily education reports to remove old data that isn't needed in the new fiscal year
