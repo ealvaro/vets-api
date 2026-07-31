@@ -37,7 +37,7 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
           Settings.hca.s3.bucket
         )
 
-        described_class.new('test-guid')
+        described_class.new(guid)
       end
     end
 
@@ -49,7 +49,7 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       it 'does not set AWS config' do
         expect_any_instance_of(HCAAttachmentUploader).not_to receive(:set_aws_config)
 
-        described_class.new('test-guid')
+        described_class.new(guid)
       end
     end
   end
@@ -98,7 +98,7 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
       expect(Rails.logger).to receive(:info).with(
-        '[HCA_CONVERT_ATTACHMENT] ext: .png, content_type: image/png'
+        '[HCA_CONVERT_ATTACHMENT] start', guid:, ext: '.png', content_type: 'image/png'
       )
 
       uploader.store!(png_file)
@@ -114,7 +114,7 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
       expect(Rails.logger).to receive(:info).with(
-        '[HCA_CONVERT_ATTACHMENT] ext: .heic, content_type: image/heic'
+        '[HCA_CONVERT_ATTACHMENT] start', guid:, ext: '.heic', content_type: 'image/heic'
       )
 
       uploader.store!(heic_file)
@@ -130,7 +130,7 @@ RSpec.describe HCAAttachmentUploader, type: :uploader do
       expect(MiniMagick::Image).to receive(:new).and_return(image_processor)
       expect(image_processor).to receive(:format).with('jpg')
       expect(Rails.logger).to receive(:info).with(
-        '[HCA_CONVERT_ATTACHMENT] ext: .heif, content_type: image/heic'
+        '[HCA_CONVERT_ATTACHMENT] start', guid:, ext: '.heif', content_type: 'image/heic'
       )
 
       uploader.store!(heif_file)

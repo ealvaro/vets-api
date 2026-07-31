@@ -58,6 +58,11 @@ class FormAttachment < ApplicationRecord
     filename = parsed_file_data['filename']
     log_s3_key = redacted_s3_key_for_log(attachment_uploader.store_dir, filename)
 
+    Rails.logger.info(
+      '[HCA_S3_READ] S3 object to retrieve | ' \
+      "correlation_id=#{guid} | " \
+      "s3_key=#{log_s3_key}"
+    )
     attachment_uploader.retrieve_from_store!(filename)
     Rails.logger.info(
       '[HCA_S3_READ] S3 object retrieved | ' \

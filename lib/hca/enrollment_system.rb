@@ -834,7 +834,9 @@ module HCA
       end
     end
 
-    def add_attachment(file, id, is_dd214)
+    def add_attachment(file, id, is_dd214, guid = nil)
+      Rails.logger.info('[HCA_ES_ATTACHMENT] add attachment', guid:)
+      Rails.logger.info('[HCA_ES_ATTACHMENT] add attachment content_type', guid:, content_type: file.content_type)
       {
         'va:document' => {
           'va:name' => "Attachment_#{id}",
@@ -845,6 +847,9 @@ module HCA
       }
     end
 
+    # Temporarily disabling this rubocop check to allow very fine-grained logging to debug an issue.
+    # https://va.ghe.com/software/va.gov-team/issues/148069
+    # rubocop:disable Metrics/MethodLength
     # @param [Hash] veteran data in JSON format
     # @param [Hash] user_identifier
     # @param [String] form_id
@@ -861,12 +866,20 @@ module HCA
 
       veteran['attachments']&.each_with_index do |attachment, i|
         guid = attachment['confirmationCode']
+
+        Rails.logger.info('[HCA_ES_ATTACHMENT] find', guid:)
         form_attachment = HCAAttachment.find_by(guid:) || Form1010EzrAttachment.find_by(guid:)
+        Rails.logger.info('[HCA_ES_ATTACHMENT] found but nil', guid:) if form_attachment.nil?
 
         next if form_attachment.nil?
 
         request['va:form']['va:attachments'] ||= []
-        request['va:form']['va:attachments'] << add_attachment(form_attachment.get_file, i + 1, attachment['dd214'])
+
+        file = form_attachment.get_file
+        Rails.logger.info('[HCA_ES_ATTACHMENT] file retrieved', guid:)
+        Rails.logger.info('[HCA_ES_ATTACHMENT] file extension', guid:, ext: File.extname(file.file)) if file
+        Rails.logger.info('[HCA_ES_ATTACHMENT] file content_type', guid:, content_type: file.content_type)
+        request['va:form']['va:attachments'] << add_attachment(file, i + 1, attachment['dd214'], guid)
       end
 
       request['va:form']['va:summary'] = veteran_to_summary(veteran)
@@ -881,6 +894,7 @@ module HCA
       remove_ctrl_chars!(request)
       request
     end
+    # rubocop:enable Metrics/MethodLength
   end
   # rubocop:enable Metrics/ModuleLength
 end

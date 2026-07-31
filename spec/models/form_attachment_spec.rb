@@ -147,7 +147,10 @@ RSpec.describe FormAttachment do
       form_attachment.get_file
 
       expect(Rails.logger).to have_received(:info).with(
-        %r{\[HCA_S3_READ\].*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]}
+        %r{\[HCA_S3_READ\].*to retrieve.*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]}
+      )
+      expect(Rails.logger).to have_received(:info).with(
+        %r{\[HCA_S3_READ\].*retrieved.*correlation_id=#{form_attachment.guid}.*s3_key=hca_attachments/\[REDACTED\]}
       )
     end
 

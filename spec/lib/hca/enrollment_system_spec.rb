@@ -1584,6 +1584,28 @@ describe HCA::EnrollmentSystem do
       context 'HCA attachment' do
         it 'creates the right result', run_at: '2019-01-11 14:19:04 -0800' do
           health_care_application = build(:hca_app_with_attachment)
+          guids = JSON.parse(health_care_application.form)['attachments'].map { |entry| entry['confirmationCode'] }
+
+          guids.each do |guid|
+            expect(Rails.logger).to receive(:info).with(
+              %r{\[HCA_S3_READ\] S3 object to retrieve | correlation_id=#{guid} | s3_key=hca_attachments/.*$}
+            ).twice
+            expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] find', guid:)
+            expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file retrieved', guid:)
+            expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file extension', guid:, ext: '')
+            expect(Rails.logger).to receive(:info).with(
+              '[HCA_ES_ATTACHMENT] file content_type',
+              guid:,
+              content_type: 'application/pdf'
+            )
+            expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] add attachment', guid:)
+            expect(Rails.logger).to receive(:info).with(
+              '[HCA_ES_ATTACHMENT] add attachment content_type',
+              guid:,
+              content_type: 'application/pdf'
+            )
+          end
+
           result = described_class.veteran_to_save_submit_form(health_care_application.parsed_form, nil, '10-10EZ')
           expect(result.to_json).to eq(get_fixture('hca/result_with_attachment').to_json)
         end
@@ -1591,13 +1613,32 @@ describe HCA::EnrollmentSystem do
 
       context 'Form1010Ezr attachment' do
         it 'creates the right result', run_at: '2024-06-27 18:22:17 -0800' do
+          guid = create(:form1010_ezr_attachment).guid
           parsed_form = get_fixture('form1010_ezr/valid_form').merge(
             'attachments' => [
               {
-                'confirmationCode' => create(:form1010_ezr_attachment).guid
+                'confirmationCode' => guid
               }
             ]
           )
+          expect(Rails.logger).to receive(:info).with(
+            %r{\[HCA_S3_READ\] S3 object to retrieve | correlation_id=#{guid} | s3_key=hca_attachments/.*$}
+          ).twice
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] find', guid:)
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file retrieved', guid:)
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file extension', guid:, ext: '')
+          expect(Rails.logger).to receive(:info).with(
+            '[HCA_ES_ATTACHMENT] file content_type',
+            guid:,
+            content_type: 'application/pdf'
+          )
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] add attachment', guid:)
+          expect(Rails.logger).to receive(:info).with(
+            '[HCA_ES_ATTACHMENT] add attachment content_type',
+            guid:,
+            content_type: 'application/pdf'
+          )
+
           result = described_class.veteran_to_save_submit_form(parsed_form, nil, '10-10EZR')
           expect(result.to_json).to eq(get_fixture('form1010_ezr/result_with_attachment').to_json)
         end
@@ -1605,10 +1646,11 @@ describe HCA::EnrollmentSystem do
 
       context 'when a form attachment is not found based on the guid provided in the params' do
         it 'does not add an attachment', run_at: '2024-06-27 18:22:17 -0800' do
+          guid = create(:form1010_ezr_attachment).guid
           parsed_form = get_fixture('form1010_ezr/valid_form').merge(
             'attachments' => [
               {
-                'confirmationCode' => create(:form1010_ezr_attachment).guid
+                'confirmationCode' => guid
               },
               {
                 # Bad guid that will not return an HCAAttachment nor a Form1010EzrAttachment
@@ -1616,6 +1658,27 @@ describe HCA::EnrollmentSystem do
               }
             ]
           )
+          expect(Rails.logger).to receive(:info).with(
+            %r{\[HCA_S3_READ\] S3 object to retrieve | correlation_id=#{guid} | s3_key=hca_attachments/.*$}
+          ).twice
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] find', guid:)
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file retrieved', guid:)
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] file extension', guid:, ext: '')
+          expect(Rails.logger).to receive(:info).with(
+            '[HCA_ES_ATTACHMENT] file content_type',
+            guid:,
+            content_type: 'application/pdf'
+          )
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] add attachment', guid:)
+          expect(Rails.logger).to receive(:info).with(
+            '[HCA_ES_ATTACHMENT] add attachment content_type',
+            guid:,
+            content_type: 'application/pdf'
+          )
+
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] find', guid: 'some-random-guid')
+          expect(Rails.logger).to receive(:info).with('[HCA_ES_ATTACHMENT] found but nil', guid: 'some-random-guid')
+
           result = described_class.veteran_to_save_submit_form(parsed_form, nil, '10-10EZR')
           expect(result['va:form']['va:attachments'].length).to eq(1)
           expect(result.to_json).to eq(get_fixture('form1010_ezr/result_with_attachment').to_json)
