@@ -300,6 +300,14 @@ features:
     actor_type: user
     description: If enabled, Form 21-526EZ will show the new form navigation menu and remove the progress bar.
     enable_in_development: false
+  disability_526_schema_hardening_logging:
+    actor_type: user
+    description: If enabled, Form 21-526EZ will log schema hardening events.
+    enable_in_development: false
+  disability_526_schema_hardening_enforce:
+    actor_type: user
+    description: If enabled, Form 21-526EZ will enforce schema hardening rules.
+    enable_in_development: false
   disability_compensation_fix_poisoned_ipf:
     actor_type: user
     description: >
