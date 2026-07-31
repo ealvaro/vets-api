@@ -8,6 +8,6 @@ sign_in:
     pepper: 5740e000be940493231f85324c413bd2
   vamobile_client_id:
     - vamobile
-    - vamobile_local_auth
+    - vamobile_devtools_local
 webauthn:
   enabled: true
