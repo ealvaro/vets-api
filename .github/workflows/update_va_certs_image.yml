@@ -1,0 +1,178 @@
+name: Update VA certs image pin
+
+# Opens a PR bumping dsva/va-certs:vX.Y.Z when vsp-platform-va-certs publishes a
+# new release (repository_dispatch) or when run manually (workflow_dispatch).
+#
+# Does not use :latest (that tag is not published to ECR). Urgent cert
+# rotations can still bump the pin by hand or via workflow_dispatch.
+
+on:
+  repository_dispatch:
+    types: [va-certs-release]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "va-certs release tag to pin (e.g. v0.15.0). Leave empty to use the latest release."
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate VSP bot token
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          repositories: |
+            vets-api
+            vsp-platform-va-certs
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Checkout repo
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Resolve target va-certs tag
+        id: latest
+        env:
+          GH_HOST: va.ghe.com
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ -n "${DISPATCH_TAG}" ]; then
+            tag="${DISPATCH_TAG}"
+          elif [ -n "${INPUT_TAG}" ]; then
+            tag="${INPUT_TAG}"
+          else
+            tag=$(gh api repos/software/vsp-platform-va-certs/releases/latest --jq '.tag_name')
+          fi
+
+          if [ -z "${tag}" ] || [ "${tag}" = "null" ]; then
+            echo "::error::Could not resolve a va-certs release tag"
+            exit 1
+          fi
+
+          if ! [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid va-certs release tag '${tag}' (expected vX.Y.Z)"
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Target va-certs tag: ${tag}"
+
+      - name: Detect current pin
+        id: current
+        run: |
+          set -euo pipefail
+          current=$(grep -oE 'dsva/va-certs:v[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1 | cut -d: -f2)
+          if [ -z "${current}" ]; then
+            echo "::error::Could not find dsva/va-certs:vX.Y.Z pin in Dockerfile"
+            exit 1
+          fi
+          if ! [[ "${current}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unsupported Dockerfile pin '${current}'. Expected vX.Y.Z (e.g. v0.15.0)."
+            exit 1
+          fi
+          echo "tag=${current}" >> "$GITHUB_OUTPUT"
+          echo "Current Dockerfile pin: ${current}"
+
+      - name: Configure AWS credentials
+        if: ${{ steps.latest.outputs.tag != steps.current.outputs.tag }}
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      # Confirm the GitHub release tag exists in ECR before opening a bump PR.
+      # Release tag remains the source of truth; this only verifies the image is pullable.
+      - name: Verify va-certs tag exists in ECR
+        if: ${{ steps.latest.outputs.tag != steps.current.outputs.tag }}
+        env:
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! aws ecr describe-images \
+            --repository-name dsva/va-certs \
+            --image-ids "imageTag=${TAG}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text > /tmp/va-certs-digest.txt; then
+            echo "::error::ECR image dsva/va-certs:${TAG} not found. Refusing to open a bump PR until the image is published."
+            exit 1
+          fi
+          digest=$(cat /tmp/va-certs-digest.txt)
+          if [ -z "${digest}" ] || [ "${digest}" = "None" ]; then
+            echo "::error::ECR image dsva/va-certs:${TAG} not found. Refusing to open a bump PR until the image is published."
+            exit 1
+          fi
+          echo "Verified dsva/va-certs:${TAG} (${digest})"
+
+      - name: Open bump PR when pin differs
+        if: ${{ steps.latest.outputs.tag != steps.current.outputs.tag }}
+        env:
+          GH_HOST: va.ghe.com
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          NEW_TAG: ${{ steps.latest.outputs.tag }}
+          OLD_TAG: ${{ steps.current.outputs.tag }}
+        run: |
+          set -euo pipefail
+          branch="deps/va-certs-${NEW_TAG}"
+
+          if [ "$(gh pr list --head "${branch}" --state open --json number --jq 'length')" != "0" ]; then
+            echo "PR already open for ${branch}; nothing to do."
+            exit 0
+          fi
+
+          git config user.name "va-vsp-bot"
+          git config user.email "va-vsp-bot@users.noreply.va.ghe.com"
+          git checkout -b "${branch}"
+
+          files="Dockerfile docker-compose.yml docker-compose.review.yml"
+          for f in ${files}; do
+            if [ ! -f "${f}" ]; then
+              echo "::error::Expected pin file missing: ${f}"
+              exit 1
+            fi
+          done
+
+          # shellcheck disable=SC2086
+          sed -i "s|dsva/va-certs:${OLD_TAG}|dsva/va-certs:${NEW_TAG}|g" ${files}
+
+          if git diff --quiet -- ${files}; then
+            echo "::error::Expected pin changes for ${OLD_TAG} -> ${NEW_TAG}, but git diff was empty"
+            exit 1
+          fi
+
+          git add -- ${files}
+          git commit -m "deps: bump va-certs image to ${NEW_TAG}"
+          git push -u origin HEAD
+
+          body=$(printf '%s\n' \
+            "## Summary" \
+            "- Bumps \`dsva/va-certs\` from \`${OLD_TAG}\` to \`${NEW_TAG}\`" \
+            "- Source: release on \`software/vsp-platform-va-certs\`" \
+            "- Verified image tag exists in ECR before opening this PR" \
+            "- Opened by the Update VA certs image pin workflow" \
+            "" \
+            "## Test plan" \
+            "- [ ] CI Docker build pulls \`${NEW_TAG}\` successfully" \
+            "- [ ] Cert install / build-time validation still passes" \
+            "- [ ] Skim release notes for \`${NEW_TAG}\` on vsp-platform-va-certs")
+
+          gh pr create \
+            --title "deps: bump va-certs image to ${NEW_TAG}" \
+            --body "${body}"
+
+      - name: Already current
+        if: ${{ steps.latest.outputs.tag == steps.current.outputs.tag }}
+        run: echo "Already on ${{ steps.latest.outputs.tag }}; nothing to do."
