@@ -27,21 +27,22 @@ RSpec.describe Burials::FormProfiles::VA21p530ez, type: :model do
 
   describe '#prefill' do
     it 'initializes identity and contact information' do
-      expect(subject.prefill).to match({
-                                         form_data: {
-                                           'claimantFullName' =>
-                                         { 'first' => 'Abraham', 'last' => 'Lincoln', 'suffix' => 'Jr.' },
-                                           'claimantAddress' =>
-                                         { 'street' => '140 Rock Creek Rd', 'city' => 'Washington', 'state' => 'DC',
-                                           'country' => 'USA', 'postalCode' => '20011' },
-                                           'claimantPhone' => '3035551234',
-                                           'claimantEmail' => kind_of(String)
-                                         },
-                                         metadata: {
-                                           version: 0, prefill: true,
-                                           returnUrl: '/claimant-information/relationship-to-veteran'
-                                         }
-                                       })
+      expect(subject.prefill).to match(
+        {
+          form_data: {
+            'claimantFullName' => { 'first' => 'Abraham', 'last' => 'Lincoln', 'suffix' => 'Jr.' },
+            'claimantAddress' => { 'street' => '140 Rock Creek Rd', 'city' => 'Washington', 'state' => 'DC',
+                                   'country' => 'USA', 'postalCode' => '20011' },
+            'claimantPhone' => '3035551234',
+            'claimantEmail' => kind_of(String),
+            'claimantSocialSecurityNumber' => user.ssn
+          },
+          metadata: {
+            version: 0, prefill: true,
+            returnUrl: '/claimant-information/relationship-to-veteran'
+          }
+        }
+      )
     end
   end
 end

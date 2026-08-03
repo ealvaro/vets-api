@@ -1,106 +1,202 @@
 {
-    "transportationExpenses":true,
-    "plotExpenseResponsibility":true,
-    "govtContributions":true,
-    "amountGovtContribution":" 5000",
-    "nationalOrFederal":true,
-    "name":"name of cemetery",
-    "finalRestingPlace":{"location":{"cemetery":"Off", "privateResidence":"Off", "mausoleum":"Off", "other":"On"}, "other":"other"},
-    "previouslyReceivedAllowance":true,
-    "burialExpenseResponsibility":true,
-    "confirmation":{"checkBox":true},
-    "cemeteryLocation": {"name": "Bryan", "zip": "12345"},
-    "cemetaryLocationQuestion": "none",
-    "stateCemeteryOrTribalTrustName": "Bryan",
-    "stateCemeteryOrTribalTrustZip": "12345",
-    "burialAllowanceRequested":{"checkbox":{"service":"On", "nonService":"On", "unclaimed":"On"}},
-    "burialAllowance":true,
-    "plotAllowance":true,
-    "processOption":false,
-    "transportation":true,
-    "previousNames": "John Jacob Schmitt Jr. ",
-    "powPeriods": [{"powDateRange": {"from": "1971-02-26", "to": "1973-03-02"}}],
-    "militaryServiceNumber":"123123",
-    "homeHospiceCare":true,
-    "homeHospiceCareAfterDischarge":true,
-    "serviceBranch": "airForce",
-    "serviceDateRange": {
-        "from": "2020-03-15",
-        "to": "2021-02-15"
+  "transportationExpenses": true,
+  "plotExpenseResponsibility": true,
+  "govtContributions": true,
+  "amountGovtContribution": " 5000",
+  "nationalOrFederal": true,
+  "name": "name of cemetery",
+  "finalRestingPlace": {
+    "location": {
+      "cemetery": "Off",
+      "privateResidence": "Off",
+      "mausoleum": "Off",
+      "other": "On"
     },
-    "bankAccount": {"accountType": "checking", "routingNumber": "123123123","accountNumber": "001122334455"},
-    "placeOfSeparation": "location",
-    "toursOfDuty":[
-        {
-            "serviceBranch":"Air Force",
-            "placeOfEntry":"placeofentry12",
-            "placeOfSeparation":"placeofseparation12",
-            "rank":"Air Force, gradeofentry12, unit",
-            "unit":"unit",
-            "dateRangeStart":"1970-01-01",
-            "dateRangeEnd":"1974-01-01",
-            "militaryServiceNumber":"123123"
-        },
-        {
-            "serviceBranch":"Army",
-            "placeOfEntry":"placeofentry34",
-            "placeOfSeparation":"placeofseparation34",
-            "rank":"Army, gradeofentry13, unit",
-            "unit":"unit",
-            "dateRangeStart":"1976-01-01",
-            "dateRangeEnd":"1978-01-02",
-            "militaryServiceNumber":"123123"
-        },
-        {
-            "serviceBranch":"Navy",
-            "placeOfEntry":"placeofentry56",
-            "placeOfSeparation":"placeofseparation56",
-            "rank":"Navy, gradeofentry56, unit",
-            "unit":"unit",
-            "dateRangeStart":"1980-01-01",
-            "dateRangeEnd":"1984-01-01",
-            "militaryServiceNumber":"123123"
-        }
-    ],
-    "locationOfDeath":
-        {
-            "location":"nursingHomePaid",
-            "placeAndLocation": "Best Nursing Home - portland, ME",
-            "checkbox":{"nursingHomePaid":"On"}
-        },
-    "deathDate":{"month":"01", "day":"01", "year":"2024"},
-    "burialDate":{"month":"01", "day":"02", "year":"2024"},
-    "veteranFullName":{"first":"veteran", "middle":"middle", "last":"lastname", "suffix":"Jr.", "middleInitial":"m"},
-    "veteranSocialSecurityNumber":{"first":"987", "second":"65", "third":"4322"},
-    "vaFileNumber":"987654321",
-    "veteranDateOfBirth":{"month":"01", "day":"01", "year":"1950"},
-    "claimantEmail":"test@test.com",
-    "claimantPhone":{"first":"555", "second":"555", "third":"5555"},
-    "claimantIntPhone":"5555555556",
-    "claimantAddress":{"country":"US", "street":"123 fake street", "street2":"234", "city":"portland", "state":"ME", "postalCode":{"firstFive":"04102", "lastFour":null}},
-    "claimantFullName":{"first":"test", "middle":"middle", "last":"spouse", "suffix":"Jr.", "middleInitial":"m"},
-    "claimantSocialSecurityNumber":{"first":"987", "second":"65", "third":"4321"},
-    "claimantDateOfBirth":{"month":"01", "day":"01", "year":"1960"},
-    "relationshipToVeteran":{"spouse":"On", "child":"Off", "executor":"Off", "parent":"Off", "funeralDirector":"Off", "otherFamily":"Off"},
-    "privacyAgreementAccepted":true,
-    "signature":"test spouse",
-    "signatureDate":"2024-03-21",
-    "veteranSocialSecurityNumber2":{"first":"987", "second":"65", "third":"4322"},
-    "veteranSocialSecurityNumber3":{"first":"987", "second":"65", "third":"4322"},
-    "hasNationalOrFederal":0,
-    "hasTransportation":0,
-    "hasConfirmation":0,
-    "cemetaryLocationQuestionCemetery":"Off",
-    "cemetaryLocationQuestionTribal":"Off",
-    "cemetaryLocationQuestionNone":"On",
-    "hasPreviouslyReceivedAllowance":0,
-    "hasGovtContributions":0,
-    "hasBurialExpenseResponsibility":"On",
-    "noBurialExpenseResponsibility":null,
-    "hasPlotExpenseResponsibility":"On",
-    "noPlotExpenseResponsibility":null,
-    "hasProcessOption":null,
-    "noProcessOption":"On",
-    "dateSigned": "2024-02-02",
-    "statementOfTruthSignature": "Wesley Ford"
+    "other": "other"
+  },
+  "previouslyReceivedAllowance": true,
+  "burialExpenseResponsibility": true,
+  "confirmation": {
+    "checkBox": true
+  },
+  "cemeteryLocation": {
+    "name": "Bryan",
+    "zip": "12345"
+  },
+  "cemetaryLocationQuestion": "none",
+  "stateCemeteryOrTribalTrustName": "Bryan",
+  "stateCemeteryOrTribalTrustZip": "12345",
+  "burialAllowanceRequested": {
+    "checkbox": {
+      "service": "On",
+      "nonService": "On",
+      "unclaimed": "On"
+    }
+  },
+  "burialAllowance": true,
+  "plotAllowance": true,
+  "processOption": false,
+  "transportation": true,
+  "previousNames": "John Jacob Schmitt Jr. ",
+  "powPeriods": [
+    {
+      "powDateRange": {
+        "from": "1971-02-26",
+        "to": "1973-03-02"
+      }
+    }
+  ],
+  "militaryServiceNumber": "123123",
+  "serviceBranch": "airForce",
+  "serviceDateRange": {
+    "from": "2020-03-15",
+    "to": "2021-02-15"
+  },
+  "placeOfSeparation": "location",
+  "toursOfDuty": [
+    {
+      "serviceBranch": "Air Force",
+      "placeOfEntry": "placeofentry12",
+      "placeOfSeparation": "placeofseparation12",
+      "rank": "Air Force, gradeofentry12, unit",
+      "unit": "unit",
+      "dateRangeStart": "1970-01-01",
+      "dateRangeEnd": "1974-01-01",
+      "militaryServiceNumber": "123123"
+    },
+    {
+      "serviceBranch": "Army",
+      "placeOfEntry": "placeofentry34",
+      "placeOfSeparation": "placeofseparation34",
+      "rank": "Army, gradeofentry13, unit",
+      "unit": "unit",
+      "dateRangeStart": "1976-01-01",
+      "dateRangeEnd": "1978-01-02",
+      "militaryServiceNumber": "123123"
+    },
+    {
+      "serviceBranch": "Navy",
+      "placeOfEntry": "placeofentry56",
+      "placeOfSeparation": "placeofseparation56",
+      "rank": "Navy, gradeofentry56, unit",
+      "unit": "unit",
+      "dateRangeStart": "1980-01-01",
+      "dateRangeEnd": "1984-01-01",
+      "militaryServiceNumber": "123123"
+    }
+  ],
+  "locationOfDeath": {
+    "location": "nursingHomePaid",
+    "placeAndLocation": "Best Nursing Home - portland, ME",
+    "checkbox": {
+      "nursingHomePaid": "On"
+    }
+  },
+  "homeHospiceCare": true,
+  "homeHospiceCareAfterDischarge": true,
+  "bankAccount": {
+    "accountType": "checking",
+    "routingNumber": "123123123",
+    "accountNumber": "001122334455"
+  },
+  "deathDate": {
+    "month": "01",
+    "day": "01",
+    "year": "2024"
+  },
+  "burialDate": {
+    "month": "01",
+    "day": "02",
+    "year": "2024"
+  },
+  "veteranFullName": {
+    "first": "veteran",
+    "middle": "middle",
+    "last": "lastname",
+    "suffix": "Jr.",
+    "middleInitial": "m"
+  },
+  "veteranSocialSecurityNumber": {
+    "first": "987",
+    "second": "65",
+    "third": "4322"
+  },
+  "vaFileNumber": "987654321",
+  "veteranDateOfBirth": {
+    "month": "01",
+    "day": "01",
+    "year": "1950"
+  },
+  "claimantEmail": "test@test.com",
+  "claimantPhone": {
+    "first": "555",
+    "second": "555",
+    "third": "5555"
+  },
+  "claimantIntPhone": "5555555556",
+  "claimantAddress": {
+    "country": "US",
+    "street": "123 fake street",
+    "street2": "234",
+    "city": "portland",
+    "state": "ME",
+    "postalCode": {
+      "firstFive": "04102",
+      "lastFour": null
+    }
+  },
+  "claimantFullName": {
+    "first": "test",
+    "middle": "middle",
+    "last": "spouse",
+    "suffix": "Jr.",
+    "middleInitial": "m"
+  },
+  "claimantSocialSecurityNumber": {
+    "first": "987",
+    "second": "65",
+    "third": "4321"
+  },
+  "claimantDateOfBirth": {
+    "month": "01",
+    "day": "01",
+    "year": "1960"
+  },
+  "relationshipToVeteran": {
+    "spouse": "On",
+    "child": "Off",
+    "executor": "Off",
+    "parent": "Off",
+    "funeralDirector": "Off",
+    "otherFamily": "Off"
+  },
+  "privacyAgreementAccepted": true,
+  "dateSigned": "2024-02-02",
+  "statementOfTruthSignature": "Wesley Ford",
+  "veteranSocialSecurityNumber2": {
+    "first": "987",
+    "second": "65",
+    "third": "4322"
+  },
+  "veteranSocialSecurityNumber3": {
+    "first": "987",
+    "second": "65",
+    "third": "4322"
+  },
+  "hasNationalOrFederal": 0,
+  "hasGovtContributions": 0,
+  "cemetaryLocationQuestionCemetery": "Off",
+  "cemetaryLocationQuestionTribal": "Off",
+  "cemetaryLocationQuestionNone": "On",
+  "hasBurialExpenseResponsibility": "On",
+  "noBurialExpenseResponsibility": null,
+  "hasPreviouslyReceivedAllowance": 0,
+  "hasConfirmation": 0,
+  "hasTransportation": 0,
+  "hasPlotExpenseResponsibility": "On",
+  "noPlotExpenseResponsibility": null,
+  "signature": "test spouse",
+  "signatureDate": "2024-03-21",
+  "hasProcessOption": null,
+  "noProcessOption": "On"
 }

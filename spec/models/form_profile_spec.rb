@@ -663,7 +663,8 @@ RSpec.describe FormProfile, type: :model do
       },
       'claimantAddress' => address,
       'claimantPhone' => us_phone,
-      'claimantEmail' => user.va_profile_email
+      'claimantEmail' => user.va_profile_email,
+      'claimantSocialSecurityNumber' => user.ssn
     }
   end
 
@@ -2513,7 +2514,8 @@ RSpec.describe FormProfile, type: :model do
               'middle' => user.middle_name&.capitalize,
               'last' => user.last_name&.capitalize,
               'suffix' => user.suffix
-            }
+            },
+            'claimantSocialSecurityNumber' => user.ssn
           }
         end
 

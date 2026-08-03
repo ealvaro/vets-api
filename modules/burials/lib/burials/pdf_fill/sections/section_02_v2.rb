@@ -6,6 +6,11 @@ module Burials
   module PdfFill
     # Section II: Claimant Information
     class Section2V2 < Section
+      # Character limit for street overflow
+      STREET_LIMIT = 30
+      # Character limit for stret2 overflow
+      STREET_2_LIMIT = 5
+
       # Section configuration hash
       KEY = {
         'claimantFullName' => { # start claimant information
@@ -67,17 +72,24 @@ module Burials
         'claimantAddress' => {
           'street' => {
             key: 'form1[0].#subform[82].CurrentMailingAddress_NumberAndStreet[0]',
-            limit: 30,
+            limit: STREET_LIMIT,
             question_num: 10,
             question_label: "Claimant's Address - Street",
             question_text: "CLAIMANT'S ADDRESS - STREET"
           },
           'street2' => {
             key: 'form1[0].#subform[82].CurrentMailingAddress_ApartmentOrUnitNumber[0]',
-            limit: 5,
+            limit: STREET_2_LIMIT,
             question_num: 10,
             question_label: "Claimant's Address - Apt/Unit No.",
             question_text: "CLAIMANT'S ADDRESS - APT/UNIT NO."
+          },
+          'street3' => {
+            key: 'form1[0].#subform[82].CurrentMailingAddress_NumberAndStreet[0]',
+            limit: 0,
+            question_num: 10,
+            question_label: "Claimant's Address - Street",
+            question_text: "Claimant's Address - Street"
           },
           'city' => {
             key: 'form1[0].#subform[82].CurrentMailingAddress_City[0]',
@@ -140,12 +152,46 @@ module Burials
       #
       def expand(form_data)
         split_postal_code(form_data) # ['claimantAddress']['postalCode']
+        handle_street_overflow(form_data['claimantAddress'])
         extract_middle_i(form_data, 'claimantFullName')
         form_data['claimantDateOfBirth'] = split_date(form_data['claimantDateOfBirth'])
         split_phone(form_data, 'claimantPhone')
         form_data['claimantSocialSecurityNumber'] = split_ssn(form_data['claimantSocialSecurityNumber'])
         relationship_to_veteran = form_data['relationshipToVeteran']
         form_data['relationshipToVeteran'] = Constants::RELATIONSHIPS[relationship_to_veteran]
+      end
+
+      private
+
+      ##
+      # Handles street address overflow by combining street lines if limits are exceeded
+      # or if a third street line is present
+      #
+      # @param address [Hash] The claimant's address hash containing street fields
+      #
+      # @return [Hash, nil] The updated address hash with combined street lines if overflow occurs,
+      #                     or nil if the address is blank
+      #
+      # @note This method modifies the `address` hash in place
+      #
+      def handle_street_overflow(address)
+        return if address.blank?
+
+        street, street2, street3 = address.values_at('street', 'street2', 'street3')
+
+        if street3.present? ||
+           street&.length&.>(STREET_LIMIT) ||
+           street2&.length&.>(STREET_2_LIMIT)
+          address.merge!(
+            {
+              'street' => nil,
+              'street2' => nil,
+              'street3' => [street, street2, street3].compact.join("\n")
+            }
+          )
+        else
+          address.delete('street3')
+        end
       end
     end
   end
