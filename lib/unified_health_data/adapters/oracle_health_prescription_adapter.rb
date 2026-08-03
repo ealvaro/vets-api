@@ -242,30 +242,33 @@ module UnifiedHealthData
       # @param dispenses_data [Array<Hash>] Array of dispense data for checking subsequent dispenses
       # @return [String] VistA-compatible status value
       def extract_refill_status(resource, dispenses_data = [])
-        # Check if there's a successful submitted refill (no subsequent dispense)
-        contained_resources = resource['contained'] || []
-        medication_request_id = resource['id']
+        # Honor the most recent in-flight refill order-Task when it is still within
+        # the staleness window and no subsequent dispense has fulfilled it. A
+        # 'requested' Task maps to 'submitted'; the accepted/in-progress/completed
+        # states (flag-gated in honored_refill_statuses) map to 'refillinprocess'.
+        # Tasks older than the window fall through to the normalized status so a
+        # med does not display an in-flight refill state indefinitely.
+        most_recent_task = most_recent_contained_task(resource, intent: 'order', statuses: honored_refill_statuses)
 
-        # Find successful refill tasks: intent='order', status='requested', matching focus reference
-        successful_refill_tasks = contained_resources.select do |c|
-          c.is_a?(Hash) &&
-            c['resourceType'] == 'Task' &&
-            c['intent'] == 'order' &&
-            c['status'] == 'requested' &&
-            task_references_medication_request?(c, medication_request_id)
-        end
-
-        if successful_refill_tasks.any?
-          # Get most recent task by executionPeriod.start
-          most_recent_task = successful_refill_tasks.max_by do |task|
-            parse_date_or_epoch(task.dig('executionPeriod', 'start'))
-          end
-
+        if most_recent_task
           task_submit_date = most_recent_task.dig('executionPeriod', 'start')
-          return STATUS_SUBMITTED if task_submit_date && !subsequent_dispense?(task_submit_date, dispenses_data)
+          if task_submit_date &&
+             in_flight_task_within_window?(task_submit_date) &&
+             !subsequent_dispense?(task_submit_date, dispenses_data)
+            return refill_status_for_task_status(most_recent_task['status'])
+          end
         end
 
         normalize_to_legacy_vista_status(resource)
+      end
+
+      # Maps an honored in-flight order-Task status to the internal refill status.
+      # 'requested' => submitted; accepted/in-progress/completed => refillinprocess.
+      #
+      # @param task_status [String] Order-Task status
+      # @return [String] Internal refill status value
+      def refill_status_for_task_status(task_status)
+        task_status == REFILL_SUBMITTED_TASK_STATUS ? STATUS_SUBMITTED : STATUS_REFILL_IN_PROCESS
       end
 
       # Maps refill_status to user-friendly disp_status for display

@@ -381,6 +381,14 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     end
 
     context 'with refill submission tracking using Task resources' do
+      # These fixtures use fixed mid-2025 Task dates. mhv_medications_management_improvements
+      # is enabled by default in this spec (no global stub), so freeze time near the fixture
+      # dates to keep them inside the in-flight staleness window; the window itself is covered
+      # explicitly in the 'in-flight refill Task staleness window' context below.
+      around do |example|
+        travel_to(Time.zone.parse('2025-06-26T00:00:00Z')) { example.run }
+      end
+
       it 'sets submitted status when valid Task exists without subsequent dispense' do
         result = subject.parse(fhir_resource_with_task)
 
@@ -494,6 +502,206 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
     end
 
+    # RC1a FIX: an in-flight refill lifecycle order-Task (accepted / in-progress /
+    # completed) with no subsequent dispense should map to 'refillinprocess'
+    # (Active: Refill in Process) when the medications management improvements flag
+    # is enabled, and should block re-refill. When the flag is off the prior
+    # behavior is preserved (only 'requested' is honored, as 'submitted').
+    context 'in-flight order-Task without dispense (RC1a)' do
+      context 'when mhv_medications_management_improvements is enabled' do
+        let(:in_window_task_date) { 2.days.ago.utc.iso8601 }
+
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(true)
+        end
+
+        it 'maps a completed refill Task to refillinprocess and blocks re-refill' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'completed', task_date: in_window_task_date))
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.is_refillable).to be false
+          expect(result.refill_submit_date).to eq(in_window_task_date)
+        end
+
+        it 'maps an in-progress refill Task to refillinprocess' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'in-progress', task_date: in_window_task_date))
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.is_refillable).to be false
+        end
+
+        it 'maps an accepted refill Task to refillinprocess' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'accepted', task_date: in_window_task_date))
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.is_refillable).to be false
+        end
+
+        it 'still maps a requested order-Task to submitted' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: in_window_task_date))
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+        end
+
+        it 'leaves terminal/other order-Task statuses as active' do
+          %w[failed rejected cancelled].each do |status|
+            result = subject.parse(fhir_resource_with_task(task_status: status, task_date: in_window_task_date))
+
+            expect(result.refill_status).to eq('active')
+            expect(result.disp_status).to eq('Active')
+          end
+        end
+      end
+
+      context 'when mhv_medications_management_improvements is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(false)
+        end
+
+        it 'leaves a completed refill Task as plain active' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'completed'))
+
+          expect(result.refill_status).to eq('active')
+          expect(result.disp_status).to eq('Active')
+          expect(result.refill_submit_date).to be_nil
+        end
+
+        it 'still maps a requested order-Task to submitted' do
+          result = subject.parse(fhir_resource_with_task(task_status: 'requested'))
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+        end
+      end
+    end
+
+    # In-flight refill Task staleness window (Issue 1): once an honored in-flight
+    # order-Task ages past REFILL_IN_FLIGHT_WINDOW_DAYS (3) with no fulfilling
+    # dispense, the status falls back to the normalized MedicationRequest status
+    # and refill_submit_date is dropped, so a med does not display an in-flight
+    # refill state indefinitely. The window is only enforced when the flag is on.
+    context 'in-flight refill Task staleness window' do
+      context 'when mhv_medications_management_improvements is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(true)
+        end
+
+        it 'honors an in-flight Task just inside the 3-day window' do
+          result = subject.parse(
+            fhir_resource_with_task(task_status: 'completed', task_date: (3.days.ago + 1.hour).utc.iso8601)
+          )
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+        end
+
+        it 'drops a stale refillinprocess Task back to active and clears refill_submit_date' do
+          result = subject.parse(
+            fhir_resource_with_task(task_status: 'completed', task_date: 20.days.ago.utc.iso8601)
+          )
+
+          expect(result.refill_status).to eq('active')
+          expect(result.disp_status).to eq('Active')
+          expect(result.refill_submit_date).to be_nil
+        end
+
+        it 'drops a stale submitted Task back to active and clears refill_submit_date' do
+          result = subject.parse(
+            fhir_resource_with_task(task_status: 'requested', task_date: 20.days.ago.utc.iso8601)
+          )
+
+          expect(result.refill_status).to eq('active')
+          expect(result.disp_status).to eq('Active')
+          expect(result.refill_submit_date).to be_nil
+        end
+      end
+
+      context 'when mhv_medications_management_improvements is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(false)
+        end
+
+        it 'still honors a stale requested Task as submitted (window not enforced)' do
+          stale_date = 20.days.ago.utc.iso8601
+          result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: stale_date))
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+          expect(result.refill_submit_date).to eq(stale_date)
+        end
+      end
+    end
+
+    # Isolates Gate 7 (the re-refill block) in OracleHealthRefillHelper#refillable?.
+    # Unlike the RC1a fixtures above, this resource carries a prior completed dispense
+    # dated before the in-flight order-Task, so Gates 1-6 (non-VA, active, not expired,
+    # refills remaining, a completed dispense exists, most-recent dispense not in
+    # progress) all pass. That leaves the refill_status check in Gate 7 as the only
+    # thing that can drive is_refillable to false. The flag-off case is the control:
+    # the same fixture resolves to 'active', Gate 7 does not fire, and the med is
+    # refillable -- proving the flag-on 'false' is attributable specifically to Gate 7.
+    # Recent relative dates keep this valid regardless of any future in-flight window.
+    context 'Gate 7 re-refill block with prior dispense (Gates 1-6 pass)' do
+      let(:task_date) { 2.days.ago.utc.iso8601 }
+      let(:prior_dispense_date) { 5.days.ago.utc.iso8601 }
+      let(:resource_with_prior_dispense) do
+        fhir_resource_with_task(
+          task_status: 'completed',
+          task_date:,
+          dispenses: [
+            {
+              status: 'completed',
+              when_prepared: prior_dispense_date,
+              when_handed_over: prior_dispense_date,
+              location: '648'
+            }
+          ]
+        )
+      end
+
+      context 'when mhv_medications_management_improvements is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(true)
+        end
+
+        it 'blocks re-refill via Gate 7 when status is refillinprocess' do
+          result = subject.parse(resource_with_prior_dispense)
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.is_refillable).to be false
+        end
+      end
+
+      context 'when mhv_medications_management_improvements is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(false)
+        end
+
+        it 'remains refillable because status resolves to active (Gate 7 not triggered)' do
+          result = subject.parse(resource_with_prior_dispense)
+
+          expect(result.refill_status).to eq('active')
+          expect(result.is_refillable).to be true
+        end
+      end
+    end
+
     context 'with renewal submission tracking using Task resources' do
       it 'sets renewal_submitted_timestamp when valid renewal Task exists' do
         result = subject.parse(fhir_resource_with_renewal_task)
@@ -580,14 +788,16 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
 
       it 'sets both refill and renewal fields when both Task types exist' do
-        resource = fhir_resource_with_renewal_task
-        refill_task = fhir_task('requested', 'order', '2025-06-22T10:00:00.000Z', '12345')
-        resource['contained'] << refill_task
+        travel_to(Time.zone.parse('2025-06-23T00:00:00Z')) do
+          resource = fhir_resource_with_renewal_task
+          refill_task = fhir_task('requested', 'order', '2025-06-22T10:00:00.000Z', '12345')
+          resource['contained'] << refill_task
 
-        result = subject.parse(resource)
+          result = subject.parse(resource)
 
-        expect(result.renewal_submitted_timestamp).to be_a(Integer)
-        expect(result.refill_submit_date).to eq('2025-06-22T10:00:00.000Z')
+          expect(result.renewal_submitted_timestamp).to be_a(Integer)
+          expect(result.refill_submit_date).to eq('2025-06-22T10:00:00.000Z')
+        end
       end
     end
 

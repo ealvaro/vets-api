@@ -89,12 +89,14 @@ module FhirResourceBuilder
   end
 
   def fhir_dispense(data, index)
-    {
+    dispense = {
       'resourceType' => 'MedicationDispense',
       'id' => "dispense-#{index + 1}",
       'status' => data[:status] || 'completed',
       'whenPrepared' => data[:when_prepared],
       'whenHandedOver' => data[:when_handed_over]
     }
+    dispense['location'] = { 'display' => data[:location] } if data[:location]
+    dispense
   end
 end

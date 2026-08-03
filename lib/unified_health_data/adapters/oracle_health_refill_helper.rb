@@ -26,7 +26,7 @@ module UnifiedHealthData
       # Gate 4: Refills remaining > 0
       # Gate 5: At least one completed dispense exists
       # Gate 6: Most recent dispense is not in-progress
-      # Gate 7: No pending refill request (refill_status != 'submitted')
+      # Gate 7: No pending refill request (refill_status not 'submitted' or 'refillinprocess')
       #
       # @param resource [Hash] FHIR MedicationRequest resource
       # @param refill_status [String] Current refill status
@@ -38,7 +38,7 @@ module UnifiedHealthData
         return false unless extract_refill_remaining(resource).positive?
         return false unless completed_dispense_exists?(resource)
         return false if most_recent_dispense_in_progress?(resource)
-        return false if refill_status == 'submitted'
+        return false if %w[submitted refillinprocess].include?(refill_status)
 
         true
       end

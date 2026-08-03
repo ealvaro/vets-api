@@ -11,22 +11,39 @@ module UnifiedHealthData
     module OracleHealthTaskHelper
       TASK_TYPE_EXTENSION_URL = 'http://va.gov/mhv/rx/task-type'
 
+      # Order-Task status that always indicates a freshly submitted refill.
+      REFILL_SUBMITTED_TASK_STATUS = 'requested'
+
+      # Additional in-flight refill lifecycle statuses (pharmacy has accepted/is
+      # processing the refill). Only honored when the medications management
+      # improvements flag is enabled; otherwise they fall through to active.
+      REFILL_IN_PROCESS_TASK_STATUSES = %w[in-progress accepted completed].freeze
+
+      # In-flight refill Tasks older than this are no longer honored; the refill
+      # status falls back to the normalized MedicationRequest status and the
+      # refill_submit_date is dropped. Mirrors VistA's REFILL_IN_FLIGHT_WINDOW_DAYS
+      # so both surfaces bound the "in between" refill state identically. Only
+      # enforced when the medications management improvements flag is enabled.
+      REFILL_IN_FLIGHT_WINDOW_DAYS = 3
+
       # Extracts refill submission metadata from Task resources during prescription parsing.
-      # Sets refill_submit_date based on successful refill requests.
+      # Sets refill_submit_date based on the most recent in-flight refill request.
       #
-      # Conditions for a valid submitted refill:
-      # 1. Task with intent='order', status='requested', and matching focus.reference exists
+      # Conditions for a valid in-flight refill:
+      # 1. Task with intent='order', an honored in-flight status (requested or, when the
+      #    flag is enabled, in-progress/accepted/completed), and matching focus.reference exists
       # 2. No MedicationDispense with whenPrepared or whenHandedOver date after Task.executionPeriod.start
       #
       # @param resource [Hash] FHIR MedicationRequest resource
       # @param dispenses_data [Array<Hash>] Array of dispense data for checking subsequent dispenses
       # @return [Hash] Hash containing refill_submit_date if applicable
       def extract_refill_submission_metadata_from_tasks(resource, dispenses_data = [])
-        most_recent_task = most_recent_contained_task(resource, intent: 'order')
+        most_recent_task = most_recent_contained_task(resource, intent: 'order', statuses: honored_refill_statuses)
         return {} unless most_recent_task
 
         task_submit_date = most_recent_task.dig('executionPeriod', 'start')
         return {} unless valid_task_date?(task_submit_date)
+        return {} unless in_flight_task_within_window?(task_submit_date)
         return {} if subsequent_dispense?(task_submit_date, dispenses_data)
 
         { refill_submit_date: task_submit_date }
@@ -54,13 +71,27 @@ module UnifiedHealthData
 
       private
 
+      # Returns the order-Task statuses that count as an in-flight refill.
+      # 'requested' is always honored; the accepted/in-progress/completed states
+      # are honored only when the medications management improvements flag is on.
+      #
+      # @return [Array<String>] honored order-Task statuses
+      def honored_refill_statuses
+        statuses = [REFILL_SUBMITTED_TASK_STATUS]
+        if Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
+          statuses += REFILL_IN_PROCESS_TASK_STATUSES
+        end
+        statuses
+      end
+
       # Finds the most recent contained Task matching the given intent and optional block filter.
       #
       # @param resource [Hash] FHIR MedicationRequest resource
       # @param intent [String] Task intent to filter by ('order' or 'proposal')
+      # @param statuses [Array<String>] Task statuses to include
       # @yield [Hash] Optional additional filter block
       # @return [Hash, nil] Most recent matching Task or nil
-      def most_recent_contained_task(resource, intent:)
+      def most_recent_contained_task(resource, intent:, statuses: [REFILL_SUBMITTED_TASK_STATUS])
         contained_resources = resource['contained'] || []
         medication_request_id = resource['id']
 
@@ -68,7 +99,7 @@ module UnifiedHealthData
           c.is_a?(Hash) &&
             c['resourceType'] == 'Task' &&
             c['intent'] == intent &&
-            c['status'] == 'requested' &&
+            statuses.include?(c['status']) &&
             task_references_medication_request?(c, medication_request_id) &&
             (!block_given? || yield(c))
         end
@@ -83,6 +114,19 @@ module UnifiedHealthData
         return false unless date_string
 
         parse_date_or_epoch(date_string) != Time.zone.at(0)
+      end
+
+      # Determines whether an in-flight refill Task is recent enough to still be
+      # honored. The staleness window is only enforced when the medications
+      # management improvements flag is enabled; with the flag off the prior
+      # windowless behavior is preserved.
+      #
+      # @param task_submit_date [String] Task.executionPeriod.start
+      # @return [Boolean] true if the Task should still be honored
+      def in_flight_task_within_window?(task_submit_date)
+        return true unless Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
+
+        parse_date_or_epoch(task_submit_date) >= REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago
       end
 
       # Validates that Task.focus.reference matches the parent MedicationRequest.id
