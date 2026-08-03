@@ -18,7 +18,7 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
       let(:access_token_object) do
         create(:access_token, session_handle: current_session_handle, user_uuid:, client_id: oauth_session.client_id)
       end
-      let(:oauth_session_count) { SignIn::OAuthSession.where(user_account:).count }
+      let(:session_record_count) { SignIn::SessionRecord.where(user_account:).count }
       let(:client_config) { SignIn::ClientConfig.find_by(client_id: oauth_session.client_id) }
       let(:client_id) { client_config.client_id }
       let(:statsd_success) { SignIn::Constants::Statsd::STATSD_SIS_SESSIONS_SUCCESS }
@@ -31,14 +31,20 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
         allow(Rails.logger).to receive(:info)
       end
 
-      context 'returns sessions associated with current user' do
-        it 'and returns session values' do
+      context 'returns session records associated with current user' do
+        let!(:session_record) { create(:session_record, handle: current_session_handle, user_account:, client_id:) }
+
+        it 'and returns session record values' do
           response = JSON.parse(subject.body)['data']
           expect(response.first['handle']).to eq(current_session_handle)
-          expect(response.first['session_type']).to eq(client_config.authentication)
           expect(response.first['client_id']).to eq(client_id)
           expect(response.first['expiration']).to match(/\d{4}-\d{2}-\d{2}/)
-          expect(response.first['current']).to be(true)
+          expect(response.first['device_description']).to eq(session_record.device_description)
+          expect(response.first['location']).to eq(session_record.location)
+          expect(response.first['created_at']).to match(/\d{4}-\d{2}-\d{2}/)
+          expect(response.first['last_activity_at']).to match(/\d{4}-\d{2}-\d{2}/)
+          expect(response.first['signed_out_at']).to be_nil
+          expect(response.first['status']).to eq('current')
         end
 
         it 'and logs the sessions call' do
@@ -54,10 +60,6 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
           expect(JSON.parse(subject.body)['data'].first).to have_key('handle')
         end
 
-        it 'and returns expected body with session_type' do
-          expect(JSON.parse(subject.body)['data'].first).to have_key('session_type')
-        end
-
         it 'and returns expected body with client_id' do
           expect(JSON.parse(subject.body)['data'].first).to have_key('client_id')
         end
@@ -66,8 +68,28 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
           expect(JSON.parse(subject.body)['data'].first).to have_key('expiration')
         end
 
-        it 'and returns expected body with current' do
-          expect(JSON.parse(subject.body)['data'].first).to have_key('current')
+        it 'and returns expected body with device_description' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('device_description')
+        end
+
+        it 'and returns expected body with location' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('location')
+        end
+
+        it 'and returns expected body with created_at' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('created_at')
+        end
+
+        it 'and returns expected body with last_activity_at' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('last_activity_at')
+        end
+
+        it 'and returns expected body with signed_out_at' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('signed_out_at')
+        end
+
+        it 'and returns expected body with status' do
+          expect(JSON.parse(subject.body)['data'].first).to have_key('status')
         end
 
         it 'and triggers statsd increment for successful call' do
@@ -75,12 +97,12 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
         end
       end
 
-      context 'returns multiple sessions for user account' do
-        let!(:oauth_session2) { create(:oauth_session, user_account:) }
-        let!(:oauth_session3) { create(:oauth_session, user_account:) }
+      context 'returns multiple session records for user account' do
+        let!(:session_record2) { create(:session_record, user_account:) }
+        let!(:session_record3) { create(:session_record, user_account:) }
 
-        it 'returns all sessions for user account' do
-          expect(JSON.parse(subject.body)['data'].count).to eq(oauth_session_count)
+        it 'returns all session records for user account' do
+          expect(JSON.parse(subject.body)['data'].count).to eq(session_record_count)
         end
       end
     end

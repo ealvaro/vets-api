@@ -5,8 +5,9 @@ module V0
     class SessionsController < ApplicationController
       def index
         current_session_handle = @current_user.session_handle
+        session_records = ::SignIn::SessionRecord.where(user_account: @current_user.user_account)
         serialized_sessions = ::SignIn::SessionSerializer.new(
-          sessions: ::SignIn::OAuthSession.where(user_account: @current_user.user_account),
+          session_records:,
           current_session_handle:
         ).perform
         context = { user_uuid: @current_user.uuid, current_session_handle: }

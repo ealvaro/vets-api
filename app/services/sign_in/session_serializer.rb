@@ -2,34 +2,49 @@
 
 module SignIn
   class SessionSerializer
-    attr_reader :sessions, :current_session_handle
+    attr_reader :session_records, :current_session_handle
 
-    def initialize(sessions:, current_session_handle:)
-      @sessions = sessions
+    def initialize(session_records:, current_session_handle:)
+      @session_records = session_records
       @current_session_handle = current_session_handle
     end
 
     def perform
-      serialize_sessions
+      serialize_session_records
     end
 
     private
 
-    def serialize_sessions
-      client_ids = @sessions.map(&:client_id).uniq
-      clients = ::SignIn::ClientConfig.where(client_id: client_ids).index_by(&:client_id)
-
-      @sessions.map do |session|
-        client = clients[session.client_id]
+    def serialize_session_records
+      session_records.map do |session_record|
+        oauth_session = oauth_sessions[session_record.handle]
 
         {
-          handle: session.handle,
-          session_type: client&.authentication,
-          client_id: session.client_id,
-          expiration: session.refresh_expiration,
-          current: session.handle == @current_session_handle
+          handle: session_record.handle,
+          client_id: session_record.client_id,
+          device_description: session_record.device_description,
+          location: session_record.location,
+          created_at: session_record.created_at,
+          last_activity_at: session_record.last_activity_at,
+          signed_out_at: session_record.signed_out_at,
+          expiration: oauth_session&.refresh_expiration,
+          status: get_session_status(session_record)
         }
       end
+    end
+
+    def get_session_status(session_record)
+      if session_record.handle == @current_session_handle
+        'current'
+      elsif session_record.signed_out_at.present?
+        'signed_out'
+      else
+        'active'
+      end
+    end
+
+    def oauth_sessions
+      @oauth_sessions ||= ::SignIn::OAuthSession.where(handle: @session_records.pluck(:handle)).index_by(&:handle)
     end
   end
 end
