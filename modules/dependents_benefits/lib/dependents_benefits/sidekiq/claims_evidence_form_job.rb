@@ -93,7 +93,11 @@ module DependentsBenefits::Sidekiq
       stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(claim.form_id)
       stamper = DependentsBenefits::PdfStamper.new(stamp_set)
 
-      file_path = stamper.run(claim.to_pdf, timestamp: claim.created_at)
+      file_path = if Flipper.enabled?(:enable_686_674_digital_pdf)
+                    claim.to_pdf
+                  else
+                    stamper.run(claim.to_pdf, timestamp: claim.created_at)
+                  end
 
       claims_evidence_uploader(claim).upload_evidence(
         claim.id,

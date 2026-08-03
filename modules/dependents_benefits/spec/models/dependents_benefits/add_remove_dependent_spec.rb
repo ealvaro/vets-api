@@ -6,6 +6,7 @@ RSpec.describe DependentsBenefits::AddRemoveDependent do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
     allow_any_instance_of(DependentsBenefits::AddRemoveDependent).to receive(:pdf_overflow_tracking)
+    allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
   end
 
   let(:saved_claim) { create(:add_remove_dependents_claim) }

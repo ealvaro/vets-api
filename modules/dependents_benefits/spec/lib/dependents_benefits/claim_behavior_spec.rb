@@ -17,6 +17,7 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor_double)
     allow(monitor_double).to receive(:track_error_event)
+    allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
   end
 
   describe '#submissions_succeeded?' do
@@ -159,6 +160,16 @@ RSpec.describe DependentsBenefits::ClaimBehavior do
         it 'raises an error in the PDF filler' do
           expect { student_claim.to_pdf }.to raise_error(DependentsBenefits::MissingVeteranInfoError)
         end
+      end
+    end
+
+    context 'with the digital pdf flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(true)
+      end
+
+      it 'does nothing currently' do
+        skip('waiting on digital pdf service to be developed')
       end
     end
   end

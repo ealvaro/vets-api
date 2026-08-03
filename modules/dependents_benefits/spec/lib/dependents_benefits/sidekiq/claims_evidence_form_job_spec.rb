@@ -11,6 +11,7 @@ require 'dependents_benefits/user_data'
 RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
+    allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
   end
 
   let(:user) { create(:evss_user) }
@@ -84,6 +85,26 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
       expect(stamper).to receive(:run).and_raise(error)
 
       expect { job.send(:submit_to_claims_evidence_api, saved_claim) }.to raise_error(StandardError, 'Test error')
+    end
+
+    context 'with the digital pdf feature flag on' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(true)
+      end
+
+      it 'does not call the stamper' do
+        stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(saved_claim.form_id)
+        expect(DependentsBenefits::PdfStamper).to receive(:new).with(stamp_set).and_return stamper
+        expect(stamper).not_to receive(:run)
+        expect(claims_evidence_uploader).to receive(:upload_evidence).with(
+          saved_claim.id,
+          file_path: String,
+          form_id: saved_claim.form_id,
+          doctype: saved_claim.document_type
+        )
+
+        job.send(:submit_to_claims_evidence_api, saved_claim)
+      end
     end
   end
 
