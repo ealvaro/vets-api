@@ -229,16 +229,27 @@ module UnifiedHealthData
         refill_date >= submit_date
       end
 
-      # Determines whether a prescription is a recently dispensed fill that is still
+      # Determines whether a prescription is a recently dispensed *refill* fill that is still
       # awaiting shipping/tracking information. Qualifies only when the prescription is
-      # 'Active', has no tracking entry yet, and its most recent dispensed date falls
-      # within the shipped-tracking window.
+      # 'Active', has no tracking entry yet, has at least one *refill* dispense (beyond the
+      # initial fill), and its most recent dispensed date falls within the shipped-tracking
+      # window.
+      #
+      # The refill-dispense requirement is essential: "Refill in Process" describes a refill
+      # the veteran requested that has been filled but not yet shipped. A brand-new initial
+      # fill must never be reclassified. The two EHR sources model dispenses differently, so
+      # the check is source-aware (see #refill_dispense_present?): VistA dispenses are refills
+      # only, but an Oracle Health initial fill is itself a MedicationDispense, so a bare
+      # dispenses.blank? check would be a no-op for OH. is_refillable is intentionally NOT used
+      # as the discriminator: a prescription with refills remaining can still report
+      # isRefillable true while an already-requested refill is being filled/shipped.
       #
       # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
       # @return [Boolean] true when the fill is awaiting tracking, false otherwise
       def awaiting_tracking?(rx)
         return false unless rx.disp_status == DISP_ACTIVE
         return false if recent_tracking?(rx)
+        return false unless refill_dispense_present?(rx)
 
         dispensed_date = most_recent_dispensed_date(rx)
         return false unless dispensed_date
@@ -272,6 +283,39 @@ module UnifiedHealthData
         # granularity: a refill requested on the same calendar day as the most recent dispense is
         # a genuine new request and must still surface, otherwise same-day re-requests are dropped.
         dispensed_date.nil? || submit_date >= dispensed_date
+      end
+
+      # Whether the prescription carries a dispense that represents a *refill* (a fill beyond
+      # the original/initial fill). The two EHR sources model dispenses differently:
+      #
+      #   - VistA: rx.dispenses is built from rxRFRecords (refill records only); the initial
+      #     fill is a top-level dispensedDate and is never an rfRecord. Any dispense present
+      #     therefore already represents a refill.
+      #   - Oracle Health: rx.dispenses is built from every contained MedicationDispense, and
+      #     the initial fill is itself a completed MedicationDispense. A refill exists only
+      #     when more than one completed dispense is present — mirroring the refills-used math
+      #     `completed_dispenses - 1` in OracleHealthRefillHelper#extract_refill_remaining.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Boolean] true when a refill dispense is present
+      def refill_dispense_present?(rx)
+        if rx.source_ehr == UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH
+          completed_dispenses(rx) > 1
+        else
+          rx.dispenses.present?
+        end
+      end
+
+      # Counts Oracle Health dispenses with a 'completed' status. Voided dispenses
+      # (status 'entered-in-error') and in-progress dispenses do not count as evidence
+      # that a fill was actually handed over.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Integer] number of completed dispenses
+      def completed_dispenses(rx)
+        rx.dispenses.to_a.count do |d|
+          d.is_a?(Hash) && (d[:status] || d['status']) == 'completed'
+        end
       end
 
       # If any tracking entry has a completion date, the fill has shipped and is

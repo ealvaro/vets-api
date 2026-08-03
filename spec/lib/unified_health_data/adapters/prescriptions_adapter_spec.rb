@@ -1815,12 +1815,24 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
     context 'with an Oracle Health prescription recently dispensed with no tracking' do
       let(:oracle_dispensed_date) { 3.days.ago.utc.iso8601(3) }
+      let(:oracle_initial_dispensed_date) { 40.days.ago.utc.iso8601(3) }
+      # An OH refill: the initial fill plus one completed refill dispense. Only MORE than one
+      # completed dispense indicates a refill, since the initial fill is itself a dispense.
       let(:oracle_med_awaiting_tracking) do
         oracle_health_medication_data.merge(
           'contained' => [
             {
               'resourceType' => 'MedicationDispense',
-              'id' => 'dispense-1',
+              'id' => 'dispense-initial',
+              'status' => 'completed',
+              'whenHandedOver' => oracle_initial_dispensed_date,
+              'quantity' => { 'value' => 30 },
+              'location' => { 'display' => 'Main Pharmacy' }
+            },
+            {
+              'resourceType' => 'MedicationDispense',
+              'id' => 'dispense-refill',
+              'status' => 'completed',
               'whenHandedOver' => oracle_dispensed_date,
               'quantity' => { 'value' => 30 },
               'location' => { 'display' => 'Main Pharmacy' }
@@ -1845,6 +1857,33 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         expect(rx.disp_status).to eq('Active: Refill in Process')
         expect(rx.refill_status).to eq('refillinprocess')
         expect(rx.is_trackable).to be false
+      end
+
+      context 'when the only completed dispense is the initial fill' do
+        # A single completed MedicationDispense is the initial fill, not a refill, so the
+        # prescription must not be reclassified as "Refill in Process".
+        let(:oracle_med_awaiting_tracking) do
+          oracle_health_medication_data.merge(
+            'contained' => [
+              {
+                'resourceType' => 'MedicationDispense',
+                'id' => 'dispense-initial',
+                'status' => 'completed',
+                'whenHandedOver' => oracle_dispensed_date,
+                'quantity' => { 'value' => 30 },
+                'location' => { 'display' => 'Main Pharmacy' }
+              }
+            ]
+          )
+        end
+
+        it 'does not reclassify the Oracle Health initial fill' do
+          result = subject.parse(oracle_awaiting_tracking_response)
+          rx = result[:prescriptions].first
+
+          expect(rx.is_awaiting_tracking).to be false
+          expect(rx.disp_status).not_to eq('Active: Refill in Process')
+        end
       end
 
       context 'when dispensed beyond the 15-day window' do
@@ -2164,15 +2203,19 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       expect(adapter.send(:awaiting_tracking?, rx)).to be(false)
     end
 
-    it 'returns true once a recent dispensed date exists (proves the gate hinges on the dispensed date)' do
-      # Positive control: identical prescription EXCEPT it now has a dispensed date
-      # inside the 15-day window, which flips awaiting_tracking? to true. This proves
-      # the false result above is caused specifically by the missing dispensed date.
+    it 'returns true once a recent refill dispense exists (proves the gate hinges on the dispense)' do
+      # Positive control: identical prescription EXCEPT it now has a recent refill
+      # dispense (which supplies the in-window dispensed date), flipping
+      # awaiting_tracking? to true. This proves the false result above is caused
+      # specifically by the absence of a dispensed refill. A refill dispense is
+      # required (not just a bare dispensed date) so a freshly-staged initial fill is
+      # never reclassified.
       rx = UnifiedHealthData::Prescription.new(
         id: '12345',
         disp_status: 'Active',
         sorted_dispensed_date: 2.days.ago.to_date.to_s,
         dispensed_date: nil,
+        dispenses: [{ 'dispensedDate' => 2.days.ago.to_date.to_s }],
         tracking: []
       )
 
@@ -2309,9 +2352,21 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         end
 
         it 'does not downgrade an awaiting-tracking refill to Submitted (precedence)' do
-          # Recent dispensed date -> awaiting-tracking wins and keeps the
-          # dispense-based "Refill in Process" state over the date bridge.
+          # Recent dispensed date AND a real refill dispense -> awaiting-tracking wins
+          # and keeps the dispense-based "Refill in Process" state over the date bridge.
+          # The refill dispense (rxRFRecords) is required post-hardening: a bare
+          # dispensedDate alone no longer qualifies as awaiting-tracking.
           vista_med_submitted['dispensedDate'] = 3.days.ago.utc.iso8601(3)
+          vista_med_submitted['rxRFRecords'] = {
+            'rfRecord' => [
+              {
+                'id' => 'rf-1',
+                'refillStatus' => 'dispensed',
+                'dispensedDate' => 3.days.ago.utc.iso8601(3),
+                'refillDate' => 3.days.ago.utc.iso8601(3)
+              }
+            ]
+          }
 
           rx = subject.parse(submitted_response)[:prescriptions].first
 
