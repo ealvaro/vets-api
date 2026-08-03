@@ -26,6 +26,7 @@ The implementation of `production: false` required additional changes to the [rs
 
 ## Seeds
 Run `rake veteran:load_sample_vso_data ` to load Veteran organizations and a Veteran representative.
+Run `rake veteran:reload_vso_data` to load Veteran organizations and representatives from OGC (needed for POA code authorization in POA workflows).
 
 ## License
 [CC0 1.0 Universal Summary](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
