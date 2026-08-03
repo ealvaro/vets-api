@@ -280,6 +280,10 @@ features:
     actor_type: user
     description: Enables low-risk event path visibility logging for form 21-4138.
     enable_in_development: false
+  decision_review_form_21_4138_name_prefill_fix:
+    actor_type: user
+    description: If enabled, recovers the prefilled veteran name stripped from the 21-4138 submission payload to prevent a 500 on missing first name.
+    enable_in_development: true
   disability_526_document_validation_enabled:
     actor_type: user
     description: If enabled, the Form 21-526EZ upload endpoint will attempt to validate the uploaded document against the provided expected form type.
