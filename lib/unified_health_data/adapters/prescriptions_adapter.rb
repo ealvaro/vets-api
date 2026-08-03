@@ -14,6 +14,10 @@ module UnifiedHealthData
       # Number of days after the most recent shipped date during which a prescription remains trackable.
       SHIPPED_TRACKING_WINDOW_DAYS = 15
 
+      # Number of days a just-requested refill stays surfaced as in-flight ("Active: Submitted" /
+      # "Active: Refill in Process") while VistA lags flipping the upstream disp_status.
+      REFILL_IN_FLIGHT_WINDOW_DAYS = 3
+
       def initialize(current_user = nil)
         @current_user = current_user
         @vista_adapter = VistaPrescriptionAdapter.new
@@ -52,6 +56,7 @@ module UnifiedHealthData
         if Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
           apply_shipped_tracking_logic(prescriptions)
           apply_awaiting_tracking_logic(prescriptions)
+          apply_submission_date_bridge(prescriptions)
         end
 
         { prescriptions:, metadata: { has_failed_stations: any_source_failed?(body) } }
@@ -169,16 +174,59 @@ module UnifiedHealthData
       # @return [void]
       def apply_awaiting_tracking_logic(prescriptions)
         prescriptions.each do |rx|
-          awaiting = awaiting_tracking?(rx)
-          rx.is_awaiting_tracking = awaiting
-          next unless awaiting
+          if awaiting_tracking?(rx)
+            rx.is_awaiting_tracking = true
+            rx.disp_status = DISP_ACTIVE_REFILL_IN_PROCESS
+            rx.refill_status = STATUS_REFILL_IN_PROCESS
+            # There is no shipment yet, so there is nothing to track. Clear is_trackable so a
+            # tracking affordance is not offered against an empty/incomplete tracking list.
+            rx.is_trackable = false
+          elsif pending_refill?(rx)
+            reclassify_pending_refill(rx)
+          else
+            rx.is_awaiting_tracking = false
+          end
+        end
+      end
 
+      # Reclassifies a prescription whose refill was requested since the most recent fill while it
+      # still reports a plain 'Active' disp_status because VistA can lag flipping the status to
+      # submitted/refill-in-process. Surfaces the request so it stays visible on the refill status
+      # page: a request without a projected refill date is still just "Request submitted", while one
+      # with a refill date has progressed to "Fill in Process".
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to reclassify, mutated in place
+      # @return [void]
+      def reclassify_pending_refill(rx)
+        rx.is_awaiting_tracking = false
+        if projected_refill_scheduled?(rx)
           rx.disp_status = DISP_ACTIVE_REFILL_IN_PROCESS
           rx.refill_status = STATUS_REFILL_IN_PROCESS
-          # There is no shipment yet, so there is nothing to track. Clear is_trackable so a
-          # tracking affordance is not offered against an empty/incomplete tracking list.
-          rx.is_trackable = false
+        else
+          rx.disp_status = DISP_ACTIVE_SUBMITTED
+          rx.refill_status = STATUS_SUBMITTED
         end
+        # No shipment exists yet, so there is nothing to track.
+        rx.is_trackable = false
+        # A refill has already been requested, so the prescription is not independently refillable
+        # while it is surfaced as pending (matches the submission-date bridge behavior).
+        rx.is_refillable = false
+        log_pending_refill_reclassification(rx)
+      end
+
+      # A refill has progressed to "Fill in Process" only when a *projected* refill date exists
+      # that is not older than the request itself. A refill_date that predates the submit date is
+      # the previous fill, not a fill scheduled for the just-submitted request, so the request is
+      # still only "Submitted". Without this guard a stale prior-fill date would mislabel a
+      # freshly-submitted refill as already in process.
+      def projected_refill_scheduled?(rx)
+        refill_date = parse_date(rx.refill_date)
+        return false if refill_date.nil?
+
+        submit_date = parse_date(rx.refill_submit_date)
+        return true if submit_date.nil?
+
+        refill_date >= submit_date
       end
 
       # Determines whether a prescription is a recently dispensed fill that is still
@@ -200,6 +248,32 @@ module UnifiedHealthData
         dispensed_date.to_date >= SHIPPED_TRACKING_WINDOW_DAYS.days.ago.to_date
       end
 
+      # Determines whether a refill has been requested since the most recent fill while the
+      # prescription still reports a plain 'Active' disp_status with no tracking yet. VistA can
+      # lag flipping the status to 'Active: Submitted' / 'Active: Refill in Process' after a
+      # refill request, which would otherwise leave the request invisible on the refill status
+      # page. Bounded by the refill in-flight window, and requires the request to be newer than the
+      # most recent dispense so already-completed fill cycles are not re-captured (a dispense
+      # newer than the submit date means the request has already been filled).
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Boolean] true when a not-yet-filled refill request is pending
+      def pending_refill?(rx)
+        return false unless vista_source?(rx)
+        return false unless rx.disp_status == DISP_ACTIVE
+        return false if recent_tracking?(rx)
+
+        submit_date = parse_date(rx.refill_submit_date)
+        return false unless submit_date
+        return false unless submit_date >= REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago.to_date
+
+        dispensed_date = most_recent_dispensed_date(rx)&.to_date
+        # Use >= (not >) because refill_submit_date and dispensed_date are compared at day
+        # granularity: a refill requested on the same calendar day as the most recent dispense is
+        # a genuine new request and must still surface, otherwise same-day re-requests are dropped.
+        dispensed_date.nil? || submit_date >= dispensed_date
+      end
+
       # If any tracking entry has a completion date, the fill has shipped and is
       # therefore not awaiting tracking. Checks every entry (not just the first)
       # because tracking can contain multiple entries and any of them may carry the
@@ -215,11 +289,94 @@ module UnifiedHealthData
         end
       end
 
+      # The pending-refill heuristic exists solely to compensate for VistA lagging when it flips
+      # a prescription's disp_status after a refill request.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the prescription to evaluate
+      # @return [Boolean] true when the prescription originates from VistA
+      def vista_source?(rx)
+        rx.source_ehr == UnifiedHealthData::Prescription::SOURCE_EHR_VISTA
+      end
+
+      # Emits a structured log when a prescription is reclassified via the pending_refill? path so
+      # unexpected status changes can be traced and correlated with VistA lag timing. Only the last
+      # 4 digits of the prescription id are logged to avoid exposing PII.
+      #
+      # @param rx [UnifiedHealthData::Prescription] the reclassified prescription
+      # @return [void]
+      def log_pending_refill_reclassification(rx)
+        Rails.logger.info(
+          message: 'UHD prescription reclassified via pending_refill',
+          rx_id_suffix: rx.id.to_s.last(4),
+          disp_status: rx.disp_status,
+          refill_status: rx.refill_status,
+          refill_submit_date: rx.refill_submit_date,
+          most_recent_dispensed_date: rx.sorted_dispensed_date.presence || rx.dispensed_date
+        )
+      end
+
       def most_recent_dispensed_date(rx)
         raw = rx.sorted_dispensed_date.presence || rx.dispensed_date.presence
         return nil if raw.blank?
 
         Time.zone.parse(raw.to_s)
+      rescue ArgumentError, TypeError
+        nil
+      end
+
+      # Parses a date-only string into a Date, returning nil on blank or unparseable input.
+      def parse_date(raw)
+        return nil if raw.blank?
+
+        # Time.zone.parse returns nil (rather than raising) for non-blank but unparseable input,
+        # so guard the .to_date with safe navigation to avoid an unrescued NoMethodError.
+        Time.zone.parse(raw.to_s)&.to_date
+      rescue ArgumentError, TypeError
+        nil
+      end
+
+      # Keeps a prescription showing "Active: Submitted" after a refill request while upstream
+      # catches up, using persisted dates instead of the transient Redis badge. A submission newer
+      # than the last fill (or a submission with no fill yet) means the refill is still pending.
+      # Runs after the dispense-based tracking steps so those (shipped/awaiting) take precedence:
+      # only prescriptions still showing plain 'Active' are bridged here. Gated to VistA only:
+      # Oracle Health also populates refill_submit_date (from order Task executionPeriod), so an
+      # ungated bridge would fire on OH prescriptions that OH already surfaces correctly.
+      def apply_submission_date_bridge(prescriptions)
+        prescriptions.each do |rx|
+          next unless vista_source?(rx)
+          next unless rx.disp_status == DISP_ACTIVE
+          next unless refill_still_pending?(rx)
+
+          rx.disp_status = DISP_ACTIVE_SUBMITTED
+          rx.refill_status = STATUS_SUBMITTED
+          rx.is_refillable = false
+          # No shipment exists yet for a still-pending refill, so clear the upstream-sourced
+          # is_trackable flag to avoid offering a tracking affordance against an empty list.
+          rx.is_trackable = false
+        end
+      end
+
+      def refill_still_pending?(rx)
+        submit = parse_bridge_time(rx.refill_submit_date)
+        return false if submit.nil?
+
+        # Bound the bridge to the refill in-flight window. Without an upper bound a request
+        # that never receives a dispense upstream would hold the prescription at "Active: Submitted"
+        # with is_refillable=false indefinitely, re-creating the stuck-Submitted trap. After the
+        # window elapses we stop bridging so the prescription falls back to its upstream status.
+        return false if submit < REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago
+
+        fill = parse_bridge_time(rx.refill_date)
+        return true if fill.nil? # submitted, not yet filled
+
+        submit > fill
+      end
+
+      def parse_bridge_time(value)
+        return nil if value.blank?
+
+        Time.zone.parse(value.to_s)
       rescue ArgumentError, TypeError
         nil
       end

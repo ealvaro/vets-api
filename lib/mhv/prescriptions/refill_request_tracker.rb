@@ -12,7 +12,15 @@ module MHV
       DUPLICATE_REFILL_ERROR = 'Refill request already in progress'
       SERVICE_UNAVAILABLE_ERROR = 'Service unavailable'
 
-      def initialize(user, cache: Rails.cache, ttl: DEFAULT_CLAIM_TTL)
+      # Reads the claim (dup-guard) lifetime from Settings with safe coercion.
+      # The config gem may deliver nil/String/Integer, so we coerce explicitly and
+      # fall back to DEFAULT_CLAIM_TTL for missing/blank/zero/non-numeric values.
+      def self.configured_ttl
+        seconds = Settings.dig(:mhv, :rx, :refill_claim_ttl_seconds).to_i
+        seconds.positive? ? seconds.seconds : DEFAULT_CLAIM_TTL
+      end
+
+      def initialize(user, cache: Rails.cache, ttl: RefillRequestTracker.configured_ttl)
         @user = user
         @cache = cache
         @ttl = ttl

@@ -1061,6 +1061,7 @@ mhv:
     gw_base_path: v1/
     host: https://mhv-api.example.com
     mock: true
+    refill_claim_ttl_seconds: 900
     x_api_key: fake-x-api-key
   sm:
     app_token: fake-app-token

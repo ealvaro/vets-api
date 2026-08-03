@@ -139,4 +139,96 @@ RSpec.describe MHV::Prescriptions::RefillRequestTracker do
       end
     end
   end
+
+  # RC5 CHARACTERIZATION: the refill "badge" that keeps a just-submitted
+  # prescription showing as in-progress is backed by a cache entry with a fixed
+  # TTL (10 min here, 15 min in prod). Once that TTL elapses the duplicate block
+  # disappears and the prescription silently reverts to plain upstream 'Active'
+  # until upstream itself reflects the refill. These tests assert the CURRENT
+  # (buggy) time-bomb behavior; they must PASS.
+  describe 'claim TTL expiry (RC5)' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    it 'holds the badge before the TTL elapses' do
+      # DESIRED: the badge stays until upstream confirms the refill.
+      # CURRENT: the badge is held only while the cache key lives, which is fine
+      # inside the window (this asserts the block is genuinely active at 9 min).
+      tracker.claim_orders([order])
+
+      travel(9.minutes) do
+        claimed_orders, duplicate_failures = tracker.claim_orders([order])
+        expect(claimed_orders).to eq([])
+        expect(duplicate_failures).not_to be_empty
+      end
+    end
+
+    it 'badge expires after the TTL, allowing re-claim (the transient revert mechanism)' do
+      # RC5 CHARACTERIZATION: once the 10-min badge (prod default 15 min) expires,
+      # the duplicate block is gone and the prescription reverts to plain upstream
+      # 'Active' until upstream reflects the refill.
+      tracker.claim_orders([order])
+
+      travel(11.minutes) do
+        claimed_orders, duplicate_failures = tracker.claim_orders([order])
+        expect(claimed_orders).to eq([order])
+        expect(duplicate_failures).to eq([])
+      end
+    end
+  end
+
+  # I2: the claim TTL (dup-guard lifetime) is now Settings-tunable rather than a
+  # hardcoded 15-minute cliff. The constructor default reads the configured value
+  # with safe coercion, falling back to DEFAULT_CLAIM_TTL for missing/blank/zero/
+  # non-numeric settings (config gem may deliver nil/String/Integer).
+  describe 'configurable TTL (I2)' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    def stub_ttl_setting(value)
+      allow(Settings).to receive(:dig).and_call_original
+      allow(Settings).to receive(:dig).with(:mhv, :rx, :refill_claim_ttl_seconds).and_return(value)
+    end
+
+    it 'uses the Settings-configured TTL for the constructor default' do
+      stub_ttl_setting(120)
+      base_time = Time.current
+      default_tracker = described_class.new(user, cache:)
+
+      travel_to(base_time) do
+        default_tracker.claim_orders([order])
+      end
+
+      # Still blocked just before the configured 2-minute TTL elapses.
+      travel_to(base_time + 1.minute) do
+        claimed_orders, duplicate_failures = default_tracker.claim_orders([order])
+        expect(claimed_orders).to eq([])
+        expect(duplicate_failures).not_to be_empty
+      end
+
+      # Re-claimable just past the configured 2-minute TTL boundary.
+      travel_to(base_time + 2.minutes + 1.second) do
+        claimed_orders, = default_tracker.claim_orders([order])
+        expect(claimed_orders).to eq([order])
+      end
+    end
+
+    it 'falls back to DEFAULT_CLAIM_TTL when the setting is missing' do
+      stub_ttl_setting(nil)
+      expect(described_class.configured_ttl).to eq(15.minutes)
+    end
+
+    it 'falls back to DEFAULT_CLAIM_TTL when the setting is blank' do
+      stub_ttl_setting('')
+      expect(described_class.configured_ttl).to eq(15.minutes)
+    end
+
+    it 'falls back to DEFAULT_CLAIM_TTL when the setting is zero' do
+      stub_ttl_setting(0)
+      expect(described_class.configured_ttl).to eq(15.minutes)
+    end
+
+    it 'falls back to DEFAULT_CLAIM_TTL when the setting is non-numeric' do
+      stub_ttl_setting('abc')
+      expect(described_class.configured_ttl).to eq(15.minutes)
+    end
+  end
 end
