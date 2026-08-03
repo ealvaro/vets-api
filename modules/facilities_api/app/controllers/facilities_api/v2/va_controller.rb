@@ -7,8 +7,9 @@ module FacilitiesApi
     before_action :validate_facility_id, only: :show
 
     # Facility ids are a 2-3 letter facility-type prefix (vha, vba, nca, vc),
-    # an underscore, and an alphanumeric station number (e.g. vha_402GA)
-    FACILITY_ID_REGEX = /\A[a-zA-Z]{2,3}_[a-zA-Z0-9]{1,7}\z/
+    # an underscore, and a station number of up to 15 alphanumerics, hyphens,
+    # and underscores (e.g. vha_402GA, nca_828-A)
+    FACILITY_ID_REGEX = /\A[a-z]{2,3}_[a-z0-9_-]{1,15}\z/i
 
     def search
       params[:facilityIds] = params[:ids] if params[:ids].present?

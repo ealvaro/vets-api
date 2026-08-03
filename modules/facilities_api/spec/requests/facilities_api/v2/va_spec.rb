@@ -520,6 +520,25 @@ RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: 
       end
     end
 
+    context 'with a valid facility id' do
+      # The station number may contain hyphens and underscores in addition to
+      # alphanumerics, and the facility-type prefix is case insensitive. The last
+      # entry is the maximum permitted station number length (15 characters).
+      %w[vha_402GA nca_828-A nca_s1119 vba_348a vha_648_A4 NCA_828-A vha_648A4-B_1234567].each do |id|
+        it "passes #{id} through to Lighthouse" do
+          client = instance_double(FacilitiesApi::V2::Lighthouse::Client)
+          allow(FacilitiesApi::V2::Lighthouse::Client).to receive(:new).and_return(client)
+          # Raise once the id has cleared validation so the assertion is about the
+          # id reaching the client, not about serializing a facility.
+          expect(client).to receive(:get_by_id).with(id).and_raise(JSON::ParserError, 'reached Lighthouse')
+
+          get "/facilities_api/v2/va/#{id}"
+
+          expect(response).not_to have_http_status(:bad_request)
+        end
+      end
+    end
+
     context 'with an invalid facility id' do
       it 'returns 400 without calling Lighthouse' do
         expect_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).not_to receive(:get_by_id)
@@ -549,6 +568,22 @@ RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: 
         get '/facilities_api/v2/va/vha_'
 
         expect(response).to have_http_status(:bad_request)
+      end
+
+      # Allowing hyphens and underscores in the station number should not open up
+      # the rest of the punctuation range around them. The last entry is one
+      # character past the maximum permitted station number length (15).
+      %w[
+        828-A v_828 vhax_828 vha-828 vha_828!A vha_828+A vha_828:A vha_828@A vha_828%3CA
+        vha_648A4-B_12345678
+      ].each do |id|
+        it "returns 400 for #{id} without calling Lighthouse" do
+          expect_any_instance_of(FacilitiesApi::V2::Lighthouse::Client).not_to receive(:get_by_id)
+
+          get "/facilities_api/v2/va/#{id}"
+
+          expect(response).to have_http_status(:bad_request)
+        end
       end
     end
 
