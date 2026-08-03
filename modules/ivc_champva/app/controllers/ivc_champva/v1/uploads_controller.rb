@@ -1461,6 +1461,9 @@ module IvcChampva
           base_form_id = form_id_for_form_number(parsed_form_data['form_number'])
           form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
           track_form_submission_metrics(form)
+          claim_id = parsed_form_data['claim_id']
+          claim_id_present = claim_id.present?
+          form.uuid = claim_id if claim_id_present
 
           attachment_ids = form.supporting_document_ids(parsed_form_data)
           if attachment_ids.blank?
@@ -1473,7 +1476,7 @@ module IvcChampva
             'supportingDocApplicants' => supporting_document_applicants(parsed_form_data).to_json,
             'standalone-flag' => 'true'
           }
-          merge_fields['uuid'] = parsed_form_data['claim_id'] if parsed_form_data['claim_id'].present?
+          merge_fields['uuid'] = claim_id if claim_id_present
           raw_metadata = form.metadata.merge(merge_fields)
           if parsed_form_data['submission_type'].to_s.casecmp('enrollment').zero?
             backfill_enrollment_metadata!(raw_metadata)

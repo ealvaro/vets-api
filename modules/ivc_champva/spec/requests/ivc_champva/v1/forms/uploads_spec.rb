@@ -1567,6 +1567,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       allow(controller).to receive(:form_id_for_form_number).with('10-10D-EXTENDED').and_return('vha_10_10d')
       allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
       allow(controller).to receive(:track_form_submission_metrics)
+      allow(form_instance).to receive(:uuid=)
       allow(controller).to receive(:docs_only_resubmission_supporting_paths_from_form)
         .and_return(['/tmp/supporting.pdf'])
       allow(IvcChampva::MetadataValidator).to receive(:validate) { |metadata| metadata }
@@ -1578,6 +1579,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       expect(metadata['uuid']).to eq(claim_uuid)
       expect(metadata['docType']).to eq('10-10D-EXTENDED-EXISTING')
       expect(metadata['attachment_ids']).to eq(['Birth certificate'])
+      expect(form_instance).to have_received(:uuid=).with(claim_uuid).once
     end
   end
 

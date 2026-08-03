@@ -130,6 +130,7 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     allow(controller).to receive(:form_id_for_form_number).with('10-10D-SUPPLEMENTAL').and_return('vha_10_10d')
     allow(IvcChampva::FormVersionManager).to receive(:create_form_instance).and_return(form_instance)
     allow(controller).to receive(:track_form_submission_metrics)
+    allow(form_instance).to receive(:uuid=)
     allow(form_instance).to receive(:supporting_document_ids).and_return(['Birth certificate'])
     allow(controller).to receive(:docs_only_resubmission_supporting_paths_from_form).and_return(['/tmp/supporting.pdf'])
     allow(IvcChampva::MetadataValidator).to receive(:validate) { |m| m }
@@ -142,13 +143,15 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     expect(metadata['submissionType']).to eq('existing')
     expect(metadata['standalone-flag']).to eq('true')
     expect(metadata['uuid']).to eq(form_uuid)
+    expect(form_instance).not_to have_received(:uuid=)
 
-    # With claim_id, uuid comes from claim_id
+    # With claim_id, the form and metadata use claim_id so the PDF and metadata filenames share a UUID prefix
     payload_with_claim = base_payload.merge('claim_id' => claim_uuid)
     _file_paths, metadata = controller.send(
       :get_docs_only_resubmission_file_paths_and_metadata, payload_with_claim
     )
     expect(metadata['uuid']).to eq(claim_uuid)
+    expect(form_instance).to have_received(:uuid=).with(claim_uuid).once
   end
 
   it 'does not use docs-only persistence when both docs-only flow flags are off' do
