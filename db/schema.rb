@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_30_135839) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1889,8 +1889,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
   end
 
   create_table "sign_in_session_records", force: :cascade do |t|
+    t.string "browser"
     t.string "client_id", null: false
     t.datetime "created_at", null: false
+    t.string "csp_type"
     t.string "device_description"
     t.text "encrypted_kms_key"
     t.uuid "handle", null: false
@@ -1903,6 +1905,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
     t.uuid "user_account_id", null: false
     t.text "user_agent_ciphertext"
     t.index ["handle"], name: "index_sign_in_session_records_on_handle", unique: true
+    t.index ["signed_out_at"], name: "index_sign_in_session_records_on_signed_out_at", where: "(signed_out_at IS NOT NULL)"
     t.index ["user_account_id"], name: "index_sign_in_session_records_on_user_account_id"
   end
 
