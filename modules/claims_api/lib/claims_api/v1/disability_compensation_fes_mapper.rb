@@ -218,7 +218,11 @@ module ClaimsApi
       # 'serviceBranch', 'activeDutyBeginDate' & 'activeDutyEndDate' are required via the schema
       def map_service_periods(info)
         @fes_claim[:serviceInformation] = {
-          servicePeriods: info[:servicePeriods].map { |period| period.except(:separationLocationCode).compact }
+          servicePeriods: info[:servicePeriods].map do |period|
+            period.except(:separationLocationCode)
+                  .merge(serviceBranch: normalize_service_branch(period[:serviceBranch]))
+                  .compact
+          end
         }
       end
 

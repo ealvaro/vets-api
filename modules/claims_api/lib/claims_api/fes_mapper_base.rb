@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'claims_api/service_branch_mapper'
+
 module ClaimsApi
   module FesMapperBase
     MAX_LINE_LENGTH_ADDRESS_LINE_ONE = 20
@@ -47,6 +49,10 @@ module ClaimsApi
       address[:addressLine2] = ln1.sub(address[:addressLine1], '').strip
 
       address
+    end
+
+    def normalize_service_branch(name)
+      ClaimsApi::ServiceBranchMapper.new(name).value
     end
 
     # claim submission source definition for v1 and v2 to prevent drift between mappers

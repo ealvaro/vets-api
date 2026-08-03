@@ -442,6 +442,24 @@ describe ClaimsApi::V1::DisabilityCompensationFesMapper do
           expect(service_info_object).not_to have_key(:confinements)
         end
 
+        context 'service branch normalization' do
+          [
+            'National Oceanic and Atmospheric Administration',
+            'National Oceanic &amp; Atmospheric Administration'
+          ].each do |variant|
+            it "normalizes '#{variant}' to the canonical NOAA form" do
+              form_data['data']['attributes']['serviceInformation']['servicePeriods'].first['serviceBranch'] = variant
+              auto_claim = create(:auto_established_claim,
+                                  form_data: form_data['data']['attributes'],
+                                  auth_headers:)
+              periods = ClaimsApi::V1::DisabilityCompensationFesMapper.new(auto_claim).map_claim
+                                                                      .dig(:data, :form526, :serviceInformation,
+                                                                           :servicePeriods)
+              expect(periods.first[:serviceBranch]).to eq('National Oceanic & Atmospheric Administration')
+            end
+          end
+        end
+
         it 'removes nil values from the servicePeriods' do
           form_service_info_data = form_data['data']['attributes']['serviceInformation']
           form_service_info_data['servicePeriods'][0]['activeDutyEndDate'] = nil
