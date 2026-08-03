@@ -663,7 +663,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_APPOINTMENT_ERROR).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:empty_response']
+            tags: ['error_type:empty_response', 'source:btsss', 'step:find_or_add_appointment']
           ).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -683,7 +683,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_APPOINTMENT_ERROR).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-              tags: ['error_type:empty_response']
+              tags: ['error_type:empty_response', 'source:btsss', 'step:find_or_add_appointment']
             ).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -703,7 +703,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_CLAIM_CREATE_ERROR).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:empty_response']
+            tags: ['error_type:empty_response', 'source:btsss', 'step:create_claim']
           ).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -723,7 +723,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_CLAIM_CREATE_ERROR).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-              tags: ['error_type:empty_response']
+              tags: ['error_type:empty_response', 'source:btsss', 'step:create_claim']
             ).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -743,7 +743,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_EXPENSE_ADD_ERROR).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:http']
+            tags: ['error_type:http', 'source:btsss']
           ).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -763,7 +763,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_EXPENSE_ADD_ERROR).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-              tags: ['error_type:http']
+              tags: ['error_type:http', 'source:btsss']
             ).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -783,7 +783,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
           expect(StatsD).to have_received(:increment).with(CheckIn::Constants::OH_STATSD_CLAIM_SUBMIT_ERROR).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:http']
+            tags: ['error_type:http', 'source:btsss']
           ).once
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::OH_STATSD_BTSSS_V1_CLAIM_FAILURE,
@@ -803,7 +803,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_CLAIM_SUBMIT_ERROR).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-              tags: ['error_type:http']
+              tags: ['error_type:http', 'source:btsss']
             ).once
             expect(StatsD).to have_received(:increment).with(
               CheckIn::Constants::CIE_STATSD_BTSSS_V1_CLAIM_FAILURE,

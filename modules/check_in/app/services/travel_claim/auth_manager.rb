@@ -98,6 +98,7 @@ module TravelClaim
     rescue => e
       log_auth_event("Token acquisition failed: #{e.class.name}")
       increment_auth_failure_metric
+      increment_auth_timeout_request_error(e)
       raise
     end
 
@@ -263,6 +264,16 @@ module TravelClaim
       else
         StatsD.increment(CheckIn::Constants::CIE_STATSD_AUTH_FAILURE)
       end
+    end
+
+    def increment_auth_timeout_request_error(error)
+      return unless RequestErrorMetrics.timeout_error?(error)
+
+      RequestErrorMetrics.increment(
+        facility_type: @facility_type,
+        error_type: RequestErrorMetrics::ERROR_TYPE_TIMEOUT,
+        source: RequestErrorMetrics::SOURCE_AUTH
+      )
     end
 
     ##

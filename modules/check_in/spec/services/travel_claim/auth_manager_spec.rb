@@ -208,6 +208,24 @@ RSpec.describe TravelClaim::AuthManager do
         expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_AUTH_FAILURE).once
       end
 
+      it 'increments request.error timeout with source auth for Faraday::TimeoutError' do
+        veis_conn = instance_double(Faraday::Connection)
+        config_instance = instance_double(TravelClaim::Configuration)
+        allow(config_instance).to receive(:connection).with(server_url: anything).and_return(veis_conn)
+        allow(TravelClaim::Configuration).to receive(:instance).and_return(config_instance)
+        allow(veis_conn).to receive(:post).and_raise(Faraday::TimeoutError)
+
+        expect do
+          auth_manager.with_auth { 'success' }
+        end.to raise_error(Faraday::TimeoutError)
+
+        expect(StatsD).to have_received(:increment).with(CheckIn::Constants::CIE_STATSD_AUTH_FAILURE).once
+        expect(StatsD).to have_received(:increment).with(
+          CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
+          tags: ['error_type:timeout', 'source:auth']
+        ).once
+      end
+
       context 'with OH facility type' do
         let(:facility_type) { 'oh' }
 

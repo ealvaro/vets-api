@@ -73,6 +73,10 @@ unless Rails.env.test?
       TravelClaim::TravelPayClient.statsd_count_success method, "api.check_in.v1.travel_claim.client.#{method}.count"
       TravelClaim::TravelPayClient.statsd_measure method, "api.check_in.v1.travel_claim.client.#{method}.measure"
     end
+
+    TravelClaim::AuthManager.extend(StatsD::Instrument)
+    TravelClaim::AuthManager.statsd_measure :fetch_btsss_token!,
+                                            'api.check_in.v1.travel_claim.auth.fetch_btsss_token.measure'
   end
 
   private

@@ -510,17 +510,18 @@ RSpec.describe TravelClaim::TravelPayClient do
               operation: 'find_or_add_appointment',
               api_path: 'api/v3/appointments/find-or-add',
               http_status: 500,
-              error_class: 'Common::Exceptions::BackendServiceException'
+              error_class: 'Common::Exceptions::BackendServiceException',
+              api_error_message: 'Common::Exceptions::BackendServiceException'
             )
           )
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:http']
+            tags: ['error_type:http', 'source:btsss']
           )
         end
       end
 
-      it 'tags request error as timeout for GatewayTimeout' do
+      it 'tags request error as timeout for GatewayTimeout and labels api_error_message' do
         with_settings(Settings.check_in.travel_reimbursement_api_v2,
                       claims_url_v2:, claims_base_path_v2:) do
           allow(client).to receive(:perform).and_raise(Common::Exceptions::GatewayTimeout)
@@ -534,7 +535,13 @@ RSpec.describe TravelClaim::TravelPayClient do
 
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:timeout']
+            tags: ['error_type:timeout', 'source:btsss']
+          )
+          expect(Rails.logger).to have_received(:error).with(
+            hash_including(
+              api_error_message: 'Common::Exceptions::GatewayTimeout',
+              error_class: 'Common::Exceptions::GatewayTimeout'
+            )
           )
         end
       end
@@ -555,7 +562,7 @@ RSpec.describe TravelClaim::TravelPayClient do
 
           expect(StatsD).to have_received(:increment).with(
             CheckIn::Constants::CIE_STATSD_BTSSS_V1_REQUEST_ERROR,
-            tags: ['error_type:timeout']
+            tags: ['error_type:timeout', 'source:btsss']
           )
         end
       end
@@ -602,7 +609,7 @@ RSpec.describe TravelClaim::TravelPayClient do
           .with(:check_in_experience_travel_claim_log_api_error_details).and_return(false)
       end
 
-      it 'logs error without api_error_message or error_detail fields' do
+      it 'falls back to error class for api_error_message and omits error_detail' do
         with_settings(Settings.check_in.travel_reimbursement_api_v2,
                       claims_url_v2:) do
           error_body = { 'message' => 'Detailed error message' }.to_json
@@ -622,7 +629,10 @@ RSpec.describe TravelClaim::TravelPayClient do
           end.to raise_error(Common::Exceptions::BackendServiceException)
 
           expect(Rails.logger).to have_received(:error).with(
-            hash_excluding(:api_error_message, :error_detail)
+            hash_including(api_error_message: 'Common::Exceptions::BackendServiceException')
+          )
+          expect(Rails.logger).to have_received(:error).with(
+            hash_excluding(:error_detail)
           )
         end
       end

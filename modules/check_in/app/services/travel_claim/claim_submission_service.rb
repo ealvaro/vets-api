@@ -180,7 +180,7 @@ module TravelClaim
 
       unless appointment_id
         increment_error_metric(APPOINTMENT_ERROR)
-        increment_empty_response_metric
+        increment_empty_response_metric(RequestErrorMetrics::STEP_FIND_OR_ADD_APPOINTMENT)
         raise_backend_service_exception('Appointment could not be found or created', response.status)
       end
 
@@ -206,7 +206,7 @@ module TravelClaim
 
       unless claim_id
         increment_error_metric(CLAIM_CREATE_ERROR)
-        increment_empty_response_metric
+        increment_empty_response_metric(RequestErrorMetrics::STEP_CREATE_CLAIM)
         raise_backend_service_exception('Failed to create claim', response.status)
       end
 
@@ -551,12 +551,22 @@ module TravelClaim
       )
     end
 
-    def increment_empty_response_metric
-      increment_request_error_metric(RequestErrorMetrics::ERROR_TYPE_EMPTY_RESPONSE)
+    def increment_empty_response_metric(step)
+      RequestErrorMetrics.increment(
+        facility_type: @facility_type,
+        error_type: RequestErrorMetrics::ERROR_TYPE_EMPTY_RESPONSE,
+        source: RequestErrorMetrics::SOURCE_BTSSS,
+        step:
+      )
     end
 
-    def increment_request_error_metric(error_type)
-      RequestErrorMetrics.increment(facility_type: @facility_type, error_type:)
+    def increment_request_error_metric(error_type, step: nil)
+      RequestErrorMetrics.increment(
+        facility_type: @facility_type,
+        error_type:,
+        source: RequestErrorMetrics::SOURCE_BTSSS,
+        step:
+      )
     end
 
     def increment_outcome_metric(cie_metric, oh_metric)

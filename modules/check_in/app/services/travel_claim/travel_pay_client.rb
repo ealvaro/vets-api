@@ -138,7 +138,11 @@ module TravelClaim
     private
 
     def handle_api_exception(operation:, api_path:, error:)
-      RequestErrorMetrics.increment_for_exception(facility_type: @facility_type, error:)
+      RequestErrorMetrics.increment_for_exception(
+        facility_type: @facility_type,
+        error:,
+        source: RequestErrorMetrics::SOURCE_BTSSS
+      )
       log_external_api_error(operation:, api_path:, error:)
       enrich_and_reraise_if_needed(error)
     end
@@ -233,6 +237,8 @@ module TravelClaim
         end
       end
 
+      # Always set a label for Datadog unique-error grouping (timeouts have no BTSSS body).
+      details[:api_error_message] = details[:api_error_message].presence || error.class.name
       details
     end
 
