@@ -31,7 +31,7 @@ RSpec.describe Form1010EzrAttachments::FileTypeValidator do
       end
 
       it 'increments StatsD and logs and raises an error' do
-        error_message = "undefined method `tempfile' for an instance of String"
+        error_message = "undefined method 'tempfile' for an instance of String"
 
         allow(StatsD).to receive(:increment)
         expect(StatsD).to receive(:increment).with('api.1010ezr.attachments.failed')

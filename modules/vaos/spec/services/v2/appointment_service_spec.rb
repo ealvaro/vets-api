@@ -86,12 +86,12 @@ describe VAOS::V2::AppointmentsService do
     end
 
     # Shared helper for VCR cassettes commonly used in post_appointment success tests
-    def with_post_appointment_vcr_cassettes(cassette_name = 'post_appointments_va_booked_200_JACQUELINE_M', &block)
+    def with_post_appointment_vcr_cassettes(cassette_name = 'post_appointments_va_booked_200_JACQUELINE_M', &)
       VCR.use_cassette("vaos/v2/appointments/#{cassette_name}", match_requests_on: %i[method path query]) do
         VCR.use_cassette('vaos/v2/mobile_facility_service/get_facility_200',
                          match_requests_on: %i[method path query]) do
           VCR.use_cassette('vaos/v2/mobile_facility_service/get_clinic_200',
-                           match_requests_on: %i[method path query], &block)
+                           match_requests_on: %i[method path query], &)
         end
       end
     end

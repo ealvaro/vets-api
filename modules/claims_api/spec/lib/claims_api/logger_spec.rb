@@ -11,9 +11,9 @@ describe ClaimsApi::Logger do
 
   describe 'When it recieves a message object' do
     let(:expected_msg) do
-      'ClaimsApi :: validate_identifiers :: {:icn=>"1012667169V030190", :cid=>"8675309", ' \
-        ':current_user=>"1012667169V030190", :message=>"multiple_ids: 2, header_request: true, ' \
-        'require_birls: true, birls_id: true, rid: 8675309, ptcpnt_id: true", :api_version=>"V1"} :: '
+      'ClaimsApi :: validate_identifiers :: {icn: "1012667169V030190", cid: "8675309", ' \
+        'current_user: "1012667169V030190", message: "multiple_ids: 2, header_request: true, ' \
+        'require_birls: true, birls_id: true, rid: 8675309, ptcpnt_id: true", api_version: "V1"} :: '
     end
 
     let(:v1_application_controller_message_content) do

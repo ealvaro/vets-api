@@ -376,7 +376,7 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
           expect(response.parsed_body).to eq({ 'errors' =>
                                                  [{ 'title' => 'Filter not allowed',
                                                     'detail' =>
-                                                      '"{"quantity"=>{"eq"=>"8"}}" is not allowed for filtering',
+                                                      '"{"quantity" => {"eq" => "8"}}" is not allowed for filtering',
                                                     'code' => '104',
                                                     'status' => '400' }] })
         end

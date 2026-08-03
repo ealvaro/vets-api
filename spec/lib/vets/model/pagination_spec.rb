@@ -46,7 +46,7 @@ RSpec.describe 'Vets::Model::Pagination' do
     it 'does not allow calling set_pagination directly from outside the class' do
       expect do
         user_class.set_pagination(per_page: 30, max_per_page: 60)
-      end.to raise_error(NoMethodError, /private method `set_pagination' called/)
+      end.to raise_error(NoMethodError, /private method 'set_pagination' called/)
     end
   end
 end

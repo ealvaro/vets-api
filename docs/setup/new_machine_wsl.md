@@ -66,7 +66,7 @@
 
 ## Setup asdf or RVM (Ruby Version Manager) for Ruby version management
 
-> If rbenv does not yet support the repo's Ruby version (3.3.12), you can use asdf or RVM instead. *Note*: use only one of these and not both.
+> When running the setup steps, rbenv did not support version 3.4.10, so you can use asdf or RVM. *Note*: use only one of these and not both.
 
 ### asdf setup
 
@@ -92,8 +92,8 @@
 3. Download Ruby (verify correct version)
 
     ```bash
-    asdf install ruby 3.3.12
-    asdf global ruby 3.3.12
+    asdf install ruby 3.4.10
+    asdf global ruby 3.4.10
     ruby -v
     ```
 
@@ -106,10 +106,10 @@
    ```
 
 2. Follow setup steps for Ubuntu: [rvm/ubuntu_rvm: Ubuntu package for RVM](https://github.com/rvm/ubuntu_rvm)
-3. With RVM installed, run the following command to install Ruby 3.3.12 (enter password if prompted):
+3. With RVM installed, run the following command to install Ruby 3.4.10 (enter password if prompted):
 
    ```bash
-   rvm install ruby-3.3.12
+   rvm install ruby-3.4.10
    ```
 
 4. Verify the ruby version with:

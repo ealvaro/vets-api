@@ -1666,6 +1666,7 @@ spec/lib/common/client/middleware @software/va-platform-backend
 spec/lib/common/client/session_spec.rb @software/va-platform-backend
 spec/lib/common/convert_to_pdf_spec.rb @software/va-platform-backend
 spec/lib/common/exceptions/detailed_schema_errors_spec.rb @software/va-platform-backend
+spec/lib/common/exceptions/invalid_filters_syntax_spec.rb @software/va-platform-backend
 spec/lib/common/exceptions/max_array_size_exceeded_spec.rb @software/va-platform-backend
 spec/lib/common/exceptions/serializable_error_spec.rb @software/va-platform-backend
 spec/lib/common/jwt_generator_spec.rb @software/disability-benefits

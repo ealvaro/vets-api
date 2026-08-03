@@ -7,7 +7,7 @@ x-app: &common
       BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
       USER_ID: ${VETS_API_USER_ID}
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
-      RUBY_IMAGE: "${RUBY_IMAGE:-public.ecr.aws/docker/library/ruby:3.3.12-slim-bookworm}"
+      RUBY_IMAGE: "${RUBY_IMAGE:-public.ecr.aws/docker/library/ruby:3.4.10-slim-bookworm}"
       CERTS_IMAGE: "${CERTS_IMAGE:-008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.2}"
     context: .
   environment:

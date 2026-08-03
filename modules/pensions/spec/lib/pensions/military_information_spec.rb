@@ -16,6 +16,10 @@ RSpec.describe Pensions::MilitaryInformation do
     )
   end
 
+  before do
+    allow(Rails.logger).to receive(:error).and_call_original
+  end
+
   describe '#format_service_branches_for_pensions' do
     it 'returns an object of valid branches' do
       branches = %w[army navy airForce coastGuard marineCorps spaceForce usphs noaa]
@@ -110,11 +114,11 @@ RSpec.describe Pensions::MilitaryInformation do
 
       allow(military_personnel_stub).to receive(:get_service_history).and_return(bad_response)
 
-      expect(Rails.logger).to receive(:error).with(
-        'Error fetching service branches for Pension prefill: ' \
-        "undefined method `branch_of_service' for an instance of String"
-      )
       expect(described_class.new(nil).service_branches_for_pensions).to eq({})
+      expect(Rails.logger).to have_received(:error).with(
+        'Error fetching service branches for Pension prefill: undefined method ' \
+        "'branch_of_service' for an instance of String"
+      )
     end
   end
 
@@ -145,10 +149,10 @@ RSpec.describe Pensions::MilitaryInformation do
 
       allow(military_personnel_stub).to receive(:get_service_history).and_return(bad_response)
 
-      expect(Rails.logger).to receive(:error).with(
-        "Error fetching service number for Pension prefill: undefined method `to_i' for an instance of Array"
-      )
       expect(described_class.new(nil).service_number).to be_nil
+      expect(Rails.logger).to have_received(:error).with(
+        "Error fetching service number for Pension prefill: undefined method 'to_i' for an instance of Array"
+      )
     end
   end
 end

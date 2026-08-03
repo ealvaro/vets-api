@@ -65,7 +65,7 @@ RSpec.describe BenefitsDiscovery::Params do
           VCR.use_cassette('va_profile/military_personnel/post_read_service_history_500') do
             expect { subject.prepared_params }.to raise_error(
               Common::Exceptions::BackendServiceException,
-              'BackendServiceException: {:source=>"VAProfile::MilitaryPersonnel::Service", :code=>"VET360_CORE100"}'
+              'BackendServiceException: {source: "VAProfile::MilitaryPersonnel::Service", code: "VET360_CORE100"}'
             )
           end
         end

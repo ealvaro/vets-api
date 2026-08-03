@@ -357,7 +357,7 @@ RSpec.describe DebtsApi::V0::FinancialStatusReportService, type: :service do
             expect do
               service.submit_vha_fsr(form_submission)
             end.to raise_error(Common::Exceptions::BackendServiceException,
-                               'BackendServiceException: {:status=>400, :detail=>nil, :code=>"VA900", :source=>nil}')
+                               'BackendServiceException: {status: 400, detail: nil, code: "VA900", source: nil}')
           end
         end
       end

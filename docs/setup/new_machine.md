@@ -55,8 +55,8 @@ rbenv init
 Install the required Ruby version:
 
 ```bash
-rbenv install 3.3.12
-rbenv local 3.3.12
+rbenv install 3.4.10
+rbenv local 3.4.10
 ```
 
 Verify Ruby is installed:

@@ -10,9 +10,9 @@ RSpec.describe Mobile::V0::DebtManagementCenter::DebtsService do
   let(:user) { build(:user, :loa3, ssn: file_number) }
   let(:user_no_ssn) { build(:user, :loa3, ssn: '') }
 
-  def with_vcr_cassettes(&block)
+  def with_vcr_cassettes(&)
     VCR.use_cassette('bgs/people_service/person_data') do
-      VCR.use_cassette('debts/get_letters', VCR::MATCH_EVERYTHING, &block)
+      VCR.use_cassette('debts/get_letters', VCR::MATCH_EVERYTHING, &)
     end
   end
 

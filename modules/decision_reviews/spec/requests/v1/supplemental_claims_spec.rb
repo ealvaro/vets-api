@@ -38,7 +38,7 @@ RSpec.describe 'DecisionReviews::V1::SupplementalClaims', type: :request do
   end
   let(:extra_error_log_message) do
     'BackendServiceException: ' \
-      '{:source=>"Common::Client::Errors::ClientError raised in DecisionReviews::V1::Service", :code=>"DR_422"}'
+      '{source: "Common::Client::Errors::ClientError raised in DecisionReviews::V1::Service", code: "DR_422"}'
   end
 
   let(:response_error_body) do

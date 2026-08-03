@@ -103,7 +103,7 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements', type: :request do
     end
 
     let(:extra_error_log_message) do
-      'Common::Exceptions::UnprocessableEntity: {:source=>"Common::Client::Errors::ClientError raised in DecisionReviews::V1::Service"' # rubocop:disable Layout/LineLength
+      'Common::Exceptions::UnprocessableEntity: {source: "Common::Client::Errors::ClientError raised in DecisionReviews::V1::Service"' # rubocop:disable Layout/LineLength
     end
 
     let(:test_request_body) do

@@ -65,7 +65,7 @@ RSpec.describe EmailVerificationErrorHandler, type: :concern do
           hash_including(
             user_uuid: 'test-uuid-123',
             verification_needed: true,
-            error: 'BackendServiceException: {:source=>"EmailService", :code=>"VA900"}',
+            error: 'BackendServiceException: {source: "EmailService", code: "VA900"}',
             error_class: 'Common::Exceptions::BackendServiceException'
           )
         )
@@ -348,7 +348,7 @@ RSpec.describe EmailVerificationErrorHandler, type: :concern do
         hash_including(
           user_uuid: 'test-uuid-123',
           verification_needed: false,
-          error: 'BackendServiceException: {:code=>"VA900"}'
+          error: 'BackendServiceException: {code: "VA900"}'
         )
       )
 

@@ -49,8 +49,8 @@ describe ClaimsApi::LocalBGS do
       result = subject_instance.safe_xml(valid_xml)
 
       expect(result).to be_a(String)
-      expect(result).to include('"root"=>')
-      expect(result).to include('"child"=>"value"')
+      expect(result).to include('"root" => ')
+      expect(result).to include('"child" => "value"')
     end
 
     it 'preserves nested structure in the hash representation' do

@@ -35,7 +35,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626 # v1.320.0
         with:
-          ruby-version: "3.3.12"
+          ruby-version: "3.4.10"
           bundler-cache: false
 
       - name: Install system dependencies
@@ -107,12 +107,12 @@ jobs:
           # Setup development database
           RAILS_ENV=development bundle exec rails db:setup db:migrate || bundle exec rails db:create db:migrate
 
-          # Setup test database  
+          # Setup test database
           RAILS_ENV=test bundle exec rails db:setup db:migrate || bundle exec rails db:create db:migrate
 
       - name: Verify setup
         run: |
-          # Verify PostgreSQL version and connection  
+          # Verify PostgreSQL version and connection
           sudo -u postgres psql -p 5432 -c "SELECT version();"
           bundle exec rails runner "ActiveRecord::Base.connection.execute('SELECT 1')"
 

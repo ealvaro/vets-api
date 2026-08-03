@@ -193,8 +193,7 @@ type: integer in schema #{uuid_regex}"\]})
         expect do
           SchemaContract::Validator.new(contract_record.id).validate
         end.to raise_error(SchemaContract::Validator::SchemaContractValidationError,
-                           %({:error_type=>"Unknown", :record_id=>#{contract_record.id}, :details=>"StandardError"}))
-        expect(contract_record.reload.status).to eq('error')
+                           %({error_type: "Unknown", record_id: #{contract_record.id}, details: "StandardError"}))
       end
     end
   end

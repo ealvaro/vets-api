@@ -925,7 +925,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               errors = JSON.parse(response.body)['errors']
               expect(errors).to be_an Array
               expect(errors[0]['detail']).to include('/veteranIdentification/mailingAddress/city',
-                                                     '"maxLength"=>20')
+                                                     '"maxLength" => 20')
             end
           end
         end
@@ -950,7 +950,7 @@ RSpec.describe 'ClaimsApi::V2::Veterans::526', type: :request do
               expect(response).to have_http_status(:unprocessable_content)
               errors = JSON.parse(response.body)['errors']
               expect(errors).to be_an Array
-              expect(errors[0]['detail']).to include('/changeOfAddress/city', '"maxLength"=>20')
+              expect(errors[0]['detail']).to include('/changeOfAddress/city', '"maxLength" => 20')
             end
           end
         end

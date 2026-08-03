@@ -56,7 +56,7 @@ describe Common::Client::Middleware::Response do
   end
 
   it 'raises client response error' do
-    message = 'BackendServiceException: {:status=>404, :detail=>"Record Not Found", :code=>"VA900", :source=>"blah"}'
+    message = 'BackendServiceException: {status: 404, detail: "Record Not Found", code: "VA900", source: "blah"}'
     expect { faraday_client.get('not-found') }
       .to raise_error do |error|
         expect(error).to be_a(Common::Exceptions::BackendServiceException)
@@ -68,7 +68,7 @@ describe Common::Client::Middleware::Response do
   end
 
   it 'can override a response error using i18n' do
-    message = 'BackendServiceException: {:status=>400, :detail=>"server response", :code=>"RX139", :source=>"blah"}'
+    message = 'BackendServiceException: {status: 400, detail: "server response", code: "RX139", source: "blah"}'
     expect { faraday_client.get('refill-fail') }
       .to raise_error do |error|
         expect(error).to be_a(Common::Exceptions::BackendServiceException)
@@ -84,7 +84,7 @@ describe Common::Client::Middleware::Response do
     let(:code) { '"VA900"' }
     let(:source) { '"MHV provided unparsable error response, check logs for original request body."' }
     let(:xml_or_html_response) do
-      "BackendServiceException: {:status=>400, :detail=>#{detail}, :code=>#{code}, :source=>#{source}}"
+      "BackendServiceException: {status: 400, detail: #{detail}, code: #{code}, source: #{source}}"
     end
 
     it 'can handle generic html errors' do

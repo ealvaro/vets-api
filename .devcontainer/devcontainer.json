@@ -54,7 +54,7 @@
 
   "features": {
     "ghcr.io/devcontainers/features/ruby:1": {
-      "version": "3.3.12"
+      "version": "3.4.10"
     },
     "ghcr.io/robbert229/devcontainer-features/postgresql-client:1": {
       "version": "15"

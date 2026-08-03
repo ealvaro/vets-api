@@ -22,8 +22,8 @@ RSpec.describe PIIFilteringColorFormatter do
     log
   end
 
-  def format_log(**kwargs)
-    formatter.call(build_log(**kwargs), logger_context)
+  def format_log(**)
+    formatter.call(build_log(**), logger_context)
   end
 
   def strip_ansi(text)

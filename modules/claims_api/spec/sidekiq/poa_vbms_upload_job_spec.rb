@@ -100,7 +100,7 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
       end
 
       it 'rescues errors and sets the status to errored' do
-        error_message = 'BackendServiceException: {:status=>400, :detail=>nil, :code=>"VA900", :source=>nil}'
+        error_message = 'BackendServiceException: {status: 400, detail: nil, code: "VA900", source: nil}'
 
         expect do
           VCR.use_cassette('claims_api/bd/upload_error') do
@@ -137,7 +137,7 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
 
           expect(power_of_attorney.status).to eq('errored')
           expect(power_of_attorney.vbms_error_message).to eq(
-            'BackendServiceException: {:status=>500, :detail=>nil, :code=>"VA900", :source=>nil}'
+            'BackendServiceException: {status: 500, detail: nil, code: "VA900", source: nil}'
           )
         end
       end

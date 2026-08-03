@@ -9,8 +9,8 @@ RSpec.describe 'CAVE API', type: :request do
   let(:user) { create(:user, :loa3) }
   let(:idp_user_id) { user.user_account_uuid || user.uuid }
 
-  def idp_error(message: 'boom', **kwargs)
-    Idp::Error.new(message, **kwargs)
+  def idp_error(message: 'boom', **)
+    Idp::Error.new(message, **)
   end
 
   before do

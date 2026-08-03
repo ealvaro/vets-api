@@ -1,5 +1,5 @@
 ARG IMAGEMAGICK_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dpokidov/imagemagick:7.1.1-47-bookworm
-ARG RUBY_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/ruby:3.3.12-slim-bookworm
+ARG RUBY_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/ruby:3.4.10-slim-bookworm
 ARG CERTS_IMAGE=008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.2
 
 FROM ${RUBY_IMAGE} AS rubyimg
@@ -12,7 +12,7 @@ COPY modules/ modules/
 RUN find modules -type f ! \( -name Gemfile -o -name "*.gemspec" -o -path "*/lib/*/version.rb" \) -delete && \
     find modules -type d -empty -delete
 
-# ImageMagick 7 is not available on Bookworm 
+# ImageMagick 7 is not available on Bookworm
 # This can be replaced with the imagemagick-7 package if using Trixie
 FROM ${IMAGEMAGICK_IMAGE} AS imagemagick
 

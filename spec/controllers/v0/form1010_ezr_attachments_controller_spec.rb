@@ -79,7 +79,7 @@ RSpec.describe V0::Form1010EzrAttachmentsController, type: :controller do
           post(:create, params:)
 
           expect(Rails.logger).to have_received(:error).with(
-            "Form1010EzrAttachment validate file type failed undefined method `split' for nil.",
+            "Form1010EzrAttachment validate file type failed undefined method 'split' for nil.",
             backtrace: anything
           )
 

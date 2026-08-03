@@ -23,8 +23,8 @@ RSpec.describe PIIFilteringFormatter do
     log
   end
 
-  def format_log(**kwargs)
-    JSON.parse(formatter.call(build_log(**kwargs), logger_context))
+  def format_log(**)
+    JSON.parse(formatter.call(build_log(**), logger_context))
   end
 
   describe 'PII scrubbing in structured metadata' do

@@ -169,7 +169,7 @@ module Sidekiq
                    bgjob_errors: {},
                    updated_at: timestamp }
 
-        caller_method = caller[0][/`.*'/][1..-2]
+        caller_method = caller_locations(1, 1).first.base_label
         error_class = error.class if error
         error_message = error_message(error) if error
         values[:error_class] = error_class

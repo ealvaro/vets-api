@@ -20,7 +20,7 @@ describe Common::Exceptions::InvalidFiltersSyntax do
     it 'the errors object has all relevant keys' do
       expect(subject.errors.first.to_hash)
         .to eq(title: 'Invalid filters syntax',
-               detail: '{"facility_name"=>"ABC123"} is not a valid syntax for filtering',
+               detail: '{"facility_name" => "ABC123"} is not a valid syntax for filtering',
                code: '105',
                status: '400')
     end

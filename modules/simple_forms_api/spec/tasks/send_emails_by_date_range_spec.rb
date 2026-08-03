@@ -20,9 +20,9 @@ RSpec.describe 'simple_forms_api:send_emails_by_date_range', skip: 'flakey', typ
     task.reenable
   end
 
-  def run_task(*args)
+  def run_task(*)
     Rake::Task['simple_forms_api:send_emails_by_date_range'].reenable
-    Rake::Task['simple_forms_api:send_emails_by_date_range'].invoke(*args)
+    Rake::Task['simple_forms_api:send_emails_by_date_range'].invoke(*)
   end
 
   context 'when valid dates are provided' do

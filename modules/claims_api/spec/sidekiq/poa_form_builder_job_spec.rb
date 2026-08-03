@@ -441,7 +441,7 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       rescue
         power_of_attorney.reload
         expect(power_of_attorney.vbms_error_message).to eq(
-          'BackendServiceException: {:status=>400, :detail=>nil, :code=>"VA900", :source=>nil}'
+          'BackendServiceException: {status: 400, detail: nil, code: "VA900", source: nil}'
         )
         expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
       end
