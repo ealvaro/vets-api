@@ -877,7 +877,9 @@ module HCA
 
         file = form_attachment.get_file
         Rails.logger.info('[HCA_ES_ATTACHMENT] file retrieved', guid:)
-        Rails.logger.info('[HCA_ES_ATTACHMENT] file extension', guid:, ext: File.extname(file.file)) if file
+        # `file.path` is a String for both local (SanitizedFile) and S3 (AWSFile) storage;
+        # `file.file` is not — for AWSFile it returns the underlying Aws::S3::Object.
+        Rails.logger.info('[HCA_ES_ATTACHMENT] file extension', guid:, ext: File.extname(file.path)) if file
         Rails.logger.info('[HCA_ES_ATTACHMENT] file content_type', guid:, content_type: file.content_type)
         request['va:form']['va:attachments'] << add_attachment(file, i + 1, attachment['dd214'], guid)
       end
