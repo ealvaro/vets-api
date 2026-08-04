@@ -28,6 +28,14 @@ module UnifiedHealthData
             log_filtered_vital(resource)
             next false
           end
+
+          # Filter out Oracle Health "weight dosing" records - these are auto-generated
+          # duplicates of "weight measured" and should not be displayed to Veterans
+          if weight_dosing?(resource)
+            log_filtered_weight_dosing(resource)
+            next false
+          end
+
           true
         end
         parsed = filtered.map { |record| parse_single_vital(record) }
@@ -231,6 +239,22 @@ module UnifiedHealthData
 
         StatsD.increment('unified_health_data.vital.filtered_observation',
                          tags: ['reason:entered_in_error'])
+      end
+
+      def weight_dosing?(resource)
+        resource.dig('code', 'text')&.downcase == 'weight dosing'
+      end
+
+      def log_filtered_weight_dosing(resource)
+        @mr_log.diagnostic(
+          resource: MedicalRecords::MedicalRecordsLog::VITALS,
+          action: 'filter',
+          record_id: resource['id'],
+          reason: 'weight_dosing'
+        )
+
+        StatsD.increment('unified_health_data.vital.filtered_observation',
+                         tags: ['reason:weight_dosing'])
       end
     end
   end
