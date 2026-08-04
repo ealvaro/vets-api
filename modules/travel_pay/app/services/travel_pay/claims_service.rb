@@ -74,7 +74,7 @@ module TravelPay
         normalize_expenses(claim['expenses']) if claim['expenses']
 
         # Add decision letter reason for denied or partial payment claims
-        add_decision_letter_reason(claim, claim_id) if include_decision_reason?
+        add_decision_letter_reason(claim, claim_id)
 
         claim
       end
@@ -120,10 +120,6 @@ module TravelPay
     end
 
     private
-
-    def include_decision_reason?
-      Flipper.enabled?(:travel_pay_claims_management_decision_reason_api, @user)
-    end
 
     def add_decision_letter_reason(claim, claim_id)
       decision_document = find_decision_letter_document(claim)
