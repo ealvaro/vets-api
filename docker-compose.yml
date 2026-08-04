@@ -7,8 +7,12 @@ x-app: &common
       BUNDLE_VA__GHE__COM: "${BUNDLE_VA__GHE__COM}"
       IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
       RUBY_IMAGE: "${RUBY_IMAGE:-ruby:3.4.10-slim-bookworm}"
-      # Requires ECR login for local docker-compose builds (same image as CI/review).
-      CERTS_IMAGE: "${CERTS_IMAGE:-008577686731.dkr.ecr.us-gov-west-1.amazonaws.com/dsva/va-certs:v0.14.2}"
+      # Deliberately no default: an unset CERTS_IMAGE falls through to the Dockerfile's
+      # ARG, which is the va-certs image in ECR. Local development goes through the
+      # Makefile, which exports CERTS_IMAGE=certs_none so a build needs no ECR access —
+      # see docs/setup/running_docker.md. Building this file directly without ECR access
+      # therefore needs an explicit CERTS_IMAGE=certs_none.
+      CERTS_IMAGE:
     context: .
   environment:
     BUNDLE_ENTERPRISE__CONTRIBSYS__COM: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"

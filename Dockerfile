@@ -16,6 +16,17 @@ RUN find modules -type f ! \( -name Gemfile -o -name "*.gemspec" -o -path "*/lib
 # This can be replaced with the imagemagick-7 package if using Trixie
 FROM ${IMAGEMAGICK_IMAGE} AS imagemagick
 
+# Escape hatch for developers without ECR access: building with CERTS_IMAGE=certs_none
+# resolves the certs stage to this empty directory instead of the va-certs image, which is
+# what the Makefile does for every local target — see the CERTS_IMAGE note there. The
+# resulting image does NOT trust VA's internal PKI, so TLS to any real VA service fails
+# certificate verification — fine for mocked local development, and bin/fetch-va-certs
+# supplies the anchors when they're needed. `scratch` cannot be used here: it has no
+# filesystem, so the COPY below fails with
+# "lstat /usr/local/share/ca-certificates: no such file or directory".
+FROM rubyimg AS certs_none
+RUN mkdir -p /usr/local/share/ca-certificates
+
 FROM ${CERTS_IMAGE} AS certs
 
 FROM rubyimg
@@ -23,6 +34,7 @@ FROM rubyimg
 # Allow for setting ENV vars via --build-arg
 ARG BUNDLE_ENTERPRISE__CONTRIBSYS__COM \
   BUNDLE_VA__GHE__COM \
+  CERTS_IMAGE \
   RAILS_ENV=development \
   USER_ID=1000
 ENV RAILS_ENV=$RAILS_ENV \
@@ -57,11 +69,14 @@ RUN ln -s /usr/local/bin/magick /usr/local/bin/convert \
 RUN sed -i '/rights="none" pattern="PDF"/d' /usr/local/etc/ImageMagick-7/policy.xml
 
 
-# Install fwdproxy.crt into trust store
+# Install fwdproxy.crt into trust store. Anything else a developer has dropped into
+# config/ca-trust/ comes along too — see bin/fetch-va-certs, which populates VA anchors
+# there for builds that can't pull the cert image.
 COPY config/ca-trust/*.crt /usr/local/share/ca-certificates/
 
 # Copy VA certs from the prebuilt vsp-platform-va-certs image (CERTS_IMAGE). No runtime
-# downloads — the build fails if the cert image is missing, empty, or incomplete.
+# downloads — the build fails if VA certs are absent from both this image and
+# config/ca-trust/, unless CERTS_IMAGE is explicitly certs_none.
 COPY --from=certs /usr/local/share/ca-certificates/ /usr/local/share/ca-certificates/
 
 # update-ca-certificates only ingests files with a .crt extension, so normalize any .pem-extension
@@ -73,18 +88,25 @@ RUN set -eu && \
       base=$(basename "$f" .pem); \
       mv -n -- "$f" "/usr/local/share/ca-certificates/${base}.crt"; \
     done && \
-    if [ -z "$(find /usr/local/share/ca-certificates -maxdepth 1 -name 'VA-Internal*.crt' -print -quit)" ]; then \
+    if [ -n "$(find /usr/local/share/ca-certificates -maxdepth 1 -name 'VA-Internal*.crt' -print -quit)" ]; then \
+      update-ca-certificates --fresh && \
+      subjects=$(find /usr/local/share/ca-certificates -maxdepth 1 -name '*.crt' \
+        -exec openssl x509 -in {} -noout -subject \; 2>/dev/null) && \
+      if ! echo "$subjects" | grep -qiE 'VA-Internal|DigiCert'; then \
+        echo "✗ Expected VA-Internal/DigiCert anchors not found after installing certs from CERTS_IMAGE"; \
+        exit 1; \
+      fi && \
+      echo "✓ VA certificates installed and validated"; \
+    elif [ "${CERTS_IMAGE:-}" = "certs_none" ]; then \
+      update-ca-certificates --fresh; \
+      echo "⚠ No VA-Internal CAs in this image: CERTS_IMAGE=certs_none and none found in config/ca-trust/."; \
+      echo "⚠ TLS to any VA service will fail certificate verification — including a service"; \
+      echo "⚠ reached over an SSM port-forward, which presents a VA-Internal certificate."; \
+      echo "⚠ Run bin/fetch-va-certs and rebuild to install the anchors without ECR access."; \
+    else \
       echo "✗ No VA-Internal certificates copied from CERTS_IMAGE — build cannot continue without VA certs"; \
       exit 1; \
-    fi && \
-    update-ca-certificates --fresh && \
-    subjects=$(find /usr/local/share/ca-certificates -maxdepth 1 -name '*.crt' \
-      -exec openssl x509 -in {} -noout -subject \; 2>/dev/null) && \
-    if ! echo "$subjects" | grep -qiE 'VA-Internal|DigiCert'; then \
-      echo "✗ Expected VA-Internal/DigiCert anchors not found after installing certs from CERTS_IMAGE"; \
-      exit 1; \
-    fi && \
-    echo "✓ VA certificates installed and validated"
+    fi
 
 COPY config/clamd.conf /etc/clamav/clamd.conf
 

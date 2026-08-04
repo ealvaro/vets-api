@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+
+# Populate config/ca-trust/ with VA CA certificates so that a local Docker build produces an
+# image that trusts VA services, without needing the va-certs image from ECR.
+#
+# Background: the Docker build used to download certificates itself, via import-va-certs.sh.
+# That was replaced by a prebuilt ECR image (#144965 / PR #29334), which not every developer
+# can pull. This script restores the capability as an explicit, opt-in step rather than a
+# build-time download: it writes PEM .crt files into config/ca-trust/, which the Dockerfile
+# already copies into the image's trust store. Nothing here runs during a build.
+#
+# Certificates come from the platform-va-ca-certificate mirror on GHE — the same fallback
+# source the removed script used — authenticated with the token you already need for
+# `bundle install`. No ECR, AWS, or VA-network access required.
+#
+# Not identical to the ECR image, which additionally bakes in:
+#   - DoD ECA roots, extracted from the public zip at dl.dod.cyber.mil
+#   - per-environment fwdproxy CA certs from SSM (/dsva-vagov/fwdproxy/<env>/ca/)
+# Neither applies to a developer machine: the fwdproxy hop isn't reachable from one, so a
+# real VA service is reached over an SSM port-forward, which presents that service's
+# VA-Internal certificate — exactly the anchors fetched here.
+#
+# Usage:
+#   bin/fetch-va-certs
+#
+# Environment:
+#   BUNDLE_VA__GHE__COM   "x-access-token:<PAT>" (already required for bundle install)
+#   CERT_TOKEN            a bare PAT, if you'd rather not reuse the bundler one
+#   VA_CERT_REPO_SLUG     override the repo slug (default: software/platform-va-ca-certificate)
+#   VA_CERT_REPO          override the raw mirror base URL
+#   VA_CERT_API           override the GHE API base URL
+
+set -euo pipefail
+
+REPO_SLUG="${VA_CERT_REPO_SLUG:-software/platform-va-ca-certificate}"
+REPO_RAW="${VA_CERT_REPO:-https://raw.va.ghe.com/${REPO_SLUG}/main}"
+REPO_API="${VA_CERT_API:-https://va.ghe.com/api/v3}"
+DEST="$(cd "$(dirname "$0")/.." && pwd)/config/ca-trust"
+
+# Used only if the repository listing can't be reached. These are the VA-Internal anchors the
+# removed import-va-certs.sh pulled, and the minimum the Dockerfile's cert check looks for.
+FALLBACK_CERTS=(
+  VA-Internal-S2-RCA1-v1.cer VA-Internal-S2-RCA2.cer VA-Internal-S2-RCA3.cer
+  VA-Internal-S2-ICA1-v1.cer VA-Internal-S2-ICA2-v1.cer VA-Internal-S2-ICA3-v1.cer
+  VA-Internal-S2-ICA4.cer VA-Internal-S2-ICA5.cer VA-Internal-S2-ICA6.cer
+  VA-Internal-S2-ICA7.cer VA-Internal-S2-ICA8.cer VA-Internal-S2-ICA9.cer
+  VA-Internal-S2-ICA10.cer VA-Internal-S2-ICA11.cer VA-Internal-S2-ICA12.cer
+  VA-Internal-S2-ICA13.cer VA-Internal-S2-ICA14.cer VA-Internal-S2-ICA15.cer
+  VA-Internal-S2-ICA16.cer VA-Internal-S2-ICA17.cer VA-Internal-S2-ICA18.cer
+  VA-Internal-S2-ICA19.cer VA-Internal-S2-ICA20.cer VA-Internal-S2-ICA21.cer
+  VA-Internal-S2-ICA22.cer VA-Internal-S2-ICA23.cer VA-Internal-S2-ICA24.cer
+  VA-Internal-S2-ICA25.cer VA-Internal-S2-ICA26.cer VA-Internal-S2-ICA27.cer
+  VA-Internal-S2-ICA28.cer VA-Internal-S2-ICA29.cer VA-Internal-S2-ICA30.cer
+  VA-Internal-S2-ICA31.cer VA-Internal-S2-ICA32.cer VA-Internal-S2-ICA33.cer
+  VA-Internal-S2-ICA34.cer
+)
+
+# Global so the EXIT trap can still see it once main() has returned.
+tmp=""
+trap 'rm -rf "$tmp"' EXIT
+
+resolve_token() {
+  local token="${CERT_TOKEN:-${BUNDLE_VA__GHE__COM:-}}"
+  # BUNDLE_VA__GHE__COM is "x-access-token:<PAT>"; keep only the PAT.
+  token="${token##*:}"
+
+  if [ -z "$token" ] && command -v gh >/dev/null 2>&1; then
+    token="$(gh auth token --hostname va.ghe.com 2>/dev/null || true)"
+  fi
+
+  if [ -z "$token" ]; then
+    cat >&2 <<'MSG'
+✗ No GHE token available.
+
+Set the token you already use for bundle install:
+    export BUNDLE_VA__GHE__COM="x-access-token:<YOUR_PAT>"
+
+or authenticate the GitHub CLI:
+    gh auth login --hostname va.ghe.com
+
+See docs/setup/running_docker.md for PAT creation and SSO authorization.
+MSG
+    exit 1
+  fi
+
+  printf '%s' "$token"
+}
+
+# Certificate filenames, one per line. Listing the repo keeps this current as the mirror
+# changes; jq is deliberately not required, so the JSON is scraped for "name" fields.
+list_certs() {
+  local token="$1"
+  local page=1
+  local headers body status
+
+  while :; do
+    headers="$tmp/contents_headers_${page}"
+    body="$tmp/contents_body_${page}"
+    status="$(curl --silent --show-error --location --connect-timeout 10 --max-time 30 --retry 2 \
+      -H "Authorization: token ${token}" \
+      -D "$headers" -o "$body" -w '%{http_code}' \
+      "${REPO_API}/repos/${REPO_SLUG}/contents?per_page=100&page=${page}" 2>/dev/null || true)"
+
+    [ "$status" = "200" ] || break
+
+    grep -o '"name":[[:space:]]*"[^"]*"' "$body" \
+      | sed 's/.*"name":[[:space:]]*"//; s/"$//' \
+      | grep -iE '\.(cer|crt|pem)$' \
+      || true
+
+    grep -qi 'rel="next"' "$headers" || break
+    page=$((page + 1))
+  done
+}
+
+# The mirror mixes PEM, binary DER, and base64-encoded DER. update-ca-certificates only
+# ingests PEM, so normalize everything.
+to_pem() {
+  local src="$1" dest="$2"
+
+  openssl x509 -in "$src" -out "$dest" 2>/dev/null && return 0
+  openssl x509 -in "$src" -inform der -out "$dest" 2>/dev/null && return 0
+
+  if openssl base64 -d -in "$src" -out "$src.der" 2>/dev/null && [ -s "$src.der" ]; then
+    openssl x509 -in "$src.der" -inform der -out "$dest" 2>/dev/null && return 0
+  fi
+
+  return 1
+}
+
+main() {
+  command -v openssl >/dev/null 2>&1 || { echo "✗ openssl is required" >&2; exit 1; }
+  command -v curl >/dev/null 2>&1 || { echo "✗ curl is required" >&2; exit 1; }
+
+  local token
+  token="$(resolve_token)"
+
+  mkdir -p "$DEST"
+  tmp="$(mktemp -d)"
+
+  local names=()
+  while IFS= read -r line; do
+    [ -n "$line" ] && names+=("$line")
+  done < <(list_certs "$token")
+
+  if [ "${#names[@]}" -eq 0 ]; then
+    echo "⚠ Could not list ${REPO_SLUG}; falling back to the known VA-Internal certificates."
+    names=("${FALLBACK_CERTS[@]}")
+  fi
+
+  local fetched=0 missing=0 rca=0 ica=0 other=0
+  for name in "${names[@]}"; do
+    # Never clobber the fwdproxy certificate that ships with the repo.
+    case "$name" in
+      fwdproxy*) continue ;;
+    esac
+
+    local base="${name%.*}"
+    # Filenames in the mirror contain spaces (e.g. "DOD ID CA-62.cer").
+    local out="$DEST/${base// /_}.crt"
+    local src="$tmp/download"
+    local status
+
+    status="$(curl --silent --show-error --location --connect-timeout 10 --max-time 30 --retry 2 \
+      -H "Authorization: token ${token}" \
+      -o "$src" -w '%{http_code}' \
+      "${REPO_RAW}/${name// /%20}" || true)"
+
+    if [ "$status" != "200" ] || [ ! -s "$src" ]; then
+      echo "⚠ skipped ${name} (HTTP ${status})"
+      missing=$((missing + 1))
+      continue
+    fi
+
+    if ! to_pem "$src" "$out"; then
+      echo "⚠ skipped ${name} (not a certificate this script can decode)"
+      missing=$((missing + 1))
+      continue
+    fi
+    rm -f "$src" "$src.der"
+
+    fetched=$((fetched + 1))
+    # Match VA-Internal explicitly: other CAs in the mirror contain "RCA" as a substring
+    # (FCPCAG2_TRCA), and the guard below must only be satisfied by real VA anchors.
+    case "$name" in
+      VA-Internal*RCA*) rca=$((rca + 1)) ;;
+      VA-Internal*ICA*) ica=$((ica + 1)) ;;
+      *)                other=$((other + 1)) ;;
+    esac
+  done
+
+  if [ "$rca" -eq 0 ] || [ "$ica" -eq 0 ]; then
+    echo "✗ Fetched ${fetched} certificates but no complete VA-Internal root/intermediate pair" >&2
+    echo "  (roots: ${rca}, intermediates: ${ica}). Not enough to verify VA TLS." >&2
+    exit 1
+  fi
+
+  echo
+  echo "✓ Wrote ${fetched} certificates to config/ca-trust/"
+  echo "  VA-Internal: ${rca} roots, ${ica} intermediates; other CAs: ${other}"
+  [ "$missing" -gt 0 ] && echo "  ${missing} unavailable — see warnings above"
+  echo
+  echo "These files are gitignored. Rebuild to pick them up:"
+  echo "    make rebuild"
+}
+
+main "$@"

@@ -1,6 +1,33 @@
 $stdout.sync = true
 export VETS_API_USER_ID  := $(shell id -u)
 
+# The Makefile is the local development entrypoint, so it builds without the va-certs
+# image from ECR, which not every developer can pull. `certs_none` is a stage in the
+# Dockerfile that supplies an empty cert directory. Everything else — CI, review
+# instances, staging, production — leaves CERTS_IMAGE unset and gets the ECR image from
+# the Dockerfile's ARG default.
+#
+# The resulting local image does not trust VA-Internal CAs on its own; run
+# bin/fetch-va-certs to install them from config/ca-trust/, or build against the real cert
+# image with certs= below. See docs/setup/running_docker.md.
+export CERTS_IMAGE ?= certs_none
+
+# `certs=` overrides the above, and wins over CERTS_IMAGE when both are given:
+#   make build certs=ecr             the va-certs image the Dockerfile pins, so this stays
+#                                    in step with deployed builds. Log in to AWS with
+#                                    credentials for ECR first.
+#   make build certs=none            the default; empty cert directory
+#   make build certs=va-certs:local  any other value is used verbatim as an image reference
+ifdef certs
+    ifeq ($(certs), ecr)
+        override CERTS_IMAGE := $(shell grep -m1 '^ARG CERTS_IMAGE=' Dockerfile | cut -d= -f2-)
+    else ifeq ($(certs), none)
+        override CERTS_IMAGE := certs_none
+    else
+        override CERTS_IMAGE := $(certs)
+    endif
+endif
+
 ifdef env
     ENV_ARG  := $(env)
 else

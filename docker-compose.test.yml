@@ -14,6 +14,17 @@ services:
       args:
         sidekiq_license: "${BUNDLE_ENTERPRISE__CONTRIBSYS__COM}"
         userid: "${VETS_API_USER_ID}"
+        # Same non-ECR defaults as docker-compose.yml, so devs without ECR access can run
+        # the test stack. Without these the Dockerfile's own defaults apply, which are ECR
+        # images.
+        IMAGEMAGICK_IMAGE: "${IMAGEMAGICK_IMAGE:-dpokidov/imagemagick:7.1.1-47-bookworm}"
+        RUBY_IMAGE: "${RUBY_IMAGE:-ruby:3.3.12-slim-bookworm}"
+        # No default, unlike the two above, so an unset CERTS_IMAGE resolves to the
+        # Dockerfile's ARG — the va-certs image in ECR. CI does not build through this file
+        # (it builds the Dockerfile directly and only runs commands here), but a build that
+        # does go through it should not silently produce a certless image. `make ci` and
+        # friends export CERTS_IMAGE=certs_none for local runs.
+        CERTS_IMAGE:
     image: "vets-api:${DOCKER_IMAGE:-latest}"
     volumes:
       - ".:/app"
