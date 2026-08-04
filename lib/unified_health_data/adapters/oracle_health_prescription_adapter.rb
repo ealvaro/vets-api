@@ -7,6 +7,7 @@ require_relative 'medication_dispense_helpers'
 require_relative 'oracle_health_categorizer'
 require_relative 'oracle_health_expiration_helper'
 require_relative 'oracle_health_refill_helper'
+require_relative 'oracle_health_refill_window_logging_helper'
 require_relative 'oracle_health_renewal_flow_helper'
 require_relative 'oracle_health_renewability_helper'
 require_relative 'oracle_health_task_helper'
@@ -20,6 +21,7 @@ module UnifiedHealthData
       include OracleHealthCategorizer
       include OracleHealthExpirationHelper
       include OracleHealthRefillHelper
+      include OracleHealthRefillWindowLoggingHelper
       include OracleHealthRenewalFlowHelper
       include OracleHealthRenewabilityHelper
       include OracleHealthTaskHelper
@@ -100,14 +102,19 @@ module UnifiedHealthData
         # monitoring for dispenses without tracking data, which may indicate CMOP issues
         log_completed_dispense_without_tracking(resource, tracking_data, dispenses_data)
 
-        build_core_attributes(resource, dispenses_data)
-          .merge(build_tracking_attributes(tracking_data))
-          .merge(build_contact_and_source_attributes(resource, dispenses_data))
-          .merge(dispenses: dispenses_data)
-          .merge(refill_metadata)
-          .merge(renewal_metadata)
-          .merge(sorted_dispensed_date: extract_sorted_dispensed_date(dispenses_data))
-          .merge(source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
+        attributes = build_core_attributes(resource, dispenses_data)
+                     .merge(build_tracking_attributes(tracking_data))
+                     .merge(build_contact_and_source_attributes(resource, dispenses_data))
+                     .merge(dispenses: dispenses_data)
+                     .merge(refill_metadata)
+                     .merge(renewal_metadata)
+                     .merge(sorted_dispensed_date: extract_sorted_dispensed_date(dispenses_data))
+                     .merge(source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
+
+        # Measurement-only instrumentation (flag-guarded, side-effect-free wrt classification)
+        log_refill_window_measurement(resource, attributes, dispenses_data)
+
+        attributes
       end
 
       # Builds core prescription attributes from the FHIR MedicationRequest resource.

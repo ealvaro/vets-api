@@ -2036,6 +2036,15 @@ features:
       VistA-sourced NDC for Krames PMI documentation lookup, unlocking the
       "Learn more about this medication" link for local pharmacy fills.
     enable_in_development: true
+  mhv_medications_oh_refill_window_logging:
+    actor_type: user
+    description: >-
+      Measurement-only logging for Oracle Health in-flight refill "window"
+      behavior. When enabled, emits StatsD counters and structured logs (no
+      PII/PHI) describing how often in-flight refills age past the staleness
+      window without a dispense and how long refills actually take to fill.
+      Has no effect on refill classification.
+    enable_in_development: true
   mhv_supply_reordering_enabled:
     actor_type: user
     description: Enables the launch of mhv supply reordering application at /my-health/order-medical-supplies
