@@ -926,6 +926,7 @@ maintenance:
     form21p0537: <%= ENV['maintenance__services__form21p0537'] %>
     form21p601: <%= ENV['maintenance__services__form21p601'] %>
     form_upload_benefits_intake: <%= ENV['maintenance__services__form_upload_benefits_intake'] %>
+    gi_bill_data_service: <%= ENV['maintenance__services__gi_bill_data_service'] %>
     global: <%= ENV['maintenance__services__global'] %>
     hcq: <%= ENV['maintenance__services__hcq'] %>
     idme: <%= ENV['maintenance__services__idme'] %>
