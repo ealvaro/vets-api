@@ -17,6 +17,7 @@ module Mobile
           booked: 'BOOKED',
           fulfilled: 'BOOKED',
           arrived: 'BOOKED',
+          'checked-in': 'BOOKED',
           cancelled: 'CANCELLED',
           noshow: 'HIDDEN',
           pending: 'HIDDEN',

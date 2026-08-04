@@ -556,6 +556,11 @@ describe Mobile::V0::Adapters::VAOSV2Appointments, :aggregate_failures do
         arrived_appt = appointment_by_id(booked_va_id, overrides: { status: 'arrived' })
         expect(arrived_appt.status).to eq('BOOKED')
       end
+
+      it 'maps checked-in status to BOOKED' do
+        checked_in_appt = appointment_by_id(booked_va_id, overrides: { status: 'checked-in' })
+        expect(checked_in_appt.status).to eq('BOOKED')
+      end
     end
 
     context 'with unknown status' do
