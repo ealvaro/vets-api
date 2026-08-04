@@ -194,6 +194,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Daily find POAs caching
   mgr.register('0 2 * * *', 'ClaimsApi::FindPoasJob')
 
+  # Daily find Cemeteries caching
+  mgr.register('15 2 * * *', 'Form21p530a::FindCemeteriesJob')
+
   # TODO: Document this job
   mgr.register('30 2 * * *', 'Identity::UserAcceptableVerifiedCredentialTotalsJob')
 

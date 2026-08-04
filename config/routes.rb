@@ -105,6 +105,7 @@ Rails.application.routes.draw do
         get('download_pdf/:guid', action: :download_pdf, as: :download_pdf)
       end
     end
+    get 'form21p530a/cemeteries', to: 'form21p530a_find_cemeteries#index'
 
     resources :form212680, only: [:create] do
       collection do

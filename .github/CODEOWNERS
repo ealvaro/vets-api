@@ -94,6 +94,7 @@ app/controllers/v0/form210779_controller.rb @software/benefits-optimization-aqui
 app/controllers/v0/form212680_controller.rb @software/benefits-optimization-aquia
 app/controllers/v0/form214192_controller.rb @software/benefits-optimization-aquia
 app/controllers/v0/form21p530a_controller.rb @software/benefits-optimization-aquia
+app/controllers/v0/form21p530a_find_cemeteries_controller.rb @software/benefits-optimization-aquia
 app/controllers/v0/forms_controller.rb @software/vfs-public-websites-frontend
 app/controllers/v0/gi_bill_feedbacks_controller.rb @software/govcio-vfep-codereviewers
 app/controllers/v0/gids @software/govcio-vfep-codereviewers
@@ -464,6 +465,7 @@ app/serializers/form1010cg/attachment_serializer.rb @software/health-apps-backen
 app/serializers/form1010cg/claim_serializer.rb @software/health-apps-backend
 app/serializers/form1010cg/submission_serializer.rb @software/health-apps-backend
 app/serializers/form526_job_status_serializer.rb @software/disability-benefits
+app/serializers/form21p530a_cemetery_serializer.rb @software/benefits-optimization-aquia
 app/serializers/full_name_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/gender_identity_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/gi_bill_feedback_serializer.rb @software/govcio-vfep-codereviewers
@@ -567,6 +569,7 @@ app/sidekiq/form_pdf_change_detection_job.rb @software/health-apps-backend
 app/sidekiq/form0781_state_snapshot_job.rb @software/disability-benefits
 app/sidekiq/form1010cg @software/health-apps-backend
 app/sidekiq/form210779_submission_email_job.rb @software/benefits-optimization-aquia
+app/sidekiq/form21p530a @software/benefits-optimization-aquia
 app/sidekiq/form214192_submission_email_job.rb @software/benefits-optimization-aquia
 app/sidekiq/form526_confirmation_email_job.rb @software/disability-benefits
 app/sidekiq/form526_failure_state_snapshot_job.rb @software/disability-benefits
@@ -1037,6 +1040,9 @@ lib/form210779/monitor.rb @software/benefits-optimization-aquia
 lib/form212680/monitor.rb @software/benefits-optimization-aquia
 lib/form214192/monitor.rb @software/benefits-optimization-aquia
 lib/form21p530a/monitor.rb @software/benefits-optimization-aquia
+lib/form21p530a/cemetery_service.rb @software/benefits-optimization-aquia
+lib/form21p530a/find_cemeteries_response.rb @software/benefits-optimization-aquia
+lib/form21p530a/find_cemeteries_service.rb @software/benefits-optimization-aquia
 lib/form526_backup_submission @software/disability-benefits
 lib/form526_backup_submission/configuration.rb @software/disability-benefits
 lib/form526_backup_submission/service.rb @software/disability-benefits
@@ -1309,6 +1315,7 @@ rakelib/disability_compensation @software/disability-benefits
 rakelib/disability_compensation.rake @software/disability-benefits
 rakelib/education_benefits_submission.rake @software/govcio-vfep-codereviewers
 rakelib/expiry_scanner.rake @software/va-platform-backend
+rakelib/form21p530a.rake @software/benefits-optimization-aquia
 rakelib/form526.rake @software/disability-benefits
 rakelib/github_stats.rake @software/va-platform-backend
 rakelib/import_disability_contentions.rake @software/disability-benefits
@@ -2076,6 +2083,7 @@ spec/requests/v0/form1010cg @software/health-apps-backend
 spec/requests/v0/form1095_bs_spec.rb @software/va-core-veteran-experiences
 spec/requests/v0/form210779_spec.rb @software/benefits-optimization-aquia
 spec/requests/v0/form212680_spec.rb @software/benefits-optimization-aquia
+spec/requests/v0/form21p530a_find_cemeteries_spec.rb @software/benefits-optimization-aquia
 spec/requests/v0/gi @software/va-platform-backend
 spec/requests/v0/health_care_applications_spec.rb @software/health-apps-backend
 spec/requests/v0/id_card/announcement_subscription_spec.rb @software/va-platform-backend

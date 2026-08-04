@@ -3726,6 +3726,10 @@ features:
     actor_type: user
     enable_in_development: true
     description: Enables form 21P-530a on vets-website
+  form_530a_cemetery_prefill:
+    actor_type: user
+    enable_in_development: true
+    description: Enables the cemetery name/address prefill endpoint for form 21P-530a
   form_21p_530a_govcio_mms:
     actor_type: cookie_id
     enable_in_development: true
