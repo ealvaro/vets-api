@@ -1166,6 +1166,7 @@ lib/scopes/form526_submission_state.rb @software/disability-benefits
 lib/search @software/va-platform-backend
 lib/search_click_tracking @software/va-platform-backend
 lib/search_gsa @software/va-platform-backend
+lib/search_kendra @software/ws3-intelligent-search
 lib/search/pii_redactor.rb @software/va-platform-backend
 lib/semantic_logger/pii_filtering_color_formatter.rb @software/va-platform-backend
 lib/semantic_logger/pii_filtering_formatter.rb @software/va-platform-backend
@@ -1800,6 +1801,7 @@ spec/lib/saved_claims_spec_helper.rb @software/va-platform-backend
 spec/lib/search @software/va-platform-backend
 spec/lib/search_click_tracking @software/va-platform-backend
 spec/lib/search_gsa @software/va-platform-backend
+spec/lib/search_kendra @software/ws3-intelligent-search
 spec/lib/search/pii_redactor_spec.rb @software/va-platform-backend
 spec/lib/semantic_logger/pii_filtering_color_formatter_spec.rb @software/va-platform-backend
 spec/lib/semantic_logger/pii_filtering_formatter_spec.rb @software/va-platform-backend
