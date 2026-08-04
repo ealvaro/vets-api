@@ -117,6 +117,23 @@ features, and will run the unit tests successfully.
     - sandbox: https://sandbox-api.va.gov/v0/status
     - prod: https://api.va.gov/v0/status
 
+### System CA certificates (Docker build)
+
+CI, review, staging, and production builds copy VA CA certificates from the
+pinned `dsva/va-certs` image (`CERTS_IMAGE` in the Dockerfile), published by
+[vsp-platform-va-certs](https://va.ghe.com/software/vsp-platform-va-certs).
+There is no build-time download via `import-va-certs.sh`.
+
+Local `make` builds default to `CERTS_IMAGE=certs_none` so developers without
+ECR access can still build. For local TLS to real VA services, use
+`bin/fetch-va-certs` (recommended) or `make rebuild certs=ecr` if you have ECR
+credentials. Details, including how deployed builds stay fail-closed:
+[VA certificates](docs/setup/running_docker.md#va-certificates).
+
+This is separate from application client certificates and secret files mounted
+into pods. Those are covered by
+[How to add secret files to Vets-API](https://depo-platform-documentation.scrollhelp.site/developer-docs/how-to-add-secret-files-to-vets-api).
+
 ## API request key formatting
 
 When sending HTTP requests use the `X-Key-Inflection` request header to specify
