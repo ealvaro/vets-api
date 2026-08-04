@@ -2251,7 +2251,7 @@ vha:
       client_id: <%= ENV['vha__sharepoint_graph__authentication__client_id'] %>
       client_secret: <%= ENV['vha__sharepoint_graph__authentication__client_secret'] %>
       tenant_url: <%= ENV['vha__sharepoint_graph__authentication__tenant_url'] %>
-    mock: <%= ENV['vha__sharepoint_graph__authentication__base_url'] %>
+    mock: <%= ENV['vha__sharepoint_graph__mock'] %>
     upload:
       base_url: <%= ENV['vha__sharepoint_graph__upload__base_url'] %>
       path: <%= ENV['vha__sharepoint_graph__upload__path'] %>

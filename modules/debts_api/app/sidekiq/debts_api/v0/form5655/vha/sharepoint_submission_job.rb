@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'debt_management_center/sharepoint/request'
+require 'debt_management_center/sharepoint/graph/request'
 
 module DebtsApi
   class V0::Form5655::VHA::SharepointSubmissionJob
@@ -49,7 +49,7 @@ module DebtsApi
     end
 
     def upload_to_sharepoint(form_submission, submission_id)
-      sharepoint_request = DebtManagementCenter::Sharepoint::Request.new
+      sharepoint_request = DebtManagementCenter::Sharepoint::Graph::Request.new
       Rails.logger.info('5655 Form Uploading to SharePoint API', submission_id:)
 
       begin

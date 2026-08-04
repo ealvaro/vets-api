@@ -63,10 +63,10 @@ RSpec.describe DebtsApi::V0::Form5655::VHA::SharepointSubmissionJob, type: :work
       end
 
       context 'with advisory lock' do
-        let(:sharepoint_request) { instance_double(DebtManagementCenter::Sharepoint::Request) }
+        let(:sharepoint_request) { instance_double(DebtManagementCenter::Sharepoint::Graph::Request) }
 
         before do
-          allow(DebtManagementCenter::Sharepoint::Request).to receive(:new).and_return(sharepoint_request)
+          allow(DebtManagementCenter::Sharepoint::Graph::Request).to receive(:new).and_return(sharepoint_request)
           allow(sharepoint_request).to receive(:upload)
         end
 
