@@ -62,6 +62,19 @@ RSpec.describe 'VRE::V0::Ch31CaseDetails', type: :request do
       end
     end
 
+    context 'when RES returns a non-JSON response body' do
+      let(:user) { create(:user, icn: '1012662125V786396') }
+
+      it 'returns 502, not 400' do
+        VCR.use_cassette('vre/ch31_case_details/200_malformed_body') do
+          get '/vre/v0/ch31_case_details'
+          expect(response).to have_http_status(:bad_gateway)
+          message = JSON.parse(response.body)['errors'].first['detail']
+          expect(message).to eq('RES returned a non-JSON response body')
+        end
+      end
+    end
+
     context 'when upstream service is not available' do
       let(:user) { create(:user, icn: '1012667145V762142') }
 
