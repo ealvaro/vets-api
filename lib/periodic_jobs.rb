@@ -295,6 +295,7 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
 
   # Mark old BenefitsIntake records for deletion in 60 days
   mgr.register('0 2 * * *', 'AccreditedRepresentativePortal::SetDeleteDateOnBenefitsIntakeRecordsJob')
+  mgr.register('0 3 * * *', 'AccreditedRepresentativePortal::RepresentativeInProgressFormCleanerJob')
 
   # Delete old BenefitsIntake records 60 days or older
   mgr.register('0 0 * * *', 'AccreditedRepresentativePortal::DeleteOldBenefitsIntakeRecordsJob')

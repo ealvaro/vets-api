@@ -37,6 +37,7 @@ AccreditedRepresentativePortal::Engine.routes.draw do
     end
 
     resources :in_progress_forms, only: %i[update show destroy]
+    resources :representative_in_progress_forms, only: %i[update show destroy]
 
     post '/submit_representative_form', to: 'representative_form_upload#submit'
     post '/representative_form_upload', to: 'representative_form_upload#upload_scanned_form'
