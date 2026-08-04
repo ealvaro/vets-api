@@ -12,6 +12,8 @@ module DependentsBenefits
   class FormProfiles::VA686c674 < FormProfile
     include PensionAwardHelper
     include DependentsBenefits::Helper
+    include DependentsServiceMonitoring
+
     ##
     # Model representing dependent information for the 686c-674 form
     # Contains personal details and relationship data for each dependent
@@ -135,6 +137,9 @@ module DependentsBenefits
     # If no dependents are found or if they are not active for benefits, it returns an empty array.
     def prefill_dependents_information
       dependents = dependent_service.get_dependents
+
+      track_dependents_results(dependents, user)
+
       persons = if dependents.blank? || dependents[:persons].blank?
                   []
                 else

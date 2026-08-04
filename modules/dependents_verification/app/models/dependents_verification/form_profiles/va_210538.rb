@@ -16,7 +16,9 @@ module DependentsVerification
 
   # extends app/models/form_profile.rb, which handles form prefill
   class FormProfiles::VA210538 < FormProfile
+    include DependentsServiceMonitoring
     include DependentsVerification::PrefillHelpers
+
     attribute :dependents_information, DependentInformation, array: true
 
     ##
@@ -70,6 +72,8 @@ module DependentsVerification
     # @return [Array<DependentInformation>]
     def initialize_dependents_information
       dependents = dependent_service.get_dependents
+
+      track_dependents_results(dependents, user)
 
       persons = if dependents.nil? || dependents[:persons].blank?
                   []

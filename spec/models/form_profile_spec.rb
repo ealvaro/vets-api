@@ -1965,6 +1965,12 @@ RSpec.describe FormProfile, type: :model do
                 # Mock the dependent service to return active dependents
                 allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
                 allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
+                allow(StatsD).to receive(:increment)
+
+                expect(StatsD).to receive(:increment).with('bgs.get_dependents.total_results', 1,
+                                                           hash_including(:tags)).and_call_original
+                expect(StatsD).to receive(:increment).with('bgs.get_dependents.no_ssn_results', 0,
+                                                           hash_including(:tags)).and_call_original
 
                 result = form_profile.prefill
                 expect(result[:form_data]).to have_key('veteranInformation')

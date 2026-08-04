@@ -84,6 +84,11 @@ RSpec.describe DependentsVerification::FormProfiles::VA210538, type: :model do
       # Mock the dependent service to return active dependents
       allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
       allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
+      allow(StatsD).to receive(:increment)
+
+      expect(StatsD).to receive(:increment).with('bgs.get_dependents.total_results', 1, hash_including(:tags))
+      expect(StatsD).to receive(:increment).with('bgs.get_dependents.no_ssn_results', 0, hash_including(:tags))
+
       expect(subject.prefill).to match(({ form_data: {
                                             'veteranInformation' => veteran_information,
                                             'veteranContactInformation' => contact_information,

@@ -373,14 +373,22 @@ RSpec.describe FormProfile, type: :model do
             it 'returns formatted dependent information' do
               # Mock the dependent service to return active dependents
               allow(BGS::DependentService).to receive(:new).with(user).and_return(dependent_service)
-              allow(dependent_service).to receive(:get_dependents).and_return(dependents_data)
+              allow(dependent_service).to receive(:get_dependents).and_return(
+                FormProfileSpecData.dependents_data_no_ssn
+              )
+              allow(StatsD).to receive(:increment)
+
+              expect(StatsD).to receive(:increment).with('bgs.get_dependents.total_results', 2, hash_including(:tags))
+              expect(StatsD).to receive(:increment).with('bgs.get_dependents.no_ssn_results', 1, hash_including(:tags))
 
               result = form_profile.prefill
               expect(result[:form_data]).to have_key('veteranInformation')
               expect(result[:form_data]).to have_key('veteranContactInformation')
               expect(result[:form_data]).to have_key('nonPrefill')
               expect(result[:form_data]['nonPrefill']).to have_key('dependents')
-              expect(result[:form_data]['nonPrefill']['dependents']['dependents']).to eq(dependents_information)
+              expect(result[:form_data]['nonPrefill']['dependents']['dependents']).to match_array(
+                FormProfileSpecData.dependents_information_no_ssn
+              )
             end
 
             it 'handles a dependent information error' do

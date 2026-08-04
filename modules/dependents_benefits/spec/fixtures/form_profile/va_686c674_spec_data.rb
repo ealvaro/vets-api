@@ -28,12 +28,54 @@ module FormProfileSpecData
     }] }
   end
 
+  def self.dependents_data_no_ssn # rubocop:disable Metrics/MethodLength
+    { number_of_records: '2', persons: [{
+      award_indicator: 'Y',
+      date_of_birth: '01/02/1960',
+      email_address: 'test@email.com',
+      first_name: 'JANE',
+      last_name: 'WEBB',
+      middle_name: 'M',
+      ptcpnt_id: '600140899',
+      related_to_vet: 'Y',
+      relationship: 'Spouse',
+      ssn: '222883214',
+      veteran_indicator: 'N'
+    }, {
+      award_indicator: 'Y',
+      date_of_birth: '01/02/1961',
+      email_address: 'test2@email.com',
+      first_name: 'JANEY',
+      last_name: 'WEBB',
+      middle_name: 'M',
+      ptcpnt_id: '600140898',
+      related_to_vet: 'Y',
+      relationship: 'Child',
+      veteran_indicator: 'N'
+    }] }
+  end
+
   def self.dependents_information
     [{
       'fullName' => { 'first' => 'JANE', 'middle' => 'M', 'last' => 'WEBB' },
       'dateOfBirth' => '1960-01-02',
       'ssn' => '222883214',
       'relationshipToVeteran' => 'Spouse',
+      'awardIndicator' => 'Y'
+    }]
+  end
+
+  def self.dependents_information_no_ssn
+    [{
+      'fullName' => { 'first' => 'JANE', 'middle' => 'M', 'last' => 'WEBB' },
+      'dateOfBirth' => '1960-01-02',
+      'ssn' => '222883214',
+      'relationshipToVeteran' => 'Spouse',
+      'awardIndicator' => 'Y'
+    }, {
+      'fullName' => { 'first' => 'JANEY', 'middle' => 'M', 'last' => 'WEBB' },
+      'dateOfBirth' => '1961-01-02',
+      'relationshipToVeteran' => 'Child',
       'awardIndicator' => 'Y'
     }]
   end

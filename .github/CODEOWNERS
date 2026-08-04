@@ -207,6 +207,7 @@ app/models/concerns/async_request.rb @software/vfs-authenticated-experience-back
 app/models/concerns/authorization.rb @software/octo-identity
 app/models/concerns/coe_claim_form_validation.rb @software/va-core-veteran-experiences
 app/models/concerns/coe_claim_form_validation/ @software/va-core-veteran-experiences
+app/models/concerns/dependents_service_monitoring.rb @software/benefits-lifestage
 app/models/concerns/form526_claim_fast_tracking_concern.rb @software/disability-benefits
 app/models/concerns/form526_conditions_logging_concern.rb @software/disability-benefits
 app/models/concerns/form526_mpi_concern.rb @software/disability-benefits

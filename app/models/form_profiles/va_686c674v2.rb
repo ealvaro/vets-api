@@ -8,6 +8,7 @@ require 'bep/awards/service'
 # including dependent information and address details from various VA services.
 class FormProfiles::VA686c674v2 < FormProfile
   include PensionAwardHelper
+  include DependentsServiceMonitoring
 
   # Model representing dependent information for the 686c-674v2 form
   class DependentInformation
@@ -103,6 +104,9 @@ class FormProfiles::VA686c674v2 < FormProfile
   # If no dependents are found or if they are not active for benefits, it returns an empty array.
   def prefill_dependents_information
     dependents = dependent_service.get_dependents
+
+    track_dependents_results(dependents, user)
+
     persons = if dependents.blank? || dependents[:persons].blank?
                 []
               else
