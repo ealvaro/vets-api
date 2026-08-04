@@ -606,6 +606,7 @@ app/sidekiq/pager_duty @software/va-platform-backend
 app/sidekiq/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 app/sidekiq/scanned_upload_purge_job.rb @software/platform-va-product-forms
 app/sidekiq/schema_contract @software/va-platform-backend
+app/sidekiq/search @software/va-platform-backend
 app/sidekiq/sign_in @software/octo-identity
 app/sidekiq/simple_forms_api @software/platform-va-product-forms
 app/sidekiq/terms_of_use @software/octo-identity
@@ -2275,6 +2276,7 @@ spec/sidekiq/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/sidekiq/process_file_job_spec.rb @software/va-platform-backend
 spec/sidekiq/scanned_upload_purge_job_spec.rb @software/platform-va-product-forms
 spec/sidekiq/schema_contract @software/va-platform-backend
+spec/sidekiq/search @software/va-platform-backend
 spec/sidekiq/sign_in @software/octo-identity
 spec/sidekiq/sign_in/delete_expired_sessions_job_spec.rb @software/octo-identity
 spec/sidekiq/simple_forms_api @software/platform-va-product-forms

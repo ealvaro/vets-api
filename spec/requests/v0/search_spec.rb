@@ -215,6 +215,7 @@ Rspec.describe 'V0::Search', type: :request do
     context 'when the :search_results_cache flag is enabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:search_results_cache).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:search_results_cache_purge).and_return(false)
         Rails.cache.clear
       end
 
@@ -240,6 +241,51 @@ Rspec.describe 'V0::Search', type: :request do
           expect(response).to have_http_status(:ok)
           expect(response.body).to eq(first_body)
         end
+      end
+
+      it 'emits a miss metric on the first request and a hit metric on the second' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        allow(StatsD).to receive(:increment)
+
+        get '/v0/search', params: { query: 'benefits' }
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.search.results_cache', tags: ['result:miss', 'backend:default'])
+          .once
+        expect(StatsD).to have_received(:increment)
+          .with('api.search.results_cache', tags: ['result:hit', 'backend:default'])
+          .once
+      end
+
+      it 'includes the backend tag: default for the standard backend' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        allow(StatsD).to receive(:increment)
+
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.search.results_cache', tags: array_including('backend:default'))
+      end
+
+      it 'includes the backend tag: gsa for the GSA backend' do
+        allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(true)
+        stub_request(:get, /#{Settings.search_gsa.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        allow(StatsD).to receive(:increment)
+
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.search.results_cache', tags: array_including('backend:gsa'))
       end
 
       it 'caches requests for different queries separately' do
@@ -303,6 +349,25 @@ Rspec.describe 'V0::Search', type: :request do
 
         expect(response).to have_http_status(:ok)
       end
+
+      it 'treats a bumped generation as a cache miss (invalidation)' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        # Warm the cache
+        expect(Search::Service).to receive(:new).twice.and_call_original
+
+        get '/v0/search', params: { query: 'benefits' }
+
+        # Bump the generation — simulates the nightly purge job
+        Rails.cache.write(V0::SearchController::SEARCH_CACHE_GENERATION_KEY, Time.current.to_i + 1)
+
+        # Same query must now miss (new key due to new generation)
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     context 'when the :search_results_cache flag is disabled' do
@@ -313,6 +378,19 @@ Rspec.describe 'V0::Search', type: :request do
           get '/v0/search', params: { query: 'benefits' }
           get '/v0/search', params: { query: 'benefits' }
         end
+      end
+
+      it 'emits a bypass metric' do
+        stub_request(:get, /#{Settings.search.url}/)
+          .to_return(status: 200, body: '{"web":{"results":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+
+        allow(StatsD).to receive(:increment)
+
+        get '/v0/search', params: { query: 'benefits' }
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.search.results_cache', tags: ['result:bypass', 'backend:default'])
       end
     end
   end

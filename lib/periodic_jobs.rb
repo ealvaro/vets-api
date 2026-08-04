@@ -38,6 +38,9 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Purge expired CAVE submissions (extracted document PII) past their retention window
   mgr.register('15 3 * * *', 'CaveSubmissionPurgeJob')
 
+  # Bump the Search.gov results cache generation overnight so a fresh index is served daily
+  mgr.register('15 3 * * *', 'Search::ResultsCachePurgeJob')
+
   # Ensures that appeal evidence received "late" (after the appeal has reached "success") is submitted to Central Mail
   mgr.register('30 * * * *', 'AppealsApi::EvidenceSubmissionBackup')
 

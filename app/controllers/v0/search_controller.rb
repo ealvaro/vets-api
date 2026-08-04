@@ -6,6 +6,7 @@ require 'search_gsa/service'
 
 module V0
   class SearchController < ApplicationController
+    SEARCH_CACHE_GENERATION_KEY = 'search_results:generation'
     include ActionView::Helpers::SanitizeHelper
     service_tag 'search'
 
@@ -81,13 +82,24 @@ module V0
     # never stored). The raw response body is cached (a plain Hash) rather than
     # the response object to avoid coupling the cache to model internals.
     #
+    # Emits api.search.results_cache with result:hit|miss|bypass and backend: tags.
+    #
     # @return [Search::ResultsResponse]
     def cached_results
-      return search_service.results unless Flipper.enabled?(:search_results_cache)
+      unless Flipper.enabled?(:search_results_cache)
+        StatsD.increment("#{Search::Service::STATSD_KEY_PREFIX}.results_cache",
+                         tags: ['result:bypass', "backend:#{search_backend}"])
+        return search_service.results
+      end
 
+      cache_hit = true
       body = Rails.cache.fetch(results_cache_key, expires_in: results_cache_ttl) do
+        cache_hit = false
         search_service.results.body
       end
+
+      StatsD.increment("#{Search::Service::STATSD_KEY_PREFIX}.results_cache",
+                       tags: ["result:#{cache_hit ? 'hit' : 'miss'}", "backend:#{search_backend}"])
 
       Search::ResultsResponse.new(200, Search::ResultsResponse.pagination_object(body), body:)
     end
@@ -106,16 +118,28 @@ module V0
     def results_cache_key
       offset = Search::Pagination.offset_for(page)
       digest = Digest::SHA256.hexdigest("#{query}\x00#{offset}")
-      "search_results:#{search_backend}:#{digest}"
+      "search_results:#{search_backend}:g#{cache_generation}:#{digest}"
+    end
+
+    # Generation token bumped by the nightly purge job. Read once per request and
+    # memoized. A missing/never-purged key returns nil, which is a valid initial
+    # bucket. Because the token is a wall-clock timestamp it only moves forward, so
+    # a bumped generation is never reused and stale entries can't be resurrected.
+    def cache_generation
+      return @cache_generation if defined?(@cache_generation)
+
+      @cache_generation = Rails.cache.read(SEARCH_CACHE_GENERATION_KEY)
     end
 
     # TTL for cached results, sourced from Settings so it can be tuned via
-    # Param Store without a deploy. Falls back to 1 hour when unset or invalid.
+    # Param Store without a deploy. Falls back to 1 day when unset or invalid.
+    # The nightly generation bump caps staleness to roughly 24 hours regardless
+    # of this TTL.
     #
     # @return [Integer]
     def results_cache_ttl
       ttl = Settings.search&.results_cache_ttl_seconds.to_i
-      ttl.positive? ? ttl : 1.hour.to_i
+      ttl.positive? ? ttl : 1.day.to_i
     end
 
     def search_params

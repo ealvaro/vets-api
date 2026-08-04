@@ -2581,7 +2581,11 @@ features:
     enable_in_development: true
   search_results_cache:
     actor_type: cookie_id
-    description: Enables read-through caching of Search.gov results to reduce upstream calls and ease Search.gov rate limiting. TTL is controlled by Settings.search.results_cache_ttl_seconds. Note; /v0/search is unauthenticated and no actor is passed, so per-actor targeting has no effect; roll out via boolean (fully on/off) or percentage_of_time.
+    description: Enables read-through caching of Search.gov results to reduce upstream calls and ease Search.gov rate limiting. Default TTL is 1 day when unset/invalid (Settings.search.results_cache_ttl_seconds), capped by a nightly generation bump (Search::ResultsCachePurgeJob at 3:15am ET). Note; /v0/search is unauthenticated and no actor is passed, so per-actor targeting has no effect; roll out via boolean (fully on/off) or percentage_of_time.
+    enable_in_development: false
+  search_results_cache_purge:
+    actor_type: cookie_id
+    description: Enables the nightly Search.gov results cache generation bump (Search::ResultsCachePurgeJob). Roll out via boolean (fully on/off). TTL reclaims orphaned keys under Settings.search.results_cache_ttl_seconds.
     enable_in_development: false
   search_results_ui_update:
     actor_type: user
