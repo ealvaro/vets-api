@@ -645,6 +645,46 @@ describe VaNotify::Service do
       end
     end
 
+    describe 'error context includes sanitized callback_metadata' do
+      context 'when callback_metadata has symbol keys' do
+        subject do
+          described_class.new(test_api_key,
+                              { callback_metadata: { notification_type: 'error', form_number: '21-526EZ',
+                                                     ssn: '123-45-6789' } })
+        end
+
+        it 'slices the safe keys and strips PII' do
+          VCR.use_cassette('va_notify/auth_error_invalid_token') do
+            expect { subject.send_email(send_email_parameters) }.to raise_error do |e|
+              expect(e).to be_a(VANotify::Forbidden)
+              expect(e.context[:callback_metadata][:notification_type]).to eq('error')
+              expect(e.context[:callback_metadata][:form_number]).to eq('21-526EZ')
+              expect(e.context[:callback_metadata].keys).to contain_exactly('notification_type', 'form_number')
+            end
+          end
+        end
+      end
+
+      context 'when callback_metadata has string keys (Sidekiq serialization)' do
+        subject do
+          described_class.new(test_api_key,
+                              { 'callback_metadata' => { 'notification_type' => 'error', 'form_number' => '21-526EZ',
+                                                         'ssn' => '123-45-6789' } })
+        end
+
+        it 'still slices the safe keys and strips PII' do
+          VCR.use_cassette('va_notify/auth_error_invalid_token') do
+            expect { subject.send_email(send_email_parameters) }.to raise_error do |e|
+              expect(e).to be_a(VANotify::Forbidden)
+              expect(e.context[:callback_metadata][:notification_type]).to eq('error')
+              expect(e.context[:callback_metadata][:form_number]).to eq('21-526EZ')
+              expect(e.context[:callback_metadata].keys).to contain_exactly('notification_type', 'form_number')
+            end
+          end
+        end
+      end
+    end
+
     it 'raises a 404 exception' do
       VCR.use_cassette('va_notify/not_found') do
         expect { subject.send_email(send_email_parameters) }.to raise_error do |e|

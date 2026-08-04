@@ -128,7 +128,7 @@ module VaNotify
       return nil unless metadata.is_a?(Hash)
 
       # Specific keys that are safe to include and do not contain PII
-      metadata.slice(:notification_type, :form_number)
+      metadata.with_indifferent_access.slice(:notification_type, :form_number)
     end
 
     def log_error_details(error)
