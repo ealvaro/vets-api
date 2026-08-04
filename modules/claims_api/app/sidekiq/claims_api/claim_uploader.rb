@@ -2,7 +2,7 @@
 
 module ClaimsApi
   class ClaimUploader < ClaimsApi::ServiceBase
-    sidekiq_options retry: true, retry_for: 48.hours
+    sidekiq_options retry_for: 48.hours
 
     def perform(uuid, _record_type)
       # _record_type kept for backward compatibility with queued jobs that still have this argument.
