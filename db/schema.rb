@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_181000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_213032) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -2167,6 +2167,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_181000) do
     t.datetime "created_at", null: false
     t.string "credential_attributes_digest"
     t.string "dslogon_uuid"
+    t.string "entra_uuid"
     t.string "idme_uuid"
     t.boolean "locked", default: false, null: false
     t.string "logingov_uuid"
@@ -2178,6 +2179,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_181000) do
     t.index ["backing_idme_uuid"], name: "index_user_verifications_on_backing_idme_uuid"
     t.index ["clear_uuid"], name: "index_user_verifications_on_clear_uuid", unique: true
     t.index ["dslogon_uuid"], name: "index_user_verifications_on_dslogon_uuid", unique: true
+    t.index ["entra_uuid"], name: "index_user_verifications_on_entra_uuid", unique: true, where: "(entra_uuid IS NOT NULL)"
     t.index ["idme_uuid"], name: "index_user_verifications_on_idme_uuid", unique: true
     t.index ["logingov_uuid"], name: "index_user_verifications_on_logingov_uuid", unique: true
     t.index ["mhv_uuid"], name: "index_user_verifications_on_mhv_uuid", unique: true
