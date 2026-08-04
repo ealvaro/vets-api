@@ -739,6 +739,18 @@ module EVSS
         else
           dis.approximate_date = convert_approximate_date(approx)
         end
+
+        dis.approximate_date = strip_day_if_today(dis.approximate_date)
+      end
+
+      # FES only allows dates in the past.
+      # If today's date is entered, truncate down to year-month (which FES accepts).
+      # TODO: remove once the frontend/FES validation mismatch is resolved
+      # OR when the day field is removed with the new paper form release.
+      def strip_day_if_today(date_string)
+        return date_string unless date_string&.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+
+        date_string == Time.now.utc.to_date.iso8601 ? date_string[0, 7] : date_string
       end
 
       def format_exposure_text(cause, related_to_toxic_exposure)

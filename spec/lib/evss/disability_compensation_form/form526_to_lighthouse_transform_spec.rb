@@ -8,6 +8,8 @@ require 'evss/disability_compensation_form/form526_to_lighthouse_transform'
 LH_SCHEMA_KEY = 'GENERATE_PDF_526'
 
 RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:transformer) { subject }
   let(:pdf_enabled_transformer) { EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new(pdf_request: true) }
   let(:pdf_disabled_transformer) { EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new(pdf_request: false) }
@@ -587,6 +589,41 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
         source = base_source.merge('approximateDate' => '73-03-XX')
         result = transformer.send(:transform_disabilities, [source], nil).first
         expect(result.approximate_date).to be_nil
+      end
+
+      it 'truncates approximateDate to year-month when it equals today in UTC' do
+        # FES uses LocalDate.now(ZoneOffset.UTC), so we must compare against UTC date.
+        # This ensures the behavior is consistent across all
+        # server timezones and matches FES's internal validation logic.
+        travel_to(Time.utc(2026, 7, 30, 22, 0, 0)) do
+          source = base_source.merge('approximateDate' => '2026-07-30')
+          result = transformer.send(:transform_disabilities, [source], nil).first
+          expect(result.approximate_date).to eq('2026-07')
+        end
+      end
+
+      it 'leaves approximateDate unchanged when it is in the past' do
+        travel_to(Time.utc(2026, 7, 30, 22, 0, 0)) do
+          source = base_source.merge('approximateDate' => '2026-07-29')
+          result = transformer.send(:transform_disabilities, [source], nil).first
+          expect(result.approximate_date).to eq('2026-07-29')
+        end
+      end
+
+      it 'does not affect an already year-month-only approximateDate' do
+        travel_to(Time.utc(2026, 7, 30, 22, 0, 0)) do
+          source = base_source.merge('approximateDate' => { 'year' => '2026', 'month' => '07' })
+          result = transformer.send(:transform_disabilities, [source], nil).first
+          expect(result.approximate_date).to eq('2026-07')
+        end
+      end
+
+      it 'truncates approximateDate to year-month when today is entered as a hash' do
+        travel_to(Time.utc(2026, 7, 30, 22, 0, 0)) do
+          source = base_source.merge('approximateDate' => { 'year' => '2026', 'month' => '07', 'day' => '30' })
+          result = transformer.send(:transform_disabilities, [source], nil).first
+          expect(result.approximate_date).to eq('2026-07')
+        end
       end
     end
   end
