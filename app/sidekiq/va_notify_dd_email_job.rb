@@ -9,6 +9,9 @@ class VANotifyDdEmailJob
   STATSD_ERROR_NAME = 'worker.direct_deposit_confirmation_email.error'
   STATSD_SUCCESS_NAME = 'worker.direct_deposit_confirmation_email.success'
 
+  STATSD_SERVICE = 'direct-deposit'
+  CONFIRMATION_FUNCTION = 'direct_deposit_confirmation'
+
   def self.send_to_emails(user_emails)
     if user_emails.present?
       user_emails.each do |email|
@@ -28,8 +31,11 @@ class VANotifyDdEmailJob
   end
 
   def perform(email)
-    notify_client = VaNotify::Service.new(Settings.vanotify.services.va_gov.api_key)
     template_id = Settings.vanotify.services.va_gov.template_id[:direct_deposit]
+    notify_client = VaNotify::Service.new(
+      Settings.vanotify.services.va_gov.api_key,
+      callback_options(template_id)
+    )
 
     notify_client.send_email(
       email_address: email,
@@ -55,5 +61,20 @@ class VANotifyDdEmailJob
        )
       raise exception
     end
+  end
+
+  private
+
+  def callback_options(template_id)
+    {
+      callback_metadata: {
+        notification_type: 'error',
+        statsd_tags: {
+          service: STATSD_SERVICE,
+          function: CONFIRMATION_FUNCTION,
+          template_id:
+        }
+      }
+    }
   end
 end

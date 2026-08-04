@@ -45,11 +45,31 @@ RSpec.describe VANotifyDdEmailJob, type: :model do
     context 'with default email template' do
       it 'sends a confirmation email using the direct_deposit template' do
         allow(VaNotify::Service).to receive(:new)
-          .with(Settings.vanotify.services.va_gov.api_key).and_return(notification_client)
+          .with(Settings.vanotify.services.va_gov.api_key, anything).and_return(notification_client)
 
         expect(notification_client).to receive(:send_email).with(
           email_address: email, template_id: 'direct_deposit_template_id'
         )
+
+        described_class.new.perform(email)
+      end
+
+      it 'passes callback metadata so failures are attributed at VA Notify' do
+        expect(VaNotify::Service).to receive(:new).with(
+          Settings.vanotify.services.va_gov.api_key,
+          {
+            callback_metadata: {
+              notification_type: 'error',
+              statsd_tags: {
+                service: 'direct-deposit',
+                function: 'direct_deposit_confirmation',
+                template_id: 'direct_deposit_template_id'
+              }
+            }
+          }
+        ).and_return(notification_client)
+
+        allow(notification_client).to receive(:send_email)
 
         described_class.new.perform(email)
       end
