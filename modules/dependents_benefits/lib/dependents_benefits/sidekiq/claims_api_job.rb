@@ -24,13 +24,18 @@ module DependentsBenefits::Sidekiq
     # @return [void]
     # @raise [DependentSubmissionError] if any claim submission fails
     def submit_claims_to_service
-      # create claim via claims api
-      # create contention(s) via claims api
-      # create proc in BGS as 'Started'
-      # send claim data to BGS
-      # create claim in BGS using the above claims api claim id
-      # check for successful submission
-      # record status via new submission + attempt
+      # Check that a previous submission didn't already succeed
+      # Create claim via claims api
+      # Create contention(s) via claims api
+      # Create proc in BGS as 'Started'
+      # Send claim data to BGS
+      # Create claim in BGS using the above claims api claim id
+      # Record status via new submission + attempt
+      submission = find_or_create_form_submission(parent_claim)
+      return DependentsBenefits::ServiceResponse.new(status: true) if submission_previously_succeeded?(submission)
+
+      submission_attempt = create_form_submission_attempt(submission)
+
       is_674_only = parent_claim.submittable_674? && !parent_claim.submittable_686?
 
       claim_type = is_674_only ? '130SCHATTEBN' : '130DPNEBNADJ'
@@ -43,7 +48,14 @@ module DependentsBenefits::Sidekiq
 
       bgs_service.update_proc(proc_id, proc_state: 'Ready')
 
+      mark_submission_attempt_succeeded(submission_attempt)
       DependentsBenefits::ServiceResponse.new(status: true)
+    rescue => e
+      monitor.track_error_event("Submission attempt failure in #{self.class}",
+                                action: 'claim.error', component:, error: e.message,
+                                parent_claim_id: parent_claim.id)
+      mark_submission_attempt_failed(submission_attempt, e)
+      raise # re-raise so super class can catch and call handle_job_failure
     end
 
     ##
@@ -246,6 +258,56 @@ module DependentsBenefits::Sidekiq
                                 action: 'generate_user_struct', component:, error: e.message,
                                 parent_claim_id:)
       raise
+    end
+
+    ##
+    # Finds or creates a form submission record
+    #
+    # @param claim [SavedClaim] The claim to find or create a submission for
+    # @return [FormSubmission] The submission record
+    def find_or_create_form_submission(claim)
+      FormSubmission.create_with(
+        form_type: claim.form_id,
+        saved_claim: claim,
+        user_account_id: claim.user_account_id
+      ).find_or_create_by(form_type: claim.form_id, saved_claim_id: claim.id)
+    end
+
+    ##
+    # Check if a submission has already succeeded
+    #
+    # @param submission [FormSubmission] The form submission record to check
+    # @return [Boolean] true if submission has a non-failure attempt
+    def submission_previously_succeeded?(submission)
+      submission&.non_failure_attempt.present?
+    end
+
+    ##
+    # Generates a new form submission attempt record
+    #
+    # @param submission [FormSubmission] The submission to create an attempt for
+    # @return [FOrmSubmissionAttempt] The newly created attempt record
+    def create_form_submission_attempt(submission)
+      FormSubmissionAttempt.create(form_submission: submission)
+    end
+
+    ##
+    # Marks the submission attempt as successful
+    #
+    # @param submission_attempt [BGS::SubmissionAttempt] The attempt to mark as succeeded
+    # @return [Boolean, nil] Result of status update, or nil if attempt doesn't exist
+    def mark_submission_attempt_succeeded(submission_attempt)
+      submission_attempt&.succeed!
+    end
+
+    ##
+    # Marks the submission attempt as failed with error details
+    #
+    # @param exception [Exception] The exception that caused the failure
+    # @return [Boolean, nil] Result of status update, or nil if attempt doesn't exist
+    def mark_submission_attempt_failed(submission_attempt, exception)
+      submission_attempt&.update(error_message: exception.message)
+      submission_attempt&.fail!
     end
 
     # Memoized BGS service

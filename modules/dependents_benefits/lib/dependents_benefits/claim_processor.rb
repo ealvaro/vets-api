@@ -127,10 +127,17 @@ module DependentsBenefits
     # Enqueues background jobs for BGS and Claims Evidence
     # @return [Integer] Number of jobs enqueued
     def enqueue_background_jobs
-      jobs = {
-        DependentsBenefits::Sidekiq::BGSFormJob => [parent_claim_id],
-        DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
-      }
+      jobs = if Flipper.enabled?(:enable_dependents_claims_api_job)
+               {
+                 DependentsBenefits::Sidekiq::ClaimsApiJob => [parent_claim_id],
+                 DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
+               }
+             else
+               {
+                 DependentsBenefits::Sidekiq::BGSFormJob => [parent_claim_id],
+                 DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
+               }
+             end
 
       jobs.each { |job, args| job.perform_async(*args) }
 

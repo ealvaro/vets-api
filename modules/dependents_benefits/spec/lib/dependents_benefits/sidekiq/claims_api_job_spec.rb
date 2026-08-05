@@ -134,6 +134,43 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsApiJob, type: :job do
 
         perform
       end
+
+      it 'creates the correct FormSubmission and FormSubmissionAttempt records' do
+        expect do
+          perform
+        end.to change(FormSubmission, :count).from(0).to(1).and change(FormSubmissionAttempt, :count).from(0).to(1)
+        expect(FormSubmission.first.form_type).to eq(parent_claim.form_id)
+        expect(FormSubmission.first.saved_claim_id).to eq(parent_claim.id)
+        expect(FormSubmissionAttempt.first.aasm_state).to eq('success')
+      end
+
+      context 'when submission has already succeeded' do
+        before do
+          submission = FormSubmission.create!(form_type: parent_claim.form_id, saved_claim: parent_claim)
+          FormSubmissionAttempt.create!(form_submission: submission, aasm_state: :success)
+        end
+
+        it 'returns immediately' do
+          expect(claims_api_service_stub).not_to receive(:create_claim)
+          expect(claims_api_service_stub).not_to receive(:create_contentions)
+          expect(bgs_service_stub).not_to receive(:create_proc_form)
+          perform
+        end
+      end
+
+      context 'when submission fails' do
+        before do
+          allow(claims_api_service_stub).to receive(:create_claim).and_raise(StandardError, 'something went wrong')
+        end
+
+        it 'sets the submission attempt correctly' do
+          expect { perform }.to raise_error(StandardError)
+          expect(FormSubmission.first.form_type).to eq(parent_claim.form_id)
+          expect(FormSubmission.first.saved_claim_id).to eq(parent_claim.id)
+          expect(FormSubmissionAttempt.first.aasm_state).to eq('failure')
+          expect(FormSubmissionAttempt.first.error_message).to eq('something went wrong')
+        end
+      end
     end
 
     context 'with a 674-only form' do

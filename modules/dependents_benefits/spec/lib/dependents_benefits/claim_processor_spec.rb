@@ -37,41 +37,87 @@ RSpec.describe DependentsBenefits::ClaimProcessor, type: :model do
 
     before do
       allow(DependentsBenefits::Sidekiq::BGSFormJob).to receive(:perform_async).and_return(true)
+      allow(DependentsBenefits::Sidekiq::ClaimsApiJob).to receive(:perform_async).and_return(true)
       allow(DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob).to receive(:perform_async).and_return(
         true
       )
       allow(processor).to receive(:collect_child_claims).and_return([form_686_claim, form_674_claim])
     end
 
-    it 'processes claims' do
-      jobs = {
-        DependentsBenefits::Sidekiq::BGSFormJob => [parent_claim_id],
-        DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
-      }
-
-      jobs.each do |job, args|
-        expect(job).to receive(:perform_async).with(*args)
+    context 'with enable_dependents_claims_api_job feature active' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_dependents_claims_api_job).and_return(true)
       end
 
-      processor.enqueue_submissions
+      it 'processes claims' do
+        jobs = {
+          DependentsBenefits::Sidekiq::ClaimsApiJob => [parent_claim_id],
+          DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
+        }
+
+        jobs.each do |job, args|
+          expect(job).to receive(:perform_async).with(*args)
+        end
+        expect(DependentsBenefits::Sidekiq::BGSFormJob).not_to receive(:perform_async)
+
+        processor.enqueue_submissions
+      end
+
+      it 'monitors submissions' do
+        processor.enqueue_submissions
+        expect(mock_monitor).to have_received(:track_info_event).with(
+          'Starting claim submission processing',
+          action: 'start',
+          component:,
+          parent_claim_id:
+        )
+        expect(mock_monitor).to have_received(:track_info_event).with(
+          'Successfully enqueued all submission jobs',
+          action: 'enqueue_success',
+          component:,
+          parent_claim_id:,
+          jobs_count: 2,
+          jobs_list: ['DependentsBenefits::Sidekiq::ClaimsApiJob', 'DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob']
+        )
+      end
     end
 
-    it 'monitors submissions' do
-      processor.enqueue_submissions
-      expect(mock_monitor).to have_received(:track_info_event).with(
-        'Starting claim submission processing',
-        action: 'start',
-        component:,
-        parent_claim_id:
-      )
-      expect(mock_monitor).to have_received(:track_info_event).with(
-        'Successfully enqueued all submission jobs',
-        action: 'enqueue_success',
-        component:,
-        parent_claim_id:,
-        jobs_count: 2,
-        jobs_list: ['DependentsBenefits::Sidekiq::BGSFormJob', 'DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob']
-      )
+    context 'with enable_dependents_claims_api_job feature inactive' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_dependents_claims_api_job).and_return(false)
+      end
+
+      it 'processes claims' do
+        jobs = {
+          DependentsBenefits::Sidekiq::BGSFormJob => [parent_claim_id],
+          DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob => [parent_claim_id]
+        }
+
+        jobs.each do |job, args|
+          expect(job).to receive(:perform_async).with(*args)
+        end
+        expect(DependentsBenefits::Sidekiq::ClaimsApiJob).not_to receive(:perform_async)
+
+        processor.enqueue_submissions
+      end
+
+      it 'monitors submissions' do
+        processor.enqueue_submissions
+        expect(mock_monitor).to have_received(:track_info_event).with(
+          'Starting claim submission processing',
+          action: 'start',
+          component:,
+          parent_claim_id:
+        )
+        expect(mock_monitor).to have_received(:track_info_event).with(
+          'Successfully enqueued all submission jobs',
+          action: 'enqueue_success',
+          component:,
+          parent_claim_id:,
+          jobs_count: 2,
+          jobs_list: ['DependentsBenefits::Sidekiq::BGSFormJob', 'DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob']
+        )
+      end
     end
 
     it 'handles enqueue failures' do

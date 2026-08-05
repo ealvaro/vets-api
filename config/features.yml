@@ -4062,6 +4062,9 @@ features:
   enable_prefill_update_530ez:
     actor_type: user
     description: Enables prefill update for 21p-530ez form
+  enable_dependents_claims_api_job:
+    actor_type: user
+    description: Enables the DependentsBenefits::Sidekiq::ClaimsApiJob rather than the existing BGSFormJob
   enable_686_674_digital_pdf:
     actor_type: user
     description: Enables using the digital pdf service for generating 686/674 pdfs
