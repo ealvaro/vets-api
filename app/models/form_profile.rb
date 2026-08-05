@@ -168,6 +168,7 @@ class FormProfile
     '21-0966' => ::FormProfiles::VA210966,
     '21-22' => ::FormProfiles::VA2122,
     '21-22A' => ::FormProfiles::VA2122a,
+    '21-4140' => ::FormProfiles::VA214140,
     '21-4502' => ::FormProfiles::VA214502,
     '21-526EZ' => ::FormProfiles::VA526ez,
     '21-8940v1' => IncreaseCompensation::FormProfiles::VA218940v1,

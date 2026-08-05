@@ -2,7 +2,7 @@ fullName: [identity_information, full_name]
 dateOfBirth: [identity_information, date_of_birth]
 idNumber:
   ssn: [identity_information, ssn]
-  vaFilenumber: [va_file_number]
+  vaFileNumber: [va_file_number]
 serviceNumber: [military_information, service_number]
 phoneNumber: [contact_information, us_phone]
 mobilePhoneNumber: [contact_information, mobile_phone]
