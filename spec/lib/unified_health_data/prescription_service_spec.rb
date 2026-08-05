@@ -527,23 +527,30 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
         allow(StatsD).to receive(:gauge)
         allow(StatsD).to receive(:increment)
 
-        VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-          service.get_prescriptions
+        # 'refillinprocess' comes from VistA prescriptions in the cassette (time-independent),
+        # but 'submitted' comes from OH prescription 20848812135's 'requested' order-Task dated
+        # 2026-03-20T18:59:55Z. Freeze time inside the always-enforced in-flight staleness window
+        # so that OH task still resolves to 'submitted'; otherwise it is correctly dropped as stale
+        # and the 'submitted'/'active: submitted' histogram keys disappear.
+        travel_to(Time.zone.parse('2026-03-22 12:00:00 UTC')) do
+          VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+            service.get_prescriptions
 
-          expect(Rails.logger).to have_received(:info).with(
-            hash_including(
-              message: 'UHD prescriptions retrieved',
-              by_refill_status: hash_including(
-                'refillinprocess' => satisfy(&:positive?),
-                'submitted' => satisfy(&:positive?)
-              ),
-              by_disp_status: hash_including(
-                'active: refill in process' => satisfy(&:positive?),
-                'active: submitted' => satisfy(&:positive?)
-              ),
-              in_progress_count: satisfy { |n| n.is_a?(Integer) && n.positive? }
+            expect(Rails.logger).to have_received(:info).with(
+              hash_including(
+                message: 'UHD prescriptions retrieved',
+                by_refill_status: hash_including(
+                  'refillinprocess' => satisfy(&:positive?),
+                  'submitted' => satisfy(&:positive?)
+                ),
+                by_disp_status: hash_including(
+                  'active: refill in process' => satisfy(&:positive?),
+                  'active: submitted' => satisfy(&:positive?)
+                ),
+                in_progress_count: satisfy { |n| n.is_a?(Integer) && n.positive? }
+              )
             )
-          )
+          end
         end
       end
 
