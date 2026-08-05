@@ -3491,11 +3491,6 @@ features:
     actor_type: user
     description: >-
       If enabled, VA10275#after_submit will use VANotify::V2::QueueEmailJob
-  va_notify_v2_form10282_confirmation_email:
-    actor_type: user
-    description: >-
-      If enabled, VA10282#send_confirmation_email will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
   va_notify_v2_form10297_confirmation_email:
     actor_type: user
     description: >-
