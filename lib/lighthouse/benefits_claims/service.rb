@@ -29,6 +29,7 @@ module BenefitsClaims
       290LGYBDD
       290LGYIDES
       400AFM
+      400CPC
       400ORR
       930CLQENR
       940OSTEM
