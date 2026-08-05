@@ -33,10 +33,6 @@ class SavedClaim::EducationBenefits::VA5490 < SavedClaim::EducationBenefits
 
     template_id = Settings.vanotify.services.va_gov.template_id.form5490_confirmation_email
 
-    if Flipper.enabled?(:va_notify_v2_form5490_confirmation_email)
-      VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, API_KEY_PATH)
-    else
-      VANotify::EmailJob.perform_async(email, template_id, personalisation)
-    end
+    VANotify::V2::QueueEmailJob.enqueue(email, template_id, personalisation, API_KEY_PATH)
   end
 end
