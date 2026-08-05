@@ -63,6 +63,11 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
   let(:monitoring) { instance_double(AccreditedRepresentativePortal::Monitoring) }
 
   describe 'GET /accredited_representative_portal/v0/claimant/search' do
+    before do
+      allow(AccreditedRepresentativePortal::Monitoring).to receive(:new).and_return(monitoring)
+      allow(monitoring).to receive(:track_count)
+    end
+
     context 'when providing incomplete search params' do
       it 'returns a 400 error' do
         post('/accredited_representative_portal/v0/claimant/search', params: {
@@ -83,6 +88,27 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
             expect(parsed_response.fetch('data')).to be_nil
           end
         end
+
+        it 'tracks attempts and no claimant found in Datadog' do
+          expect(monitoring).to receive(:track_count).with('ar.unique_session.count')
+          expect(monitoring).to receive(:track_count).with(
+            described_class::SEARCH_ATTEMPT_METRIC,
+            tags: ['org_resolve:failed']
+          )
+          expect(monitoring).to receive(:track_count).with(
+            described_class::SEARCH_NO_CLAIMANT_FOUND_METRIC,
+            tags: ['org_resolve:failed']
+          )
+
+          VCR.use_cassette('mpi/find_candidate/icn_not_found') do
+            post('/accredited_representative_portal/v0/claimant/search', params: {
+                   first_name: 'John',
+                   last_name: 'Smith',
+                   dob: '1980-01-01',
+                   ssn: '867-53-0909'
+                 })
+          end
+        end
       end
 
       it 'returns only matching claimant' do
@@ -99,6 +125,34 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
         expect(response).to have_http_status(:ok)
         expect(parsed_response.dig('data', 'poaRequests').map { |poa| poa['id'] }).to eq([poa_request.id])
         expect(parsed_response.dig('data', 'hasPendingPoaRequest')).to be true
+      end
+
+      it 'tracks attempts and success in Datadog' do
+        expect(monitoring).to receive(:track_count).with('ar.unique_session.count')
+        expect(monitoring).to receive(:track_count).with(
+          described_class::SEARCH_ATTEMPT_METRIC,
+          tags: ['org_resolve:failed']
+        )
+        expect(monitoring).to receive(:track_count).with(
+          described_class::SEARCH_SUCCESS_METRIC,
+          tags: ['org_resolve:failed']
+        )
+
+        VCR.use_cassette('mpi/find_candidate/valid_icn_full') do
+          VCR.use_cassette(
+            'accredited_representative_portal/requests/accredited_representative_portal/v0/claimant_spec/' \
+            'lighthouse/benefits_claims/200_response'
+          ) do
+            post('/accredited_representative_portal/v0/claimant/search', params: {
+                   first_name: 'John',
+                   last_name: 'Smith',
+                   dob: '1980-01-01',
+                   ssn: '867-53-0909'
+                 })
+          end
+        end
+
+        expect(response).to have_http_status(:ok)
       end
 
       context 'there are multiple PoA request attempts' do
@@ -300,10 +354,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
       it 'tracks attempts and success in Datadog' do
         expect(monitoring).to receive(:track_count).with('ar.unique_session.count')
         expect(monitoring).to receive(:track_count).with(
-          described_class::ATTEMPT_METRIC, tags: ['org_resolve:failed']
+          described_class::SHOW_ATTEMPT_METRIC, tags: ['org_resolve:failed']
         )
         expect(monitoring).to receive(:track_count).with(
-          described_class::SUCCESS_METRIC, tags: ['org_resolve:failed']
+          described_class::SHOW_SUCCESS_METRIC, tags: ['org_resolve:failed']
         )
         get(path, params: { benefitType: benefit_type }, headers: json_headers)
 
@@ -408,10 +462,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
       it 'tracks attempts and errors in Datadog' do
         expect(monitoring).to receive(:track_count).with('ar.unique_session.count')
         expect(monitoring).to receive(:track_count).with(
-          described_class::ATTEMPT_METRIC, tags: ['org_resolve:failed']
+          described_class::SHOW_ATTEMPT_METRIC, tags: ['org_resolve:failed']
         )
         expect(monitoring).to receive(:track_count).with(
-          described_class::ERROR_METRIC, tags: ['org_resolve:failed', 'reason:RecordNotFound']
+          described_class::SHOW_ERROR_METRIC, tags: ['org_resolve:failed', 'reason:RecordNotFound']
         )
         get(path, params: { benefitType: benefit_type }, headers: json_headers)
       end
@@ -430,10 +484,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::ClaimantController, type: :re
       it 'tracks attempts and errors in Datadog' do
         expect(monitoring).to receive(:track_count).with('ar.unique_session.count')
         expect(monitoring).to receive(:track_count).with(
-          described_class::ATTEMPT_METRIC, tags: ['org_resolve:failed']
+          described_class::SHOW_ATTEMPT_METRIC, tags: ['org_resolve:failed']
         )
         expect(monitoring).to receive(:track_count).with(
-          described_class::ERROR_METRIC, tags: ['org_resolve:failed', 'reason:RecordNotFound']
+          described_class::SHOW_ERROR_METRIC, tags: ['org_resolve:failed', 'reason:RecordNotFound']
         )
         get(path, params: { benefitType: benefit_type }, headers: json_headers)
       end

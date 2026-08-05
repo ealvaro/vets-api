@@ -4,14 +4,23 @@ module AccreditedRepresentativePortal
   module V0
     class ClaimantController < ApplicationController
       BENEFIT_TYPES = %w[compensation pension survivor].freeze
-      ATTEMPT_METRIC = 'ar.claimant.show.attempt'
-      SUCCESS_METRIC = 'ar.claimant.show.success'
-      ERROR_METRIC   = 'ar.claimant.show.error'
+
+      SHOW_ATTEMPT_METRIC = 'ar.claimant.show.attempt'
+      SHOW_SUCCESS_METRIC = 'ar.claimant.show.success'
+      SHOW_ERROR_METRIC   = 'ar.claimant.show.error'
+
+      SEARCH_ATTEMPT_METRIC = 'ar.claimant.search.attempt'
+      SEARCH_SUCCESS_METRIC = 'ar.claimant.search.success'
+      SEARCH_NO_CLAIMANT_FOUND_METRIC = 'ar.claimant.search.no_claimant_found'
+      SEARCH_ERROR_METRIC = 'ar.claimant.search.error'
 
       before_action :validate_benefit_type!, only: :show
       before_action { authorize nil, policy_class: ClaimantPolicy }
 
       def search # rubocop:disable Metrics/MethodLength
+        monitoring = ar_monitoring
+        monitoring.track_count(SEARCH_ATTEMPT_METRIC, tags: default_tags)
+
         claimant_profile =
           MPI::Service.new.find_profile_by_attributes(
             first_name: params[:first_name],
@@ -20,8 +29,10 @@ module AccreditedRepresentativePortal
             birth_date: params[:dob]
           ).profile
 
-        claimant_profile.present? or
+        if claimant_profile.blank?
+          monitoring.track_count(SEARCH_NO_CLAIMANT_FOUND_METRIC, tags: default_tags)
           return render json: { data: nil }
+        end
 
         @icn = claimant_profile.icn
 
@@ -30,8 +41,10 @@ module AccreditedRepresentativePortal
         # A claimant is only revealed when the rep has established POA or there is a
         # still-pending request. Resolved requests (declined/expired/accepted-elsewhere)
         # do not grant continued visibility into the claimant.
-        (claimant_representative.present? || power_of_attorney_requests.unresolved.exists?) or
+        unless claimant_representative.present? || power_of_attorney_requests.unresolved.exists?
+          monitoring.track_count(SEARCH_NO_CLAIMANT_FOUND_METRIC, tags: default_tags)
           return render json: { data: nil }
+        end
 
         serializer =
           ClaimantSerializer.new(
@@ -42,8 +55,13 @@ module AccreditedRepresentativePortal
           )
 
         data = serializer.serializable_hash
+        monitoring.track_count(SEARCH_SUCCESS_METRIC, tags: default_tags)
+
         render json: { data: }
       rescue MPI::Errors::ArgumentError => e
+        normalized_reason = e.class.name.split('::').last
+        monitoring.track_count(SEARCH_ERROR_METRIC, tags: default_tags + ["reason:#{normalized_reason}"])
+
         raise Common::Exceptions::BadRequest.new(
           detail: e.message
         )
@@ -51,19 +69,19 @@ module AccreditedRepresentativePortal
 
       def show
         monitoring = ar_monitoring
-        monitoring.track_count(ATTEMPT_METRIC, tags: default_tags)
+        monitoring.track_count(SHOW_ATTEMPT_METRIC, tags: default_tags)
 
         @icn = IcnTemporaryIdentifier.lookup_icn(params[:id])
         claimant_representative.present? or raise Pundit::NotAuthorizedError
 
         render json: claimant_details_payload(claimant_details_poa_requests)
-        monitoring.track_count(SUCCESS_METRIC, tags: default_tags)
+        monitoring.track_count(SHOW_SUCCESS_METRIC, tags: default_tags)
       rescue ActiveRecord::RecordNotFound
-        monitoring.track_count(ERROR_METRIC, tags: default_tags + ['reason:RecordNotFound'])
+        monitoring.track_count(SHOW_ERROR_METRIC, tags: default_tags + ['reason:RecordNotFound'])
         raise Common::Exceptions::RecordNotFound, 'Claimant not found'
       rescue => e
         normalized_reason = e.class.name.split('::').last
-        monitoring.track_count(ERROR_METRIC, tags: default_tags + ["reason:#{normalized_reason}"])
+        monitoring.track_count(SHOW_ERROR_METRIC, tags: default_tags + ["reason:#{normalized_reason}"])
         raise
       end
 
