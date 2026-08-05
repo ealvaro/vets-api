@@ -6,6 +6,9 @@ require 'shrine/plugins/validate_unlocked_pdf'
 # that they cover any sort of claim documentation in a sane way.
 
 class ClaimDocumentation::Uploader < VetsShrine
+  MAX_IMAGE_WIDTH = 5616
+  MAX_IMAGE_HEIGHT = 7272
+
   plugin :storage_from_config, settings: Settings.shrine.claims
   plugin :activerecord, callbacks: false
   plugin :validate_unlocked_pdf
@@ -20,8 +23,8 @@ class ClaimDocumentation::Uploader < VetsShrine
     allowed_types += %w[image/heic image/heif] if record.respond_to?(:heif_enabled) && record.heif_enabled
     validate_mime_type_inclusion allowed_types
 
-    validate_max_width 5616 if get.width
-    validate_max_height 7272 if get.height
+    validate_max_width ClaimDocumentation::Uploader::MAX_IMAGE_WIDTH if get.width
+    validate_max_height ClaimDocumentation::Uploader::MAX_IMAGE_HEIGHT if get.height
     validate_unlocked_pdf
   end
 end

@@ -25,6 +25,18 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
   let(:ves_request) { double('IvcChampva::VesRequest') }
   let(:ves_client) { double('IvcChampva::VesApi::Client') }
 
+  # Builds a Tempfile-backed ActionDispatch::Http::UploadedFile, mirroring what the
+  # real HTTP stack hands the controller. fixture_file_upload returns a
+  # Rack::Test::UploadedFile whose tempfile can't be swapped in place, so it can't be
+  # used to exercise unlock_file's decryption path directly.
+  def action_dispatch_upload(fixture_name, type: 'application/pdf')
+    tempfile = Tempfile.new([File.basename(fixture_name, '.*'), File.extname(fixture_name)])
+    tempfile.binmode
+    tempfile.write(Rails.root.join('spec', 'fixtures', 'files', fixture_name).binread)
+    tempfile.rewind
+    ActionDispatch::Http::UploadedFile.new(tempfile:, filename: fixture_name, type:)
+  end
+
   before do
     @original_aws_config = Aws.config.dup
     Aws.config.update(stub_responses: true)
@@ -871,6 +883,65 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         expect(response).to have_http_status(:internal_server_error)
       end
     end
+
+    context 'image auto-resize' do
+      let(:oversized_image) { fixture_file_upload('oversized-image.png', 'image/png') }
+      let(:within_bounds_image) { fixture_file_upload('doctors-note.png', 'image/png') }
+      let(:pdf_upload) { fixture_file_upload('doctors-note.pdf', 'application/pdf') }
+      let(:clamscan) { double(safe?: true) }
+
+      before do
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+      end
+
+      context 'when champva_auto_resize_on_upload is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:champva_auto_resize_on_upload, anything).and_return(true)
+        end
+
+        it 'downscales an oversized image so an otherwise-valid upload succeeds' do
+          expect do
+            post '/ivc_champva/v1/forms/submit_supporting_documents',
+                 params: { form_id: '10-10D', file: oversized_image }
+          end.to change(PersistentAttachment, :count).by(1)
+
+          expect(response).to have_http_status(:ok)
+        end
+
+        it 'accepts an image already within bounds without modification' do
+          expect do
+            post '/ivc_champva/v1/forms/submit_supporting_documents',
+                 params: { form_id: '10-10D', file: within_bounds_image }
+          end.to change(PersistentAttachment, :count).by(1)
+
+          expect(response).to have_http_status(:ok)
+        end
+
+        it 'accepts non-image (PDF) uploads without resizing' do
+          expect do
+            post '/ivc_champva/v1/forms/submit_supporting_documents',
+                 params: { form_id: '10-10D', file: pdf_upload }
+          end.to change(PersistentAttachment, :count).by(1)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      context 'when champva_auto_resize_on_upload is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:champva_auto_resize_on_upload, anything).and_return(false)
+        end
+
+        it 'leaves oversized images to fail existing dimension validation (regression)' do
+          expect do
+            post '/ivc_champva/v1/forms/submit_supporting_documents',
+                 params: { form_id: '10-10D', file: oversized_image }
+          end.not_to change(PersistentAttachment, :count)
+
+          expect(response).to have_http_status(:unprocessable_entity)
+        end
+      end
+    end
   end
 
   describe '#submit_docs_only_resubmission' do
@@ -1089,6 +1160,15 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     it 'handles PDFs with no password' do
       expect(controller.send(:unlock_file, file, nil)).to eq(file)
     end
+
+    it 'returns the same UploadedFile (decrypted, metadata preserved) for a correct password' do
+      uploaded = action_dispatch_upload('locked_pdf_password_is_test.pdf')
+      result = controller.send(:unlock_file, uploaded, 'test')
+
+      expect(result).to eq(uploaded)
+      expect(result).to be_a(ActionDispatch::Http::UploadedFile)
+      expect(result.content_type).to eq('application/pdf')
+    end
   end
 
   describe '#unlock_file via pdftk' do
@@ -1134,6 +1214,15 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     it 'handles PDFs with no password' do
       expect(controller.send(:unlock_file, file, nil)).to eq(file)
+    end
+
+    it 'returns the same UploadedFile (decrypted, metadata preserved) for a correct password' do
+      uploaded = action_dispatch_upload('locked_pdf_password_is_test.pdf')
+      result = controller.send(:unlock_file, uploaded, 'test')
+
+      expect(result).to eq(uploaded)
+      expect(result).to be_a(ActionDispatch::Http::UploadedFile)
+      expect(result.content_type).to eq('application/pdf')
     end
   end
 

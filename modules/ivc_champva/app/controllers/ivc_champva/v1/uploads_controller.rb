@@ -431,6 +431,8 @@ module IvcChampva
 
           file.tempfile.unlink
           file.tempfile = tmpf
+
+          file
         end
       end
 
@@ -505,8 +507,13 @@ module IvcChampva
 
             Rails.logger.info "submit_supporting_documents called for form #{form_id}"
 
-            unlocked = unlock_file(file, password)
-            attachment.file = password ? unlocked : file
+            # unlock_file returns the (possibly decrypted) UploadedFile to attach,
+            # so the flow stays on a single consistently-typed object.
+            source = unlock_file(file, password)
+            if Flipper.enabled?(:champva_auto_resize_on_upload, @current_user)
+              source = IvcChampva::ImageService.new(source, form_id).resize_if_needed
+            end
+            attachment.file = source
 
             # pre-validation logging to help debug issues
             Rails.logger.info "submit_supporting_documents attachment.file class: #{attachment.file.class}"

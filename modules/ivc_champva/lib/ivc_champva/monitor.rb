@@ -335,5 +335,20 @@ module IvcChampva
                     "#{STATS_KEY}.merge_error",
                     call_location: caller_locations.first, **additional_context)
     end
+
+    ##
+    # Logs the decision and outcome of the pre-validation image auto-resize step.
+    #
+    # @param [String] form_id Form's government ID (e.g., '10-10D')
+    # @param [String, Symbol] decision One of 'resized' or 'error'
+    # @param [Hash] context Structured, PII-free fields (e.g., original_width,
+    #   original_height, content_type, error_class)
+    def track_image_resize(form_id, decision, context = {})
+      additional_context = { form_id:, decision:, **context }
+      level = decision.to_s == 'error' ? 'warn' : 'info'
+      track_request(level, "IVC ChampVA Forms - image resize #{decision} for #{form_id}",
+                    "#{STATS_KEY}.image_resize.#{decision}",
+                    call_location: caller_locations.first, **additional_context)
+    end
   end
 end

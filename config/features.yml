@@ -573,6 +573,10 @@ features:
   champva_convert_to_pdf_on_upload:
     actor_type: user
     description: Converts supporting documents to PDF at upload time instead of final submission to improve submit latency
+  champva_auto_resize_on_upload:
+    actor_type: user
+    enable_in_development: true
+    description: Auto-downscales oversized CHAMPVA supporting-document images to supported dimensions before attachment validation
   champva_stamper_logging:
     actor_type: user
     description: Enables logging of the desired stamp text
