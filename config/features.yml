@@ -3487,11 +3487,6 @@ features:
   va_notify_v2_form1010ezr_submission:
     actor_type: user
     description: If enabled, HCA::EzrSubmissionJob will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
-  va_notify_v2_form10203_confirmation_email:
-    actor_type: user
-    description: >-
-      If enabled, VA10203#send_confirmation_email will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
   va_notify_v2_form10275_submission_email:
     actor_type: user
     description: >-
