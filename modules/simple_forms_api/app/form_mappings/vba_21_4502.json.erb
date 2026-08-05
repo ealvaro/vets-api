@@ -15,7 +15,7 @@
   "form1[0].#subform[0].TelephoneNumber_LastFourNumbers[0]": "<%= form.data.dig('phone_number', 'number')&.slice(3, 4) %>",
   "form1[0].#subform[0].International_Telephone_Number_If_Applicable[0]": "<%= form.data.dig('international_phone_number', 'country_code') %> <%= form.data.dig('international_phone_number', 'area_code') %> <%= form.data.dig('international_phone_number', 'number') %>",
   "form1[0].#subform[0].Email_Address[0]": "<%= form.data['email'] %>",
-  "form1[0].#subform[0].CheckBox1[0]": "<%= form.data['electronic_correspondence'] ? 'Yes' : 'Off' %>",
+  "form1[0].#subform[0].CheckBox1[0]": "<%= form.data['electronic_correspondence'] ? 1 : 'Off' %>",
   "form1[0].#subform[0].ZIPOrPostalCode_FirstFiveNumbers[0]": "<%= form.data.dig('current_mailing_address', 'postal_code')&.slice(0, 5) %>",
   "form1[0].#subform[0].ZIPOrPostalCode_LastFourNumbers[0]": "<%= form.data.dig('current_mailing_address', 'postal_code')&.slice(5, 4) %>",
   "form1[0].#subform[0].Country[0]": "<%= form.data.dig('current_mailing_address', 'country') %>",
