@@ -84,6 +84,8 @@ RSpec.describe BenefitsClaims::Providers::Lighthouse::Serializers::TrackedItemsS
         long_description: long_desc,
         next_steps: next_steps_content,
         is_sensitive: true,
+        # A set boolean flag; false must still serialize (not treated as absent)
+        is_first_party: false,
         # Some content override fields absent (nil)
         no_action_needed: nil,
         is_dbq: nil,
@@ -102,6 +104,9 @@ RSpec.describe BenefitsClaims::Providers::Lighthouse::Serializers::TrackedItemsS
       expect(serialized['longDescription']).to eq(long_desc)
       expect(serialized['nextSteps']).to eq(next_steps_content)
       expect(serialized['isSensitive']).to be(true)
+      # A false flag is still serialized (only nil is omitted)
+      expect(serialized).to have_key('isFirstParty')
+      expect(serialized['isFirstParty']).to be(false)
       # Absent content override fields are not included
       expect(serialized).not_to have_key('noActionNeeded')
       expect(serialized).not_to have_key('isDBQ')

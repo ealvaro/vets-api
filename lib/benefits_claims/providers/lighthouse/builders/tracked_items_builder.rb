@@ -65,7 +65,8 @@ module BenefitsClaims
               is_proper_noun: data['isProperNoun'],
               is_sensitive: data['isSensitive'],
               no_provide_prefix: data['noProvidePrefix'],
-              hide_claim_letter_section: data['hideClaimLetterSection']
+              hide_claim_letter_section: data['hideClaimLetterSection'],
+              is_first_party: data['isFirstParty']
             }
           end
         end

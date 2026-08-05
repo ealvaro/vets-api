@@ -29,7 +29,10 @@ module BenefitsClaims
 
         def initialize(user)
           @user = user
-          @service = BenefitsClaims::Service.new(user)
+          @service = BenefitsClaims::Service.new(
+            user,
+            classify_tracked_items_by_list: Flipper.enabled?(:cst_surface_closed_tracked_items, user)
+          )
           @config = BenefitsClaims::Configuration.instance
         end
 

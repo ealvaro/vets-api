@@ -276,6 +276,15 @@ module Swagger
           key :description, 'Whether to hide the claim letter section for this tracked item'
           key :example, false
         end
+
+        # Classification field (derived from displayName, not from content overrides)
+        property :isFirstParty do
+          key :type, :boolean
+          key :description, 'Whether the evidence was requested from the veteran (true) or from a third party ' \
+                            '(false). Derived from the tracked item\'s displayName. Absent unless the caller enables ' \
+                            'the `cst_surface_closed_tracked_items` feature flag.'
+          key :example, true
+        end
       end
 
       swagger_schema :ContentBlock do

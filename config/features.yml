@@ -813,6 +813,13 @@ features:
     actor_type: user
     description: When enabled, gates the V0 claims evidence upload endpoint for the CST supplemental claims files tab
     enable_in_development: false
+  cst_surface_closed_tracked_items:
+    actor_type: user
+    description: >-
+      When enabled, CST surfaces closed tracked items and routes them by the durable
+      isFirstParty flag (rather than the mutable status, like NEEDED_FROM_YOU) so closed first- vs third-party
+      requests render the correct content.
+    enable_in_development: false
   cst_use_dd_rum:
     actor_type: user
     description: When enabled, claims status tool uses DataDog's Real User Monitoring logging

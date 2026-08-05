@@ -176,7 +176,10 @@ module V0
     end
 
     def service
-      @service ||= BenefitsClaims::Service.new(@current_user)
+      @service ||= BenefitsClaims::Service.new(
+        @current_user,
+        classify_tracked_items_by_list: classify_tracked_items_by_list?
+      )
     end
 
     def check_for_birls_id
@@ -267,6 +270,10 @@ module V0
       Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
     end
 
+    def classify_tracked_items_by_list?
+      Flipper.enabled?(:cst_surface_closed_tracked_items, @current_user)
+    end
+
     def add_evidence_submissions(claim, evidence_submissions)
       displayable = filter_evidence_submissions_for_display(evidence_submissions)
       tracked_items = claim['attributes']['trackedItems']
@@ -350,6 +357,10 @@ module V0
 
     def log_evidence_requests(claim_id, claim_info)
       tracked_items = claim_info['trackedItems']
+      # Logged alongside the value so a nil `is_first_party` can be told apart: with the flag off it
+      # is simply not set, but with the flag on it means the field was lost in transit.
+      # Read once here rather than in the loop below, which would cost one flag lookup per item.
+      classify_by_evidence_list = classify_tracked_items_by_list?
 
       tracked_items.each do |ti|
         ::Rails.logger.info('Evidence Request Types',
@@ -358,7 +369,9 @@ module V0
                               tracked_item_id: ti['id'],
                               tracked_item_type: ti['displayName'],
                               tracked_item_status: ti['status'],
-                              suspense_date: ti['suspenseDate'] })
+                              suspense_date: ti['suspenseDate'],
+                              classify_by_evidence_list:,
+                              tracked_item_is_first_party: ti['isFirstParty'] })
       end
     end
 

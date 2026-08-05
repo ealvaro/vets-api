@@ -38,7 +38,11 @@ module BenefitsClaims
 
     # Accepts either a user object or an ICN string for backwards compatibility
     # @param user_or_icn [User, String] A user object with an ICN or an ICN string
-    def initialize(user_or_icn)
+    # @param classify_tracked_items_by_list [Boolean] When true, FIRST_PARTY_EVIDENCE_REQUESTS
+    #   determines each tracked item's `isFirstParty` field and the legacy status
+    #   override (FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES) is skipped. Callers
+    #   gate this on the feature flag `cst_surface_closed_tracked_items` themselves.
+    def initialize(user_or_icn, classify_tracked_items_by_list: false)
       if user_or_icn.respond_to?(:icn)
         @user = user_or_icn
         @icn = user_or_icn.icn
@@ -48,6 +52,8 @@ module BenefitsClaims
       end
 
       raise ArgumentError, 'no ICN passed in for LH API request.' if @icn.blank?
+
+      @classify_tracked_items_by_list = classify_tracked_items_by_list
 
       super()
     end
@@ -79,7 +85,9 @@ module BenefitsClaims
       # Manual status override for certain tracked items
       # See https://va.ghe.com/software/va-mobile-app/issues/9671
       # This should be removed when the items are re-categorized by BGS
-      override_tracked_items(claim['data'])
+      #
+      # Superseded by the `isFirstParty` field set in `classify_tracked_item`.
+      override_tracked_items(claim['data']) unless @classify_tracked_items_by_list
       apply_friendlier_language(claim['data'])
       claim
     rescue Faraday::TimeoutError
@@ -433,11 +441,24 @@ module BenefitsClaims
 
       tracked_items.each do |item|
         display_name = item['displayName']
+        classify_tracked_item(item, display_name)
         apply_content_overrides(item, display_name)
         track_tracked_item_metrics(item, display_name)
       end
 
       tracked_items
+    end
+
+    # Records the first-party classification on the item, derived from
+    # `displayName` so it survives status changes once the item is acted on.
+    #
+    # FIRST_PARTY_EVIDENCE_REQUESTS is the source of truth. Callers that haven't opted in
+    # get no `isFirstParty` key and keep the override from FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES instead.
+    # This prevents clashing with mobile's claims proxy, which routes by `status` rather than `isFirstParty`.
+    def classify_tracked_item(item, display_name)
+      return unless @classify_tracked_items_by_list
+
+      item['isFirstParty'] = BenefitsClaims::Constants::FIRST_PARTY_EVIDENCE_REQUESTS.include?(display_name)
     end
 
     def track_tracked_item_metrics(item, display_name)

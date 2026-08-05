@@ -44,6 +44,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       .and_return(true)
     allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_website).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, anything).and_return(false)
 
     # Mock provider registry to return Lighthouse provider by default for backward compatibility
     allow(BenefitsClaims::Providers::ProviderRegistry)
@@ -880,6 +881,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     context 'when cst_multi_claim_provider is enabled with single provider' do
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, anything).and_return(false)
       end
 
       it 'modifies the claim data to include additional, human-readable fields' do
@@ -1594,7 +1596,9 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                   tracked_item_id: 395_084,
                   tracked_item_type: 'PMR Pending',
                   tracked_item_status: 'NEEDED_FROM_OTHERS',
-                  suspense_date: '2023-04-15' })
+                  suspense_date: '2023-04-15',
+                  classify_by_evidence_list: false,
+                  tracked_item_is_first_party: nil })
         expect(Rails.logger)
           .to have_received(:info)
           .with('Evidence Request Types',
@@ -1603,7 +1607,47 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                   tracked_item_id: 394_443,
                   tracked_item_type: 'Submit buddy statement(s)',
                   tracked_item_status: 'NEEDED_FROM_YOU',
-                  suspense_date: nil })
+                  suspense_date: nil,
+                  classify_by_evidence_list: false,
+                  tracked_item_is_first_party: nil })
+      end
+
+      context 'when cst_surface_closed_tracked_items is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, anything).and_return(true)
+        end
+
+        it 'logs the isFirstParty classification for each tracked item' do
+          VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
+            get(:show, params: { id: '600383363' })
+          end
+
+          expect(response).to have_http_status(:ok)
+          # Not in FIRST_PARTY_EVIDENCE_REQUESTS, and no longer status-flipped
+          expect(Rails.logger)
+            .to have_received(:info)
+            .with('Evidence Request Types',
+                  { message_type: 'lh.cst.evidence_requests',
+                    claim_id: '600383363',
+                    tracked_item_id: 395_084,
+                    tracked_item_type: 'PMR Pending',
+                    tracked_item_status: 'NEEDED_FROM_YOU',
+                    suspense_date: '2023-04-15',
+                    classify_by_evidence_list: true,
+                    tracked_item_is_first_party: false })
+          # In FIRST_PARTY_EVIDENCE_REQUESTS
+          expect(Rails.logger)
+            .to have_received(:info)
+            .with('Evidence Request Types',
+                  { message_type: 'lh.cst.evidence_requests',
+                    claim_id: '600383363',
+                    tracked_item_id: 394_443,
+                    tracked_item_type: 'Submit buddy statement(s)',
+                    tracked_item_status: 'NEEDED_FROM_YOU',
+                    suspense_date: nil,
+                    classify_by_evidence_list: true,
+                    tracked_item_is_first_party: true })
+        end
       end
 
       context 'claim title generator' do

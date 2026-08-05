@@ -45,6 +45,7 @@ module BenefitsClaims
       attribute :is_sensitive, Bool
       attribute :no_provide_prefix, Bool
       attribute :hide_claim_letter_section, Bool
+      attribute :is_first_party, Bool
     end
 
     class SupportingDocument

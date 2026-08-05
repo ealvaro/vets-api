@@ -379,6 +379,8 @@ RSpec.describe BenefitsClaims::Service do
       end
 
       describe 'when requesting one single benefit claim' do
+        let(:user) { build(:user, :loa3, icn: '123498767V234859') }
+
         before { allow(Flipper).to receive(:enabled?).and_call_original }
 
         it 'has overridden PMR Pending tracked items to the NEEDED_FROM_OTHERS status and readable name' do
@@ -428,6 +430,99 @@ RSpec.describe BenefitsClaims::Service do
             expect(statuses[1]).to eq('SUBMITTED_AWAITING_REVIEW')
             expect(statuses[2]).to eq('ACCEPTED')
             expect(statuses[3]).to eq('NO_LONGER_REQUIRED')
+          end
+
+          context 'when classify_tracked_items_by_list is true' do
+            let(:user_service) { BenefitsClaims::Service.new(user, classify_tracked_items_by_list: true) }
+
+            it 'skips the status override entirely, leaving isFirstParty as the sole classifier' do
+              VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
+                response = user_service.get_claim('600383363')
+                item = response.dig('data', 'attributes', 'trackedItems', 0)
+
+                # 'PMR Pending' arrives as NEEDED_FROM_YOU in the cassette and is no longer flipped
+                expect(item['displayName']).to eq('PMR Pending')
+                expect(item['status']).to eq('NEEDED_FROM_YOU')
+                expect(item['isFirstParty']).to be(false)
+              end
+            end
+          end
+
+          # Callers that route by `status` rather than `isFirstParty` — mobile's claims proxy,
+          # Sidekiq jobs, the chatbot — keep the legacy override from FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES.
+          context 'when classify_tracked_items_by_list is false' do
+            it 'applies the status override for a bare-ICN caller, as the mobile proxy is' do
+              VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
+                response = service.get_claim('600383363')
+                item = response.dig('data', 'attributes', 'trackedItems', 0)
+
+                expect(item['displayName']).to eq('PMR Pending')
+                expect(item['status']).to eq('NEEDED_FROM_OTHERS')
+                expect(item).not_to have_key('isFirstParty')
+              end
+            end
+
+            it 'applies the status override from FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES for ' \
+               'a caller that does not set classify_tracked_items_by_list' do
+              VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
+                response = BenefitsClaims::Service.new(user).get_claim('600383363')
+                item = response.dig('data', 'attributes', 'trackedItems', 0)
+
+                expect(item['status']).to eq('NEEDED_FROM_OTHERS')
+                expect(item).not_to have_key('isFirstParty')
+              end
+            end
+          end
+        end
+
+        describe '#classify_tracked_item' do
+          let(:service) { BenefitsClaims::Service.new(user, classify_tracked_items_by_list: true) }
+          let(:claim) do
+            {
+              'attributes' => {
+                'trackedItems' => [
+                  { 'displayName' => 'Submit buddy statement(s)' }, # first-party
+                  { 'displayName' => 'DBQ AUDIO Hearing Loss and Tinnitus' }, # third-party
+                  # in FIRST_PARTY_AS_THIRD_PARTY_OVERRIDES list; should be third-party
+                  { 'displayName' => 'Proof of service (DD214, etc.)' },
+                  { 'displayName' => 'New VBMS tracked item type' }, # unknown
+                  { 'displayName' => '21-4142' } # first-party
+                ]
+              }
+            }
+          end
+
+          context 'when classifying by the list' do
+            it "sets 'isFirstParty: true' for display names that are in FIRST_PARTY_EVIDENCE_REQUESTS" do
+              service.send(:apply_friendlier_language, claim)
+
+              expect(claim.dig('attributes', 'trackedItems', 0, 'isFirstParty')).to be(true)
+              expect(claim.dig('attributes', 'trackedItems', 4, 'isFirstParty')).to be(true)
+            end
+
+            it "sets 'isFirstParty: false' for display names that are not in the first-party list" do
+              service.send(:apply_friendlier_language, claim)
+
+              expect(claim.dig('attributes', 'trackedItems', 1, 'isFirstParty')).to be(false)
+              expect(claim.dig('attributes', 'trackedItems', 2, 'isFirstParty')).to be(false)
+              expect(claim.dig('attributes', 'trackedItems', 3, 'isFirstParty')).to be(false)
+            end
+
+            it 'sets the field on every tracked item' do
+              service.send(:apply_friendlier_language, claim)
+
+              expect(claim['attributes']['trackedItems']).to all(have_key('isFirstParty'))
+            end
+          end
+
+          context 'when classify_tracked_items_by_list is false' do
+            let(:service) { BenefitsClaims::Service.new(user) }
+
+            it 'does not set isFirstParty on any tracked item' do
+              service.send(:apply_friendlier_language, claim)
+
+              expect(claim['attributes']['trackedItems']).to all(satisfy { |i| !i.key?('isFirstParty') })
+            end
           end
         end
 

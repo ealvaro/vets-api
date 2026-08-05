@@ -155,7 +155,8 @@ RSpec.describe BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsPr
   end
 
   before do
-    allow(BenefitsClaims::Service).to receive(:new).with(current_user).and_return(mock_service)
+    allow(BenefitsClaims::Service).to receive(:new)
+      .with(current_user, hash_including(:classify_tracked_items_by_list)).and_return(mock_service)
     allow(mock_service).to receive(:config).and_return(mock_config)
     allow(mock_config).to receive(:base_api_path)
       .and_return("https://sandbox-api.va.gov/#{BenefitsClaims::Configuration::CLAIMS_PATH}")
@@ -165,8 +166,19 @@ RSpec.describe BenefitsClaims::Providers::Lighthouse::LighthouseBenefitsClaimsPr
   it_behaves_like 'benefits claims provider'
 
   describe '#initialize' do
-    it 'initializes with a user and creates a service' do
-      expect(BenefitsClaims::Service).to receive(:new).with(current_user)
+    it 'classifies tracked items by the list when cst_surface_closed_tracked_items is enabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, current_user).and_return(true)
+
+      expect(BenefitsClaims::Service).to receive(:new).with(current_user, classify_tracked_items_by_list: true)
+      described_class.new(current_user)
+    end
+
+    it 'leaves the legacy status override in place when the flag is disabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, current_user).and_return(false)
+
+      expect(BenefitsClaims::Service).to receive(:new).with(current_user, classify_tracked_items_by_list: false)
       described_class.new(current_user)
     end
   end
