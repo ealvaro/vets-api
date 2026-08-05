@@ -64,7 +64,8 @@ module MyHealth
       def index
         result = service.get_prescriptions(current_only: false)
         prescriptions = apply_recent_submission_overrides(result[:prescriptions].compact)
-        source_metadata = result[:metadata]
+        # Only public source flags belong in API meta (defensive if logging-only keys are added later).
+        source_metadata = result[:metadata].slice(:has_failed_stations)
 
         recently_requested = get_recently_requested_prescriptions(prescriptions)
         all_medications_count = count_grouped_prescriptions(prescriptions)

@@ -478,6 +478,8 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
 
       it 'logs prescription retrieval information' do
         allow(Rails.logger).to receive(:info)
+        allow(StatsD).to receive(:gauge)
+        allow(StatsD).to receive(:increment)
 
         VCR.use_cassette('unified_health_data/get_prescriptions_success') do
           service.get_prescriptions
@@ -486,8 +488,100 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
             hash_including(
               message: 'UHD prescriptions retrieved',
               total_prescriptions: 73,
-              service: 'unified_health_data'
+              current_filtering_applied: false,
+              user_uuid: user.uuid,
+              has_failed_stations: false,
+              service: 'unified_health_data',
+              by_disp_status: an_instance_of(Hash),
+              by_refill_status: an_instance_of(Hash),
+              suspended_refill_count: 0,
+              suspended_disp_count: 0,
+              status_not_available_count: an_instance_of(Integer),
+              in_progress_count: satisfy { |n| n.is_a?(Integer) && n.positive? },
+              active_count: satisfy { |n| n.is_a?(Integer) && n.positive? },
+              blank_status_count: an_instance_of(Integer)
             )
+          )
+          expect(StatsD).to have_received(:gauge).with('api.uhd.prescriptions.index.total', 73)
+          expect(StatsD).to have_received(:gauge)
+            .with('api.uhd.prescriptions.index.in_progress', satisfy { |n| n.is_a?(Integer) && n.positive? })
+          expect(StatsD).to have_received(:gauge).with('api.uhd.prescriptions.index.suspended_refill', 0)
+          expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.index.with_suspended_refill')
+        end
+      end
+
+      it 'logs lowercase status histogram keys for in-progress refill statuses' do
+        allow(Rails.logger).to receive(:info)
+        allow(StatsD).to receive(:gauge)
+        allow(StatsD).to receive(:increment)
+
+        VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+          service.get_prescriptions
+
+          expect(Rails.logger).to have_received(:info).with(
+            hash_including(
+              message: 'UHD prescriptions retrieved',
+              by_refill_status: hash_including(
+                'refillinprocess' => satisfy(&:positive?),
+                'submitted' => satisfy(&:positive?)
+              ),
+              by_disp_status: hash_including(
+                'active: refill in process' => satisfy(&:positive?),
+                'active: submitted' => satisfy(&:positive?)
+              ),
+              in_progress_count: satisfy { |n| n.is_a?(Integer) && n.positive? }
+            )
+          )
+        end
+      end
+
+      it 'logs suspended counts when prescriptions have Suspended status' do
+        allow(Rails.logger).to receive(:info)
+        allow(StatsD).to receive(:gauge)
+        allow(StatsD).to receive(:increment)
+
+        result = {
+          prescriptions: [
+            UnifiedHealthData::Prescription.new(
+              id: '1', prescription_id: '1', refill_status: 'suspended', disp_status: 'Suspended'
+            ),
+            UnifiedHealthData::Prescription.new(
+              id: '2', prescription_id: '2', refill_status: 'active', disp_status: 'Active'
+            )
+          ],
+          metadata: { has_failed_stations: false }
+        }
+
+        service.send(:log_prescriptions_result, result, false)
+
+        expect(Rails.logger).to have_received(:info).with(
+          hash_including(
+            message: 'UHD prescriptions retrieved',
+            total_prescriptions: 2,
+            by_refill_status: { 'suspended' => 1, 'active' => 1 },
+            by_disp_status: { 'suspended' => 1, 'active' => 1 },
+            suspended_refill_count: 1,
+            suspended_disp_count: 1
+          )
+        )
+        expect(StatsD).to have_received(:gauge).with('api.uhd.prescriptions.index.suspended_refill', 1)
+        expect(StatsD).to have_received(:increment).with('api.uhd.prescriptions.index.with_suspended_refill')
+      end
+
+      it 'fails open when summary logging raises' do
+        allow(Rails.logger).to receive(:info).and_call_original
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:gauge)
+        allow(StatsD).to receive(:increment)
+        allow(service).to receive(:status_histogram).and_raise(StandardError, 'logger boom')
+
+        VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+          result = service.get_prescriptions
+
+          expect(result[:prescriptions].size).to eq(73)
+          expect(Rails.logger).to have_received(:warn).with(
+            'UHD prescriptions summary logging failed',
+            hash_including(error_class: 'StandardError', error_message: 'logger boom')
           )
         end
       end
@@ -496,21 +590,34 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
     context 'with empty response', :vcr do
       it 'logs UHD prescriptions not found when no prescriptions are returned' do
         allow(Rails.logger).to receive(:info).and_call_original
+        allow(StatsD).to receive(:gauge)
+        allow(StatsD).to receive(:increment)
+
         VCR.use_cassette('unified_health_data/get_prescriptions_empty') do
           expect(Rails.logger).to receive(:info).with(
             hash_including(
               message: 'UHD prescriptions not found',
               total_prescriptions: 0,
               current_filtering_applied: false,
-              icn: user.icn,
+              user_uuid: user.uuid,
               has_failed_stations: false,
-              service: 'unified_health_data'
+              service: 'unified_health_data',
+              by_disp_status: {},
+              by_refill_status: {},
+              suspended_refill_count: 0,
+              suspended_disp_count: 0,
+              status_not_available_count: 0,
+              in_progress_count: 0,
+              active_count: 0,
+              blank_status_count: 0
             )
           )
 
           result = service.get_prescriptions
           expect(result[:prescriptions]).to eq([])
-          expect(result[:metadata]).to eq({ has_failed_stations: false })
+          expect(result[:metadata]).to include(has_failed_stations: false)
+          expect(StatsD).to have_received(:gauge).with('api.uhd.prescriptions.index.total', 0)
+          expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.index.with_suspended_refill')
         end
       end
     end

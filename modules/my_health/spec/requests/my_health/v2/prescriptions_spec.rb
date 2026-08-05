@@ -1350,6 +1350,8 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['meta']).to have_key('has_failed_stations')
         expect(json_response['meta']['has_failed_stations']).to be false
+        expect(json_response['meta']).not_to have_key('by_disp_status_pre_mapping')
+        expect(json_response['meta']).not_to have_key('pre_map_suspended_disp_count')
       end
     end
 
@@ -1361,6 +1363,8 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['meta']).to have_key('has_failed_stations')
         expect(json_response['meta']['has_failed_stations']).to be true
+        expect(json_response['meta']).not_to have_key('by_disp_status_pre_mapping')
+        expect(json_response['meta']).not_to have_key('pre_map_suspended_disp_count')
       end
     end
   end
