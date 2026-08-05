@@ -2152,6 +2152,25 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         expect(subject.send(:pending_refill?, same_day_rx)).to be true
       end
     end
+
+    # VistA tracking accumulates permanently across fill cycles, so a complete_date_time from a
+    # prior shipment must not suppress a genuinely new refill request. The tracking guard is
+    # date-bounded (shipped_since?) rather than presence-only.
+    context 'when tracking exists only from a prior fill cycle (before the submit date)' do
+      def stale_tracking_rx
+        UnifiedHealthData::Prescription.new(
+          disp_status: 'Active',
+          refill_submit_date: 3.days.ago.utc.iso8601(3),
+          dispensed_date: 40.days.ago.utc.iso8601(3),
+          tracking: [{ complete_date_time: 30.days.ago.utc.iso8601(3) }],
+          source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_VISTA
+        )
+      end
+
+      it 'still flags a pending refill (stale tracking does not suppress it)' do
+        expect(subject.send(:pending_refill?, stale_tracking_rx)).to be true
+      end
+    end
   end
 
   describe 'shipped tracking logic when mhv_medications_management_improvements is disabled' do
@@ -2228,12 +2247,14 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
   # last fill (or a submission with no fill yet) means the refill is still pending,
   # so the prescription keeps showing "Active: Submitted" until upstream catches up.
   describe '#refill_still_pending? / submission date bridge (I2)' do
-    def rx_with(submit:, fill:, disp_status: 'Active')
+    def rx_with(submit:, fill:, disp_status: 'Active', dispensed: nil, tracking: [])
       UnifiedHealthData::Prescription.new(
         id: '12345',
         disp_status:,
         refill_submit_date: submit,
-        refill_date: fill
+        refill_date: fill,
+        dispensed_date: dispensed,
+        tracking:
       )
     end
 
@@ -2276,6 +2297,48 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       it 'is false when the submit date is older than the refill in-flight window even with no fill' do
         rx = rx_with(submit: 20.days.ago.iso8601, fill: nil)
         expect(adapter.send(:refill_still_pending?, rx)).to be(false)
+      end
+
+      # Staging bug: submit -> in process -> pharmacy dispenses, then the prescription reverted to
+      # "Active: Submitted". VistA clears/moves the projected refill_date once a fill lands, so a
+      # nil/stale refill_date alone would re-stamp an already-dispensed refill as pending. Guarding
+      # on the real dispensed date prevents the regression. Unlike pending_refill?, a same-day
+      # dispense here counts as filled (dispensed >= submit), not as a still-pending re-request.
+      it 'is false when an actual dispense landed on/after the submit date even with no projected refill_date' do
+        rx = rx_with(submit: 2.days.ago.iso8601, fill: nil, dispensed: 1.day.ago.iso8601)
+        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
+      end
+
+      it 'is false when a dispense landed on the same calendar day as the submit date' do
+        today = Time.zone.today.iso8601
+        rx = rx_with(submit: today, fill: nil, dispensed: today)
+        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
+      end
+
+      it 'stays true when the only dispense predates the submit date (prior fill, genuine new request)' do
+        rx = rx_with(submit: 1.day.ago.iso8601, fill: nil, dispensed: 30.days.ago.iso8601)
+        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
+      end
+
+      it 'is false when a shipped fill (tracking with a completion date) exists' do
+        rx = rx_with(
+          submit: 2.days.ago.iso8601,
+          fill: nil,
+          tracking: [{ complete_date_time: 1.day.ago.iso8601 }]
+        )
+        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
+      end
+
+      # Tracking persists across fill cycles (see the 15-day window in apply_shipped_tracking_logic),
+      # so a completion date from a *prior* shipment must not suppress a genuinely new request. The
+      # tracking guard is date-aware: only a shipment on/after the submit date counts as filled.
+      it 'stays true when the only tracking shipped before the submit date (stale prior-cycle tracking)' do
+        rx = rx_with(
+          submit: 1.day.ago.iso8601,
+          fill: nil,
+          tracking: [{ complete_date_time: 30.days.ago.iso8601 }]
+        )
+        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
       end
     end
 
@@ -2372,6 +2435,31 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
           expect(rx.disp_status).to eq('Active: Refill in Process')
           expect(rx.refill_status).to eq('refillinprocess')
+        end
+
+        # Staging regression: submit -> in process -> pharmacy dispensed and shipped, then the
+        # prescription reverted to "Active: Submitted". A shipped fill (tracking with a completion
+        # date) after the submit date must not be re-bridged back to Submitted.
+        it 'does not revert a dispensed-and-shipped refill back to Submitted' do
+          vista_med_submitted['dispensedDate'] = 1.day.ago.utc.iso8601(3)
+          vista_med_submitted['rxRFRecords'] = {
+            'rfRecord' => [
+              {
+                'id' => 'rf-1',
+                'refillStatus' => 'dispensed',
+                'dispensedDate' => 1.day.ago.utc.iso8601(3),
+                'refillDate' => 1.day.ago.utc.iso8601(3)
+              }
+            ]
+          }
+          vista_med_submitted['trackingList'] = {
+            'tracking' => [{ 'completeDateTime' => 1.day.ago.utc.iso8601(3) }]
+          }
+
+          rx = subject.parse(submitted_response)[:prescriptions].first
+
+          expect(rx.disp_status).not_to eq('Active: Submitted')
+          expect(rx.refill_status).not_to eq('submitted')
         end
       end
 

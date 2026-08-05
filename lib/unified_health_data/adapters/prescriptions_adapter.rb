@@ -272,11 +272,15 @@ module UnifiedHealthData
       def pending_refill?(rx)
         return false unless vista_source?(rx)
         return false unless rx.disp_status == DISP_ACTIVE
-        return false if recent_tracking?(rx)
 
         submit_date = parse_date(rx.refill_submit_date)
         return false unless submit_date
         return false unless submit_date >= REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago.to_date
+
+        # Date-bounded rather than presence-only: VistA tracking accumulates permanently across fill
+        # cycles, so a stale complete_date_time from a prior shipment must not suppress a genuinely
+        # new refill request. Only a shipment on/after the submit date counts as already filled.
+        return false if shipped_since?(rx, submit_date)
 
         dispensed_date = most_recent_dispensed_date(rx)&.to_date
         # Use >= (not >) because refill_submit_date and dispensed_date are compared at day
@@ -411,6 +415,22 @@ module UnifiedHealthData
         # window elapses we stop bridging so the prescription falls back to its upstream status.
         return false if submit < REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago
 
+        # A fill that shipped on/after the submit date means this refill has been filled, so it is
+        # no longer pending regardless of the projected refill_date. Compare the shipment completion
+        # date against the submit date (rather than reusing the date-agnostic recent_tracking?) so
+        # tracking left over from a *previous* fill cycle does not suppress a genuinely new request.
+        return false if shipped_since?(rx, submit)
+
+        # An actual dispense on/after the submit date means the request has already been filled.
+        # refill_date below is VistA's *projected* next-available date, which is cleared/moved once a
+        # fill lands; relying on it alone would re-stamp an already-dispensed refill back to
+        # "Active: Submitted". Guard on the real dispensed date before consulting refill_date. Note
+        # the boundary is intentionally the inverse of pending_refill?: there a same-day dispense
+        # keeps a re-request pending (submit_date >= dispensed_date), whereas here a same-day
+        # dispense counts as filled (dispensed >= submit) so a completed fill is never re-bridged.
+        dispensed = most_recent_dispensed_date(rx)
+        return false if dispensed && dispensed.to_date >= submit.to_date
+
         fill = parse_bridge_time(rx.refill_date)
         return true if fill.nil? # submitted, not yet filled
 
@@ -423,6 +443,21 @@ module UnifiedHealthData
         Time.zone.parse(value.to_s)
       rescue ArgumentError, TypeError
         nil
+      end
+
+      # Whether any tracking entry reports a shipment completed on/after the submit date. Unlike the
+      # date-agnostic recent_tracking?, this compares each completion date to the submit date so a
+      # shipment from a prior fill cycle does not count as evidence that the just-submitted refill
+      # has already shipped.
+      def shipped_since?(rx, submit)
+        return false if rx.tracking.blank?
+
+        rx.tracking.any? do |t|
+          next false unless t.is_a?(Hash)
+
+          completed = parse_bridge_time(t[:complete_date_time])
+          completed && completed.to_date >= submit.to_date
+        end
       end
 
       # Checks whether either data source reported a failure in the UHD response.
