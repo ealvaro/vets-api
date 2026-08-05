@@ -164,26 +164,31 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
       end
 
       it 'properly maps Oracle Health prescription fields' do
-        VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-          prescriptions = service.get_prescriptions[:prescriptions]
-          oracle_prescription = prescriptions.find { |p| p.prescription_id == '20848812135' }
+        # Prescription 20848812135 carries a 'requested' order-Task dated 2026-03-20T18:59:55Z.
+        # Freeze time inside the always-enforced in-flight staleness window so the refill
+        # still resolves to 'submitted' (and thus is_refillable false via Gate 7).
+        travel_to(Time.zone.parse('2026-03-22 12:00:00 UTC')) do
+          VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+            prescriptions = service.get_prescriptions[:prescriptions]
+            oracle_prescription = prescriptions.find { |p| p.prescription_id == '20848812135' }
 
-          expect(oracle_prescription.refill_status).to eq('submitted')
-          expect(oracle_prescription.refill_remaining).to eq(1)
-          expect(oracle_prescription.facility_name).to eq('Ambulatory Pharmacy')
-          expect(oracle_prescription.ordered_date).to eq('2025-11-17T21:21:48Z')
-          expect(oracle_prescription.quantity).to eq('18')
-          expect(oracle_prescription.expiration_date).to eq('2026-11-16T12:00:00.000Z')
-          expect(oracle_prescription.prescription_number).to be_nil # No prescription identifier exists
-          expect(oracle_prescription.prescription_name).to eq('albuterol (albuterol 90 mcg inhaler [18g])')
-          expect(oracle_prescription.station_number).to eq('668')
-          expect(oracle_prescription.is_trackable).to be true
-          expect(oracle_prescription.tracking).to be_an(Array)
-          expect(oracle_prescription.tracking).not_to be_empty
-          expect(oracle_prescription.prescription_source).to eq('VA')
-          expect(oracle_prescription.is_refillable).to be false
-          expect(oracle_prescription.instructions).to include('Inhalation')
-          expect(oracle_prescription.facility_phone_number).to be_nil
+            expect(oracle_prescription.refill_status).to eq('submitted')
+            expect(oracle_prescription.refill_remaining).to eq(1)
+            expect(oracle_prescription.facility_name).to eq('Ambulatory Pharmacy')
+            expect(oracle_prescription.ordered_date).to eq('2025-11-17T21:21:48Z')
+            expect(oracle_prescription.quantity).to eq('18')
+            expect(oracle_prescription.expiration_date).to eq('2026-11-16T12:00:00.000Z')
+            expect(oracle_prescription.prescription_number).to be_nil # No prescription identifier exists
+            expect(oracle_prescription.prescription_name).to eq('albuterol (albuterol 90 mcg inhaler [18g])')
+            expect(oracle_prescription.station_number).to eq('668')
+            expect(oracle_prescription.is_trackable).to be true
+            expect(oracle_prescription.tracking).to be_an(Array)
+            expect(oracle_prescription.tracking).not_to be_empty
+            expect(oracle_prescription.prescription_source).to eq('VA')
+            expect(oracle_prescription.is_refillable).to be false
+            expect(oracle_prescription.instructions).to include('Inhalation')
+            expect(oracle_prescription.facility_phone_number).to be_nil
+          end
         end
       end
 
@@ -245,6 +250,13 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
       end
 
       context 'Task resource parsing' do
+        # Prescription 20848812135 carries a 'requested' order-Task dated 2026-03-20T18:59:55Z.
+        # Freeze time inside the always-enforced in-flight staleness window so honored Tasks
+        # still resolve to submitted; failed-Task cases below are time-independent.
+        around do |example|
+          travel_to(Time.zone.parse('2026-03-22 12:00:00 UTC')) { example.run }
+        end
+
         it 'sets refill_status to submitted when a valid Task exists' do
           VCR.use_cassette('unified_health_data/get_prescriptions_success') do
             prescriptions = service.get_prescriptions[:prescriptions]

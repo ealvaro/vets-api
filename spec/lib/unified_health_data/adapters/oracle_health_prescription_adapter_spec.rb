@@ -575,7 +575,7 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         end
 
         it 'still maps a requested order-Task to submitted' do
-          result = subject.parse(fhir_resource_with_task(task_status: 'requested'))
+          result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: 2.days.ago.utc.iso8601))
 
           expect(result.refill_status).to eq('submitted')
           expect(result.disp_status).to eq('Active: Submitted')
@@ -587,7 +587,7 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     # order-Task ages past REFILL_IN_FLIGHT_WINDOW_DAYS (3) with no fulfilling
     # dispense, the status falls back to the normalized MedicationRequest status
     # and refill_submit_date is dropped, so a med does not display an in-flight
-    # refill state indefinitely. The window is only enforced when the flag is on.
+    # refill state indefinitely. The window is always enforced, regardless of the flag.
     context 'in-flight refill Task staleness window' do
       context 'when mhv_medications_management_improvements is enabled' do
         before do
@@ -633,13 +633,22 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
             .with(:mhv_medications_management_improvements, anything).and_return(false)
         end
 
-        it 'still honors a stale requested Task as submitted (window not enforced)' do
+        it 'drops a stale requested Task back to active and clears refill_submit_date' do
           stale_date = 20.days.ago.utc.iso8601
           result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: stale_date))
 
+          expect(result.refill_status).to eq('active')
+          expect(result.disp_status).to eq('Active')
+          expect(result.refill_submit_date).to be_nil
+        end
+
+        it 'still honors a requested Task within the window as submitted' do
+          fresh_date = 2.days.ago.utc.iso8601
+          result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: fresh_date))
+
           expect(result.refill_status).to eq('submitted')
           expect(result.disp_status).to eq('Active: Submitted')
-          expect(result.refill_submit_date).to eq(stale_date)
+          expect(result.refill_submit_date).to eq(fresh_date)
         end
       end
     end

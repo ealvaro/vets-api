@@ -22,8 +22,9 @@ module UnifiedHealthData
       # In-flight refill Tasks older than this are no longer honored; the refill
       # status falls back to the normalized MedicationRequest status and the
       # refill_submit_date is dropped. Mirrors VistA's REFILL_IN_FLIGHT_WINDOW_DAYS
-      # so both surfaces bound the "in between" refill state identically. Only
-      # enforced when the medications management improvements flag is enabled.
+      # so both surfaces bound the "in between" refill state identically. Always
+      # enforced so a stale refill request does not pin a med at an in-flight
+      # refill state (e.g. "Active: Submitted") indefinitely.
       REFILL_IN_FLIGHT_WINDOW_DAYS = 3
 
       # Extracts refill submission metadata from Task resources during prescription parsing.
@@ -117,15 +118,14 @@ module UnifiedHealthData
       end
 
       # Determines whether an in-flight refill Task is recent enough to still be
-      # honored. The staleness window is only enforced when the medications
-      # management improvements flag is enabled; with the flag off the prior
-      # windowless behavior is preserved.
+      # honored. The staleness window is always enforced: a 'requested' order-Task
+      # older than the window falls back to the normalized MedicationRequest status
+      # so a stale refill request does not pin a med at 'Active: Submitted'
+      # indefinitely, regardless of the medications management improvements flag.
       #
       # @param task_submit_date [String] Task.executionPeriod.start
       # @return [Boolean] true if the Task should still be honored
       def in_flight_task_within_window?(task_submit_date)
-        return true unless Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
-
         parse_date_or_epoch(task_submit_date) >= REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago
       end
 
