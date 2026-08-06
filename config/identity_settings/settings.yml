@@ -45,7 +45,7 @@ map_services:
 mhv:
   account_creation:
     access_key: ~
-    host: https://apigw-intb.aws.myhealth.va.gov
+    host: https://mhv-intb-api.myhealth.va.gov/mhvapi
     mock: true
     sts:
       issuer: http://localhost:3000

@@ -13,7 +13,7 @@ describe MHV::AccountCreation::Service do
     let(:tou_version) { 'v1' }
     let(:tou_occurred_at) { Time.zone.now }
     let(:log_prefix) { '[MHV][AccountCreation][Service]' }
-    let(:account_creation_base_url) { 'https://apigw-intb.aws.myhealth.va.gov' }
+    let(:account_creation_base_url) { 'https://mhv-intb-api.myhealth.va.gov/mhvapi' }
     let(:account_creation_path) { 'v1/usermgmt/account-service/account' }
     let(:break_cache) { false }
     let(:session_id) { nil }

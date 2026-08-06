@@ -83,7 +83,7 @@ module MHV
       end
 
       def sts_scopes
-        ["#{base_path}/#{account_creation_path}"]
+        ["#{base_path.chomp('/')}/#{account_creation_path}"]
       end
 
       def mhv_sts_settings

@@ -24,7 +24,7 @@ map_services:
 
 mhv:
   account_creation:
-    host: https://apigw-sysb.aws.myhealth.va.gov
+    host: https://mhv-sysb-api.myhealth.va.gov/mhvapi
     mock: false
     sts:
       issuer: https://staging-api.va.gov
