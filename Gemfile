@@ -104,7 +104,7 @@ gem 'flipper-ui'
 gem 'foreman'
 gem 'geocoder', '~> 1.8', '>= 1.8.6'
 gem 'google-protobuf' # For Datadog Profiling
-gem 'govdelivery-tms', git: 'https://va.ghe.com/software/govdelivery-tms-ruby.git', tag: 'v4.2.0', require: 'govdelivery/tms/mail/delivery_method'
+gem 'govdelivery-tms', git: 'https://va.ghe.com/software/govdelivery-tms-ruby.git', tag: 'v4.3.0', require: 'govdelivery/tms/mail/delivery_method'
 gem 'gyoku'
 gem 'hexapdf'
 gem 'holidays'
