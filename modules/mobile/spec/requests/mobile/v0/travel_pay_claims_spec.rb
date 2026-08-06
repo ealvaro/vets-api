@@ -669,9 +669,7 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
                        'isComplete' => false }.to_json
 
             post('/mobile/v0/travel-pay/claims', headers: sis_headers(json: true), params:)
-            # TODO: This should be a 500 error, but the controller is returning a 400
-            # expect(response).to have_http_status(:internal_server_error)
-            expect(response).to have_http_status(:bad_request)
+            expect(response).to have_http_status(:bad_gateway)
           end
         end
       end

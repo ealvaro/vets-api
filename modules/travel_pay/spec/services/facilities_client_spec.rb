@@ -63,7 +63,7 @@ describe TravelPay::FacilitiesClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_related'])
+              tags: ['travel_pay:get_related', 'status:success'])
       expect(response.body['data'].length).to eq(2)
       expect(response.body['data'].first['stationNumber']).to eq('983')
       expect(response.body['totalRecordCount']).to eq(2)

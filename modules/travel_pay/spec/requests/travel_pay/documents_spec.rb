@@ -260,7 +260,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:created)
           expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
-                                                           tags: ['document_type:other', 'result:success'])
+                                                           tags: include('document_type:other', 'result:success'))
         end
 
         it 'tracks success for proof-of-attendance uploads as poa' do
@@ -272,7 +272,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:created)
           expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
-                                                           tags: ['document_type:poa', 'result:success'])
+                                                           tags: include('document_type:poa', 'result:success'))
         end
 
         it 'tracks failure when document param is missing' do
@@ -280,7 +280,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:bad_request)
           expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
-                                                           tags: ['document_type:other', 'result:failure'])
+                                                           tags: include('document_type:other', 'result:failure'))
         end
 
         it 'tracks failure when upload raises resource not found' do
@@ -294,7 +294,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:not_found)
           expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
-                                                           tags: ['document_type:other', 'result:failure'])
+                                                           tags: include('document_type:other', 'result:failure'))
         end
 
         it 'tracks failure when upload raises Faraday::Error' do
@@ -305,7 +305,7 @@ RSpec.describe TravelPay::V0::DocumentsController, type: :request do
 
           expect(response).to have_http_status(:service_unavailable)
           expect(StatsD).to have_received(:increment).with('travel_pay.documents.create',
-                                                           tags: ['document_type:other', 'result:failure'])
+                                                           tags: include('document_type:other', 'result:failure'))
         end
       end
     end

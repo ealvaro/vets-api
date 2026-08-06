@@ -48,7 +48,7 @@ describe TravelPay::ExpensesClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:add_mileage'])
+              tags: ['travel_pay:add_mileage', 'status:success'])
       expect(actual_expense_id).to eq(expense_id)
     end
   end

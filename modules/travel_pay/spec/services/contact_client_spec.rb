@@ -46,7 +46,7 @@ describe TravelPay::ContactClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_contact'])
+              tags: ['travel_pay:get_contact', 'status:success'])
       expect(contact_response.body['data']['id']).to eq('contact-uuid-123')
       expect(contact_response.body['data']['firstName']).to eq('John')
       expect(contact_response.body['data']['isVeteran']).to be(true)

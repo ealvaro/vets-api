@@ -60,7 +60,7 @@ describe TravelPay::DocumentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_document_ids'])
+              tags: ['travel_pay:get_document_ids', 'status:success'])
       expect(document_ids).to eq(expected_ids)
       expect(document_filenames).to eq(expected_filenames)
     end
@@ -83,7 +83,7 @@ describe TravelPay::DocumentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_document_binary'])
+              tags: ['travel_pay:get_document_binary', 'status:success'])
       expect(document_binary_response.body).to eq(response.to_json)
     end
 
@@ -135,7 +135,7 @@ describe TravelPay::DocumentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:add_document'])
+              tags: ['travel_pay:add_document', 'status:success'])
       expect(Faraday::Multipart::FilePart).to have_received(:new)
         .with(file.path, 'application/pdf', 'test.pdf')
       expect(response.status).to eq(201)
@@ -254,7 +254,7 @@ describe TravelPay::DocumentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:delete_document'])
+              tags: ['travel_pay:delete_document', 'status:success'])
       expect(response.status).to eq(200)
       expect(response.body['data']['documentId']).to eq(document_id)
     end

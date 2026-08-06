@@ -3,6 +3,7 @@
 require 'securerandom'
 require 'travel_pay/middleware/btsss_errors'
 require 'travel_pay/middleware/btsss_logging'
+require 'travel_pay/monitor'
 
 module TravelPay
   class BaseClient
@@ -69,12 +70,12 @@ module TravelPay
     ##
     # Helper function to measure xTIC latency
     # when calling the external Travel Pay API
-    def log_to_statsd(service, tag_value)
-      start_time = Time.current
-      result = yield
-      elapsed_time = Time.current - start_time
-      StatsD.measure("travel_pay.#{service}.response_time", elapsed_time, tags: ["travel_pay:#{tag_value}"])
-      result
+    def log_to_statsd(service, tag_value, &)
+      monitor.track_response_time(service, tag_value, &)
+    end
+
+    def monitor
+      @monitor ||= TravelPay::Monitor.new
     end
   end
 end

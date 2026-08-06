@@ -114,8 +114,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               expect(response).to have_http_status(:created)
               expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:success'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:success'))
             end
 
             it 'successfully creates complex claim with user-generated appointment_source' do
@@ -126,8 +126,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               expect(response).to have_http_status(:created)
               expect(JSON.parse(response.body)).to eq('claimId' => claim_id)
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:user-generated',
-                                                                      'result:success'])
+                                                               tags: include('appointment_source:user-generated',
+                                                                             'result:success'))
             end
 
             it 'increments StatsD with vaos default when appointment_source is omitted' do
@@ -137,8 +137,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:created)
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:success'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:success'))
             end
           end
 
@@ -176,8 +176,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:created)
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:user-generated',
-                                                                      'result:success'])
+                                                               tags: include('appointment_source:user-generated',
+                                                                             'result:success'))
             end
 
             it 'returns bad request when appt_id is not a valid UUID' do
@@ -282,8 +282,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               body = JSON.parse(response.body)
               expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:failure'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:failure'))
             end
           end
 
@@ -315,8 +315,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               body = JSON.parse(response.body)
               expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:failure'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:failure'))
             end
           end
         end
@@ -458,8 +458,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
               expect(response).to have_http_status(:created)
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:user-generated',
-                                                                      'result:success'])
+                                                               tags: include('appointment_source:user-generated',
+                                                                             'result:success'))
             end
 
             it 'returns bad request when appt_id is not a valid UUID' do
@@ -557,8 +557,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               body = JSON.parse(response.body)
               expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:failure'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:failure'))
             end
           end
 
@@ -590,8 +590,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
               body = JSON.parse(response.body)
               expect(body['errors']).to be_present
               expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.create',
-                                                               tags: ['appointment_source:vaos',
-                                                                      'result:failure'])
+                                                               tags: include('appointment_source:vaos',
+                                                                             'result:failure'))
             end
           end
         end
@@ -672,8 +672,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
             expect(response).to have_http_status(:created)
             expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
-                                                             tags: %w[result:success
-                                                                      claim_type:community-care])
+                                                             tags: include('result:success',
+                                                                           'claim_type:community-care'))
           end
 
           it 'tracks claim_type:other in StatsD when claim_type is other' do
@@ -682,8 +682,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
             expect(response).to have_http_status(:created)
             expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
-                                                             tags: %w[result:success
-                                                                      claim_type:other])
+                                                             tags: include('result:success',
+                                                                           'claim_type:other'))
           end
 
           it 'tracks claim_type:unknown in StatsD when claim_type param is missing' do
@@ -692,8 +692,8 @@ RSpec.describe TravelPay::V0::ComplexClaimsController, type: :request do
 
             expect(response).to have_http_status(:created)
             expect(StatsD).to have_received(:increment).with('travel_pay.claims.complex.submit',
-                                                             tags: %w[result:success
-                                                                      claim_type:unknown])
+                                                             tags: include('result:success',
+                                                                           'claim_type:unknown'))
           end
 
           # NOTE: In request specs, you can’t make params[:claim_id] truly missing because

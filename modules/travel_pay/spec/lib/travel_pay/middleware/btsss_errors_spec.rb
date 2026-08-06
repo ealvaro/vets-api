@@ -37,7 +37,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
       middleware.on_complete(env)
 
       expect(env[:body]['detail']).to eq('Validation failed: The claim does not have any expenses.')
-      expect(env[:body]['code']).to eq('400')
+      expect(env[:body]['code']).to eq('_400')
       expect(env[:body]['message']).to eq('Validation failed: The claim does not have any expenses.')
       expect(env[:body]['statusCode']).to eq(400)
     end
@@ -65,7 +65,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
         'Validation Failed: The JSON value could not be converted to System.DateTime. ' \
         'Path: $.appointmentDateTime | LineNumber: 1 | BytePositionInLine: 27.'
       )
-      expect(env[:body]['code']).to eq('400')
+      expect(env[:body]['code']).to eq('_400')
     end
 
     it 'ignores non-string items in the data array' do
@@ -99,7 +99,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
 
       expect(env[:body]).to be_a(Hash)
       expect(env[:body]['detail']).to eq('<html>Bad Gateway</html>')
-      expect(env[:body]['code']).to eq('502')
+      expect(env[:body]['code']).to eq('_502')
     end
 
     it 'converts a string body for 503 errors' do
@@ -108,15 +108,15 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
 
       expect(env[:body]).to be_a(Hash)
       expect(env[:body]['detail']).to eq('Service Unavailable')
-      expect(env[:body]['code']).to eq('503')
+      expect(env[:body]['code']).to eq('_503')
     end
 
-    it 'truncates long non-JSON bodies to 200 characters' do
-      long_body = 'x' * 500
+    it 'truncates long non-JSON bodies to 2000 characters' do
+      long_body = 'x' * 3000
       env = env_for(status: 502, body: long_body)
       middleware.on_complete(env)
 
-      expect(env[:body]['detail'].length).to be <= 200
+      expect(env[:body]['detail'].length).to be <= 2000
     end
   end
 
@@ -127,7 +127,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors do
 
       expect(env[:body]).to be_a(Hash)
       expect(env[:body]['detail']).to eq('')
-      expect(env[:body]['code']).to eq('500')
+      expect(env[:body]['code']).to eq('_500')
     end
   end
 

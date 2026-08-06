@@ -54,7 +54,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors, type: :integration do
     subject(:client) do
       stubs = test_stubs
       Faraday.new do |conn|
-        conn.response :raise_custom_error, error_prefix: 'travel-pay'
+        conn.response :raise_custom_error, error_prefix: 'BTSSS-API'
         conn.response :btsss_errors
         conn.response :json
         conn.adapter :test, stubs
@@ -66,6 +66,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors, type: :integration do
         .to raise_error(Common::Exceptions::BackendServiceException) do |error|
           expect(error.message).to include('Validation failed: The claim does not have any expenses.')
           expect(error.original_body['detail']).to eq('Validation failed: The claim does not have any expenses.')
+          expect(error.key).to eq('BTSSS-API_400')
         end
     end
 
@@ -74,6 +75,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors, type: :integration do
         .to raise_error(Common::Exceptions::BackendServiceException) do |error|
           expect(error.message).to include('An internal error occurred.')
           expect(error.original_body['detail']).to eq('An internal error occurred.')
+          expect(error.key).to eq('BTSSS-API_500')
         end
     end
 
@@ -82,6 +84,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors, type: :integration do
         .to raise_error(Common::Exceptions::BackendServiceException) do |error|
           expect(error.message).to include('Expense type is invalid for this claim.')
           expect(error.original_body['detail']).to eq('Expense type is invalid for this claim.')
+          expect(error.key).to eq('BTSSS-API_422')
         end
     end
   end
@@ -90,7 +93,7 @@ RSpec.describe TravelPay::Middleware::BtsssErrors, type: :integration do
     subject(:client) do
       stubs = test_stubs
       Faraday.new do |conn|
-        conn.response :raise_custom_error, error_prefix: 'travel-pay'
+        conn.response :raise_custom_error, error_prefix: 'BTSSS-API'
         conn.response :json
         conn.adapter :test, stubs
       end

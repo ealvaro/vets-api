@@ -90,7 +90,7 @@ describe TravelPay::AppointmentsClient do
 
   context '/appointments' do
     expected_log_prefix = 'travel_pay.appointments.response_time'
-    expected_log_tag = ['travel_pay:get_all']
+    expected_log_tag = ['travel_pay:get_all', 'status:success']
 
     it 'returns a response only with appointments with no claims' do
       @stubs.get('/api/v2/appointments?excludeWithClaims=true') do
@@ -143,7 +143,7 @@ describe TravelPay::AppointmentsClient do
 
   context '/appointments/search' do
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:search'] }
+    let(:expected_log_tag) { ['travel_pay:search', 'status:success'] }
 
     it 'returns appointments from the search endpoint' do
       @stubs.get('api/v3/appointments/search') do
@@ -221,7 +221,7 @@ describe TravelPay::AppointmentsClient do
     end
 
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:find_or_create'] }
+    let(:expected_log_tag) { ['travel_pay:find_or_create', 'status:success'] }
 
     context 'when use_v4_api is false' do
       it 'calls the v2 API endpoint' do
@@ -295,7 +295,7 @@ describe TravelPay::AppointmentsClient do
 
   context '/appointments (create)' do
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:create'] }
+    let(:expected_log_tag) { ['travel_pay:create', 'status:success'] }
     let(:appointment_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
     let(:create_params) do
       {

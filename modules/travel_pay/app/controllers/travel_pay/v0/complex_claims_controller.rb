@@ -43,8 +43,9 @@ module TravelPay
       private
 
       def increment_statsd(appointment_source, result)
-        StatsD.increment('travel_pay.claims.complex.create',
-                         tags: ["appointment_source:#{appointment_source}", "result:#{result}"])
+        level = result == 'success' ? :info : :warn
+        monitor.track_request(level, "Complex claim create #{result}", 'travel_pay.claims.complex.create',
+                              tags: ["appointment_source:#{appointment_source}", "result:#{result}"])
       end
 
       def resolve_appt_id!(permitted_params)
@@ -63,8 +64,9 @@ module TravelPay
 
       def increment_submit_statsd(result)
         claim_type = resolve_claim_type(request.query_parameters[:claim_type])
-        StatsD.increment('travel_pay.claims.complex.submit',
-                         tags: ["result:#{result}", "claim_type:#{claim_type}"])
+        level = result == 'success' ? :info : :warn
+        monitor.track_request(level, "Complex claim submit #{result}", 'travel_pay.claims.complex.submit',
+                              tags: ["result:#{result}", "claim_type:#{claim_type}"])
       end
 
       def resolve_claim_type(type)
@@ -89,6 +91,10 @@ module TravelPay
 
       def allowed_claim_keys
         appointments_v4_enabled? ? base_required_fields + v4_additional_fields : base_required_fields
+      end
+
+      def monitor
+        @monitor ||= TravelPay::Monitor.new
       end
 
       def validated_claim_params!

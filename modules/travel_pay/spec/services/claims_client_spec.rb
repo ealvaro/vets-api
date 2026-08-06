@@ -98,7 +98,7 @@ describe TravelPay::ClaimsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_all'])
+              tags: ['travel_pay:get_all', 'status:success'])
       expect(actual_claim_ids).to eq(expected_ids)
     end
 
@@ -163,7 +163,7 @@ describe TravelPay::ClaimsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_by_id'])
+              tags: ['travel_pay:get_by_id', 'status:success'])
       expect(actual_claim['claimId']).to eq(expected_id)
       expect(actual_claim['claimStatus']).to eq('PreApprovedForPayment')
       expect(actual_claim['expenses']).not_to be_empty
@@ -218,7 +218,7 @@ describe TravelPay::ClaimsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:get_by_date'])
+              tags: ['travel_pay:get_by_date', 'status:success'])
       expect(actual_ids).to eq(expected)
     end
 
@@ -248,7 +248,7 @@ describe TravelPay::ClaimsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:create'])
+              tags: ['travel_pay:create', 'status:success'])
       expect(actual_claim_id).to eq(claim_id)
     end
 
@@ -263,7 +263,7 @@ describe TravelPay::ClaimsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:submit'])
+              tags: ['travel_pay:submit', 'status:success'])
     end
   end
 end

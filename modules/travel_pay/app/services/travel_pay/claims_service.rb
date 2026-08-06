@@ -241,8 +241,7 @@ module TravelPay
     def rescue_pagination_errors(e, claims)
       if claims[:data].empty?
         Rails.logger.error(message: "#{e}. Could not retrieve claims by date range.")
-        # TODO: replace this with the actual error
-        raise Common::Exceptions::BackendServiceException.new(nil, {}, detail: 'Could not retrieve claims.')
+        raise
       else
         claims => { data:, total_record_count:, page_number: }
         Rails.logger.error(message:

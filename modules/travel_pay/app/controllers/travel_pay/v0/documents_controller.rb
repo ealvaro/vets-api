@@ -62,10 +62,13 @@ module TravelPay
 
       def increment_create_statsd(document, result)
         document_type = File.basename(document&.original_filename.to_s, '.*') == 'proof-of-attendance' ? 'poa' : 'other'
+        level = result == 'success' ? :info : :warn
+        monitor.track_request(level, "Document create #{result}", 'travel_pay.documents.create',
+                              tags: ["document_type:#{document_type}", "result:#{result}"])
+      end
 
-        StatsD.increment('travel_pay.documents.create',
-                         tags: ["document_type:#{document_type}",
-                                "result:#{result}"])
+      def monitor
+        @monitor ||= TravelPay::Monitor.new
       end
 
       def auth_manager

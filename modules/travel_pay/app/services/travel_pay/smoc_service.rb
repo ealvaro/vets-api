@@ -48,7 +48,9 @@ module TravelPay
       if claim.nil? ## error occurred on claim creation step
         Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to create claim")
         increment_statsd('failure')
-        raise Common::Exceptions::BackendServiceException.new(nil, {}, detail: 'Failed to create claim')
+        raise Common::Exceptions::BackendServiceException.new(
+          'BTSSS-API_500', { status: 500, detail: 'Failed to create claim' }, 500
+        )
       elsif expense.nil? && claim['claimId'].present? ## error occurred on expense step, but claim was created
         Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to add expense, #{e}")
         increment_statsd('incomplete')
@@ -104,7 +106,13 @@ module TravelPay
     end
 
     def increment_statsd(result)
-      StatsD.increment('travel_pay.claims.smoc.submit', tags: ["result:#{result}"])
+      level = result == 'success' ? :info : :warn
+      monitor.track_request(level, "SMOC submit #{result}", 'travel_pay.claims.smoc.submit',
+                            tags: ["result:#{result}"])
+    end
+
+    def monitor
+      @monitor ||= TravelPay::Monitor.new
     end
   end
 end

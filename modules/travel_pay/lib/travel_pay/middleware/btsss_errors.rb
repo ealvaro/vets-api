@@ -29,14 +29,14 @@ module TravelPay
         # RaiseCustomError expects so that `detail` is populated in logs.
         unless body.is_a?(Hash)
           env[:body] = {
-            'detail' => body.to_s.truncate(200),
-            'code' => env.status.to_s
+            'detail' => body.to_s.truncate(2000),
+            'code' => "_#{env.status}"
           }
           return
         end
 
         body['detail'] = build_detail(body) if body.key?('message')
-        body['code'] = body['statusCode']&.to_s if body.key?('statusCode')
+        body['code'] = "_#{body['statusCode']}" if body.key?('statusCode')
       end
 
       private

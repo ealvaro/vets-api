@@ -55,7 +55,13 @@ module TravelPay
       end
 
       def increment_smoc_statsd(result)
-        StatsD.increment('travel_pay.claims.smoc.create', tags: ["result:#{result}"])
+        level = result == 'success' ? :info : :warn
+        monitor.track_request(level, "SMOC create #{result}", 'travel_pay.claims.smoc.create',
+                              tags: ["result:#{result}"])
+      end
+
+      def monitor
+        @monitor ||= TravelPay::Monitor.new
       end
 
       def fetch_claim_details(claim_id)

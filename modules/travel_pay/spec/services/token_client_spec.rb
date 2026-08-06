@@ -57,7 +57,7 @@ describe TravelPay::TokenClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:veis'])
+              tags: ['travel_pay:veis', 'status:success'])
       expect(token).to eq('fake_veis_token')
       @stubs.verify_stubbed_calls
     end
@@ -85,7 +85,7 @@ describe TravelPay::TokenClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:btsss'])
+              tags: ['travel_pay:btsss', 'status:success'])
       expect(result[:token]).to eq('fake_btsss_token')
       expect(result[:contact_id]).to eq('fake_contact_id')
       @stubs.verify_stubbed_calls
@@ -177,7 +177,7 @@ describe TravelPay::TokenClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: ['travel_pay:sts'])
+              tags: ['travel_pay:sts', 'status:success'])
       expect(sts_token).to eq('fake_sts_token')
       @stubs.verify_stubbed_calls
     end
