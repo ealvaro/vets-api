@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_06_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1595,6 +1595,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000002) do
     t.index ["form_uuid"], name: "index_ivc_champva_forms_on_pending_form_uuid", where: "((pega_status IS NULL) OR ((pega_status)::text <> ALL (ARRAY[('eligiblity denied/additional information needed'::character varying)::text, ('eligibility denied/additional information needed'::character varying)::text, ('processed - eligiblity determination unknown'::character varying)::text, ('processed - eligibility determination unknown'::character varying)::text, ('eligible - issued a card'::character varying)::text, ('duplicate application'::character varying)::text, ('eligible - reissued a card'::character varying)::text, ('document identification error'::character varying)::text, ('processed'::character varying)::text, ('manually processed'::character varying)::text])))"
     t.index ["needs_kms_rotation"], name: "index_ivc_champva_forms_on_needs_kms_rotation"
     t.index ["updated_at"], name: "index_ivc_champva_forms_on_updated_at"
+  end
+
+  create_table "ivc_champva_letters", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "form_number"
+    t.bigint "ivc_champva_applicant_id", null: false
+    t.string "letter_name"
+    t.string "mail_status"
+    t.datetime "mail_status_date"
+    t.datetime "updated_at", null: false
+    t.index ["ivc_champva_applicant_id"], name: "index_ivc_champva_letters_on_ivc_champva_applicant_id"
   end
 
   create_table "ivc_champva_sponsors", force: :cascade do |t|
