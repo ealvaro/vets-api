@@ -2778,6 +2778,10 @@ features:
     actor_type: cookie_id
     description: Enables the ability to use OAuth authentication via the Sign in Service (Identity)
     enable_in_development: true
+  llt_signin_enabled:
+    actor_type: user
+    description: Enables the Long Lived Tokens checkbox on the sign-in page (Identity)
+    enable_in_development: false
   mhv_credential_button_disabled:
     actor_type: user
     description: Enables the ability to hide the My HealtheVet sign in button (Identity)
