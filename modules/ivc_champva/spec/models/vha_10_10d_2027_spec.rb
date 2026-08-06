@@ -195,11 +195,12 @@ RSpec.describe IvcChampva::VHA1010d2027 do
       it 'increments StatsD with tags and logs submission info' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:3 current_user_ial:2 email_used:yes
-                   form_version:vha_10_10d_2027 submission_type:new]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:yes', 'form_version:vha_10_10d_2027', 'submission_type:new']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D-2027 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 3,
           current_user_ial: 2,
@@ -225,11 +226,12 @@ RSpec.describe IvcChampva::VHA1010d2027 do
       it 'defaults loa to 0, ial to 0, and submission_type to new' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:0 current_user_ial:0 email_used:no
-                   form_version:vha_10_10d_2027 submission_type:new]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:0',
+                 'current_user_ial:0', 'email_used:no', 'form_version:vha_10_10d_2027', 'submission_type:new']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D-2027 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 0,
           current_user_ial: 0,
@@ -256,11 +258,12 @@ RSpec.describe IvcChampva::VHA1010d2027 do
       it 'tags submission_type as existing' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:3 current_user_ial:2 email_used:yes
-                   form_version:vha_10_10d_2027 submission_type:existing]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:yes', 'form_version:vha_10_10d_2027', 'submission_type:existing']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D-2027 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 3,
           current_user_ial: 2,
@@ -287,11 +290,12 @@ RSpec.describe IvcChampva::VHA1010d2027 do
       it 'tags submission_type as enrollment' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: %w[identity:applicant current_user_loa:3 current_user_ial:2 email_used:yes
-                   form_version:vha_10_10d_2027 submission_type:enrollment]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:yes', 'form_version:vha_10_10d_2027', 'submission_type:enrollment']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-10D-2027 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 3,
           current_user_ial: 2,

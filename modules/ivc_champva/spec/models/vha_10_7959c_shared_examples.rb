@@ -240,11 +240,12 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       it 'increments StatsD with tags and logs submission info' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:applicant', 'current_user_loa:3', 'current_user_ial:2',
-                 'email_used:yes', "form_version:#{form_version}"]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:yes', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 3,
           current_user_ial: 2,
@@ -269,11 +270,12 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       it 'tracks email as no' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:sponsor', 'current_user_loa:3', 'current_user_ial:2',
-                 'email_used:no', "form_version:#{form_version}"]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:sponsor', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:no', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'sponsor',
           current_user_loa: 3,
           current_user_ial: 2,
@@ -298,11 +300,12 @@ RSpec.shared_examples 'form model 10_7959C' do |form_number|
       it 'defaults loa to 0 and ial to 0' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:applicant', 'current_user_loa:0', 'current_user_ial:0',
-                 'email_used:no', "form_version:#{form_version}"]
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:applicant', 'current_user_loa:0',
+                 'current_user_ial:0', 'email_used:no', "form_version:#{form_version}"]
         )
         expect(Rails.logger).to receive(:info).with(
           "IVC ChampVA Forms - #{form_number} Submission",
+          form_uuid: form_instance.metadata['uuid'],
           identity: 'applicant',
           current_user_loa: 0,
           current_user_ial: 0,

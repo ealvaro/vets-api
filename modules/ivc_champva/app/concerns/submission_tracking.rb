@@ -7,6 +7,7 @@ module SubmissionTracking
 
   def submission_fields(current_user)
     {
+      form_uuid: metadata&.dig('uuid'),
       identity: data['certifier_role'],
       current_user_loa: current_user&.loa&.[](:current) || 0,
       current_user_ial: derive_ial(current_user),

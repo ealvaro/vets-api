@@ -187,11 +187,12 @@ RSpec.describe IvcChampva::VHA107959f1 do
       it 'increments StatsD with tags and logs submission info including ial' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:', 'current_user_loa:3', 'current_user_ial:2',
-                 'email_used:yes', 'form_version:vha_10_7959f_1']
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:', 'current_user_loa:3',
+                 'current_user_ial:2', 'email_used:yes', 'form_version:vha_10_7959f_1']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-7959F-1 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: nil,
           current_user_loa: 3,
           current_user_ial: 2,
@@ -209,11 +210,12 @@ RSpec.describe IvcChampva::VHA107959f1 do
       it 'defaults loa to 0 and ial to 0' do
         expect(StatsD).to receive(:increment).with(
           "#{statsd_key}.submission",
-          tags: ['identity:', 'current_user_loa:0', 'current_user_ial:0',
-                 'email_used:yes', 'form_version:vha_10_7959f_1']
+          tags: ["form_uuid:#{form_instance.metadata['uuid']}", 'identity:', 'current_user_loa:0',
+                 'current_user_ial:0', 'email_used:yes', 'form_version:vha_10_7959f_1']
         )
         expect(Rails.logger).to receive(:info).with(
           'IVC ChampVA Forms - 10-7959F-1 Submission',
+          form_uuid: form_instance.metadata['uuid'],
           identity: nil,
           current_user_loa: 0,
           current_user_ial: 0,
