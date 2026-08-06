@@ -1250,7 +1250,7 @@ modules/banners @software/vfs-facilities-frontend
 modules/bio_heart @software/bio-heart-team
 modules/bpds @software/benefits-lifestage
 modules/burials @software/benefits-lifestage
-modules/check_in @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in
+modules/check_in @software/patient-check-in
 modules/claims_api @software/lighthouse-dash
 modules/claims_api/config/schemas/v2/526.json @software/disability-benefits
 modules/claims_evidence_api @software/benefits-lifestage @software/claims-evidence-api

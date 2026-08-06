@@ -8,6 +8,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
   let(:check_in_uuid) { 'test-uuid' }
   let(:test_icn) { 'test-icn' }
   let(:test_station_number) { '500' }
+  let(:test_facility_name) { 'Test VA Medical Center' }
   let(:redis_client) { instance_double(TravelClaim::RedisClient) }
   let(:travel_pay_client) { instance_double(TravelClaim::TravelPayClient) }
   let(:auth_manager) { instance_double(TravelClaim::AuthManager) }
@@ -21,6 +22,7 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
     allow(TravelClaim::TravelPayClient).to receive(:new).and_return(travel_pay_client)
     allow(redis_client).to receive(:icn).with(uuid: check_in_uuid).and_return(test_icn)
     allow(redis_client).to receive(:station_number).with(uuid: check_in_uuid).and_return(test_station_number)
+    allow(redis_client).to receive(:facility_name).with(uuid: check_in_uuid).and_return(test_facility_name)
     # Mock auth_manager methods for orchestration
     allow(auth_manager).to receive(:with_auth).and_yield
     allow(auth_manager).to receive_messages(
@@ -497,6 +499,46 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
 
         service.send(:station_number)
         service.send(:station_number)
+      end
+    end
+
+    describe '#facility_name' do
+      context 'when facility name is found in Redis' do
+        it 'returns the facility name' do
+          expect(service.send(:facility_name)).to eq(test_facility_name)
+        end
+      end
+
+      context 'when facility name is not found in Redis' do
+        before do
+          allow(redis_client).to receive(:facility_name).with(uuid: check_in_uuid).and_return(nil)
+          allow(Rails.logger).to receive(:error)
+        end
+
+        it 'raises BackendServiceException with VA908 code' do
+          expect { service.send(:facility_name) }.to raise_error(
+            Common::Exceptions::BackendServiceException
+          ) do |error|
+            expect(error.key).to eq('VA908')
+            expect(error.response_values[:detail]).to include('Facility name not found')
+          end
+        end
+
+        it 'logs the station number' do
+          expect { service.send(:facility_name) }.to raise_error(Common::Exceptions::BackendServiceException)
+
+          expect(Rails.logger).to have_received(:error).with(
+            message: "#{CheckIn::Constants::LOG_PREFIX}: Facility name not found in session",
+            station_number: test_station_number
+          )
+        end
+      end
+
+      it 'memoizes the facility name value' do
+        expect(redis_client).to receive(:facility_name).with(uuid: check_in_uuid).once.and_return(test_facility_name)
+
+        service.send(:facility_name)
+        service.send(:facility_name)
       end
     end
 

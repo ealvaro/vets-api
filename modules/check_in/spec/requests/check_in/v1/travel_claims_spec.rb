@@ -32,6 +32,7 @@ RSpec.describe 'CheckIn::V1::TravelClaims', type: :request do
           attributes: {
             patientDFN: '123',
             stationNo: 'facility-123',
+            facilityName: 'Test VA Medical Center',
             icn: '1234567890V123456',
             mobilePhone: '7141234567',
             patientCellPhone: '1234567890',
@@ -134,6 +135,7 @@ RSpec.describe 'CheckIn::V1::TravelClaims', type: :request do
                 attributes: {
                   patientDFN: '123',
                   stationNo: 'facility-123',
+                  facilityName: 'Test VA Medical Center',
                   # icn: '1234567890V123456', # Missing ICN
                   mobilePhone: '7141234567',
                   patientCellPhone: '1234567890',
@@ -185,6 +187,7 @@ RSpec.describe 'CheckIn::V1::TravelClaims', type: :request do
                 attributes: {
                   patientDFN: '123',
                   stationNo: 'facility-123',
+                  facilityName: 'Test VA Medical Center',
                   icn: '', # Blank ICN
                   mobilePhone: '7141234567',
                   patientCellPhone: '1234567890',

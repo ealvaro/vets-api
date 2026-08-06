@@ -16,7 +16,7 @@ module TravelClaim
     TRIP_TYPE           = 'RoundTrip'
     CLAIM_NAME          = 'Travel Reimbursement'
     CLAIMANT_TYPE       = 'Veteran'
-    API_EXCEPTIONS      = [
+    API_EXCEPTIONS = [
       Common::Exceptions::BackendServiceException,
       Common::Client::Errors::ClientError,
       Common::Exceptions::GatewayTimeout
@@ -48,14 +48,13 @@ module TravelClaim
     #
     # @param veis_token [String] VEIS bearer token
     # @param btsss_token [String] BTSSS access token
+    # @param body [Hash] Find-or-add appointment request body
     # @return [Faraday::Response] HTTP response containing appointment data
     #
-    def send_appointment_request(veis_token:, btsss_token:)
-      path = "#{api_version}/appointments/find-or-add"
+    def send_appointment_request(veis_token:, btsss_token:, body:)
+      path = "#{appointment_api_version}/appointments/find-or-add"
       with_monitoring do
-        perform(:post, path,
-                { appointmentDateTime: @appointment_date_time, facilityStationNumber: @station_number },
-                build_headers(veis_token:, btsss_token:))
+        perform(:post, path, body, build_headers(veis_token:, btsss_token:))
       end
     rescue *API_EXCEPTIONS => e
       handle_api_exception(operation: 'find_or_add_appointment', api_path: path, error: e)
@@ -155,6 +154,14 @@ module TravelClaim
       end
     end
 
+    def appointment_api_version
+      if Flipper.enabled?(:check_in_experience_use_btsss_v2_claim_submission_endpoints)
+        'api/v2'
+      else
+        'api/v4'
+      end
+    end
+
     ##
     # Builds HTTP headers for BTSSS API requests.
     #
@@ -199,7 +206,7 @@ module TravelClaim
     # Unified logging method for all external API errors (BTSSS).
     #
     # @param operation [String] what step failed (e.g., 'find_or_add_appointment')
-    # @param api_path [String] the API endpoint path (e.g., 'api/v3/appointments/find-or-add')
+    # @param api_path [String] the API endpoint path (e.g., 'api/v4/appointments/find-or-add')
     # @param error [Exception] the exception object
     # @param context [Hash] additional context to include in logs
     #

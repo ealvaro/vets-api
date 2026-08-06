@@ -100,6 +100,10 @@ module TravelClaim
       fetch_attribute(uuid:, attribute: :stationNo)
     end
 
+    def facility_name(uuid:)
+      fetch_attribute(uuid:, attribute: :facilityName)
+    end
+
     def facility_type(uuid:)
       fetch_attribute(uuid:, attribute: :facilityType)
     end

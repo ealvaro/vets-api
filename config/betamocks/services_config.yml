@@ -918,7 +918,11 @@
       :file_path: "/travel_claim/claims/index/default"
       :response_delay: 0.3
     - :method: :post
-      :path: <%= "/#{Settings.check_in.travel_reimbursement_api_v2.claims_base_path_v2}/api/v3/appointments/find-or-add" %>
+      :path: <%= "/#{Settings.check_in.travel_reimbursement_api_v2.claims_base_path_v2}/api/v4/appointments/find-or-add" %>
+      :file_path: "/travel_claim/v1/appointments/default"
+      :response_delay: 0.3
+    - :method: :post
+      :path: <%= "/#{Settings.check_in.travel_reimbursement_api_v2.claims_base_path_v2}/api/v2/appointments/find-or-add" %>
       :file_path: "/travel_claim/v1/appointments/default"
       :response_delay: 0.3
     - :method: :patch

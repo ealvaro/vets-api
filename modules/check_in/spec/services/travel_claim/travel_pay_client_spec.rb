@@ -6,6 +6,15 @@ RSpec.describe TravelClaim::TravelPayClient do
   let(:check_in_uuid) { 'test-uuid-123' }
   let(:appointment_date_time) { '2024-01-01T12:00:00Z' }
   let(:test_station_number) { '500' }
+  let(:test_facility_name) { 'Test VA Medical Center' }
+  let(:appointment_body) do
+    {
+      appointmentDateTime: appointment_date_time,
+      facilityStationNumber: test_station_number,
+      facilityName: test_facility_name,
+      appointmentName: "#{test_facility_name} #{appointment_date_time}"
+    }
+  end
   let(:test_correlation_id) { 'test-correlation-id' }
 
   # Test data constants
@@ -111,7 +120,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           VCR.use_cassette('check_in/travel_claim/appointments_find_or_add_200') do
             result = client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
 
             expect(result).to respond_to(:status)
@@ -128,7 +138,8 @@ RSpec.describe TravelClaim::TravelPayClient do
               expect do
                 client.send_appointment_request(
                   veis_token: test_veis_token,
-                  btsss_token: test_btsss_token
+                  btsss_token: test_btsss_token,
+                  body: appointment_body
                 )
               end.to raise_error(Common::Exceptions::BackendServiceException)
             end
@@ -345,10 +356,20 @@ RSpec.describe TravelClaim::TravelPayClient do
           .with(:check_in_experience_use_btsss_v2_claim_submission_endpoints).and_return(false)
       end
 
-      it 'uses v3 path for send_appointment_request' do
-        expect(client).to receive(:perform).with(:post, 'api/v3/appointments/find-or-add', anything, anything)
-                                           .and_return(double(status: 200, body: {}))
-        client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token)
+      it 'uses the v4 path and includes the facility name for send_appointment_request' do
+        expect(client).to receive(:perform).with(
+          :post,
+          'api/v4/appointments/find-or-add',
+          {
+            appointmentDateTime: appointment_date_time,
+            facilityStationNumber: test_station_number,
+            facilityName: test_facility_name,
+            appointmentName: "#{test_facility_name} #{appointment_date_time}"
+          },
+          anything
+        ).and_return(double(status: 200, body: {}))
+        client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token,
+                                        body: appointment_body)
       end
 
       it 'uses v3 path for send_claim_request' do
@@ -373,10 +394,11 @@ RSpec.describe TravelClaim::TravelPayClient do
           .with(:check_in_experience_use_btsss_v2_claim_submission_endpoints).and_return(true)
       end
 
-      it 'uses v2 path for send_appointment_request' do
+      it 'uses v2 for send_appointment_request' do
         expect(client).to receive(:perform).with(:post, 'api/v2/appointments/find-or-add', anything, anything)
                                            .and_return(double(status: 200, body: {}))
-        client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token)
+        client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token,
+                                        body: appointment_body)
       end
 
       it 'uses v2 path for send_claim_request' do
@@ -409,13 +431,14 @@ RSpec.describe TravelClaim::TravelPayClient do
                                              claim_id: test_claim_id)
       end
 
-      it 'logs v2 path in error context' do
+      it 'logs v2 appointment path in error context' do
         allow(client).to receive(:perform).and_raise(
           Common::Exceptions::BackendServiceException.new('TEST', {}, 500, 'Internal Server Error')
         )
 
         expect do
-          client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token)
+          client.send_appointment_request(veis_token: test_veis_token, btsss_token: test_btsss_token,
+                                          body: appointment_body)
         end.to raise_error(Common::Exceptions::BackendServiceException)
 
         expect(Rails.logger).to have_received(:error).with(
@@ -500,7 +523,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           expect do
             client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
           end.to raise_error(Common::Exceptions::BackendServiceException)
 
@@ -508,7 +532,7 @@ RSpec.describe TravelClaim::TravelPayClient do
             hash_including(
               message: "#{CheckIn::Constants::LOG_PREFIX}: BTSSS API Error",
               operation: 'find_or_add_appointment',
-              api_path: 'api/v3/appointments/find-or-add',
+              api_path: 'api/v4/appointments/find-or-add',
               http_status: 500,
               error_class: 'Common::Exceptions::BackendServiceException',
               api_error_message: 'Common::Exceptions::BackendServiceException'
@@ -529,7 +553,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           expect do
             client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
           end.to raise_error(Common::Exceptions::GatewayTimeout)
 
@@ -556,7 +581,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           expect do
             client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
           end.to raise_error(Common::Exceptions::BackendServiceException)
 
@@ -589,7 +615,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           expect do
             client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
           end.to raise_error(Common::Exceptions::BackendServiceException)
 
@@ -624,7 +651,8 @@ RSpec.describe TravelClaim::TravelPayClient do
           expect do
             client.send_appointment_request(
               veis_token: test_veis_token,
-              btsss_token: test_btsss_token
+              btsss_token: test_btsss_token,
+              body: appointment_body
             )
           end.to raise_error(Common::Exceptions::BackendServiceException)
 

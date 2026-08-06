@@ -16,6 +16,8 @@ module TravelClaim
   #   result = service.submit_claim
   #
   class ClaimSubmissionService
+    include ClaimSubmissionNotificationService
+
     attr_reader :appointment_date, :facility_type, :check_in_uuid
 
     CODE_CLAIM_EXISTS = TravelClaim::Response::CODE_CLAIM_EXISTS
@@ -173,7 +175,8 @@ module TravelClaim
       response = auth_manager.with_auth do
         client.send_appointment_request(
           veis_token: auth_manager.veis_token,
-          btsss_token: auth_manager.btsss_token
+          btsss_token: auth_manager.btsss_token,
+          body: appointment_request.to_h
         )
       end
       appointment_id = response.body.dig('data', 0, 'id')
@@ -338,6 +341,29 @@ module TravelClaim
       end
     end
 
+    def facility_name
+      @facility_name ||= begin
+        value = redis_client.facility_name(uuid: @check_in_uuid)
+        if value.blank?
+          Rails.logger.error(
+            message: "#{CheckIn::Constants::LOG_PREFIX}: Facility name not found in session",
+            station_number:
+          )
+          raise_validation_error('Facility name not found in session', 'VA908')
+        end
+
+        value
+      end
+    end
+
+    def appointment_request
+      @appointment_request ||= TravelClaim::AppointmentRequest.new(
+        appointment_date_time: normalized_appointment_datetime,
+        station_number:,
+        facility_name:
+      )
+    end
+
     ##
     # Logs each unique claim submission attempt for Datadog.
     # Always emitted (not flipper-gated) so station widgets work in production.
@@ -431,104 +457,6 @@ module TravelClaim
                            error: e.message)
       end
       'unknown'
-    end
-
-    ##
-    # Sends a success notification if feature flag is enabled
-    #
-    def send_notification_if_enabled
-      return unless Flipper.enabled?(:check_in_experience_travel_reimbursement)
-      return if @check_in_uuid.blank?
-
-      template_id = success_template_id
-      claim_number_last_four = @claim_number_last_four
-
-      log_notification('success', template_id:, claim_last_four: claim_number_last_four)
-
-      CheckIn::TravelClaimNotificationJob.perform_async(
-        @check_in_uuid,
-        @appointment_date_yyyy_mm_dd,
-        template_id,
-        claim_number_last_four
-      )
-    end
-
-    ##
-    # Sends an error notification if feature flag is enabled
-    #
-    # @param error [Exception] the error that occurred
-    #
-    def send_error_notification_if_enabled(error)
-      return unless Flipper.enabled?(:check_in_experience_travel_reimbursement)
-      return if @check_in_uuid.blank?
-
-      increment_metric_by_facility_type(
-        CheckIn::Constants::CIE_STATSD_ERROR_NOTIFICATION,
-        CheckIn::Constants::OH_STATSD_ERROR_NOTIFICATION
-      )
-
-      template_id = determine_error_template_id(error)
-      claim_number_last_four = @claim_number_last_four || 'unknown'
-
-      log_notification('error', template_id:, failed_step: @current_step || 'unknown',
-                                error_class: error.class.name)
-
-      CheckIn::TravelClaimNotificationJob.perform_async(
-        @check_in_uuid,
-        @appointment_date_yyyy_mm_dd,
-        template_id,
-        claim_number_last_four
-      )
-    end
-
-    def log_notification(type, **extra)
-      return unless Flipper.enabled?(:check_in_experience_travel_claim_logging)
-
-      log_data = {
-        message: "#{CheckIn::Constants::LOG_PREFIX}: Sending #{type} notification",
-        check_in_uuid: @check_in_uuid,
-        facility_type: @facility_type,
-        correlation_id:
-      }.merge(extra)
-
-      Rails.logger.info(log_data)
-    end
-
-    ##
-    # Returns the appropriate success template ID based on facility type
-    #
-    # @return [String] template ID for success notifications
-    #
-    def success_template_id
-      if @facility_type&.downcase == 'oh'
-        CheckIn::Constants::OH_SUCCESS_TEMPLATE_ID
-      else
-        CheckIn::Constants::CIE_SUCCESS_TEMPLATE_ID
-      end
-    end
-
-    ##
-    # Returns the appropriate error template ID based on facility type
-    #
-    # @return [String] template ID for error notifications
-    #
-    def error_template_id
-      if @facility_type&.downcase == 'oh'
-        CheckIn::Constants::OH_ERROR_TEMPLATE_ID
-      else
-        CheckIn::Constants::CIE_ERROR_TEMPLATE_ID
-      end
-    end
-
-    ##
-    # Determines the appropriate error template ID based on the error type
-    #
-    def determine_error_template_id(error)
-      if error.is_a?(Common::Exceptions::BackendServiceException) && duplicate_claim_error?(error)
-        @facility_type&.downcase == 'oh' ? CheckIn::Constants::OH_DUPLICATE_TEMPLATE_ID : CheckIn::Constants::CIE_DUPLICATE_TEMPLATE_ID
-      else
-        error_template_id
-      end
     end
 
     ##

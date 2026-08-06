@@ -126,6 +126,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -158,6 +159,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: '12340V123456',
               mobilePhone: '5553334444',
@@ -191,6 +193,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: nil,
@@ -219,6 +222,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -247,6 +251,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -280,6 +285,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -308,6 +314,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -341,6 +348,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: nil,
               icn: nil,
               mobilePhone: '5553334444',
@@ -374,6 +382,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: '888',
               stationNo: '5625',
+              facilityName: 'appointment.facility',
               appointmentIEN: '1',
               icn: nil,
               mobilePhone: '5553334444',
@@ -402,6 +411,7 @@ RSpec.describe CheckIn::V2::AppointmentIdentifiersSerializer do
             attributes: {
               patientDFN: nil,
               stationNo: '530',
+              facilityName: 'Jerry L. Pettis Memorial Veterans Hospital',
               appointmentIEN: '4822366',
               icn: '1013220078V743173',
               mobilePhone: nil,

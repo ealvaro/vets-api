@@ -14,6 +14,7 @@ describe TravelClaim::RedisClient do
   let(:patient_icn) { '2113957154V785237' }
   let(:mobile_phone) { '7141234567' }
   let(:station_number) { '500' }
+  let(:facility_name) { 'Test VA Medical Center' }
   let(:patient_cell_phone) { '1234567890' }
   let(:facility_type) { 'abc' }
   let(:claim_number) { '12345678' }
@@ -26,6 +27,7 @@ describe TravelClaim::RedisClient do
         attributes: {
           patientDFN: '123',
           stationNo: station_number,
+          facilityName: facility_name,
           icn: patient_icn,
           mobilePhone: mobile_phone,
           patientCellPhone: patient_cell_phone,
@@ -239,6 +241,21 @@ describe TravelClaim::RedisClient do
 
     it 'returns the cached value' do
       expect(redis_client.station_number(uuid:)).to eq(station_number)
+    end
+  end
+
+  describe '#facility_name' do
+    before do
+      Rails.cache.write(
+        "check_in_lorota_v2_appointment_identifiers_#{uuid}",
+        appointment_identifiers.to_json,
+        namespace: 'check-in-lorota-v2-cache',
+        expires_in: appt_data_expiry
+      )
+    end
+
+    it 'returns the cached value' do
+      expect(redis_client.facility_name(uuid:)).to eq(facility_name)
     end
   end
 

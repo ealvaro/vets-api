@@ -16,6 +16,10 @@ module CheckIn
         object.payload[:appointments].first[:stationNo]
       end
 
+      attribute :facilityName do |object|
+        object.payload[:appointments].first[:facility]
+      end
+
       attribute :appointmentIEN do |object|
         object.payload[:appointments].first[:appointmentIEN]
       end
