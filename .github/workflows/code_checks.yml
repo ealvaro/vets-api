@@ -237,6 +237,11 @@ jobs:
       - name: Run Rubocop
         run: bundle exec rubocop --parallel --format github
 
+      - name: Run Rubocop Isolated Index Migration Cop
+        run: |
+          migration_files=$(find db/migrate modules -type f -name '*.rb' | grep -E '(^db/migrate/|/db/migrate/)')
+          bundle exec rubocop --parallel --format github --only Migrations/IsolatedIndexMigration $migration_files
+
       - name: Run Brakeman
         run: bundle exec brakeman --ensure-latest --confidence-level=2 --format github
 

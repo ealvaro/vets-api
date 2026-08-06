@@ -31,6 +31,12 @@ Cop/NoAttrPackageCreationInJob:
 Project/ForbidFlipperToggleInSpecs:
   Enabled: true
 
+Migrations/IsolatedIndexMigration:
+  Enabled: true
+  Include:
+    - db/migrate/*.rb
+    - modules/**/db/migrate/*.rb
+
 AllCops:
   NewCops: disable
   TargetRailsVersion: 6.1
