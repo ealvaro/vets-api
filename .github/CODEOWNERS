@@ -189,7 +189,7 @@ app/models/appeal_submission.rb @software/benefits-decision-reviews-be
 app/models/application_record.rb @software/va-platform-backend
 app/models/async_transaction @software/vfs-authenticated-experience-backend
 app/models/async_transaction/base.rb @software/vfs-authenticated-experience-backend
-app/models/async_transaction/va_profile @software/vfs-authenticated-experience-backend @software/vfs-authenticated-experience-backend
+app/models/async_transaction/va_profile @software/vfs-authenticated-experience-backend
 app/models/attachment.rb @software/va-platform-backend
 app/models/audit/ @software/octo-identity
 app/models/average_days_for_claim_completion.rb @software/benefits-microservices
@@ -1179,7 +1179,7 @@ lib/share_point/service.rb @software/mobile-api-team
 lib/shrine @software/va-platform-backend
 lib/sidekiq/attr_package.rb @software/octo-identity
 lib/sidekiq/form526_backup_submission_process @software/disability-benefits
-lib/sidekiq/form526_backup_submission_process/submit_spec.rb @software/disability-benefits @software/disability-benefits
+lib/sidekiq/form526_backup_submission_process/submit_spec.rb @software/disability-benefits
 lib/sidekiq/form526_historical_data_exporter @software/vagov-claim-classification
 lib/sidekiq/form526_job_status_tracker @software/disability-benefits
 lib/sidekiq/monitored_worker.rb @software/va-platform-backend
@@ -1992,7 +1992,7 @@ spec/models/saved_claim/form214192_spec.rb @software/benefits-optimization-aquia
 spec/models/saved_claim/form21p530a_spec.rb @software/benefits-optimization-aquia
 spec/models/schema_contract @software/va-platform-backend
 spec/models/secondary_appeal_form_spec.rb @software/benefits-decision-reviews-be
-spec/models/session_spec.rb @software/octo-identity @software/octo-identity
+spec/models/session_spec.rb @software/octo-identity
 spec/models/sign_in @software/octo-identity
 spec/models/spool_file_event_spec.rb @software/govcio-vfep-codereviewers
 spec/models/supporting_evidence_attachment_spec.rb @software/disability-benefits
