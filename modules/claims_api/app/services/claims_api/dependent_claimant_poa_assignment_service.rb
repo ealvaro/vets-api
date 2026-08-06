@@ -6,6 +6,7 @@ require 'bgs_service/redis/find_poas_service'
 require 'bgs_service/benefit_claim_web_service'
 require 'bgs_service/benefit_claim_service'
 require 'bgs_service/e_benefits_bnft_claim_status_web_service'
+require 'claims_api/dependent_claimant_update_poa_relationship_service'
 
 module ClaimsApi
   class DependentClaimantPoaAssignmentService
@@ -24,18 +25,56 @@ module ClaimsApi
     def assign_poa_to_dependent!
       return nil if assign_poa_to_dependent_via_manage_ptcpnt_rlnshp == :success
 
-      return nil if assign_poa_to_dependent_via_update_benefit_claim == :success
-
-      log_assignment_failure(
-        reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
-      )
-
-      raise ::Common::Exceptions::ServiceError.new(
-        detail: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
-      )
+      if dependent_assignment_fallback_enabled?
+        assign_with_dependent_claimant_update_poa_relationship_fallback
+      else
+        assign_with_legacy_update_benefit_claim_fallback
+      end
     end
 
     private
+
+    def assign_with_dependent_claimant_update_poa_relationship_fallback
+      return nil if dependent_claimant_update_poa_relationship_service.assign_poa_to_dependent! == :success
+
+      log_assign_to_dependent_failure(
+        reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and dependent claimant update POA relationship'
+      )
+    end
+
+    def assign_with_legacy_update_benefit_claim_fallback
+      return nil if assign_poa_to_dependent_via_update_benefit_claim == :success
+
+      log_assign_to_dependent_failure(
+        reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and update benefit claim'
+      )
+    end
+
+    def log_assign_to_dependent_failure(reason:)
+      log_assignment_failure(reason:)
+
+      raise ::Common::Exceptions::ServiceError.new(
+        detail: reason
+      )
+    end
+
+    def dependent_assignment_fallback_enabled?
+      return @dependent_fallback_enabled unless @dependent_fallback_enabled.nil?
+
+      @dependent_fallback_enabled = Flipper.enabled?(:claims_api_dependent_claimant_update_poa_relationship_fallback)
+    end
+
+    def dependent_claimant_update_poa_relationship_service
+      ClaimsApi::DependentClaimantUpdatePoaRelationshipService.new(
+        poa_id: @poa_id,
+        poa_code: @poa_code,
+        dependent_participant_id: @dependent_participant_id,
+        veteran_file_number: @veteran_file_number,
+        allow_poa_access: @allow_poa_access,
+        allow_poa_cadd: @allow_poa_cadd,
+        claimant_ssn: @claimant_ssn
+      )
+    end
 
     def person_web_service
       ClaimsApi::PersonWebService.new(external_uid: @dependent_participant_id,
@@ -71,7 +110,7 @@ module ClaimsApi
       if open_claims_error?(e)
         log(
           message: 'Dependent has open claims, continuing.',
-          reason: 'Failed to assign POA via manage_ptcpnt_rlnshp. Attempting to assign POA via update benefit claim.'
+          reason: fallback_attempt_reason
         )
 
         return :fallback_to_update_benefit_claim
@@ -233,6 +272,15 @@ module ClaimsApi
 
     def open_claims_error?(error)
       error.try(:errors)&.first&.try(:detail) == 'PtcpntIdA has open claims.'
+    end
+
+    def fallback_attempt_reason
+      if dependent_assignment_fallback_enabled?
+        'Failed to assign POA via manage_ptcpnt_rlnshp. ' \
+          'Attempting to assign POA via DependentClaimantUpdatePoaRelationshipService.'
+      else
+        'Failed to assign POA via manage_ptcpnt_rlnshp. Attempting to assign POA via update benefit claim.'
+      end
     end
 
     def dependent_claim_statuses
