@@ -307,6 +307,7 @@ app/models/ivc_champva_form.rb @software/health-apps-backend
 app/models/ivc_champva_sponsor.rb @software/health-apps-backend
 app/models/lcpe_redis.rb @software/govcio-vfep-codereviewers
 app/models/lighthouse @software/benefits-lifestage
+app/models/lighthouse/hcc @software/vsa-debt-resolution
 app/models/lighthouse_document.rb @software/va-platform-backend
 app/models/lighthouse526_document_upload.rb @software/disability-benefits
 app/models/maintenance_window.rb @software/va-platform-backend
@@ -1953,6 +1954,7 @@ spec/models/ivc_champva_forms_spec.rb @software/health-apps-backend
 spec/models/ivc_champva_sponsor_spec.rb @software/health-apps-backend
 spec/models/lcpe_redis_spec.rb @software/govcio-vfep-codereviewers
 spec/models/lighthouse @software/benefits-lifestage
+spec/models/lighthouse/hcc @software/vsa-debt-resolution
 spec/models/lighthouse_document_spec.rb @software/va-platform-backend
 spec/models/lighthouse526_document_upload_spec.rb @software/disability-benefits
 spec/models/message_spec.rb @software/vfs-mhv-integration
