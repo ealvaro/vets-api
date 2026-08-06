@@ -64,6 +64,7 @@ gem 'aws-sdk-kendra', '~> 1'
 gem 'aws-sdk-kms'
 gem 'aws-sdk-s3', '~> 1'
 gem 'aws-sdk-sns', '~> 1'
+gem 'base64'
 gem 'bcrypt', '~> 3.1.7'
 gem 'betamocks', git: 'https://va.ghe.com/software/betamocks', branch: 'master'
 gem 'bgs_ext', git: 'https://va.ghe.com/software/bgs-ext.git', require: 'bgs', ref: '1a9fb615ba76c436be0bca9d7d18328ec16738d5'
@@ -260,14 +261,11 @@ def sidekiq_enterprise_license
   env_license = ENV.fetch('BUNDLE_ENTERPRISE__CONTRIBSYS__COM', '')
   return env_license unless env_license.empty?
 
-  # NOTE: `.blank?`/`.presence` are unavailable here — this runs under Bundler before ActiveSupport
-  # loads, so emptiness is checked with `to_s.empty?` rather than the Rails helpers.
   bundle_config_license = Bundler::Settings.new(Bundler.app_config_path)['enterprise.contribsys.com'].to_s
   return bundle_config_license unless bundle_config_license.empty?
 
   decrypt_sidekiq_license_from_credentials
-rescue
-  # A missing/unreadable master key or malformed credentials must never break `bundle install`.
+rescue StandardError, LoadError
   ''
 end
 
@@ -287,13 +285,15 @@ end
 # authenticates the ciphertext, so tampered or wrong-key input raises before anything is parsed.
 def decrypt_sidekiq_license_from_credentials
   require 'openssl'
-  require 'base64'
 
   # NOTE: `.presence` is unavailable here — this runs under Bundler before ActiveSupport loads.
   env_key = ENV.fetch('RAILS_MASTER_KEY', '')
   key = env_key.empty? ? File.read(File.expand_path('config/master.key', __dir__)) : env_key
   contents = File.read(File.expand_path('config/credentials.yml.enc', __dir__)).strip
-  payload, iv, auth_tag = contents.split('--').map { |part| Base64.strict_decode64(part) }
+  # 'm0' is the strict base64 decode directive — matches Base64.strict_decode64's behavior
+  # (raises on malformed input) without requiring the `base64` library, which isn't guaranteed
+  # to be on the load path this early in Bundler's Gemfile evaluation.
+  payload, iv, auth_tag = contents.split('--').map { |part| part.unpack1('m0') }
 
   cipher = OpenSSL::Cipher.new('aes-128-gcm')
   cipher.decrypt
