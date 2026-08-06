@@ -1948,7 +1948,9 @@ spec/models/health_care_application_spec.rb @software/health-apps-backend
 spec/models/iam_user_identity_spec.rb @software/octo-identity
 spec/models/in_progress_form_spec.rb @software/vfs-authenticated-experience-backend
 spec/models/intent_to_file_queue_exhaustion_spec.rb @software/benefits-lifestage
+spec/models/ivc_champva_applicant_spec.rb @software/health-apps-backend
 spec/models/ivc_champva_forms_spec.rb @software/health-apps-backend
+spec/models/ivc_champva_sponsor_spec.rb @software/health-apps-backend
 spec/models/lcpe_redis_spec.rb @software/govcio-vfep-codereviewers
 spec/models/lighthouse @software/benefits-lifestage
 spec/models/lighthouse_document_spec.rb @software/va-platform-backend

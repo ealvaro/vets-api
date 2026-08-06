@@ -20,6 +20,23 @@ module IvcChampva
   #         time; the controller's rate limit guards against excessive requests.
   class ChampvaEligibilityService
     UNKNOWN_PEGA_STATUS = 'processed - eligibility determination unknown'
+    DOCUMENTS_REQUESTED_STATUSES_PATH =
+      Rails.root.join('config', 'benefits_claims', 'ves_documents_requested_statuses.json').freeze
+
+    DOCUMENTS_REQUESTED_CONFIG = begin
+      JSON.parse(File.read(DOCUMENTS_REQUESTED_STATUSES_PATH))
+    rescue => e
+      Rails.logger.error(
+        'ChampvaEligibilityService: Failed to load VES documents requested statuses',
+        { message: e.message }
+      )
+      {}
+    end
+
+    DOCUMENTS_REQUESTED_STATUSES =
+      DOCUMENTS_REQUESTED_CONFIG.fetch('statuses', []).to_set { |s| s.to_s.downcase.strip }.freeze
+    DOCUMENTS_REQUESTED_REASONS =
+      DOCUMENTS_REQUESTED_CONFIG.fetch('reasons', []).to_set { |r| r.to_s.downcase.strip }.freeze
 
     # @param transaction_uuid [String] the CHAMPVA application transaction UUID
     # @param form_uuids [Array<String>, nil] specific form UUIDs to update (falls
@@ -228,18 +245,18 @@ module IvcChampva
 
     # For each applicant, calls the VES EE Summary service and persists the
     # applicant's CHAMPVA status/reason and the sponsor's ICN and status/reason.
-    # This runs on every call because eligibility status and reasons can change
-    # over time. A pending or errored lookup for one applicant leaves that record
-    # unchanged without aborting the others.
-    #
-    # TODO: Once a terminal/"completed" state exists on the CHAMPVA form, skip
-    #   eligibility resolution when the form has reached that state so VES is no
-    #   longer queried for finalized applications. That attribute does not exist
-    #   yet, so for now this is re-fetched on every call.
+    # Skipped entirely once every applicant for the transaction is already
+    # eligibility_resolved, since VES has nothing further to tell us. While any
+    # applicant remains unresolved, all applicants are re-queried on every call
+    # because eligibility status and reasons can change over time. A pending or
+    # errored lookup for one applicant leaves that record unchanged without
+    # aborting the others.
     #
     # @param applicants [Array<IvcChampvaApplicant>]
     # @return [Integer] number of applicant records updated with eligibility data
     def resolve_eligibility(applicants)
+      return 0 if IvcChampvaApplicant.all_resolved_for?(@transaction_uuid)
+
       applicants.count do |applicant|
         persist_eligibility(applicant)
       end
@@ -306,11 +323,29 @@ module IvcChampva
       {
         ves_eligibility_status: eligibility['status'],
         ves_eligibility_reason: eligibility['reason'],
+        ves_status_updated_date: eligibility['statusUpdatedDate'],
         sponsor_icn: sponsor['icn'],
         sponsor_eligibility_status: sponsor['champvaStatus'],
         sponsor_eligibility_reason: sponsor['champvaReason'],
+        documents_requested: documents_requested?(eligibility['status'], eligibility['reason']),
         eligibility_resolved: true
       }
+    end
+
+    # Returns true when the given VES status is in the configured list of statuses
+    # that require additional documents from the applicant, or when the applicant
+    # is ineligible for one of the configured reasons (some reason codes, like
+    # AUTO-CALC OFF, are also used on eligible rows, so the reason check only
+    # applies while the status itself is ineligible).
+    #
+    # @param status [String, nil]
+    # @param reason [String, nil]
+    # @return [Boolean]
+    def documents_requested?(status, reason)
+      normalized_status = status.to_s.downcase.strip
+      return true if DOCUMENTS_REQUESTED_STATUSES.include?(normalized_status)
+
+      normalized_status.include?('ineligible') && DOCUMENTS_REQUESTED_REASONS.include?(reason.to_s.downcase.strip)
     end
 
     # Digs the first CHAMPVA eligibility entry out of the EE Summary response.

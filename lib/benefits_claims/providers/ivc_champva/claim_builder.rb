@@ -3,6 +3,7 @@
 require 'benefits_claims/claim_status_meta/config_loader'
 require 'benefits_claims/responses/claim_response'
 require 'benefits_claims/title_generator'
+require 'benefits_claims/providers/ivc_champva/ves_reason_translator'
 
 module BenefitsClaims
   module Providers
@@ -26,38 +27,42 @@ module BenefitsClaims
           '10-7959a' => 'CHAMPVA claim'
         }.freeze
 
-        PROCESSED_STATUSES = ['processed', 'manually processed'].freeze
-        CLAIM_RECEIVED_STATUSES = [
-          'received',
-          'submission received',
-          # Set by CST file uploader after successful S3 upload, before PEGA picks it up
-          'submitted',
-          # Applicant action required — non-terminal; applicant may respond and receive a follow-up status
-          'additional documentation requested'
-        ].freeze
         INTERNAL_DOCS_ONLY_1010D_FILE_NAME_PATTERN = /_vha_10_10d_supporting_doc-\d+\.pdf\z/i
 
         def self.build_claim_response(records, user = nil)
           records = Array(records)
           representative = pick_representative(records)
-          claim_type = claim_type_for(representative&.form_number)
-          titles = BenefitsClaims::TitleGenerator.generate_titles(claim_type, nil)
-          status = status_for(records)
+          all_resolved = IvcChampvaApplicant.all_resolved_for?(representative&.transaction_uuid)
+          status = status_for(all_resolved)
+          champva_applicants, champva_sponsor, application_decided, ves_status_updated_date =
+            champva_eligibility_summary(representative, user)
 
           BenefitsClaims::Responses::ClaimResponse.new(
+            **claim_response_attributes(records, representative, status, user, all_resolved),
+            cst_champva_applicants: champva_applicants,
+            cst_champva_sponsor: champva_sponsor,
+            application_decided:,
+            ves_status_updated_date:
+          )
+        end
+
+        def self.claim_response_attributes(records, representative, status, user, all_resolved)
+          claim_type = claim_type_for(representative&.form_number)
+          titles = BenefitsClaims::TitleGenerator.generate_titles(claim_type, nil)
+          {
             id: representative&.form_uuid,
             provider: 'ivc_champva',
             claim_date: format_date(records.min_by(&:created_at)&.created_at),
             claim_phase_dates: claim_phase_dates_for(representative, status),
-            close_date: close_date_for(representative),
+            close_date: close_date_for(representative, all_resolved),
             claim_type:,
-            decision_letter_sent: status == 'vbms',
+            decision_letter_sent: status == 'complete',
             display_title: titles[:display_title],
             claim_type_base: titles[:claim_type_base],
             status:,
             claim_status_meta: build_claim_status_meta(records, status, user),
             supporting_documents: build_supporting_documents(records)
-          )
+          }
         end
 
         def self.pick_representative(records)
@@ -73,22 +78,12 @@ module BenefitsClaims
           value.to_s.strip.downcase
         end
 
-        def self.status_for(records)
-          representative = pick_representative(records)
-          return 'complete' if IvcChampvaApplicant.all_resolved_for?(representative&.transaction_uuid)
-
-          normalize_status(representative&.pega_status, form_uuid: representative&.form_uuid)
+        def self.status_for(all_resolved)
+          all_resolved ? 'complete' : 'claimReceived'
         end
 
-        # Returns true when VES has been queried (at least one applicant exists) and every
-        # applicant for the given transaction UUID has received an eligibility determination.
-        def self.close_date_for(record)
-          return format_date(record.updated_at) if IvcChampvaApplicant.all_resolved_for?(record&.transaction_uuid)
-
-          normalized = record&.pega_status.to_s.downcase.strip
-          return nil unless normalized.present? && PROCESSED_STATUSES.include?(normalized)
-
-          format_date(record.updated_at)
+        def self.close_date_for(record, all_resolved)
+          format_date(record.updated_at) if all_resolved
         end
 
         def self.claim_phase_dates_for(representative, status)
@@ -123,27 +118,22 @@ module BenefitsClaims
           value&.iso8601
         end
 
-        def self.normalize_status(pega_status, form_uuid: nil)
-          normalized = pega_status.to_s.downcase.strip
-          return 'pending' if normalized.blank?
-          return 'vbms' if PROCESSED_STATUSES.include?(normalized)
-          return 'claimReceived' if CLAIM_RECEIVED_STATUSES.include?(normalized)
-
-          Rails.logger.warn(
-            '[BenefitsClaims::Providers::IvcChampva::ClaimBuilder] Unrecognized pega_status received',
-            { form_uuid:, raw_pega_status: pega_status }
-          )
-          'error'
-        end
-
         def self.build_claim_status_meta(records, status, user)
           return nil unless include_champva_custom_content?(user)
 
           base_meta = load_base_metadata
+          apply_detail_groups!(base_meta, records, user)
+
+          base_meta['whatWeAreDoing'] ||= {}
+          base_meta['whatWeAreDoing']['currentStatus'] = status
+
+          base_meta
+        end
+
+        def self.apply_detail_groups!(base_meta, records, user)
           veteran_name = [user&.first_name, user&.last_name].compact.join(' ').strip
-          applicant_names = applicant_names_for(records)
           normalized_veteran_name = normalize_name(veteran_name)
-          applicant_names = applicant_names.reject do |name|
+          applicant_names = applicant_names_for(records).reject do |name|
             normalized_veteran_name.present? && normalize_name(name) == normalized_veteran_name
           end
 
@@ -153,11 +143,77 @@ module BenefitsClaims
 
           base_meta['detail'] ||= {}
           base_meta['detail']['sectionGroups'] = detail_groups
+        end
 
-          base_meta['whatWeAreDoing'] ||= {}
-          base_meta['whatWeAreDoing']['currentStatus'] = status
+        # Single applicant/sponsor path: consumed at the response root (cstChampvaApplicants/
+        # cstChampvaSponsor) rather than duplicated under claimStatusMeta.
+        def self.champva_eligibility_summary(representative, user)
+          return [[], nil, nil, nil] unless ves_eligibility_on_demand?(user)
 
-          base_meta
+          transaction_uuid = representative&.transaction_uuid
+          return [[], nil, nil, nil] if transaction_uuid.blank?
+
+          applicants = applicants_for(transaction_uuid)
+          decided = applicants.any? && applicants.all?(&:eligibility_resolved)
+          ves_date = decided ? format_date(applicants.filter_map(&:ves_status_updated_date).max) : nil
+          [build_applicant_data(applicants), sponsor_details_for(transaction_uuid), decided, ves_date]
+        end
+
+        def self.build_applicant_data(applicants)
+          applicants.map do |applicant|
+            applicant_eligibility_hash(applicant).merge(
+              'personType' => applicant.person_type,
+              'documentsRequested' => applicant.documents_requested,
+              'vesStatusUpdatedDate' => format_date(applicant.ves_status_updated_date)
+            )
+          end
+        end
+
+        # @return [Array<IvcChampvaApplicant>]
+        def self.applicants_for(transaction_uuid)
+          IvcChampvaApplicant.where(transaction_uuid:).order(:created_at).to_a
+        end
+
+        # Common applicant fields merged into build_applicant_data's output.
+        def self.applicant_eligibility_hash(applicant)
+          reason, link = reason_and_link_for(applicant.ves_eligibility_reason, applicant.applicant_first_name)
+          {
+            'firstName' => applicant.applicant_first_name,
+            'lastName' => applicant.applicant_last_name,
+            'vesEligibilityStatus' => applicant.ves_eligibility_status,
+            'vesEligibilityReason' => reason,
+            'vesEligibilityReasonLink' => link
+          }
+        end
+
+        def self.sponsor_details_for(transaction_uuid)
+          return nil if transaction_uuid.blank?
+
+          sponsor = IvcChampvaSponsor.find_by(transaction_uuid:)
+          return nil if sponsor.blank?
+
+          reason, link = reason_and_link_for(sponsor.reason, sponsor.first_name)
+          {
+            'firstName' => sponsor.first_name,
+            'lastName' => sponsor.last_name,
+            'eligibilityStatus' => sponsor.eligibility_status,
+            'eligibilityReason' => reason,
+            'eligibilityReasonLink' => link
+          }
+        end
+
+        # Shared by applicant_eligibility_hash and sponsor_details_for so translation/link lookup
+        # only happens in one place.
+        def self.reason_and_link_for(raw_reason, first_name)
+          [translate_ves_reason(raw_reason, first_name), ves_eligibility_reason_link_for(raw_reason)]
+        end
+
+        def self.translate_ves_reason(raw_reason, first_name = nil)
+          VesReasonTranslator.translate(raw_reason, first_name)
+        end
+
+        def self.ves_eligibility_reason_link_for(raw_reason)
+          VesReasonTranslator.link_for(raw_reason)
         end
 
         def self.applicant_names_for(records)
@@ -203,6 +259,12 @@ module BenefitsClaims
           Flipper.enabled?(:cst_champva_custom_content, user)
         end
 
+        def self.ves_eligibility_on_demand?(user)
+          return false unless defined?(Flipper)
+
+          Flipper.enabled?(:ivc_champva_ves_eligibility_on_demand, user)
+        end
+
         def self.load_base_metadata
           BenefitsClaims::ClaimStatusMeta::ConfigLoader.load(provider: :ivc_champva)
         rescue ArgumentError => e
@@ -214,10 +276,7 @@ module BenefitsClaims
         end
 
         def self.phase_type_for_status(status)
-          return 'COMPLETE' if %w[vbms complete].include?(status)
-          return 'REVIEW_OF_EVIDENCE' if status == 'error'
-
-          'UNDER_REVIEW'
+          status == 'complete' ? 'COMPLETE' : 'UNDER_REVIEW'
         end
 
         def self.normalize_name(value)

@@ -1,0 +1,12 @@
+{
+  "_comment": "VES eligibility statuses/reasons that set documents_requested to true on the IvcChampvaApplicant record. Matched case-insensitively. 'statuses' matches the raw VES status; 'reasons' matches the raw VES reason but only when the applicant's status is ineligible (so an ELIGIBLE row with the same reason text, e.g. AUTO-CALC OFF, is never flagged). Add new values here as VES introduces them — no code change required.",
+  "statuses": [],
+  "reasons": [
+    "auto-calc off",
+    "child older than 18 years",
+    "no current school letter",
+    "no medicare part a or letter of disallowance",
+    "no medicare part b or letter of disallowance",
+    "pending medicare information"
+  ]
+}

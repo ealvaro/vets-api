@@ -243,5 +243,30 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(existing.sponsor_icn).to eq('PRE-EXISTING-ICN')
       expect(existing.eligibility_status).to eq('STALE')
     end
+
+    it 'skips VES eligibility calls once every applicant is already resolved' do
+      described_class.new(transaction_uuid).call
+      expect(ves_client).to have_received(:get_ee_summary).twice
+
+      second_result = described_class.new(transaction_uuid).call
+
+      expect(second_result[:eligibility_updated_count]).to eq(0)
+      expect(ves_client).to have_received(:get_ee_summary).twice
+    end
+
+    it 're-queries VES on a subsequent run while an applicant remains unresolved' do
+      allow(ves_client).to receive(:get_ee_summary)
+        .with(icn: '0000001200603250V008079000000')
+        .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'processing')
+      allow(ves_client).to receive(:get_ee_summary)
+        .with(icn: '0000001200603251V181504000000')
+        .and_return(ee_summary_response)
+
+      described_class.new(transaction_uuid).call
+      second_result = described_class.new(transaction_uuid).call
+
+      expect(second_result[:eligibility_updated_count]).to eq(1)
+      expect(ves_client).to have_received(:get_ee_summary).with(icn: '0000001200603250V008079000000').twice
+    end
   end
 end

@@ -45,6 +45,10 @@ module BenefitsClaims
 
         def self.add_optional_attributes(attributes, dto)
           attributes['claimStatusMeta'] = dto.claim_status_meta if dto.claim_status_meta.present?
+          attributes['cstChampvaApplicants'] = dto.cst_champva_applicants if dto.cst_champva_applicants.present?
+          attributes['cstChampvaSponsor'] = dto.cst_champva_sponsor if dto.cst_champva_sponsor.present?
+          attributes['applicationDecided'] = dto.application_decided unless dto.application_decided.nil?
+          attributes['vesStatusUpdatedDate'] = dto.ves_status_updated_date if dto.ves_status_updated_date.present?
 
           if dto.claim_phase_dates
             attributes['claimPhaseDates'] =

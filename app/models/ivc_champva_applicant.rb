@@ -15,9 +15,7 @@ class IvcChampvaApplicant < ApplicationRecord
   def self.all_resolved_for?(transaction_uuid)
     return false if transaction_uuid.blank?
 
-    applicants = where(transaction_uuid:)
-    return false unless applicants.exists?
-
-    applicants.where.not(eligibility_resolved: true).none?
+    resolutions = where(transaction_uuid:).pluck(:eligibility_resolved)
+    resolutions.present? && resolutions.all?(true)
   end
 end

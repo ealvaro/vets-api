@@ -12,50 +12,13 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
     end
   end
 
-  describe '.normalize_status' do
-    it 'maps "Submission Received" to claimReceived' do
-      expect(described_class.normalize_status('Submission Received')).to eq('claimReceived')
+  describe '.status_for' do
+    it 'returns claimReceived when applicants are not yet resolved' do
+      expect(described_class.status_for(false)).to eq('claimReceived')
     end
 
-    it 'maps "Received" to claimReceived' do
-      expect(described_class.normalize_status('Received')).to eq('claimReceived')
-    end
-
-    it 'maps "Submitted" to claimReceived' do
-      expect(described_class.normalize_status('Submitted')).to eq('claimReceived')
-    end
-
-    it 'maps processed statuses to vbms' do
-      expect(described_class.normalize_status('Processed')).to eq('vbms')
-      expect(described_class.normalize_status('Manually Processed')).to eq('vbms')
-    end
-
-    it 'maps error statuses to error' do
-      expect(described_class.normalize_status('Not Processed')).to eq('error')
-      expect(described_class.normalize_status('Failed')).to eq('error')
-    end
-
-    it 'maps additional documentation requested to claimReceived' do
-      expect(described_class.normalize_status('additional documentation requested')).to eq('claimReceived')
-    end
-
-    it 'treats former Pega eligibility denial statuses as unrecognized (error) now that complete is applicant-driven' do
-      [
-        'eligiblity denied/additional information needed',
-        'eligibility denied/additional information needed',
-        'Eligible - issued a card'
-      ].each do |status|
-        expect(described_class.normalize_status(status)).to eq('error')
-      end
-    end
-
-    it 'returns pending for blank status' do
-      expect(described_class.normalize_status(nil)).to eq('pending')
-      expect(described_class.normalize_status('')).to eq('pending')
-    end
-
-    it 'returns error for unrecognized statuses' do
-      expect(described_class.normalize_status('Some Unknown Status')).to eq('error')
+    it 'returns complete when every applicant has been resolved' do
+      expect(described_class.status_for(true)).to eq('complete')
     end
   end
 
@@ -150,6 +113,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         form_number: '10-10D',
         file_name: 'test.pdf',
         pega_status: nil,
+        transaction_uuid: nil,
         created_at: Time.zone.now,
         updated_at: Time.zone.now
       )
@@ -157,7 +121,10 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
     let(:user) { double('user', id: 1, first_name: 'John', last_name: 'Veteran') }
 
     context 'when cst_champva_custom_content flipper is enabled' do
-      before { allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(true) }
+      before do
+        allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(false)
+      end
 
       it 'returns the base metadata hash with currentStatus injected' do
         meta = described_class.build_claim_status_meta([record], 'pending', user)
@@ -216,6 +183,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           form_number: '10-10D',
           file_name: 'test3.pdf',
           pega_status: nil,
+          transaction_uuid: nil,
           created_at: Time.zone.now,
           updated_at: Time.zone.now
         )
@@ -238,6 +206,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           form_number: '10-10D',
           file_name: 'test2.pdf',
           pega_status: nil,
+          transaction_uuid: nil,
           created_at: Time.zone.now,
           updated_at: Time.zone.now
         )
@@ -255,6 +224,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           form_number: '10-10D',
           file_name: 'no-applicants.pdf',
           pega_status: nil,
+          transaction_uuid: nil,
           created_at: Time.zone.now,
           updated_at: Time.zone.now
         )
@@ -272,6 +242,211 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         meta = described_class.build_claim_status_meta([record], 'pending', user)
         expect(meta).to be_nil
       end
+    end
+
+    it 'does not include applicants or sponsor data (that lives at the response root instead)' do
+      allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(true)
+
+      meta = described_class.build_claim_status_meta([record], 'pending', user)
+      expect(meta).not_to have_key('applicants')
+      expect(meta).not_to have_key('sponsor')
+    end
+  end
+
+  describe '.champva_eligibility_summary' do
+    let(:transaction_uuid) { SecureRandom.uuid }
+    let(:representative) { double('record', transaction_uuid:) }
+    let(:user) { double('user', id: 1) }
+
+    context 'when ivc_champva_ves_eligibility_on_demand is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(false)
+      end
+
+      it 'returns empty/nil defaults' do
+        expect(described_class.champva_eligibility_summary(representative, user)).to eq([[], nil, nil, nil])
+      end
+    end
+
+    context 'when ivc_champva_ves_eligibility_on_demand is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(true)
+      end
+
+      it 'includes personType and documentsRequested on each applicant, plus the sponsor' do
+        IvcChampvaApplicant.create!(
+          transaction_uuid:,
+          applicant_icn: '1013836784V369083',
+          applicant_first_name: 'Jane',
+          applicant_last_name: 'Smith',
+          person_type: 'BENEFICIARY',
+          ves_eligibility_status: 'ELIGIBLE',
+          documents_requested: true
+        )
+        IvcChampvaSponsor.create!(transaction_uuid:, first_name: 'John', last_name: 'Smith')
+
+        applicants, sponsor = described_class.champva_eligibility_summary(representative, user)
+
+        expect(applicants.first).to include(
+          'firstName' => 'Jane',
+          'personType' => 'BENEFICIARY',
+          'documentsRequested' => true
+        )
+        expect(sponsor).to include('firstName' => 'John', 'lastName' => 'Smith')
+      end
+
+      it 'marks the application decided only once every applicant is eligibility_resolved' do
+        IvcChampvaApplicant.create!(transaction_uuid:, applicant_icn: '1', person_type: 'BENEFICIARY',
+                                    eligibility_resolved: true, ves_status_updated_date: Date.new(2026, 7, 1))
+
+        _applicants, _sponsor, decided, ves_date = described_class.champva_eligibility_summary(representative, user)
+        expect(decided).to be(true)
+        expect(ves_date).to eq('2026-07-01')
+      end
+
+      it 'returns applicant hashes with the expected keys' do
+        IvcChampvaApplicant.create!(
+          transaction_uuid:,
+          applicant_icn: '1013836784V369083',
+          applicant_first_name: 'Jane',
+          applicant_last_name: 'Smith',
+          person_type: 'BENEFICIARY',
+          ves_eligibility_status: 'ELIGIBLE',
+          ves_eligibility_reason: 'No current school letter'
+        )
+
+        applicants, = described_class.champva_eligibility_summary(representative, user)
+        expect(applicants.length).to eq(1)
+        expect(applicants.first).to eq(
+          'firstName' => 'Jane',
+          'lastName' => 'Smith',
+          'personType' => 'BENEFICIARY',
+          'vesEligibilityStatus' => 'ELIGIBLE',
+          'vesEligibilityReason' => "Jane's not eligible for CHAMPVA benefits because they’re age 18 or older " \
+                                    "and no current proof of school enrollment is on file.\n\nWe mailed Jane a " \
+                                    'letter that has more information about our decision. It should arrive ' \
+                                    'within 10 business days.',
+          'vesEligibilityReasonLink' => nil,
+          'documentsRequested' => false,
+          'vesStatusUpdatedDate' => nil
+        )
+      end
+
+      it 'translates known VES reason codes and substitutes the applicant name' do
+        IvcChampvaApplicant.create!(
+          transaction_uuid:,
+          applicant_icn: '1013836784V369083',
+          applicant_first_name: 'Jane',
+          person_type: 'SPONSOR',
+          ves_eligibility_reason: 'child married'
+        )
+
+        applicants, = described_class.champva_eligibility_summary(representative, user)
+        expect(applicants.first['vesEligibilityReason']).to start_with("Jane's not eligible for CHAMPVA benefits")
+      end
+    end
+  end
+
+  describe '.translate_ves_reason' do
+    it 'returns nil for blank input' do
+      expect(described_class.translate_ves_reason(nil, 'Jane')).to be_nil
+      expect(described_class.translate_ves_reason('', 'Jane')).to be_nil
+    end
+
+    it 'returns the mapped value with the name substituted for [Name] (case-insensitive lookup)' do
+      expected = "Jane's not eligible for CHAMPVA benefits because they got married and are no longer a " \
+                 "dependent of the Veteran sponsor.\n\nWe mailed Jane a letter that has more information " \
+                 'about our decision. It should arrive within 10 business days.'
+      expect(described_class.translate_ves_reason('child married', 'Jane')).to eq(expected)
+      expect(described_class.translate_ves_reason('CHILD MARRIED', 'Jane')).to eq(expected)
+      expect(described_class.translate_ves_reason('  Child Married  ', 'Jane')).to eq(expected)
+    end
+
+    it 'falls back to "The applicant" when no name is given' do
+      expect(described_class.translate_ves_reason('child married'))
+        .to start_with("The applicant's not eligible for CHAMPVA benefits")
+    end
+
+    it 'returns nil for an unmapped reason code' do
+      expect(described_class.translate_ves_reason('Some unknown reason', 'Jane')).to be_nil
+    end
+
+    it 'returns nil for a reason code with no plain-language text yet (e.g. sponsor-only codes)' do
+      expect(described_class.translate_ves_reason('p&t', 'Jane')).to be_nil
+    end
+
+    it 'substitutes [Name] everywhere it appears, including mid-string' do
+      result = described_class.translate_ves_reason('adopted >2 yrs spon dod', 'Jane')
+      expect(result).not_to include('John')
+      expect(result).to include('We mailed Jane a letter')
+    end
+  end
+
+  describe '.ves_eligibility_reason_link_for' do
+    it 'returns nil for blank input' do
+      expect(described_class.ves_eligibility_reason_link_for(nil)).to be_nil
+      expect(described_class.ves_eligibility_reason_link_for('')).to be_nil
+    end
+
+    it 'returns nil for a reason code with no link' do
+      expect(described_class.ves_eligibility_reason_link_for('child married')).to be_nil
+    end
+
+    it 'returns the link as a separate { text, url } hash instead of embedding it in the reason text' do
+      link = described_class.ves_eligibility_reason_link_for('tricare eligible')
+      expect(link).to eq(
+        'text' => 'Learn more about TRICARE eligibility on the TRICARE website',
+        'url' => 'https://www.tricare.mil/Plans/Eligibility'
+      )
+      expect(described_class.translate_ves_reason('tricare eligible', 'Jane')).not_to include('Learn more')
+    end
+  end
+
+  describe '.sponsor_details_for' do
+    let(:transaction_uuid) { SecureRandom.uuid }
+
+    it 'returns nil when transaction_uuid is blank' do
+      expect(described_class.sponsor_details_for(nil)).to be_nil
+      expect(described_class.sponsor_details_for('')).to be_nil
+    end
+
+    it 'returns nil when no sponsor exists for the uuid' do
+      expect(described_class.sponsor_details_for(transaction_uuid)).to be_nil
+    end
+
+    it 'returns a sponsor hash with the expected keys' do
+      IvcChampvaSponsor.create!(
+        transaction_uuid:,
+        first_name: 'John',
+        last_name: 'Smith',
+        eligibility_status: 'ELIGIBLE',
+        reason: 'Sponsor Ineligible'
+      )
+
+      result = described_class.sponsor_details_for(transaction_uuid)
+      expect(result).to eq(
+        'firstName' => 'John',
+        'lastName' => 'Smith',
+        'eligibilityStatus' => 'ELIGIBLE',
+        'eligibilityReason' => "John's not eligible for CHAMPVA benefits because the Veteran sponsor doesn’t " \
+                               'have a permanent and total disability. The Veteran sponsor must have a ' \
+                               'disability that we’ve rated as 100% disabling and that’s not expected to ' \
+                               "improve.\n\nWe mailed John a letter that has more information about our " \
+                               'decision. It should arrive within 10 business days.',
+        'eligibilityReasonLink' => nil
+      )
+    end
+
+    it 'translates known VES reason codes and substitutes the sponsor name' do
+      IvcChampvaSponsor.create!(
+        transaction_uuid:,
+        first_name: 'John',
+        reason: 'sponsor ineligible'
+      )
+
+      result = described_class.sponsor_details_for(transaction_uuid)
+      expect(result['eligibilityReason']).to start_with("John's not eligible for CHAMPVA benefits")
     end
   end
 end

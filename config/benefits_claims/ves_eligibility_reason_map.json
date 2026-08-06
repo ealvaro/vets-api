@@ -1,0 +1,55 @@
+{
+  "_comment": "Maps raw VES EE Summary reason codes to plain-language strings for the frontend. Keys are normalized (downcased, stripped). Most values are the full literal text from the 'Plain language reasons' (last) column of the VES Reasons reference sheet, including the '[Name]’s not eligible for CHAMPVA benefits because ...' / 'We mailed [Name] a welcome letter ...' templated copy — the FE renders this string as-is (no separate \"because\" clause is assembled). A reason with an associated link (currently only the two TRICARE ones) is an object of { text, link: { text, url } } instead of a bare string, so the FE renders the link separately rather than parsing it out of the text. 41 rows / 40 unique reason codes — AUTO-CALC OFF appears for both an ELIGIBLE and INELIGIBLE row; the INELIGIBLE row's text is used since that's the row that needs an explanation. The sponsor-only codes (USC 1151, DIED WHILE P&T, NO CURRENT P&T RECORD, DIED ON ACTIVE DUTY, DIED OF SC DISABILITY, DOAD TRAINING, NO RECORD OF P&T VET, P&T) have no plain-language text in the sheet's last column and map to null pending content team sign-off.",
+  "adopted >2 yrs spon dod": "[Name]’s not eligible for CHAMPVA benefits because they were adopted 2 or more years after the Veteran sponsor died.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "auto-calc off": "[Name]’s not eligible for CHAMPVA benefits.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "certified cg": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "champva for life": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "child married": "[Name]'s not eligible for CHAMPVA benefits because they got married and are no longer a dependent of the Veteran sponsor.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "child not living in house": "[Name]'s not eligible for CHAMPVA benefits because they don’t have the same home address as the Veteran sponsor.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "child older than 18 years": "[Name]'s not eligible for CHAMPVA benefits because they’re age 18 or older and no proof of school enrollment is on file.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "child younger than 18 years": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "deceased beneficiary": "[Name]'s not eligible for CHAMPVA benefits because they’re deceased.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "died of sc disability": null,
+  "died on active duty": null,
+  "died while p&t": null,
+  "disenrolled": "[Name]'s not eligible for CHAMPVA benefits because they asked us to end their enrollment.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "doad training (less than 30 days)": null,
+  "enrolled": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "helpless child": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "no current p&t record": null,
+  "no current school letter": "[Name]'s not eligible for CHAMPVA benefits because they’re age 18 or older and no current proof of school enrollment is on file.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "no medicare part a or letter of disallowance": "[Name]'s not eligible for CHAMPVA benefits because they only have Medicare Part B. They must have both Part A and B—or proof that they don’t qualify for Medicare.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "no medicare part b or letter of disallowance": "[Name]'s not eligible for CHAMPVA benefits because they only have Medicare Part A. They must have both Part A and B—or proof that they don’t qualify for Medicare.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "no record of p&t vet": null,
+  "not certified or cg revoked": "[Name]'s not eligible for CHAMPVA benefits because they’re not a certified caregiver.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "older than 65, not medicare eligible": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "p&t": null,
+  "pending medicare information": "[Name]'s not eligible for CHAMPVA benefits because they're age 65 or older and no Medicare information is on file. They must have both Medicare Part A and B—or proof that they don’t qualify for Medicare.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "remarried widow over 55 pl 107-330": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "remarried widow under 55 pl 107-330": "[Name]'s not eligible for CHAMPVA benefits because they remarried before age 55.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "sponsor doad eligibility": {
+    "text": "[Name]'s not eligible for CHAMPVA benefits because they’re eligible for TRICARE. TRICARE is the Defense Department’s health care program for service members and their families. If you’re eligible for or enrolled in TRICARE, you can’t get CHAMPVA benefits.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+    "link": {
+      "text": "Learn more about TRICARE eligibility on the TRICARE website",
+      "url": "https://www.tricare.mil/Plans/Eligibility"
+    }
+  },
+  "sponsor ineligible": "[Name]'s not eligible for CHAMPVA benefits because the Veteran sponsor doesn’t have a permanent and total disability. The Veteran sponsor must have a disability that we’ve rated as 100% disabling and that’s not expected to improve.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "sponsor p&t ended": "[Name]'s not eligible for CHAMPVA benefits because the Veteran sponsor no longer has a permanent and total disability. The Veteran sponsor must have a disability that we’ve rated as 100% disabling and that’s not expected to improve.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "sponsor/spouse marriage terminated": "[Name]'s not eligible for CHAMPVA benefits because they’re no longer married to the Veteran sponsor.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "spouse marriage terminated": "[Name]'s not eligible for CHAMPVA benefits because they’re no longer married to the Veteran sponsor.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "spouse younger than 65 years": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "spouse/child of reservist under 60": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "step-child's sponsor/step-parent divorced": "[Name]'s not eligible for CHAMPVA benefits because their parent is no longer married to the Veteran sponsor.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "student older than 23 years": "[Name]'s not eligible for CHAMPVA benefits because they’re age 23 or older.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+  "student younger than 23 years": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days.",
+  "tricare eligible": {
+    "text": "[Name]'s not eligible for CHAMPVA benefits because they’re eligible for TRICARE. TRICARE is the Defense Department’s health care program for service members and their families. If you’re eligible for or enrolled in TRICARE, you can’t get CHAMPVA benefits.\n\nWe mailed [Name] a letter that has more information about our decision. It should arrive within 10 business days.",
+    "link": {
+      "text": "Learn more about TRICARE eligibility on the TRICARE website",
+      "url": "https://www.tricare.mil/Plans/Eligibility"
+    }
+  },
+  "usc 1151": null,
+  "widow(er)s marriage terminated": "We mailed [Name] a welcome letter with a CHAMPVA ID card. It should arrive within 7 to 10 business days."
+}

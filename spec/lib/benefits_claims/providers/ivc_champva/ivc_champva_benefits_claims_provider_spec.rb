@@ -91,65 +91,26 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
       expect(result.dig('data', 'attributes', 'provider')).to eq('ivc_champva')
     end
 
-    context 'when the claim has a Processed pega_status' do
-      it 'sets decisionLetterSent to true in serialized attributes' do
+    context 'when no applicants have received an eligibility determination yet' do
+      it 'sets decisionLetterSent to false and status to claimReceived regardless of pega_status' do
         create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
                                   pega_status: 'Processed', created_at: 1.day.ago)
 
         result = provider.get_claim(claim_id)
+        expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be false
+        expect(result.dig('data', 'attributes', 'status')).to eq('claimReceived')
+      end
+    end
+
+    context 'when every applicant has received an eligibility determination' do
+      it 'sets decisionLetterSent to true and status to complete regardless of pega_status' do
+        record = create(:ivc_champva_form, form_uuid: claim_id, transaction_uuid: SecureRandom.uuid,
+                                           email: 'primary@example.com', pega_status: nil, created_at: 1.day.ago)
+        create(:ivc_champva_applicant, transaction_uuid: record.transaction_uuid, eligibility_resolved: true)
+
+        result = provider.get_claim(claim_id)
         expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be true
-      end
-    end
-
-    context 'when the claim has a pending pega_status' do
-      it 'sets decisionLetterSent to false in serialized attributes' do
-        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                  pega_status: 'pending', created_at: 1.day.ago)
-
-        result = provider.get_claim(claim_id)
-        expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be_falsey
-      end
-    end
-
-    context 'when the claim has a mixed-case pega_status (e.g. from polling job)' do
-      ['PROCESSED', 'Processed', 'processed', 'MANUALLY PROCESSED', 'manually processed'].each do |raw_status|
-        it "treats '#{raw_status}' as vbms and sets decisionLetterSent to true" do
-          create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                    pega_status: raw_status, created_at: 1.day.ago)
-
-          result = provider.get_claim(claim_id)
-          expect(result.dig('data', 'attributes', 'decisionLetterSent')).to be true
-          expect(result.dig('data', 'attributes', 'status')).to eq('vbms')
-        end
-      end
-    end
-
-    context 'when the claim has a mixed-case error pega_status' do
-      %w[ERROR Failed REJECTED].each do |raw_status|
-        it "treats '#{raw_status}' as error status" do
-          create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                    pega_status: raw_status, created_at: 1.day.ago)
-
-          result = provider.get_claim(claim_id)
-          expect(result.dig('data', 'attributes', 'status')).to eq('error')
-        end
-      end
-    end
-
-    context 'when the claim has an unrecognized pega_status' do
-      before { allow(Rails.logger).to receive(:warn) }
-
-      it 'returns error status and logs a structured warning with form_uuid and raw value' do
-        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                  pega_status: 'd', created_at: 1.day.ago)
-
-        result = provider.get_claim(claim_id)
-
-        expect(result.dig('data', 'attributes', 'status')).to eq('error')
-        expect(Rails.logger).to have_received(:warn).with(
-          '[BenefitsClaims::Providers::IvcChampva::ClaimBuilder] Unrecognized pega_status received',
-          hash_including(form_uuid: claim_id, raw_pega_status: 'd')
-        )
+        expect(result.dig('data', 'attributes', 'status')).to eq('complete')
       end
     end
 
@@ -184,15 +145,40 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
         expect(current_step_by_status['claimReceived']).to eq(1)
       end
 
-      it 'claimStatusMeta.overview.currentStepByStatus maps vbms to step 2' do
-        create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                  pega_status: 'Processed', created_at: 1.day.ago)
+      it 'claimStatusMeta.overview.currentStepByStatus maps complete to step 2' do
+        record = create(:ivc_champva_form, form_uuid: claim_id, transaction_uuid: SecureRandom.uuid,
+                                           email: 'primary@example.com', pega_status: nil, created_at: 1.day.ago)
+        create(:ivc_champva_applicant, transaction_uuid: record.transaction_uuid, eligibility_resolved: true)
 
         result = provider.get_claim(claim_id)
         current_step_by_status = result.dig(
           'data', 'attributes', 'claimStatusMeta', 'overview', 'currentStepByStatus'
         )
-        expect(current_step_by_status['vbms']).to eq(2)
+        expect(current_step_by_status['complete']).to eq(2)
+      end
+    end
+
+    context 'when ivc_champva_ves_eligibility_on_demand flipper is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:ivc_champva_ves_eligibility_on_demand, current_user).and_return(true)
+      end
+
+      it 'includes applicants and sponsor at the response root instead of under claimStatusMeta' do
+        record = create(:ivc_champva_form, form_uuid: claim_id, transaction_uuid: SecureRandom.uuid,
+                                           email: 'primary@example.com', pega_status: nil, created_at: 1.day.ago)
+        create(:ivc_champva_applicant, transaction_uuid: record.transaction_uuid, applicant_first_name: 'Jane',
+                                       person_type: 'BENEFICIARY', documents_requested: true)
+        IvcChampvaSponsor.create!(transaction_uuid: record.transaction_uuid, first_name: 'John')
+
+        result = provider.get_claim(claim_id)
+        applicants = result.dig('data', 'attributes', 'cstChampvaApplicants')
+        expect(applicants.first).to include('firstName' => 'Jane', 'personType' => 'BENEFICIARY',
+                                            'documentsRequested' => true)
+        expect(result.dig('data', 'attributes', 'cstChampvaSponsor')).to include('firstName' => 'John')
+
+        meta = result.dig('data', 'attributes', 'claimStatusMeta')
+        expect(meta).to be_nil.or(satisfy { |m| !m.key?('applicants') && !m.key?('sponsor') })
       end
     end
   end
@@ -218,11 +204,11 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::IvcChampvaBenefitsClaimsPr
       expect(result.dig('data', 'attributes', 'closeDate')).to be_nil
     end
 
-    it 'returns a close_date for processed pega_status when no applicants exist' do
-      record = create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
-                                         pega_status: 'Processed', created_at: 1.day.ago)
+    it 'returns nil close_date for processed pega_status when no applicants exist' do
+      create(:ivc_champva_form, form_uuid: claim_id, email: 'primary@example.com',
+                                pega_status: 'Processed', created_at: 1.day.ago)
       result = provider.get_claim(claim_id)
-      expect(result.dig('data', 'attributes', 'closeDate')).to eq(record.updated_at.to_date.iso8601)
+      expect(result.dig('data', 'attributes', 'closeDate')).to be_nil
     end
   end
 end
