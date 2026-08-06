@@ -1,13 +1,16 @@
+# Appeals Weekly Error Report
 common:
-   - eshvimmer@deloitte.com
-   - slamsal@deloitte.com
-   - mughumman@deloitte.com
-   - mbavanaka@deloitte.com
-   - mihobson@deloitte.com
-   - alan.lattimore@pingwind.com
+  - ericmckenna@mks2.com
+  - eshvimmer@deloitte.com
+  - ilya.makedon@va.gov
+  - mbavanaka@deloitte.com
+  - michel.mcdonald@pingwind.com
+  - mihobson@deloitte.com
+  - mughumman@deloitte.com
+  - peter.stevens@pingwind.com
+  - vkailasam@deloitte.com
 development:
 staging:
 sandbox:
 production:
-  - matthew.self2@va.gov
   - janet.coutinho@va.gov

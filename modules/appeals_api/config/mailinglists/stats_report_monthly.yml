@@ -1,10 +1,15 @@
+# Appeals Monthly Stats Report
 common:
+  - ericmckenna@mks2.com
   - eshvimmer@deloitte.com
-  - slamsal@deloitte.com
-  - mughumman@deloitte.com
+  - ilya.makedon@va.gov
   - mbavanaka@deloitte.com
-  - alan.lattimore@pingwind.com
+  - michel.mcdonald@pingwind.com
+  - mihobson@deloitte.com
+  - mughumman@deloitte.com
+  - peter.stevens@pingwind.com
+  - vkailasam@deloitte.com
 development:
 staging:
 production:
-  - mihobson@deloitte.com
+  - janet.coutinho@va.gov

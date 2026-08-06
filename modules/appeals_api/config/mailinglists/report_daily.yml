@@ -1,19 +1,19 @@
+# Appeals Daily Report
 common:
+  - ericmckenna@mks2.com
   - eshvimmer@deloitte.com
-  - slamsal@deloitte.com
-  - mughumman@deloitte.com
+  - ilya.makedon@va.gov
   - mbavanaka@deloitte.com
+  - michel.mcdonald@pingwind.com
   - mihobson@deloitte.com
-  - alan.lattimore@pingwind.com
+  - mughumman@deloitte.com
+  - peter.stevens@pingwind.com
+  - vkailasam@deloitte.com
 development:
 staging:
 sandbox:
 production:
   - cory.sohrakoff@va.gov
-  - jacob.worrell@va.gov
   - janet.coutinho@va.gov
-  - matthew.self2@va.gov
-  - maurice.debeary@coforma.io
-  - premal.shah@va.gov
   - steve.albers@va.gov
   - zachary.goldfine@va.gov

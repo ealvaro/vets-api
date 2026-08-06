@@ -1,19 +1,23 @@
+# Benefits Intake Daily/Weekly Error Report
 common:
-  - 'mihobson@deloitte.com'
-  - 'alan.lattimore@pingwind.com'
+  - ericmckenna@mks2.com
+  - eshvimmer@deloitte.com
+  - ilya.makedon@va.gov
+  - mbavanaka@deloitte.com
+  - michel.mcdonald@pingwind.com
+  - mihobson@deloitte.com
+  - mughumman@deloitte.com
+  - peter.stevens@pingwind.com
+  - vkailasam@deloitte.com
 dev:
 staging:
 sandbox:
 prod:
-  - 'melinda.cuerda@adhocteam.us'
-  - 'heather.roy@zerodelta365.com'
-  - 'david.mazik@va.gov'
-  - 'stone_christopher@bah.com'
-  - 'valerie.hase@va.gov'
-  - 'janet.coutinho@va.gov'
-  - 'matthew.self2@va.gov'
-  - 'zachary.goldfine@va.gov'
-  - 'megan.siddle@oddball.io' # Forms Modernization Team
-  - 'tricia.baker@oddball.io'
-  - 'emily.theis@gsa.gov'
-  - 'steve.albers@va.gov'
+  - david.mazik@va.gov
+  - janet.coutinho@va.gov
+  - megan.siddle@oddball.io
+  - steve.albers@va.gov
+  - stone_christopher@bah.com
+  - tricia.baker@oddball.io
+  - valerie.hase@va.gov
+  - zachary.goldfine@va.gov
