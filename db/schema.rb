@@ -676,6 +676,53 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000002) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "claims_api_organization_representatives", force: :cascade do |t|
+    t.string "acceptance_mode", default: "no_acceptance", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deactivated_at"
+    t.string "organization_poa", limit: 3, null: false
+    t.string "representative_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_poa", "representative_id"], name: "idx_claims_api_org_reps_on_org_poa_and_rep_id", unique: true
+    t.index ["representative_id"], name: "idx_claims_api_org_reps_on_representative_id"
+    t.check_constraint "acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "claims_api_org_reps_acceptance_mode_check"
+  end
+
+  create_table "claims_api_organizations", id: false, force: :cascade do |t|
+    t.string "address_line1"
+    t.string "address_line2"
+    t.string "address_line3"
+    t.string "address_type"
+    t.boolean "can_accept_digital_poa_requests", default: false
+    t.string "city"
+    t.string "country_code_iso3"
+    t.string "country_name"
+    t.string "county_code"
+    t.string "county_name"
+    t.datetime "created_at", null: false
+    t.string "default_new_rep_acceptance_mode", default: "no_acceptance", null: false
+    t.string "international_postal_code"
+    t.float "lat"
+    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.float "long"
+    t.string "name"
+    t.string "phone"
+    t.string "poa", limit: 3
+    t.string "primary_org_acceptance_mode", default: "no_acceptance", null: false
+    t.string "province"
+    t.jsonb "raw_address"
+    t.string "state", limit: 2
+    t.string "state_code"
+    t.datetime "updated_at", null: false
+    t.string "zip_code"
+    t.string "zip_suffix"
+    t.index ["location"], name: "index_claims_api_organizations_on_location", using: :gist
+    t.index ["name"], name: "index_claims_api_organizations_on_name"
+    t.index ["poa"], name: "index_claims_api_organizations_on_poa", unique: true
+    t.check_constraint "default_new_rep_acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "check_claims_api_orgs_default_new_rep_acceptance_mode"
+    t.check_constraint "primary_org_acceptance_mode::text = ANY (ARRAY['any_request'::character varying::text, 'self_only'::character varying::text, 'no_acceptance'::character varying::text])", name: "check_claims_api_orgs_primary_org_acceptance_mode"
+  end
+
   create_table "claims_api_power_of_attorney_requests", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "claimant_icn"
     t.datetime "created_at", null: false
@@ -737,6 +784,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000002) do
     t.text "response_ciphertext"
     t.datetime "updated_at", null: false
     t.index ["needs_kms_rotation"], name: "index_claims_api_record_metadata_on_needs_kms_rotation"
+  end
+
+  create_table "claims_api_representatives", id: false, force: :cascade do |t|
+    t.string "address_line1"
+    t.string "address_line2"
+    t.string "address_line3"
+    t.string "address_type"
+    t.string "city"
+    t.string "country_code_iso3"
+    t.string "country_name"
+    t.string "county_code"
+    t.string "county_name"
+    t.datetime "created_at", null: false
+    t.string "email"
+    t.datetime "fallback_location_updated_at"
+    t.string "first_name"
+    t.string "full_name"
+    t.string "international_postal_code"
+    t.string "last_name"
+    t.float "lat"
+    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.float "long"
+    t.string "middle_initial"
+    t.string "phone"
+    t.string "phone_number"
+    t.string "poa_codes", default: [], array: true
+    t.string "province"
+    t.jsonb "raw_address"
+    t.string "representative_id"
+    t.string "state_code"
+    t.datetime "updated_at", null: false
+    t.string "user_types", default: [], array: true
+    t.string "zip_code"
+    t.string "zip_suffix"
+    t.index "lower((email)::text)", name: "index_claims_api_representatives_on_lower_email"
+    t.index ["full_name"], name: "index_claims_api_representatives_on_full_name"
+    t.index ["location"], name: "index_claims_api_representatives_on_location", using: :gist
+    t.index ["representative_id"], name: "index_claims_api_representatives_on_representative_id", unique: true
+    t.check_constraint "representative_id IS NOT NULL", name: "claims_api_representatives_representative_id_null"
   end
 
   create_table "claims_api_supporting_documents", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2526,6 +2612,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000002) do
   add_foreign_key "bpds_submission_attempts", "bpds_submissions"
   add_foreign_key "claim_va_notifications", "saved_claims"
   add_foreign_key "claims_api_claim_submissions", "claims_api_auto_established_claims", column: "claim_id"
+  add_foreign_key "claims_api_organization_representatives", "claims_api_organizations", column: "organization_poa", primary_key: "poa"
+  add_foreign_key "claims_api_organization_representatives", "claims_api_representatives", column: "representative_id", primary_key: "representative_id"
   add_foreign_key "claims_evidence_api_submission_attempts", "claims_evidence_api_submissions", column: "claims_evidence_api_submissions_id"
   add_foreign_key "deprecated_user_accounts", "user_accounts"
   add_foreign_key "deprecated_user_accounts", "user_verifications"

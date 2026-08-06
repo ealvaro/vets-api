@@ -12,7 +12,9 @@ RSpec.describe 'PostGIS schema round-trip', type: :model do
     %w[base_facilities location st_point],
     %w[drivetime_bands polygon st_polygon],
     %w[veteran_organizations location st_point],
-    %w[veteran_representatives location st_point]
+    %w[veteran_representatives location st_point],
+    %w[claims_api_organizations location st_point],
+    %w[claims_api_representatives location st_point]
   ].freeze
 
   # Rails 8 SchemaDumper.dump takes the connection POOL, not a raw connection.
