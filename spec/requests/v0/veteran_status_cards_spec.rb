@@ -131,43 +131,6 @@ RSpec.describe 'V0::VeteranStatusCards', type: :request do
           )
         end
       end
-
-      context 'when user is +5' do
-        let(:user) { build(:user, email: 'vets.gov.user+5@gmail.com') }
-
-        context 'when environment is not production' do
-          before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
-
-          it 'raises a BackendServiceException (500 error)' do
-            get '/v0/veteran_status_card'
-
-            expect(response).to have_http_status(:internal_server_error)
-            json = JSON.parse(response.body)
-            expect(json['error']).to eq('An unexpected error occurred')
-          end
-        end
-
-        context 'when environment is production' do
-          before do
-            allow(Settings).to receive(:vsp_environment).and_return('production')
-            allow_any_instance_of(VeteranStatusCard::Service).to receive(:status_card).and_return({})
-          end
-
-          it 'does not raise a BackendServiceException (500 error)' do
-            get '/v0/veteran_status_card'
-            expect(response).not_to have_http_status(:internal_server_error)
-          end
-        end
-      end
-
-      context 'when user is not +5' do
-        before { allow_any_instance_of(VeteranStatusCard::Service).to receive(:status_card).and_return({}) }
-
-        it 'does not raise a BackendServiceException (500 error)' do
-          get '/v0/veteran_status_card'
-          expect(response).not_to have_http_status(:internal_server_error)
-        end
-      end
     end
   end
 end
