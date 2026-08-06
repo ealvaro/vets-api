@@ -3,6 +3,7 @@
 require 'representation_management/engine'
 
 module RepresentationManagement
+  FORM_ID = '21-22'
   AGENTS = 'agents'
   ATTORNEYS = 'attorneys'
   REPRESENTATIVES = 'representatives'

@@ -153,6 +153,42 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
           it 'responds with an error message specifying the failed validation(s)' do
             expect(response.body).to eq({ errors: ["Veteran first name can't be blank"] }.to_json)
           end
+
+          context 'when validation error logging is enabled' do
+            it 'logs validation errors with form_id 21-22' do
+              monitor = instance_double(RepresentationManagement::Monitor)
+              allow(RepresentationManagement::Monitor).to receive(:new).and_return(monitor)
+              allow(monitor).to receive(:track_validation_errors)
+              allow(Flipper).to receive(:enabled?).and_call_original
+              allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(true)
+
+              params[:power_of_attorney_request][:veteran][:name][:first] = nil
+              post(base_path, params:)
+
+              expect(monitor).to have_received(:track_validation_errors).with(
+                hash_including(
+                  message: 'Power of attorney request form validation failed',
+                  errors: hash_including(veteran_first_name: include("can't be blank")),
+                  form_id: '21-22'
+                )
+              )
+            end
+          end
+
+          context 'when validation error logging is disabled' do
+            it 'does not log validation errors' do
+              monitor = instance_double(RepresentationManagement::Monitor)
+              allow(RepresentationManagement::Monitor).to receive(:new).and_return(monitor)
+              allow(monitor).to receive(:track_validation_errors)
+              allow(Flipper).to receive(:enabled?).and_call_original
+              allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(false)
+
+              params[:power_of_attorney_request][:veteran][:name][:first] = nil
+              post(base_path, params:)
+
+              expect(monitor).not_to have_received(:track_validation_errors)
+            end
+          end
         end
 
         context 'when representative does not have an active acceptance mode' do

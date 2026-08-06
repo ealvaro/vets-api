@@ -2,6 +2,8 @@
 
 module RepresentationManagement
   class Form2122DigitalSubmission < RepresentationManagement::Form2122Base
+    VALIDATION_ERROR_FORM_ID = '21-22'
+
     BLANK_ICN = 'ICN value is missing'
     BLANK_PARTICIPANT_ID = 'Corp Participant ID value is blank'
     DEPENDENT_SUBMITTER = 'must submit as the Veteran for digital Power of Attorney Requests'
@@ -115,6 +117,10 @@ module RepresentationManagement
       return if user.icn.present?
 
       errors.add(:user, BLANK_ICN)
+    end
+
+    def validation_error_message
+      'Power of attorney request form validation failed'
     end
   end
 end

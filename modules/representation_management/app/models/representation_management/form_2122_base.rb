@@ -3,6 +3,9 @@
 module RepresentationManagement
   class Form2122Base
     include ActiveModel::Model
+    include ActiveModel::Validations::Callbacks
+
+    VALIDATION_ERROR_FORM_ID = '21-22'
 
     NINE_DIGIT_NUMBER = /\A\d{9}\z/
     TEN_DIGIT_NUMBER = /\A\d{10}\z/
@@ -54,6 +57,8 @@ module RepresentationManagement
     ]
 
     attr_accessor(*[veteran_attrs, claimant_attrs, representative_attrs, consent_attrs].flatten)
+
+    after_validation :log_validation_errors, if: -> { Flipper.enabled?(:form2122_validation_error_logging) }
 
     validates :veteran_first_name, presence: true, length: { maximum: 12 }
     validates :veteran_middle_initial, length: { maximum: 1 }
@@ -197,6 +202,30 @@ module RepresentationManagement
       return unless representative.nil?
 
       errors.add(:representative_id, 'Representative not found')
+    end
+
+    def log_validation_errors
+      return if errors.blank?
+
+      monitor.track_validation_errors(
+        message: validation_error_message,
+        errors: errors.messages,
+        form_id: validation_error_form_id
+      )
+    end
+
+    # Default validation log message for subclasses that do not provide a
+    # more specific message for their submission flow.
+    def validation_error_message
+      'Representation management base form validation failed'
+    end
+
+    def validation_error_form_id
+      self.class::VALIDATION_ERROR_FORM_ID
+    end
+
+    def monitor
+      @monitor ||= RepresentationManagement::Monitor.new
     end
   end
 end

@@ -1365,6 +1365,10 @@ features:
     actor_type: user
     description: Enables digital submission of Appoint a Rep Form 21-22 for non-Veteran claimants
     enable_in_development: true
+  form2122_validation_error_logging:
+    actor_type: user
+    description: Enables datadog logging for validation errors occuring in digital and pdf flows
+    enable_in_development: true
   representative_status_enabled:
     actor_type: cookie_id
     description: Enables Representative Status widget on Find a Representative frontend

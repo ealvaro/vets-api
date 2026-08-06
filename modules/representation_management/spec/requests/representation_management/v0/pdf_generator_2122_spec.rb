@@ -153,6 +153,44 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
     end
 
     context 'when triggering validation errors' do
+      context 'when validation error logging is enabled' do
+        it 'logs validation errors with form_id 21-22' do
+          monitor = instance_double(RepresentationManagement::Monitor)
+          allow(RepresentationManagement::Monitor).to receive(:new).and_return(monitor)
+          allow(monitor).to receive(:track_validation_errors)
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(true)
+
+          params[:pdf_generator2122][:veteran][:name][:first] = nil
+
+          post(base_path, params:)
+
+          expect(monitor).to have_received(:track_validation_errors).with(
+            hash_including(
+              message: 'PDF Generator 21-22 form validation failed',
+              errors: hash_including(veteran_first_name: include("can't be blank")),
+              form_id: '21-22'
+            )
+          )
+        end
+      end
+
+      context 'when validation error logging is disabled' do
+        it 'does not log validation errors' do
+          monitor = instance_double(RepresentationManagement::Monitor)
+          allow(RepresentationManagement::Monitor).to receive(:new).and_return(monitor)
+          allow(monitor).to receive(:track_validation_errors)
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(false)
+
+          params[:pdf_generator2122][:veteran][:name][:first] = nil
+
+          post(base_path, params:)
+
+          expect(monitor).not_to have_received(:track_validation_errors)
+        end
+      end
+
       context 'when submitting without the veteran first name for a single validation error' do
         before do
           params[:pdf_generator2122][:veteran][:name][:first] = nil

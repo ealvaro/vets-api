@@ -2,6 +2,8 @@
 
 module RepresentationManagement
   class Form2122aData < RepresentationManagement::Form2122Base
+    VALIDATION_ERROR_FORM_ID = '21-22a'
+
     REPRESENTATIVE_TYPES = %w[ATTORNEY AGENT INDIVIDUAL VSO_REPRESENTATIVE].freeze
     VETERAN_SERVICE_BRANCHES = %w[ARMY NAVY AIR_FORCE MARINE_CORPS COAST_GUARD SPACE_FORCE NOAA
                                   USPHS].freeze
@@ -56,6 +58,12 @@ module RepresentationManagement
       else
         [representative.zip_code[0..4], representative.zip_suffix[0..3]]
       end
+    end
+
+    private
+
+    def validation_error_message
+      'PDF Generator 21-22a form validation failed'
     end
   end
 end

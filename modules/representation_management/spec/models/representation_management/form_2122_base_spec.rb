@@ -3,6 +3,70 @@
 require 'rails_helper'
 
 RSpec.describe RepresentationManagement::Form2122Base, type: :model do
+  describe 'after_validation logging' do
+    let(:monitor) { instance_double(RepresentationManagement::Monitor, track_validation_errors: nil) }
+    let(:valid_veteran_attributes) do
+      {
+        veteran_first_name: 'John',
+        veteran_last_name: 'Veteran',
+        veteran_social_security_number: '123456789',
+        veteran_date_of_birth: '1980-12-31',
+        veteran_address_line1: '123 Main St',
+        veteran_city: 'Portland',
+        veteran_country: 'US',
+        veteran_state_code: 'OR',
+        veteran_zip_code: '97201'
+      }
+    end
+
+    before do
+      allow(RepresentationManagement::Monitor).to receive(:new).and_return(monitor)
+      allow(Flipper).to receive(:enabled?).and_call_original
+    end
+
+    context 'when form2122_validation_error_logging is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(true)
+      end
+
+      it 'logs validation errors after validation fails' do
+        form = described_class.new(valid_veteran_attributes.merge(veteran_first_name: nil))
+
+        form.valid?
+
+        expect(monitor).to have_received(:track_validation_errors).with(
+          hash_including(
+            message: 'Representation management base form validation failed',
+            errors: hash_including(veteran_first_name: include("can't be blank")),
+            form_id: '21-22'
+          )
+        )
+      end
+
+      it 'does not log when validation passes with no errors' do
+        form = described_class.new(**valid_veteran_attributes)
+
+        form.valid?
+
+        expect(monitor).not_to have_received(:track_validation_errors)
+      end
+    end
+
+    context 'when form2122_validation_error_logging is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form2122_validation_error_logging).and_return(false)
+      end
+
+      it 'does not log validation errors after validation fails' do
+        form = described_class.new(valid_veteran_attributes.merge(veteran_first_name: nil))
+
+        form.valid?
+
+        expect(monitor).not_to have_received(:track_validation_errors)
+      end
+    end
+  end
+
   describe 'validations' do
     subject { described_class.new(**valid_veteran_attributes) }
 

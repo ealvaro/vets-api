@@ -2,6 +2,8 @@
 
 module RepresentationManagement
   class Form2122Data < RepresentationManagement::Form2122Base
+    VALIDATION_ERROR_FORM_ID = '21-22'
+
     attr_accessor :organization_id
 
     validates :organization_id, presence: true
@@ -36,6 +38,10 @@ module RepresentationManagement
       return unless organization.nil?
 
       errors.add(:organization, 'Organization not found')
+    end
+
+    def validation_error_message
+      'PDF Generator 21-22 form validation failed'
     end
   end
 end
