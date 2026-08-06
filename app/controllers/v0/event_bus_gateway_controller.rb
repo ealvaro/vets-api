@@ -74,9 +74,11 @@ module V0
 
       EventBusGateway::LetterReadyNotificationJob.perform_async(
         participant_id,
-        select_email_template(send_notifications_params[:email_template_id]),
-        send_notifications_params[:push_template_id],
-        send_notifications_params[:sms_template_id]
+        {
+          'email' => select_email_template(send_notifications_params[:email_template_id]),
+          'push' => send_notifications_params[:push_template_id],
+          'sms' => send_notifications_params[:sms_template_id]
+        }
       )
       head :ok
     end

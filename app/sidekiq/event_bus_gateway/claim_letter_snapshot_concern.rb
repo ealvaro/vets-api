@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'claim_letters/providers/claim_letters/lighthouse_claim_letters_provider'
+require_relative 'gated_claim_letters_provider'
 require_relative 'constants'
 
 module EventBusGateway
@@ -30,9 +31,12 @@ module EventBusGateway
     end
 
     # Always uses the Lighthouse Benefits Documents provider (the strategic
-    # claim-letters source) regardless of the VBMS migration flag.
+    # claim-letters source) regardless of the VBMS migration flag, via the gated
+    # subclass so the BD availability check is bounded by a tight Faraday read
+    # timeout (see GatedClaimLettersConfiguration) — the gate runs in Sidekiq and
+    # must never hold a worker on a slow BD call.
     def claim_letters_service(user)
-      LighthouseClaimLettersProvider.new(user)
+      GatedClaimLettersProvider.new(user)
     end
 
     # Compact snapshot of the decision-letter (doc-type 184) set for a user.
@@ -79,6 +83,45 @@ module EventBusGateway
           letter[:received_at].present? &&
           letter[:received_at].to_datetime >= cutoff
       end
+    end
+
+    # A decision letter has "appeared" when the decision-letter set changed since
+    # the send-time snapshot — any document id present now that wasn't at send
+    # time. Keys off the changing set rather than past-vs-future of a single
+    # received_at, which is an unreliable wall-clock signal. Falls back to a rise
+    # in count when ids are unavailable, and to plain presence when no snapshot was
+    # carried. `current` uses symbol keys (from decision_letter_snapshot);
+    # `snapshot` uses string keys (round-tripped through the Sidekiq queue).
+    def new_decision_letter?(current, snapshot)
+      return current[:decision_letter_count].positive? if snapshot.blank?
+
+      prior_ids = Array(snapshot['decision_letter_document_ids'])
+      current_ids = Array(current[:decision_letter_document_ids])
+      return true if (current_ids - prior_ids).any?
+
+      current[:decision_letter_count] > snapshot['decision_letter_count'].to_i
+    end
+
+    # Unified "is a decision letter available to justify sending now?" check.
+    # First attempt (no prior snapshot): fall back to the recency signal — is any
+    # decision letter recent enough to treat as present. Re-checks (prior snapshot
+    # carried): use the trusted delta — did a new decision letter appear vs. the
+    # send-time snapshot.
+    def decision_letter_available?(letters, prior_snapshot)
+      if prior_snapshot.present?
+        new_decision_letter?(decision_letter_snapshot(letters), prior_snapshot)
+      else
+        recent_decision_letter?(letters)
+      end
+    end
+
+    # Whole seconds elapsed since an ISO-8601 timestamp; nil if unparseable.
+    def seconds_since(iso)
+      return nil if iso.blank?
+
+      (Time.current - Time.zone.parse(iso.to_s)).to_i
+    rescue ArgumentError, TypeError
+      nil
     end
   end
 end

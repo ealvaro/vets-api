@@ -10,7 +10,6 @@ require_relative 'claim_letter_snapshot_concern'
 require_relative 'letter_ready_email_job'
 require_relative 'letter_ready_push_job'
 require_relative 'letter_ready_sms_job'
-require_relative 'letter_ready_claim_letter_recheck_job'
 
 module EventBusGateway
   class LetterReadyNotificationJob
@@ -34,14 +33,19 @@ module EventBusGateway
       StatsD.increment("#{STATSD_METRIC_PREFIX}.exhausted", tags:)
     end
 
-    def perform(participant_id, email_template_id = nil, push_template_id = nil, sms_template_id = nil) # rubocop:disable Cop/AttrPackageDeleteOnSuccess
+    def perform(participant_id, *args) # rubocop:disable Cop/AttrPackageDeleteOnSuccess
+      template_ids, gate_state = normalize_perform_args(args)
+      email_template_id, push_template_id, sms_template_id = template_ids.values_at('email', 'push', 'sms')
+
       # Fetch participant data upfront
       icn = get_icn(participant_id)
 
-      # Snapshot the most recent claim letter visible for this user as the
-      # decision-letter event arrives (logging only; never affects the send) and,
-      # when enabled, schedule deferred re-checks to measure propagation lag.
-      process_claim_letter_snapshot(participant_id, icn)
+      # Snapshot the most recent claim letter at send time (logging only) and, when
+      # the gated-send flag is on, decide whether a decision letter is available yet.
+      # On a "miss" this re-enqueues the job on a short interval and returns without
+      # sending; it returns :send when we should proceed now (letter present,
+      # resolved on a re-check, or the send-anyway fallback after the attempt cap).
+      return unless evaluate_send_gate(participant_id, icn, gate_state, template_ids) == :send
 
       # Determine which notification types are requested based on template IDs
       requested_types = requested_notification_types(email_template_id, sms_template_id, push_template_id)
@@ -68,6 +72,25 @@ module EventBusGateway
 
     private
 
+    # perform is enqueued as perform_async(participant_id, template_ids) where
+    # template_ids is { 'email' => id, 'push' => id, 'sms' => id }, and re-enqueued
+    # for a gated re-check as perform_in(interval, participant_id, template_ids,
+    # gate_state). The legacy positional form (participant_id, email, push, sms) is
+    # still accepted so jobs enqueued before this change deploys keep running;
+    # remove that branch a release later once no legacy jobs remain queued. A Hash
+    # first arg is unambiguously the new form (legacy template ids are strings).
+    def normalize_perform_args(args)
+      first = args.first
+      if first.is_a?(Hash)
+        [first.stringify_keys, args[1]]
+      elsif args.empty?
+        [{}, nil]
+      else
+        email, push, sms = args
+        [{ 'email' => email, 'push' => push, 'sms' => sms }, nil]
+      end
+    end
+
     def requested_notification_types(email_template_id, sms_template_id, push_template_id)
       types = []
       types << 'email' if email_template_id.present?
@@ -76,40 +99,98 @@ module EventBusGateway
       types
     end
 
-    # Snapshots the most recent claim letter available for the user when the
-    # decision letter event arrives. When the logging flag is on, logs the
-    # snapshot; when the re-check flag is on, schedules deferred re-checks to
-    # measure propagation lag. Both share a single BD fetch. Gated behind feature
-    # flags and fully guarded: any failure here is logged but never interrupts the
-    # notification flow.
-    def process_claim_letter_snapshot(participant_id, icn)
-      return if icn.blank?
+    # Single BD fetch shared by send-time logging and the gated send. Logs the
+    # send-time snapshot (attempt 0 only) when the logging flag is on, then, when
+    # the gated-send flag is on, decides present-vs-miss. Returns :send to proceed
+    # or :defer when a miss was re-enqueued. Fully guarded: any BD/logging error
+    # fails open to :send so a slow or erroring Benefits Documents call can never
+    # drop the notification or back up the Sidekiq queue.
+    def evaluate_send_gate(participant_id, icn, gate_state, template_ids)
+      return :send if icn.blank?
 
-      # The logging flag defines the sampled cohort and pays the BD fetch cost.
-      # Re-checks add MORE BD load, so they are deliberately confined to that same
-      # cohort: nothing runs here unless the logging flag samples this user. Two
-      # separate percentage flags would hash to different ~1% populations, so we
-      # gate the re-check *inside* the logging flag rather than beside it. With the
-      # re-check flag at 100% the re-check cohort is exactly the logging cohort;
-      # lower it to sample a subset. Re-checks never run outside the logging cohort.
-      return unless Flipper.enabled?(:event_bus_gateway_log_most_recent_claim_letter, Flipper::Actor.new(icn))
+      logging_on = Flipper.enabled?(:event_bus_gateway_log_most_recent_claim_letter, Flipper::Actor.new(icn))
+      gating_on = Flipper.enabled?(:event_bus_gateway_letter_ready_gated_send, Flipper::Actor.new(icn))
+      return :send unless logging_on || gating_on
 
-      user = build_user_from_icn(icn, uuid: user_account(icn)&.id)
-      letters = claim_letters_service(user).get_letters || []
+      letters = fetch_claim_letters(icn)
 
-      ::Rails.logger.info('LetterReadyNotificationJob most recent claim letter',
-                          most_recent_claim_letter_payload(letters))
-
-      # Only re-check the "miss" cases: when a recent decision letter is already
-      # present at send time there is nothing to wait for, so we skip the deferred
-      # re-checks (and their BD load) entirely. The propagation-lag question only
-      # applies to notifications where no recent letter was available yet.
-      if Flipper.enabled?(:event_bus_gateway_claim_letter_recheck, Flipper::Actor.new(icn)) &&
-         !recent_decision_letter?(letters)
-        schedule_claim_letter_rechecks(participant_id, letters)
+      # Send-time "most recent claim letter" log: attempt 0 only, independent of
+      # gating (this is the original decision-letter-event arrival).
+      if logging_on && gate_state.blank?
+        ::Rails.logger.info('LetterReadyNotificationJob most recent claim letter',
+                            most_recent_claim_letter_payload(letters))
       end
+
+      return :send unless gating_on
+
+      decide_gate(participant_id, letters, gate_state, template_ids)
     rescue => e
-      handle_claim_letter_log_error(e)
+      handle_claim_letter_check_error(e, gate_state)
+      :send
+    end
+
+    # Bounded BD fetch. The gated provider caps the Benefits Documents call at a
+    # tight Faraday read timeout (Constants::GATED_SEND_BD_TIMEOUT_SECONDS) rather
+    # than Ruby's Timeout, which isn't safe to interrupt arbitrary code in Sidekiq.
+    # On a timeout Faraday raises and evaluate_send_gate rescues into a fail-open
+    # send; breakers short-circuits sustained BD outages.
+    def fetch_claim_letters(icn)
+      user = build_user_from_icn(icn, uuid: user_account(icn)&.id)
+      claim_letters_service(user).get_letters || []
+    end
+
+    # Gate decision. attempt 0 is the original send (no prior snapshot → recency
+    # signal); attempts 1..N are re-checks (prior snapshot → trusted delta signal).
+    def decide_gate(participant_id, letters, gate_state, template_ids)
+      gate = {
+        letters:,
+        attempt: gate_state ? gate_state['attempt'].to_i : 0,
+        prior_snapshot: gate_state && gate_state['snapshot'],
+        original_sent_at: (gate_state && gate_state['original_sent_at']) || Time.current.utc.iso8601
+      }
+
+      if decision_letter_available?(letters, gate[:prior_snapshot])
+        record_gate_outcome(gate[:attempt].zero? ? 'present' : 'sent_after_recheck', gate)
+        return :send
+      end
+
+      return handle_gate_cap(gate) if gate[:attempt] >= Constants.gated_send_max_recheck_attempts
+
+      defer_gated_send(participant_id, template_ids, gate)
+      :defer
+    end
+
+    # After the final miss, apply the configured fallback: send anyway (default,
+    # preserves today's behavior) or hold (single Settings switch, no rewrite).
+    def handle_gate_cap(gate)
+      if Constants.gated_send_fallback_send_anyway?
+        record_gate_outcome('sent_anyway', gate)
+        :send
+      else
+        record_gate_outcome('held', gate)
+        :defer
+      end
+    end
+
+    # Re-enqueue the parent on the configured interval, carrying attempt count,
+    # original send time, and the send-time snapshot. The snapshot is captured once
+    # at attempt 0 and passed unchanged so the delta is always measured against the
+    # send-time state (string keys survive the Sidekiq JSON round-trip). The SMS
+    # blackout window is still honored downstream by LetterReadySmsJob's own
+    # perform_at deferral when the send finally fires, so re-checks don't reintroduce
+    # the blackout retry gap.
+    def defer_gated_send(participant_id, template_ids, gate)
+      snapshot = if gate[:attempt].zero?
+                   decision_letter_snapshot(gate[:letters]).transform_keys(&:to_s)
+                 else
+                   gate[:prior_snapshot]
+                 end
+      next_state = { 'attempt' => gate[:attempt] + 1, 'original_sent_at' => gate[:original_sent_at],
+                     'snapshot' => snapshot }
+
+      self.class.perform_in(Constants.gated_send_recheck_interval_minutes.minutes,
+                            participant_id, template_ids, next_state)
+      record_gate_outcome('deferred', gate)
     end
 
     def most_recent_claim_letter_payload(letters)
@@ -127,25 +208,70 @@ module EventBusGateway
       decision_letter_snapshot(letters).merge(most_recent_details)
     end
 
-    # Enqueues one measurement re-check per configured interval, carrying the
-    # participant id, the original send time, the interval label, and the
-    # send-time decision-letter snapshot (counts/dates only — no new PII).
-    def schedule_claim_letter_rechecks(participant_id, letters)
-      snapshot = decision_letter_snapshot(letters).transform_keys(&:to_s)
-      original_sent_at = Time.current.utc.iso8601
+    # Structured gate log + metrics. Preserves the delta / recency / lag signals
+    # from the retired measurement job, now tagged with the gate outcome and attempt
+    # so ramp behavior and realized BD load are observable against the ~25K/day base.
+    def record_gate_outcome(outcome, gate)
+      current = decision_letter_snapshot(gate[:letters])
+      signals = {
+        current:,
+        delta: gate[:prior_snapshot].present? ? new_decision_letter?(current, gate[:prior_snapshot]) : nil,
+        recent: recent_decision_letter?(gate[:letters]),
+        seconds: seconds_since(gate[:original_sent_at])
+      }
 
-      Constants::CLAIM_LETTER_RECHECK_INTERVALS.each do |label, interval|
-        LetterReadyClaimLetterRecheckJob.perform_in(interval, participant_id, original_sent_at, label, snapshot)
-      end
+      ::Rails.logger.info('LetterReadyNotificationJob gated send', gated_send_payload(outcome, gate, signals))
+      emit_gate_metrics(outcome, gate[:attempt], signals)
     end
 
-    def handle_claim_letter_log_error(error)
+    def gated_send_payload(outcome, gate, signals)
+      current = signals[:current]
+      prior_snapshot = gate[:prior_snapshot] || {}
+      {
+        message_type: 'ebg.letter_ready.gated_send',
+        gate_outcome: outcome,
+        attempt: gate[:attempt],
+        max_attempts: Constants.gated_send_max_recheck_attempts,
+        seconds_since_original: signals[:seconds],
+        new_decision_letter_since_snapshot: signals[:delta],
+        recent_decision_letter_present: signals[:recent],
+        decision_letter_present: current[:decision_letter_count].positive?,
+        decision_letter_count: current[:decision_letter_count],
+        most_recent_decision_received_at: current[:most_recent_decision_received_at],
+        most_recent_decision_document_id: current[:most_recent_decision_document_id],
+        snapshot_decision_letter_count: prior_snapshot['decision_letter_count'],
+        snapshot_most_recent_decision_document_id: prior_snapshot['most_recent_decision_document_id']
+      }
+    end
+
+    def emit_gate_metrics(outcome, attempt, signals)
+      tags = Constants::DD_TAGS + [
+        "gate_outcome:#{outcome}",
+        "attempt:#{attempt}",
+        "recency:#{signals[:recent] ? 'present' : 'absent'}"
+      ]
+      tags << "delta:#{signals[:delta] ? 'found' : 'not_found'}" unless signals[:delta].nil?
+
+      StatsD.increment("#{STATSD_METRIC_PREFIX}.gate", tags:)
+      return unless signals[:seconds] && %w[sent_after_recheck sent_anyway].include?(outcome)
+
+      # Lag from the original send to resolution, in seconds — only meaningful when
+      # a deferred send actually resolved (or fell back), so the p50/p95 aren't
+      # diluted by the attempt-0 "present" cases.
+      StatsD.measure("#{STATSD_METRIC_PREFIX}.gate_time_since_original", signals[:seconds], tags:)
+    end
+
+    def handle_claim_letter_check_error(error, gate_state)
       ::Rails.logger.warn(
-        'LetterReadyNotificationJob failed to log most recent claim letter',
-        { error_class: error.class.name, error_message: Logging::Helper::DataScrubber.scrub(error.message) }
+        'LetterReadyNotificationJob claim letter check failed; sending',
+        {
+          attempt: gate_state ? gate_state['attempt'] : 0,
+          error_class: error.class.name,
+          error_message: Logging::Helper::DataScrubber.scrub(error.message)
+        }
       )
       tags = Constants::DD_TAGS + ["error:#{error.class.name}"]
-      StatsD.increment("#{STATSD_METRIC_PREFIX}.most_recent_claim_letter_failure", tags:)
+      StatsD.increment("#{STATSD_METRIC_PREFIX}.claim_letter_check_failure", tags:)
       nil
     end
 

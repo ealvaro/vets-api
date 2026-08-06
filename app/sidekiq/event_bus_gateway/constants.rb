@@ -77,28 +77,51 @@ module EventBusGateway
     # Lighthouse/VBMS doc type id for a benefits decision letter (a.k.a. "184").
     DECISION_LETTER_DOC_TYPE = '184'
 
-    # Claim-letter propagation-lag re-check offsets (measurement only). Each entry
-    # enqueues one deferred LetterReadyClaimLetterRecheckJob at that offset after a
-    # notification to sample whether a decision letter has since become available.
-    # The label is used as a DataDog tag so a lag distribution can be built per offset.
-    # The 3d/7d offsets exist to catch letters that don't land until after a weekend
-    # (or holiday), so the tail isn't right-censored at 24h.
-    CLAIM_LETTER_RECHECK_INTERVALS = {
-      '15m' => 15.minutes,
-      '1h' => 1.hour,
-      '4h' => 4.hours,
-      '24h' => 24.hours,
-      '3d' => 3.days,
-      '7d' => 7.days
-    }.freeze
-
-    # Recency window for the alternate "available" signal: a decision letter counts
-    # as present-now when its received_at falls within this window of the re-check.
-    # Logged alongside the set-change delta so we can compare the two definitions
-    # against real data before committing to a gate (see story open question). This
-    # signal keys off received_at, which is known to be unreliable (backdated /
-    # future-dated) — hence it is measured, not yet trusted.
+    # Recency window for the send-time "available" signal: at attempt 0 (no prior
+    # snapshot to diff against) a decision letter counts as present-now when its
+    # received_at falls within this window. On re-checks we key off the set-change
+    # delta instead, which is the trusted signal (received_at is unreliable —
+    # backdated / future-dated), so this window only decides the initial miss.
     CLAIM_LETTER_RECENCY_WINDOW = 7.days
+
+    # --- Option A: gated send with re-check (see LetterReadyNotificationJob) -------
+    # On a "miss" (no recent/new decision letter yet) the parent job defers the send
+    # and re-enqueues itself on this interval up to this many attempts, then falls
+    # back to sending anyway. Measurement (#146570) showed ~99% of misses resolve on
+    # the first 15m re-check, so avg attempts ≈ 1. All three are tunable via Settings
+    # (vanotify.services.benefits_management_tools.gated_send) without a code change;
+    # the constants are the safe defaults when a Setting is absent/blank.
+    GATED_SEND_DEFAULT_RECHECK_INTERVAL_MINUTES = 15
+    GATED_SEND_DEFAULT_MAX_RECHECK_ATTEMPTS = 4
+    GATED_SEND_DEFAULT_FALLBACK_SEND_ANYWAY = true
+    # Read timeout (seconds) for the gate's Benefits Documents client, enforced as a
+    # Faraday read_timeout on GatedClaimLettersConfiguration (not Ruby's Timeout,
+    # which is unsafe to interrupt arbitrary code in Sidekiq). Prod claim-letters
+    # search latency is sub-second (p95 ~0.6s, ~1.2s max over a month), so 10s is
+    # deep headroom over any real call yet tight enough that a hung BD can't hold
+    # the job / back up the Sidekiq queue. On timeout the gate fails open (send).
+    GATED_SEND_BD_TIMEOUT_SECONDS = 10
+
+    def self.gated_send_settings
+      Settings.vanotify.services.benefits_management_tools.gated_send
+    end
+
+    def self.gated_send_recheck_interval_minutes
+      minutes = gated_send_settings&.recheck_interval_minutes.to_i
+      minutes.positive? ? minutes : GATED_SEND_DEFAULT_RECHECK_INTERVAL_MINUTES
+    end
+
+    def self.gated_send_max_recheck_attempts
+      attempts = gated_send_settings&.max_recheck_attempts.to_i
+      attempts.positive? ? attempts : GATED_SEND_DEFAULT_MAX_RECHECK_ATTEMPTS
+    end
+
+    def self.gated_send_fallback_send_anyway?
+      value = gated_send_settings&.fallback_send_anyway
+      return GATED_SEND_DEFAULT_FALLBACK_SEND_ANYWAY if value.nil?
+
+      ActiveModel::Type::Boolean.new.cast(value)
+    end
 
     # Hostname mapping for different environments
     HOSTNAME_MAPPING = {

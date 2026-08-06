@@ -347,9 +347,6 @@ features:
     actor_type: user
     description: Enables text if no benefit letters exist
     enable_in_development: true
-  event_bus_gateway_claim_letter_recheck:
-    actor_type: user
-    description: When enabled, LetterReadyNotificationJob schedules deferred LetterReadyClaimLetterRecheckJob re-checks that re-query Benefits Documents to measure claim-letter propagation lag. Only takes effect for users already sampled by event_bus_gateway_log_most_recent_claim_letter (that flag defines the cohort); set this to 100% to re-check exactly that cohort
   event_bus_gateway_ep030_decision_letter_notifications:
     description: "Gateway: Enable decision letter email notifications for EP030 higher level reviews"
   event_bus_gateway_ep040_decision_letter_notifications:
@@ -368,6 +365,9 @@ features:
     description: "Gateway: Enable decision letter email notifications for EP930 review, referrals, and other"
   event_bus_gateway_letter_ready_email_universal_link:
     description: Percentage rollout flag for universal link in letter ready email notifications
+  event_bus_gateway_letter_ready_gated_send:
+    actor_type: user
+    description: When enabled, LetterReadyNotificationJob gates the send on Benefits Documents availability. If no recent/new decision letter is present it defers the send and re-enqueues the job on a short interval (Settings.vanotify.services.benefits_management_tools.gated_send, default 15m x 4) up to the attempt cap, then falls back to sending anyway. Percentage rollout; ramp in coordination with the BD/Lighthouse team
   event_bus_gateway_letter_ready_push_notifications:
     description: Percentage rollout flag for push notifications in LetterReadyNotificationJob
   event_bus_gateway_letter_ready_sms_notifications:

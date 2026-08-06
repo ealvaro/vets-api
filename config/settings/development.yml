@@ -1742,6 +1742,10 @@ vanotify:
         form526_submission_failure_notification_template_id: form526_submission_failure_notification_template_id
     benefits_management_tools:
       api_key: fake_secret
+      gated_send:
+        fallback_send_anyway: true
+        max_recheck_attempts: 4
+        recheck_interval_minutes: 15
       sms_blackout_defer:
         delivery_start_hour_eastern: 9
         window_minutes: 180

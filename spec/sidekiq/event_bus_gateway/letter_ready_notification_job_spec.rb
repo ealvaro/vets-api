@@ -34,7 +34,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
       .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
       .and_return(false)
     allow(Flipper).to receive(:enabled?)
-      .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
+      .with(:event_bus_gateway_letter_ready_gated_send, instance_of(Flipper::Actor))
       .and_return(false)
   end
 
@@ -42,6 +42,8 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
   let(:email_template_id) { '5678' }
   let(:push_template_id) { '9012' }
   let(:sms_template_id) { '3456' }
+  # perform now takes the template ids as a hash (see the job's normalize_perform_args).
+  let(:template_ids) { { 'email' => email_template_id, 'push' => push_template_id, 'sms' => sms_template_id } }
   let(:notification_id) { SecureRandom.uuid }
 
   let(:bgs_profile) do
@@ -105,13 +107,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).to receive(:send_push).with(expected_push_args)
           expect(va_notify_service).to receive(:send_sms).with(expected_sms_args)
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          result = subject.new.perform(participant_id, template_ids)
           expect(result).to eq([])
         end
 
         it 'creates notification records for email, sms, and push' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to change(EventBusGatewayNotification, :count).by(2)
                                                             .and change(EventBusGatewayPushNotification, :count).by(1)
         end
@@ -130,7 +132,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             tags: EventBusGateway::Constants::DD_TAGS
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
 
@@ -140,13 +142,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).not_to receive(:send_push)
           expect(va_notify_service).not_to receive(:send_sms)
 
-          result = subject.new.perform(participant_id, email_template_id)
+          result = subject.new.perform(participant_id, { 'email' => email_template_id })
           expect(result).to eq([])
         end
 
         it 'creates only email notification record' do
           expect do
-            subject.new.perform(participant_id, email_template_id)
+            subject.new.perform(participant_id, { 'email' => email_template_id })
           end.to change(EventBusGatewayNotification, :count).by(1)
                                                             .and not_change(EventBusGatewayPushNotification, :count)
         end
@@ -167,7 +169,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
                                                          'reason:icn_or_template_not_available']
           )
 
-          subject.new.perform(participant_id, email_template_id)
+          subject.new.perform(participant_id, { 'email' => email_template_id })
         end
       end
 
@@ -184,7 +186,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             'email_cache_key'
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'stores ICN in Redis and passes only cache_key to sms job' do
@@ -194,7 +196,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             'test_cache_key_123'
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'stores ICN in Redis and passes only cache_key to push job' do
@@ -204,7 +206,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             'test_cache_key_123'
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
 
@@ -214,13 +216,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).not_to receive(:send_sms)
           expect(va_notify_service).to receive(:send_push)
 
-          result = subject.new.perform(participant_id, nil, push_template_id)
+          result = subject.new.perform(participant_id, { 'push' => push_template_id })
           expect(result).to eq([])
         end
 
         it 'creates only push notification record' do
           expect do
-            subject.new.perform(participant_id, nil, push_template_id)
+            subject.new.perform(participant_id, { 'push' => push_template_id })
           end.to not_change(EventBusGatewayNotification, :count)
             .and change(EventBusGatewayPushNotification, :count).by(1)
         end
@@ -241,7 +243,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
                                                          'reason:icn_or_template_not_available']
           )
 
-          subject.new.perform(participant_id, nil, push_template_id)
+          subject.new.perform(participant_id, { 'push' => push_template_id })
         end
       end
 
@@ -263,7 +265,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).not_to receive(:send_sms)
           expect(va_notify_service).not_to receive(:send_push)
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          result = subject.new.perform(participant_id, template_ids)
           expect(result).to eq([])
         end
 
@@ -293,7 +295,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             }
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'increments skipped metrics for email, sms, and push' do
@@ -313,7 +315,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
                                                          'reason:icn_or_template_not_available']
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
 
@@ -334,19 +336,19 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             tags: EventBusGateway::Constants::DD_TAGS
           )
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          result = subject.new.perform(participant_id, template_ids)
           expect(result).to eq([])
         end
 
         it 'creates sms notification and push notification records' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to change(EventBusGatewayNotification, :count).by(1)
                                                             .and change(EventBusGatewayPushNotification, :count).by(1)
         end
 
         it 'logs skipped email notification due to missing first_name' do
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
 
           expect(Rails.logger).to have_received(:error).with(
             'LetterReadyNotificationJob email skipped',
@@ -359,7 +361,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         end
 
         it 'increments skipped metric for email' do
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
 
           expect(StatsD).to have_received(:increment).with(
             'event_bus_gateway.letter_ready_notification.skipped',
@@ -391,13 +393,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             }
           )
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          result = subject.new.perform(participant_id, template_ids)
           expect(result).to eq([{ type: 'email', error: 'Email job failed' }])
         end
 
         it 'creates sms and push notification records but not email' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to change(EventBusGatewayNotification, :count).by(1)
                                                             .and change(EventBusGatewayPushNotification, :count).by(1)
         end
@@ -429,13 +431,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             tags: EventBusGateway::Constants::DD_TAGS
           )
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          result = subject.new.perform(participant_id, template_ids)
           expect(result).to eq([{ type: 'push', error: 'Push job failed' }])
         end
 
         it 'creates email and sms notification records but not push' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to change(EventBusGatewayNotification, :count).by(2)
                                                             .and not_change(EventBusGatewayPushNotification, :count)
         end
@@ -453,7 +455,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error with combined failure message' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
             .and not_change(EventBusGatewayNotification, :count)
             .and not_change(EventBusGatewayPushNotification, :count)
@@ -468,7 +470,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error because all requested notifications failed' do
           expect do
-            subject.new.perform(participant_id, email_template_id, nil, nil)
+            subject.new.perform(participant_id, { 'email' => email_template_id })
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
             .and not_change(EventBusGatewayNotification, :count)
             .and not_change(EventBusGatewayPushNotification, :count)
@@ -485,7 +487,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error because all requested notifications failed' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, nil)
+            subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
             .and not_change(EventBusGatewayNotification, :count)
             .and not_change(EventBusGatewayPushNotification, :count)
@@ -508,13 +510,13 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             }
           )
 
-          result = subject.new.perform(participant_id, email_template_id, push_template_id, nil)
+          result = subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           expect(result).to eq([{ type: 'email', error: 'Email job failed' }])
         end
 
         it 'creates push notification record but not email' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, nil)
+            subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           end.to not_change(EventBusGatewayNotification, :count)
             .and change(EventBusGatewayPushNotification, :count).by(1)
         end
@@ -530,7 +532,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error because all requested notifications (email, push) failed' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, nil)
+            subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
         end
       end
@@ -548,7 +550,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error because all enabled notifications (email, push) failed' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
         end
       end
@@ -566,7 +568,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
         it 'raises error because all enabled notifications (email, sms) failed' do
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to raise_error(EventBusGateway::Errors::NotificationEnqueueError, /All notifications failed/)
         end
       end
@@ -583,7 +585,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect_any_instance_of(described_class).to receive(:record_notification_send_failure)
 
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to raise_error(EventBusGateway::Errors::BgsPersonNotFoundError, 'Participant ID cannot be found in BGS')
         end
       end
@@ -598,7 +600,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect_any_instance_of(described_class).to receive(:record_notification_send_failure)
 
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+            subject.new.perform(participant_id, template_ids)
           end.to raise_error(EventBusGateway::Errors::MpiProfileNotFoundError, 'Failed to fetch MPI profile')
         end
       end
@@ -615,7 +617,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             .with(instance_of(StandardError), 'Notification')
 
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id)
+            subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           end.to raise_error(StandardError, 'Unexpected BGS error')
         end
       end
@@ -630,12 +632,12 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect_any_instance_of(described_class).not_to receive(:record_notification_send_failure)
 
           expect do
-            subject.new.perform(participant_id, email_template_id, push_template_id)
+            subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           end.not_to raise_error
         end
 
         it 'returns error in the errors array' do
-          result = subject.new.perform(participant_id, email_template_id, push_template_id)
+          result = subject.new.perform(participant_id, { 'email' => email_template_id, 'push' => push_template_id })
           expect(result).to eq([{ type: 'email', error: 'Email job enqueue failed' }])
         end
       end
@@ -658,7 +660,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).to receive(:send_sms)
           expect(va_notify_service).not_to receive(:send_push)
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'logs that push notification was skipped due to feature flag' do
@@ -671,7 +673,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             }
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'increments skipped metric for push with feature flag reason' do
@@ -689,7 +691,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
                                                          'reason:push_notifications_not_enabled_for_this_user']
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
 
@@ -705,7 +707,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).not_to receive(:send_sms)
           expect(va_notify_service).to receive(:send_push)
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'logs that sms notification was skipped due to feature flag' do
@@ -718,7 +720,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
             }
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
 
         it 'increments skipped metric for sms with feature flag reason' do
@@ -736,7 +738,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
                                                          'reason:sms_notifications_not_enabled_for_this_user']
           )
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
 
@@ -746,7 +748,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
           expect(va_notify_service).to receive(:send_sms)
           expect(va_notify_service).to receive(:send_push)
 
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end
       end
     end
@@ -787,7 +789,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         )
       )
 
-      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      subject.new.perform(participant_id, template_ids)
     end
 
     it 'builds the claim letters user with the UserAccount UUID' do
@@ -797,7 +799,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         provider
       end
 
-      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+      subject.new.perform(participant_id, template_ids)
 
       expect(captured_user.uuid).to eq(user_account.id)
     end
@@ -814,7 +816,7 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
         expect(Rails.logger).not_to receive(:info)
           .with('LetterReadyNotificationJob most recent claim letter', anything)
 
-        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+        subject.new.perform(participant_id, template_ids)
       end
     end
 
@@ -823,125 +825,266 @@ RSpec.describe EventBusGateway::LetterReadyNotificationJob, type: :job do
 
       it 'logs a warning, increments a failure metric, and still enqueues notifications' do
         expect(Rails.logger).to receive(:warn).with(
-          'LetterReadyNotificationJob failed to log most recent claim letter',
+          'LetterReadyNotificationJob claim letter check failed; sending',
           hash_including(error_class: 'StandardError', error_message: 'boom')
         )
         expect(StatsD).to receive(:increment)
-          .with('event_bus_gateway.letter_ready_notification.most_recent_claim_letter_failure', any_args)
+          .with('event_bus_gateway.letter_ready_notification.claim_letter_check_failure', any_args)
         expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
 
-        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+        subject.new.perform(participant_id, template_ids)
       end
     end
   end
 
-  describe '#perform claim letter recheck scheduling' do
+  describe '#perform gated send (Option A)' do
+    let(:gate_metric) { 'event_bus_gateway.letter_ready_notification.gate' }
+
     # A "miss" at send time: the only decision letter is older than the recency
-    # window, so there is something to wait for and re-checks should be scheduled.
+    # window, so there is nothing to send yet and the send should be deferred.
     let(:old_decision_date) { Time.zone.today - 30 }
-    let(:letters) do
+    let(:miss_letters) do
       [
-        { doc_type: '184', document_id: 'doc-new', type_description: 'Decision Letter',
+        { doc_type: '184', document_id: 'doc-old', type_description: 'Decision Letter',
           received_at: old_decision_date, upload_date: old_decision_date },
         { doc_type: '702', document_id: 'doc-other', type_description: 'Other',
           received_at: old_decision_date, upload_date: old_decision_date }
       ]
     end
+    # A "present" case: a decision letter stamped within the recency window.
+    let(:present_letters) do
+      [
+        { doc_type: '184', document_id: 'doc-fresh', type_description: 'Decision Letter',
+          received_at: 2.days.ago, upload_date: 2.days.ago }
+      ]
+    end
+    let(:letters) { miss_letters }
     let(:provider) { instance_double(LighthouseClaimLettersProvider, get_letters: letters) }
 
+    # The send-time snapshot as it round-trips over the Sidekiq queue (string keys),
+    # matching miss_letters: one old decision letter, id 'doc-old'.
+    let(:send_time_snapshot) do
+      {
+        'letter_count' => 2,
+        'decision_letter_count' => 1,
+        'decision_letter_document_ids' => ['doc-old'],
+        'most_recent_decision_received_at' => old_decision_date.iso8601,
+        'most_recent_decision_document_id' => 'doc-old'
+      }
+    end
+
     before do
-      # Re-checks are confined to the logging cohort, so both flags must be on.
+      allow(StatsD).to receive(:measure)
       allow(Flipper).to receive(:enabled?)
-        .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
-        .and_return(true)
-      allow(Flipper).to receive(:enabled?)
-        .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
+        .with(:event_bus_gateway_letter_ready_gated_send, instance_of(Flipper::Actor))
         .and_return(true)
       allow_any_instance_of(described_class).to receive(:claim_letters_service).and_return(provider)
     end
 
-    it 'enqueues one recheck per configured interval carrying the send-time snapshot' do
-      EventBusGateway::Constants::CLAIM_LETTER_RECHECK_INTERVALS.each do |label, interval|
-        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).to receive(:perform_in).with(
-          interval,
-          participant_id,
-          kind_of(String),
-          label,
-          hash_including(
-            'letter_count' => 2,
-            'decision_letter_count' => 1,
-            'decision_letter_document_ids' => ['doc-new'],
-            'most_recent_decision_received_at' => old_decision_date.iso8601,
-            'most_recent_decision_document_id' => 'doc-new'
-          )
-        )
+    context 'when the flag is off' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(:event_bus_gateway_letter_ready_gated_send, instance_of(Flipper::Actor))
+          .and_return(false)
       end
 
-      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
-    end
+      it 'does not gate: no BD fetch, sends immediately (today’s behavior)' do
+        expect(provider).not_to receive(:get_letters)
+        expect(described_class).not_to receive(:perform_in)
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
 
-    context 'when a recent decision letter is already present at send time' do
-      let(:letters) do
-        [
-          { doc_type: '184', document_id: 'doc-fresh', type_description: 'Decision Letter',
-            received_at: 2.days.ago, upload_date: 2.days.ago }
-        ]
-      end
-
-      it 'logs the snapshot but does not schedule rechecks (nothing to wait for)' do
-        expect(Rails.logger).to receive(:info)
-          .with('LetterReadyNotificationJob most recent claim letter', anything)
-        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
-
-        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+        subject.new.perform(participant_id, template_ids)
       end
     end
 
-    context 'when the logging (cohort) flag is off but the recheck flag is on' do
+    context 'when both the logging and gated-send flags are on' do
       before do
         allow(Flipper).to receive(:enabled?)
           .with(:event_bus_gateway_log_most_recent_claim_letter, instance_of(Flipper::Actor))
-          .and_return(false)
+          .and_return(true)
       end
 
-      it 'runs nothing — rechecks are confined to the logging cohort' do
-        expect(provider).not_to receive(:get_letters)
-        expect(Rails.logger).not_to receive(:info)
-          .with('LetterReadyNotificationJob most recent claim letter', anything)
-        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+      it 'makes a single BD call that feeds both the send-time log and the gate' do
+        # One fetch reused by both behaviors — not one per flag.
+        expect(provider).to receive(:get_letters).once.and_return(miss_letters)
 
-        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
-      end
-    end
-
-    context 'when in the logging cohort but the recheck flag is off' do
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:event_bus_gateway_claim_letter_recheck, instance_of(Flipper::Actor))
-          .and_return(false)
-      end
-
-      it 'logs the snapshot but does not enqueue rechecks (single BD fetch)' do
-        expect(provider).to receive(:get_letters).once.and_return(letters)
+        # Both log lines are emitted from that single fetch...
         expect(Rails.logger).to receive(:info)
           .with('LetterReadyNotificationJob most recent claim letter', anything)
-        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+        expect(Rails.logger).to receive(:info)
+          .with('LetterReadyNotificationJob gated send', anything)
+        # ...and the gate still acts on the result (miss -> defer). Stubbing
+        # perform_in both prevents a real enqueue and asserts the gate deferred.
+        expect(described_class).to receive(:perform_in)
 
-        subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+        subject.new.perform(participant_id, template_ids)
       end
     end
 
-    context 'when fetching claim letters raises' do
+    context 'when a decision letter is present at send time' do
+      let(:letters) { present_letters }
+
+      it 'sends immediately and does not defer' do
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+        expect(described_class).not_to receive(:perform_in)
+        expect(StatsD).to receive(:increment)
+          .with(gate_metric, tags: array_including('gate_outcome:present', 'attempt:0'))
+
+        subject.new.perform(participant_id, template_ids)
+      end
+    end
+
+    context 'on a miss at send time' do
+      it 're-enqueues the parent on the configured interval carrying attempt + snapshot, and does not send' do
+        expect(EventBusGateway::LetterReadyEmailJob).not_to receive(:perform_async)
+        expect(described_class).to receive(:perform_in).with(
+          15.minutes,
+          participant_id,
+          template_ids,
+          hash_including(
+            'attempt' => 1,
+            'original_sent_at' => kind_of(String),
+            'snapshot' => hash_including(
+              'decision_letter_count' => 1,
+              'decision_letter_document_ids' => ['doc-old']
+            )
+          )
+        )
+        expect(StatsD).to receive(:increment)
+          .with(gate_metric, tags: array_including('gate_outcome:deferred', 'attempt:0'))
+
+        subject.new.perform(participant_id, template_ids)
+      end
+
+      it 'honors a Settings-tuned interval without a code change' do
+        allow(EventBusGateway::Constants).to receive(:gated_send_recheck_interval_minutes).and_return(30)
+        expect(described_class).to receive(:perform_in).with(30.minutes, participant_id, any_args)
+
+        subject.new.perform(participant_id, template_ids)
+      end
+    end
+
+    context 'on a re-check where a new decision letter has appeared (delta)' do
+      # Send-time snapshot had only doc-old; a new decision letter has since landed.
+      let(:letters) do
+        [
+          { doc_type: '184', document_id: 'doc-old', type_description: 'Decision Letter',
+            received_at: old_decision_date, upload_date: old_decision_date },
+          { doc_type: '184', document_id: 'doc-new', type_description: 'Decision Letter',
+            received_at: old_decision_date, upload_date: old_decision_date }
+        ]
+      end
+      let(:gate_state) do
+        { 'attempt' => 1, 'original_sent_at' => 15.minutes.ago.utc.iso8601, 'snapshot' => send_time_snapshot }
+      end
+
+      it 'sends the notification and records lag from the original send' do
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+        # normal send path is used on resolution; SMS blackout is handled downstream by LetterReadySmsJob
+        expect(EventBusGateway::LetterReadySmsJob).to receive(:perform_async)
+        expect(described_class).not_to receive(:perform_in)
+        expect(StatsD).to receive(:increment)
+          .with(gate_metric, tags: array_including('gate_outcome:sent_after_recheck', 'attempt:1', 'delta:found'))
+        expect(StatsD).to receive(:measure)
+          .with('event_bus_gateway.letter_ready_notification.gate_time_since_original', kind_of(Integer), any_args)
+
+        subject.new.perform(participant_id, template_ids, gate_state)
+      end
+    end
+
+    context 'on a re-check that still misses before the attempt cap' do
+      let(:gate_state) do
+        { 'attempt' => 1, 'original_sent_at' => 15.minutes.ago.utc.iso8601, 'snapshot' => send_time_snapshot }
+      end
+
+      it 're-enqueues with the next attempt and does not send' do
+        expect(EventBusGateway::LetterReadyEmailJob).not_to receive(:perform_async)
+        expect(described_class).to receive(:perform_in)
+          .with(15.minutes, participant_id, template_ids,
+                hash_including('attempt' => 2, 'snapshot' => send_time_snapshot))
+
+        subject.new.perform(participant_id, template_ids, gate_state)
+      end
+    end
+
+    context 'when the attempt cap is reached and the miss persists' do
+      let(:gate_state) do
+        { 'attempt' => 4, 'original_sent_at' => 1.hour.ago.utc.iso8601, 'snapshot' => send_time_snapshot }
+      end
+
+      it 'falls back to sending anyway (default) and does not re-enqueue' do
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+        expect(described_class).not_to receive(:perform_in)
+        expect(StatsD).to receive(:increment)
+          .with(gate_metric, tags: array_including('gate_outcome:sent_anyway', 'attempt:4'))
+
+        subject.new.perform(participant_id, template_ids, gate_state)
+      end
+
+      context 'when the fallback switch is set to hold' do
+        before { allow(EventBusGateway::Constants).to receive(:gated_send_fallback_send_anyway?).and_return(false) }
+
+        it 'does not send and does not re-enqueue' do
+          expect(EventBusGateway::LetterReadyEmailJob).not_to receive(:perform_async)
+          expect(described_class).not_to receive(:perform_in)
+          expect(StatsD).to receive(:increment)
+            .with(gate_metric, tags: array_including('gate_outcome:held', 'attempt:4'))
+
+          subject.new.perform(participant_id, template_ids, gate_state)
+        end
+      end
+    end
+
+    context 'when the BD fetch errors' do
       before { allow(provider).to receive(:get_letters).and_raise(StandardError.new('boom')) }
 
-      it 'is fully guarded and still enqueues notifications' do
-        expect(EventBusGateway::LetterReadyClaimLetterRecheckJob).not_to receive(:perform_in)
+      it 'fails open: sends the notification and never re-enqueues or raises' do
         expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+        expect(described_class).not_to receive(:perform_in)
+        expect(StatsD).to receive(:increment)
+          .with('event_bus_gateway.letter_ready_notification.claim_letter_check_failure', any_args)
 
         expect do
-          subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
+          subject.new.perform(participant_id, template_ids)
         end.not_to raise_error
       end
+    end
+
+    context 'when the BD fetch is slow or times out' do
+      it 'bounds the gated BD client with a tight Faraday read timeout (not Ruby Timeout)' do
+        expect(EventBusGateway::GatedClaimLettersConfiguration.read_timeout)
+          .to eq(EventBusGateway::Constants::GATED_SEND_BD_TIMEOUT_SECONDS)
+      end
+
+      it 'fails open on a BD timeout: sends, records the failure metric, never re-enqueues or raises' do
+        allow(provider).to receive(:get_letters).and_raise(Faraday::TimeoutError.new('timeout'))
+        expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+        expect(described_class).not_to receive(:perform_in)
+        expect(StatsD).to receive(:increment)
+          .with('event_bus_gateway.letter_ready_notification.claim_letter_check_failure', any_args)
+
+        expect do
+          subject.new.perform(participant_id, template_ids)
+        end.not_to raise_error
+      end
+    end
+  end
+
+  describe '#perform argument compatibility' do
+    it 'accepts the template-ids hash form' do
+      expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+
+      subject.new.perform(participant_id, template_ids)
+    end
+
+    it 'still accepts the legacy positional (email, push, sms) form for in-flight jobs' do
+      # Jobs enqueued before the hash-arg change carry positional template ids;
+      # normalize_perform_args must keep handling them until they drain.
+      expect(EventBusGateway::LetterReadyEmailJob).to receive(:perform_async)
+      expect(EventBusGateway::LetterReadySmsJob).to receive(:perform_async)
+      expect(EventBusGateway::LetterReadyPushJob).to receive(:perform_async)
+
+      subject.new.perform(participant_id, email_template_id, push_template_id, sms_template_id)
     end
   end
 

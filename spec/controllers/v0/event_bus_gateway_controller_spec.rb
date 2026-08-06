@@ -195,7 +195,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues LetterReadyNotificationJob with correct parameters' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, email_template_id, push_template_id, nil)
+          .with(participant_id, { 'email' => email_template_id, 'push' => push_template_id, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -223,7 +223,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with nil push_template_id' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, email_template_id, nil, nil)
+          .with(participant_id, { 'email' => email_template_id, 'push' => nil, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -235,7 +235,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with nil email_template_id' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, nil, push_template_id, nil)
+          .with(participant_id, { 'email' => nil, 'push' => push_template_id, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -247,7 +247,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with nil email and push template IDs' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, nil, nil, sms_template_id)
+          .with(participant_id, { 'email' => nil, 'push' => nil, 'sms' => sms_template_id })
 
         post :send_notifications, params:
       end
@@ -286,7 +286,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'filters out unpermitted parameters' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, email_template_id, push_template_id, nil)
+          .with(participant_id, { 'email' => email_template_id, 'push' => push_template_id, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -1425,7 +1425,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with swapped email template and original push template' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, swapped_template, push_template, nil)
+          .with(participant_id, { 'email' => swapped_template, 'push' => push_template, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -1442,7 +1442,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with original templates' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(participant_id, email_template, push_template, nil)
+          .with(participant_id, { 'email' => email_template, 'push' => push_template, 'sms' => nil })
 
         post :send_notifications, params:
       end
@@ -1467,7 +1467,7 @@ RSpec.describe V0::EventBusGatewayController, type: :controller do
       it 'enqueues job with original email template without swapping' do
         expect(EventBusGateway::LetterReadyNotificationJob)
           .to receive(:perform_async)
-          .with(nil, email_template, push_template, nil)
+          .with(nil, { 'email' => email_template, 'push' => push_template, 'sms' => nil })
 
         post :send_notifications, params:
       end

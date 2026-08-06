@@ -129,4 +129,47 @@ RSpec.describe EventBusGateway::Constants do
       end
     end
   end
+
+  describe 'gated send tuning' do
+    let(:gated_send) { Settings.vanotify.services.benefits_management_tools.gated_send }
+
+    describe '.gated_send_recheck_interval_minutes' do
+      it 'reads the configured value' do
+        allow(gated_send).to receive(:recheck_interval_minutes).and_return(30)
+        expect(described_class.gated_send_recheck_interval_minutes).to eq(30)
+      end
+
+      it 'falls back to the default when unset or non-positive' do
+        allow(gated_send).to receive(:recheck_interval_minutes).and_return(nil)
+        expect(described_class.gated_send_recheck_interval_minutes)
+          .to eq(described_class::GATED_SEND_DEFAULT_RECHECK_INTERVAL_MINUTES)
+      end
+    end
+
+    describe '.gated_send_max_recheck_attempts' do
+      it 'reads the configured value' do
+        allow(gated_send).to receive(:max_recheck_attempts).and_return(2)
+        expect(described_class.gated_send_max_recheck_attempts).to eq(2)
+      end
+
+      it 'falls back to the default when unset or non-positive' do
+        allow(gated_send).to receive(:max_recheck_attempts).and_return(0)
+        expect(described_class.gated_send_max_recheck_attempts)
+          .to eq(described_class::GATED_SEND_DEFAULT_MAX_RECHECK_ATTEMPTS)
+      end
+    end
+
+    describe '.gated_send_fallback_send_anyway?' do
+      it 'casts a configured string to a boolean' do
+        allow(gated_send).to receive(:fallback_send_anyway).and_return('false')
+        expect(described_class.gated_send_fallback_send_anyway?).to be(false)
+      end
+
+      it 'defaults to send-anyway when unset' do
+        allow(gated_send).to receive(:fallback_send_anyway).and_return(nil)
+        expect(described_class.gated_send_fallback_send_anyway?)
+          .to eq(described_class::GATED_SEND_DEFAULT_FALLBACK_SEND_ANYWAY)
+      end
+    end
+  end
 end

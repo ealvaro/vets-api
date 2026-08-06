@@ -1728,6 +1728,10 @@ vanotify:
         form526_submission_failure_notification_template_id: <%= ENV['vanotify__services__benefits_disability__template_id__form526_submission_failure_notification_template_id'] %>
     benefits_management_tools:
       api_key: <%= ENV['vanotify__services__benefits_management_tools__api_key'] %>
+      gated_send:
+        fallback_send_anyway: <%= ENV['vanotify__services__benefits_management_tools__gated_send__fallback_send_anyway'] %>
+        max_recheck_attempts: <%= ENV['vanotify__services__benefits_management_tools__gated_send__max_recheck_attempts'] %>
+        recheck_interval_minutes: <%= ENV['vanotify__services__benefits_management_tools__gated_send__recheck_interval_minutes'] %>
       sms_blackout_defer:
         delivery_start_hour_eastern: <%= ENV['vanotify__services__benefits_management_tools__sms_blackout_defer__delivery_start_hour_eastern'] %>
         window_minutes: <%= ENV['vanotify__services__benefits_management_tools__sms_blackout_defer__window_minutes'] %>
