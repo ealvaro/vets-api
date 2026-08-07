@@ -277,6 +277,7 @@ app/models/form_profiles/va_214140.rb @software/benefits-intake-pingwind
 app/models/form_profiles/va_214502.rb @software/benefits-intake-pingwind
 app/models/form_profiles/va_21p0537.rb @software/bio-heart-team
 app/models/form_profiles/va_261880.rb @software/va-core-veteran-experiences
+app/models/form_profiles/va_288832.rb @software/va-core-veteran-experiences
 app/models/form_profiles/va_526ez.rb @software/govcio-vfep-codereviewers
 app/models/form_profiles/va_686c674.rb @software/benefits-lifestage
 app/models/form_profiles/va_686c674v2.rb @software/benefits-lifestage
@@ -829,6 +830,7 @@ config/form_profile_mappings/26-1880v3.yml @software/va-core-veteran-experiences
 config/form_profile_mappings/26-4555.yml @software/platform-va-product-forms
 config/form_profile_mappings/28-1900.yml @software/benefits-non-disability
 config/form_profile_mappings/28-8832.yml @software/benefits-non-disability
+config/form_profile_mappings/28-8832v2.yml @software/benefits-non-disability
 config/form_profile_mappings/40-10007.yml @software/bah-mbs-selfserv @software/va-platform-backend
 config/form_profile_mappings/40-1330m.yml @software/bah-mbs-selfserv @software/va-platform-backend
 config/form_profile_mappings/5655.yml @software/vsa-debt-resolution
@@ -1944,6 +1946,7 @@ spec/models/form_profiles/va2010206_spec.rb @software/platform-va-product-forms
 spec/models/form_profiles/va214138_spec.rb @software/platform-va-product-forms
 spec/models/form_profiles/va214140_spec.rb @software/benefits-intake-pingwind
 spec/models/form_profiles/va214502_spec.rb @software/benefits-intake-pingwind
+spec/models/form_profiles/va288832_spec.rb @software/va-core-veteran-experiences
 spec/models/form_profiles/va526ez_spec.rb @software/disability-benefits
 spec/models/form_profiles/va8794_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/vha107959f2_spec.rb @software/health-apps-backend

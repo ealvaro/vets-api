@@ -2458,11 +2458,29 @@ RSpec.describe FormProfile, type: :model do
           it "returns prefilled #{form_id}" do
             expect(user).to receive(:authorize).with(:va_profile, :access_to_v2?).and_return(true).at_least(:once)
             allow(Flipper).to receive(:enabled?).with(:pension_military_prefill, anything).and_return(false)
+            allow(Flipper).to receive(:enabled?).with(:chapter_36_form_rebuild_cveteam, anything).and_return(false)
             stub_coe_26_1880_legacy_prefill_if_form!(form_id)
             VCR.use_cassette('va_profile/military_personnel/service_history_200_many_episodes',
                              allow_playback_repeats: true, match_requests_on: %i[uri method body]) do
               expect_prefilled(form_id)
             end
+          end
+        end
+
+        it 'returns prefilled 28-8832 with version 2 when the rebuild flag is enabled' do
+          expect(user).to receive(:authorize).with(:va_profile, :access_to_v2?).and_return(true).at_least(:once)
+          allow(Flipper).to receive(:enabled?).with(:pension_military_prefill, anything).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:chapter_36_form_rebuild_cveteam, anything).and_return(true)
+
+          VCR.use_cassette('va_profile/military_personnel/service_history_200_many_episodes',
+                           allow_playback_repeats: true, match_requests_on: %i[uri method body]) do
+            prefilled_data = Oj.load(described_class.for(form_id: '28-8832', user:).prefill.to_json)['form_data']
+
+            validate_prefilled_against_vejs_schema_for_form(form_id: '28-8832', prefilled_data:)
+
+            expect(prefilled_data).to eq(
+              form_profile.send(:clean!, v28_8832_expected).merge('version' => 2)
+            )
           end
         end
       end
