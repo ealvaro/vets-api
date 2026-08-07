@@ -124,10 +124,12 @@ module Pensions
       # Note: This method modifies `form_data`
       #
       def expand_treatment_history(form_data)
+        has_va_treatments = form_data['vaTreatmentHistory'] || form_data['vaMedicalCenters'].present?
+        has_federal_treatments = form_data['federalTreatmentHistory'] || form_data['federalMedicalCenters'].present?
         form_data.merge!(
           {
-            'vaTreatmentHistory' => to_radio_yes_no(form_data['vaTreatmentHistory']),
-            'federalTreatmentHistory' => to_radio_yes_no(form_data['federalTreatmentHistory'])
+            'vaTreatmentHistory' => to_radio_yes_no(has_va_treatments),
+            'federalTreatmentHistory' => to_radio_yes_no(has_federal_treatments)
           }
         )
       end

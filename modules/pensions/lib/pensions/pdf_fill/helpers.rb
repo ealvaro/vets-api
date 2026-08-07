@@ -7,7 +7,7 @@ module Pensions
       include ActiveSupport::NumberHelper
 
       ##
-      # Expand full_name
+      # Extracts middle initial from middle name
       #
       # @param full_name [Hash]
       #
@@ -15,14 +15,10 @@ module Pensions
       #
       # @return [Hash] full name
       #
-      def expand_full_name(full_name)
-        return if full_name.blank?
+      def extract_middle_initial(full_name)
+        return full_name if full_name.blank?
 
-        middle_initial = full_name['middle']&.first || ''
-
-        full_name['first'] = full_name['first']&.titleize
-        full_name['middle'] = middle_initial&.upcase
-        full_name['last'] = full_name['last']&.titleize
+        full_name['middle'] = full_name['middle']&.first || ''
 
         full_name
       end

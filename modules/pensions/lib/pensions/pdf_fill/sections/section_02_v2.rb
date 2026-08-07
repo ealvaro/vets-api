@@ -40,7 +40,6 @@ module Pensions
             question_label: 'Mailing Address Street',
             question_text: 'MAILING ADDRESS STREET',
             key: 'street_1'
-
           },
           'city' => {
             limit: 18,
@@ -152,6 +151,8 @@ module Pensions
               'street3' => [street, street2, street3].compact.join("\n")
             }
           )
+        else
+          address.delete('street3')
         end
       end
     end

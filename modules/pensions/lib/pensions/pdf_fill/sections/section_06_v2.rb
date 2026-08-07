@@ -92,7 +92,7 @@ module Pensions
             key: 'marriage_type'
           },
           'otherExplanation' => {
-            limit: 33,
+            limit: 22,
             question_num: 6,
             question_suffix: 'I',
             question_label: 'Specify Type Of Marriage',
@@ -251,12 +251,30 @@ module Pensions
 
         spouse.merge!(
           {
-            'spouseFullName' => expand_full_name(spouse['spouseFullName']),
+            'spouseFullName' => extract_middle_initial(spouse['spouseFullName']),
             'marriageType' => MARRIAGE_TYPE.fetch(spouse['marriageType'], MARRIAGE_TYPE['OTHER']),
+            'otherExplanation' => expand_marriage_explanation(*spouse.values_at('marriageType', 'otherExplanation')),
             'dateOfMarriage' => split_date(spouse['dateOfMarriage'])
           }
         )
         expand_marriage_location(spouse)
+      end
+
+      ##
+      # Expand the marriage explanation
+      #
+      # @param marriage_type [String]
+      # @param explanation [String, nil]
+      #
+      # @note The FE component will send COMMON_LAW, PROXY, and TRIBAL as marriage, but
+      #       these do not correspond with a radio option. Use humanized value as explanation
+      #
+      # @return [String]
+      #
+      def expand_marriage_explanation(marriage_type, explanation = nil)
+        return if yes?(MARRIAGE_TYPE[marriage_type])
+
+        explanation || marriage_type.humanize
       end
 
       ##

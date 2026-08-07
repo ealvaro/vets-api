@@ -270,6 +270,18 @@ describe PdfFill::Forms::FormHelper do
                  'phone_first_three_numbers' => '677',
                  'phone_last_four_numbers' => '3030' })
     end
+
+    it 'returns if phone number nil' do
+      expect(including_class.new.expand_phone_number(nil)).to be_nil
+    end
+
+    it 'expands empty string' do
+      expect(including_class.new.expand_phone_number('')).to eq(
+        { 'phone_area_code' => '',
+          'phone_first_three_numbers' => nil,
+          'phone_last_four_numbers' => nil }
+      )
+    end
   end
 
   describe '::PhoneNumberFormatting#format_us_phone' do

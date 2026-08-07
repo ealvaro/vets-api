@@ -251,7 +251,7 @@ module Pensions
         dependents.map do |dependent|
           dependent.merge!(
             {
-              'fullName' => expand_full_name(dependent['fullName']),
+              'fullName' => extract_middle_initial(dependent['fullName']),
               'childDateOfBirth' => split_date(dependent['childDateOfBirth']),
               'childDateOfBirthOverflow' => to_date_string(dependent['childDateOfBirth']),
               'childSocialSecurityNumber' => split_ssn(dependent['childSocialSecurityNumber']),
@@ -263,7 +263,7 @@ module Pensions
               'childNotInHousehold' => to_checkbox_on_off_v2(!dependent['childInHousehold']),
               'childStatusOverflow' => child_status_overflow(dependent).join(', '),
               'monthlyPayment' => expand_currency(dependent['monthlyPayment']),
-              'personWhoLivesWithChild' => expand_full_name(dependent['personWhoLivesWithChild'])
+              'personWhoLivesWithChild' => extract_middle_initial(dependent['personWhoLivesWithChild'])
             }
           )
         end

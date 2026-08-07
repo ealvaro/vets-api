@@ -265,7 +265,7 @@ module Pensions
         marriages.each do |marriage|
           marriage.merge!(
             {
-              'spouseFullName' => expand_full_name(marriage['spouseFullName']),
+              'spouseFullName' => extract_middle_initial(marriage['spouseFullName']),
               'dateOfMarriage' => split_date(marriage['dateOfMarriage']),
               'dateOfSeparation' => split_date(marriage['dateOfSeparation']),
               'dateRangeOfMarriageOverflow' => build_date_range_string({

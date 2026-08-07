@@ -74,7 +74,7 @@ module Pensions
       def expand(form_data)
         form_data.merge!(
           {
-            'veteranFullName' => expand_full_name(form_data['veteranFullName']),
+            'veteranFullName' => extract_middle_initial(form_data['veteranFullName']),
             'veteranSocialSecurityNumber' => split_ssn(form_data['veteranSocialSecurityNumber']),
             'veteranDateOfBirth' => split_date(form_data['veteranDateOfBirth']),
             'vaClaimsHistory' => to_radio_yes_no(form_data['vaClaimsHistory'])

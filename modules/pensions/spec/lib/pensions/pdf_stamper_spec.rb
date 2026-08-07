@@ -22,7 +22,7 @@ RSpec.describe Pensions::PDFStamper do
           text: 'FDC Reviewed - VA.gov Submission',
           timestamp: nil,
           x: 430,
-          y: 820,
+          y: fdc_y,
           text_only: true
         }, {
           text: 'Application Submitted on va.gov',
@@ -30,7 +30,7 @@ RSpec.describe Pensions::PDFStamper do
           y: 745,
           text_only: true,
           timestamp: nil,
-          page_number: 0,
+          page_number:,
           size: 9,
           template: pdf_path,
           multistamp: true
@@ -40,6 +40,8 @@ RSpec.describe Pensions::PDFStamper do
 
     context 'when pension_pdf_form_alignment flipper is disabled' do
       let(:pdf_path) { Pensions::V1_PDF_PATH }
+      let(:fdc_y) { 820 }
+      let(:page_number) { 0 }
 
       before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(false) }
 
@@ -50,6 +52,8 @@ RSpec.describe Pensions::PDFStamper do
 
     context 'when pension_pdf_form_alignment flipper is enabled' do
       let(:pdf_path) { Pensions::V2_PDF_PATH }
+      let(:fdc_y) { 825 }
+      let(:page_number) { 7 }
 
       before { allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return(true) }
 

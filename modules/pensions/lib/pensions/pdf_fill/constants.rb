@@ -4,6 +4,8 @@ module Pensions
   module PdfFill
     # Constants used for PDF mapping
     module Constants
+      # TODO: Inconsistent singular and plural enum constant names
+
       # Veteran's marital status
       MARITAL_STATUS = {
         'MARRIED' => 0,
@@ -14,8 +16,13 @@ module Pensions
       }.freeze
 
       # Type of marriage between veteran and current spouse
+      #
+      # @note CEREMONY is from legacy FE component. Keeping for compatibility.
+      #       FE component also sends TRIBAL, COMMON_LAW, and PROXY. All of which is treated as OTHER
       MARRIAGE_TYPE = {
-        'CEREMONIAL' => 0,
+        'CEREMONY' => 0,
+        'RELIGIOUS' => 0,
+        'CIVIL' => 0,
         'OTHER' => 1
       }.freeze
 
@@ -43,6 +50,7 @@ module Pensions
       }.freeze
 
       # Number of income sources reported
+      #
       # @note For V2 you can no longer determine count from length of income sources array
       INCOME_SOURCE_COUNT = {
         'NONE' => 0,

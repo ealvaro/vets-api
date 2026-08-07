@@ -77,26 +77,10 @@ module Pensions
       #
       def expand(form_data)
         form_data['veteranFullName'] ||= {}
-        form_data['veteranFullName'] = expand_full_name(form_data['veteranFullName'] || {})
+        form_data['veteranFullName'] = extract_middle_initial(form_data['veteranFullName'])
         form_data['veteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
         form_data['veteranDateOfBirth'] = split_date(form_data['veteranDateOfBirth'])
         form_data['vaClaimsHistory'] = to_radio_yes_no(form_data['vaClaimsHistory'])
-      end
-
-      ##
-      # Titleizes the veteran's full name and extracts the middle initial.
-      # @param full_name [Hash]
-      #
-      # @return [Hash] The modified full_name hash with titleized names and middle initial
-      #
-      def expand_full_name(full_name)
-        middle_initial = full_name['middle']&.first || '' # Get middle initial
-
-        full_name['first'] = full_name['first']&.titleize
-        full_name['middle'] = middle_initial&.upcase
-        full_name['last'] = full_name['last']&.titleize
-
-        full_name
       end
     end
   end

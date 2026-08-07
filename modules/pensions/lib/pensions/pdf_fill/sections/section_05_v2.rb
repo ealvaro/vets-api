@@ -97,9 +97,8 @@ module Pensions
       # Note: This method modifies `form_data`
       #
       def expand(form_data)
-        form_data['currentEmployment'] = to_radio_yes_no(form_data['currentEmployment'])
-        # If not currently employed, skip 5B and 5C
-        form_data.delete('currentEmployers') unless yes?(form_data['currentEmployment'])
+        form_data['currentEmployment'] =
+          to_radio_yes_no(form_data['currentEmployment'] || form_data['currentEmployers'].present?)
         form_data['previousEmployers'] = expand_previous_employers(form_data['previousEmployers'])
       end
 
