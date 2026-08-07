@@ -6,6 +6,12 @@ module Common
     module Errors
       class Error < StandardError; end
 
+      # Raised when a service is misconfigured, e.g. its base URL is not an
+      # absolute URL (missing scheme or host). Surfacing this early gives a
+      # clear, actionable message instead of a cryptic
+      # `URI::BadURIError: both URI are relative` from deep inside Faraday.
+      class ConfigurationError < Error; end
+
       class ClientError < Error
         attr_accessor :status, :body, :headers
 

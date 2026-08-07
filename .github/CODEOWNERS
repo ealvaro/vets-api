@@ -982,6 +982,7 @@ lib/common/client/concerns/mhv_jwt_session_client.rb @software/vfs-mhv-integrati
 lib/common/client/concerns/mhv_locked_session_client.rb @software/vfs-mhv-integration
 lib/common/client/concerns/mhv_session_based_client.rb @software/vfs-mhv-integration
 lib/common/client/configuration @software/va-platform-backend
+lib/common/client/errors.rb @software/va-platform-backend
 lib/common/client/middleware/faraday_middleware_patch.rb @software/va-platform-backend
 lib/common/client/middleware/request/multipart_request.rb @software/va-platform-backend
 lib/common/client/middleware/request/remove_cookies.rb @software/va-platform-backend
@@ -1671,6 +1672,7 @@ spec/lib/claim_letters @software/benefits-management-tools-be
 spec/lib/claim_status_tool @software/benefits-management-tools-be
 spec/lib/coe @software/va-core-veteran-experiences
 spec/lib/committee @software/va-platform-backend
+spec/lib/common/client/base_spec.rb @software/va-platform-backend
 spec/lib/common/client/concerns/mhv_fhir_session_client_spec.rb @software/vfs-mhv-integration
 spec/lib/common/client/concerns/mhv_jwt_session_client_spec.rb @software/vfs-mhv-integration
 spec/lib/common/client/concerns/mhv_locked_session_client_spec.rb @software/vfs-mhv-integration

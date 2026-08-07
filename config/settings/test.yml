@@ -681,7 +681,7 @@ intent_to_file:
 ivc_champva:
   pega_api:
     api_key: fake_api_key
-    base_path: fake_base_path
+    base_path: https://fake_base_path.gov
     status_path: fake_status_path
   prefill: true
 ivc_champva_llm_processor_api:

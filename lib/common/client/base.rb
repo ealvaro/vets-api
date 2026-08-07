@@ -73,10 +73,10 @@ module Common
       def connection
         @connection ||= lambda do
           connection = config.connection
+          validate_base_url!(connection)
           handlers = connection.builder.handlers
-          adapter = connection.builder.adapter
 
-          if adapter == Faraday::Adapter::HTTPClient &&
+          if connection.builder.adapter == Faraday::Adapter::HTTPClient &&
              handlers.exclude?(Common::Client::Middleware::Request::RemoveCookies)
             raise SecurityError, 'http client needs cookies stripped'
           end
@@ -95,6 +95,25 @@ module Common
 
           connection
         end.call
+      end
+
+      # Fails fast with a clear, actionable message when a service's base URL is
+      # not absolute (missing scheme or host). A blank or scheme-less host Setting
+      # (e.g. a Parameter Store value missing the `https://` prefix) otherwise
+      # surfaces much later as a cryptic `URI::BadURIError: both URI are relative`
+      # from deep inside Faraday's URL merging. Test-adapter connections used in
+      # specs are skipped since they intentionally omit a real base URL.
+      def validate_base_url!(connection)
+        return if connection.builder.adapter == Faraday::Adapter::Test
+
+        url_prefix = connection.url_prefix
+        return if url_prefix&.scheme.present? && url_prefix&.host.present?
+
+        raw_base_url = config.try(:base_path)
+        raise Common::Client::Errors::ConfigurationError,
+              "Invalid base URL for service '#{service_name}': expected an absolute URL with a scheme and host, " \
+              "got #{raw_base_url.inspect} (parsed as #{url_prefix.to_s.inspect}). Verify the service's host Setting " \
+              '(e.g. the Parameter Store value must include the scheme, such as https://).'
       end
 
       def perform(method, path, params, headers = nil, options = nil)
