@@ -68,6 +68,23 @@ RSpec.describe V0::BenefitsDocumentsController, type: :controller do
         expect(response).to have_http_status(:accepted)
         expect(router).to have_received(:queue_document_upload)
       end
+
+      it 'returns a 422 when applicant metadata is invalid' do
+        file = Rack::Test::UploadedFile.new(Tempfile.new('banana.pdf'))
+        router = instance_double(BenefitsDocuments::Providers::DocumentUploadRouter)
+        error = Common::Exceptions::UnprocessableEntity.new(
+          detail: 'applicants must be a JSON array containing at most one non-blank string',
+          source: BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocumentsProvider.name
+        )
+
+        allow(Flipper).to receive(:enabled?).with(:cst_multi_document_provider, anything).and_return(true)
+        allow(BenefitsDocuments::Providers::DocumentUploadRouter).to receive(:new).and_return(router)
+        allow(router).to receive(:queue_document_upload).and_raise(error)
+
+        post(:create, params: { file:, benefits_claim_id: 1, applicants: 'not-json' })
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
     end
 
     context 'when NOT successful' do

@@ -62,13 +62,20 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       result = provider.queue_document_upload(
         claim_id: 'uuid-claim',
         file: uploaded_file,
-        document_type: 'Supporting document'
+        document_type: 'Supporting document',
+        applicants: '["Michael Myers"]'
       )
 
       expect(result).to eq({ jid: 'guid-123' })
       expect(PersistentAttachments::MilitaryRecords).to have_received(:new).with(form_id: '10-10D-EXTENDED')
       expect(attachment).to have_received(:file=).with(uploaded_file)
-      expect(docs_only_resubmission_service).to have_received(:call)
+      expect(docs_only_resubmission_service).to have_received(:call).with(
+        hash_including(
+          'supporting_docs' => [
+            hash_including('applicants' => ['Michael Myers'])
+          ]
+        )
+      )
     end
 
     it 'supports supplemental CHAMPVA form numbers' do
@@ -82,6 +89,32 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       expect(result).to eq({ jid: 'guid-123' })
       expect(PersistentAttachments::MilitaryRecords).to have_received(:new)
         .with(form_id: '10-10D-SUPPLEMENTAL-EXISTING')
+    end
+
+    [
+      ['malformed JSON', '["Michael Myers"'],
+      ['non-array JSON', '{"name":"Michael Myers"}'],
+      ['multiple applicants', '["Michael Myers","Freddy Krueger"]'],
+      ['a blank applicant', '[""]']
+    ].each do |description, applicants|
+      it "rejects #{description} before creating upload records" do
+        stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+
+        expect do
+          provider.queue_document_upload(
+            claim_id: 'uuid-claim',
+            file: uploaded_file,
+            applicants:
+          )
+        end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
+          expect(error.errors.first[:detail])
+            .to eq('applicants must be a JSON array containing at most one non-blank string')
+        }
+
+        expect(attachment).not_to have_received(:save)
+        expect(EvidenceSubmission).not_to have_received(:create)
+        expect(docs_only_resubmission_service).not_to have_received(:call)
+      end
     end
 
     it 'supports numeric claim IDs that map directly to ivc_champva_form ids' do

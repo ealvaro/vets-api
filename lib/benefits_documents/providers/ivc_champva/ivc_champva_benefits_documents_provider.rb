@@ -32,6 +32,7 @@ module BenefitsDocuments
           claim_id = params[:claim_id].presence || params[:benefits_claim_id].presence
           claim_record = resolve_claim_record(claim_id)
           form_id = resolve_form_id(claim_record.form_number)
+          applicants = selected_applicants(params[:applicants])
 
           attachment = PersistentAttachments::MilitaryRecords.new(form_id:)
           attachment.file = unlocked_file(params[:file], params[:password])
@@ -40,7 +41,7 @@ module BenefitsDocuments
 
           attachment.save
           persist_evidence_submission(claim_record.id, params[:file], attachment, params)
-          submit_docs_only_resubmission!(claim_record, attachment, params)
+          submit_docs_only_resubmission!(claim_record, attachment, params, applicants)
 
           { jid: attachment.guid }
         end
@@ -158,10 +159,10 @@ module BenefitsDocuments
           }
         end
 
-        def submit_docs_only_resubmission!(claim_record, attachment, params)
+        def submit_docs_only_resubmission!(claim_record, attachment, params, applicants)
           return unless Flipper.enabled?(DOCS_ONLY_RESUBMISSION_FLAG, @current_user)
 
-          payload = docs_only_resubmission_payload(claim_record, attachment, params)
+          payload = docs_only_resubmission_payload(claim_record, attachment, params, applicants)
           response = ::IvcChampva::DocsOnlyResubmissionService.new(current_user: @current_user).call(payload)
           return if response[:status].to_i == 200
 
@@ -175,7 +176,7 @@ module BenefitsDocuments
           )
         end
 
-        def docs_only_resubmission_payload(claim_record, attachment, params)
+        def docs_only_resubmission_payload(claim_record, attachment, params, applicants)
           attachment_id = params[:attachment_id].presence || params[:document_type].presence || 'Supporting document'
           uploaded_name = uploaded_file_name(params[:file], attachment)
 
@@ -187,10 +188,31 @@ module BenefitsDocuments
               {
                 'confirmation_code' => attachment.guid,
                 'attachment_id' => attachment_id,
-                'name' => uploaded_name
+                'name' => uploaded_name,
+                'applicants' => applicants
               }
             ]
           }
+        end
+
+        def selected_applicants(applicants)
+          applicants = JSON.parse(applicants) if applicants.is_a?(String)
+          applicants ||= []
+
+          valid = applicants.is_a?(Array) && applicants.size <= 1 &&
+                  applicants.all? { |applicant| applicant.is_a?(String) && applicant.present? }
+          return applicants if valid
+
+          raise_invalid_applicants
+        rescue JSON::ParserError
+          raise_invalid_applicants
+        end
+
+        def raise_invalid_applicants
+          raise Common::Exceptions::UnprocessableEntity.new(
+            detail: 'applicants must be a JSON array containing at most one non-blank string',
+            source: self.class.name
+          )
         end
       end
     end

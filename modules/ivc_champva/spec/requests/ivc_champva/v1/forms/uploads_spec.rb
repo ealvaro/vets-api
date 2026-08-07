@@ -1643,7 +1643,13 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
         'form_number' => '10-10D-EXTENDED',
         'submission_type' => 'existing',
         'claim_id' => claim_uuid,
-        'supporting_docs' => [{ 'confirmation_code' => 'abc', 'attachment_id' => 'Birth certificate' }]
+        'supporting_docs' => [
+          {
+            'confirmation_code' => 'abc',
+            'attachment_id' => 'Birth certificate',
+            'applicants' => ['Michael Myers']
+          }
+        ]
       }
     end
     let(:form_instance) do
@@ -1668,6 +1674,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       expect(metadata['uuid']).to eq(claim_uuid)
       expect(metadata['docType']).to eq('10-10D-EXTENDED-EXISTING')
       expect(metadata['attachment_ids']).to eq(['Birth certificate'])
+      expect(JSON.parse(metadata['supportingDocApplicants']).first['applicants']).to eq(['Michael Myers'])
       expect(form_instance).to have_received(:uuid=).with(claim_uuid).once
     end
   end
