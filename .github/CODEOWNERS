@@ -116,8 +116,8 @@ app/controllers/v0/letters_generator_controller.rb @software/benefits-management
 app/controllers/v0/maintenance_window_diagnostics_controller.rb @software/va-platform-backend
 app/controllers/v0/maintenance_windows_controller.rb @software/va-platform-backend
 app/controllers/v0/map_services_controller.rb @software/octo-identity
-app/controllers/v0/mdot @software/va-cto-health-products
-app/controllers/v0/mdot/supplies_controller.rb @software/va-cto-health-products
+app/controllers/v0/mdot @software/vfs-mhv-integration
+app/controllers/v0/mdot/supplies_controller.rb @software/vfs-mhv-integration
 app/controllers/v0/medical_copays_controller.rb @software/vsa-debt-resolution
 app/controllers/v0/mhv_opt_in_flags_controller.rb @software/vfs-mhv-integration
 app/controllers/v0/mpi_users_controller.rb @software/octo-identity
@@ -619,9 +619,9 @@ app/sidekiq/terms_of_use @software/octo-identity
 app/sidekiq/test_user_dashboard @software/qa-standards
 app/sidekiq/test_user_dashboard/daily_maintenance.rb @software/qa-standards
 app/sidekiq/transactional_email_analytics_job.rb @software/vfs-authenticated-experience-backend
-app/sidekiq/unified_health_data/facility_name_cache_job.rb @software/va-cto-health-products
-app/sidekiq/unified_health_data/imaging_refresh_job.rb @software/va-cto-health-products
-app/sidekiq/unified_health_data/labs_refresh_job.rb @software/va-cto-health-products
+app/sidekiq/unified_health_data/facility_name_cache_job.rb @software/vfs-mhv-integration
+app/sidekiq/unified_health_data/imaging_refresh_job.rb @software/vfs-mhv-integration
+app/sidekiq/unified_health_data/labs_refresh_job.rb @software/vfs-mhv-integration
 app/sidekiq/user_actions_cleanup_job.rb @software/octo-identity
 app/sidekiq/va_notify_dd_email_job.rb @software/va-notify-write
 app/sidekiq/va_notify_email_job.rb @software/va-notify-write
@@ -672,7 +672,7 @@ app/swagger/swagger/requests/in_progress_forms.rb @software/va-platform-backend
 app/swagger/swagger/requests/intent_to_file.rb @software/disability-benefits
 app/swagger/swagger/requests/intents_to_file.rb @software/benefits-management-tools-be
 app/swagger/swagger/requests/maintenance_windows.rb @software/va-platform-backend
-app/swagger/swagger/requests/mdot @software/va-cto-health-products
+app/swagger/swagger/requests/mdot @software/vfs-mhv-integration
 app/swagger/swagger/requests/medical_copays.rb @software/vsa-debt-resolution
 app/swagger/swagger/requests/mvi_users.rb @software/octo-identity
 app/swagger/swagger/requests/my_va @software/vfs-authenticated-experience-backend
@@ -837,7 +837,7 @@ config/form_profile_mappings/FEEDBACK-TOOL.yml @software/vfs-authenticated-exper
 config/form_profile_mappings/FORM-MOCK-AE-DESIGN-PATTERNS.yml @software/tmf-auth-exp-design-patterns
 config/form_profile_mappings/FORM-MOCK-PREFILL.yml @software/platform-va-product-forms
 config/form_profile_mappings/FORM-UPLOAD.yml @software/platform-va-product-forms
-config/form_profile_mappings/MDOT.yml @software/va-cto-health-products
+config/form_profile_mappings/MDOT.yml @software/vfs-mhv-integration
 config/freshclam.conf @software/va-platform-backend
 config/health_care_application @software/health-apps-backend
 config/identity_settings @software/octo-identity
@@ -1096,12 +1096,12 @@ lib/lighthouse/facilities @software/health-apps-backend
 lib/lighthouse/healthcare_cost_and_coverage @software/vsa-debt-resolution
 lib/lighthouse/letters_generator @software/benefits-management-tools-be
 lib/lighthouse/service_exception.rb @software/disability-benefits @software/benefits-management-tools-be
-lib/lighthouse/veterans_health @software/va-cto-health-products
+lib/lighthouse/veterans_health @software/vfs-mhv-integration
 lib/logging @software/benefits-lifestage
 lib/logging/committee_validation_monitor.rb @software/benefits-optimization-aquia
 lib/mail_automation @software/va-platform-backend
 lib/map @software/octo-identity
-lib/mdot @software/va-cto-health-products
+lib/mdot @software/vfs-mhv-integration
 lib/medical_copays @software/vsa-debt-resolution
 lib/medical_records @software/vfs-mhv-integration
 lib/mhv_ac @software/vfs-mhv-integration
@@ -1202,7 +1202,7 @@ lib/string_helpers.rb @software/va-platform-backend
 lib/tasks @software/va-platform-backend
 lib/terms_of_use/exceptions.rb @software/octo-identity
 lib/token_validation @software/va-platform-backend
-lib/unified_health_data @software/va-cto-health-products @software/vfs-mhv-integration
+lib/unified_health_data @software/vfs-mhv-integration
 lib/unique_user_events @software/vfs-mhv-integration
 lib/unique_user_events.rb @software/vfs-mhv-integration
 lib/user_profile_attribute_service.rb @software/vfs-authenticated-experience-backend @software/octo-identity
@@ -1403,8 +1403,8 @@ spec/controllers/v0/gi_bill_feedbacks_controller_spec.rb @software/govcio-vfep-c
 spec/controllers/v0/hca_attachments_controller_spec.rb @software/health-apps-backend @software/vfs-authenticated-experience-backend
 spec/controllers/v0/letters_discrepancy_controller_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/letters_generator_controller_spec.rb @software/benefits-management-tools-be
-spec/controllers/v0/mdot @software/va-cto-health-products
-spec/controllers/v0/mdot/supplies_controller_spec.rb @software/va-cto-health-products
+spec/controllers/v0/mdot @software/vfs-mhv-integration
+spec/controllers/v0/mdot/supplies_controller_spec.rb @software/vfs-mhv-integration
 spec/controllers/v0/medical_copays_controller_spec.rb @software/vsa-debt-resolution
 spec/controllers/v0/mhv_opt_in_flags_controller_spec.rb @software/octo-identity
 spec/controllers/v0/my_va/submission_statuses_controller_spec.rb @software/vfs-authenticated-experience-backend
@@ -1641,7 +1641,7 @@ spec/fixtures/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 spec/fixtures/remediation/ @software/octo-benefits-portfolio-code-reviewers
 spec/fixtures/sign_in @software/octo-identity
 spec/fixtures/supplemental_claims @software/benefits-decision-reviews-be
-spec/fixtures/unified_health_data/ @software/va-cto-health-products @software/vfs-mhv-integration
+spec/fixtures/unified_health_data/ @software/vfs-mhv-integration
 spec/fixtures/va_profile @software/vfs-authenticated-experience-backend
 spec/fixtures/vba_documents @software/lighthouse-banana-peels
 spec/fixtures/vbms @software/benefits-lifestage
@@ -1765,11 +1765,11 @@ spec/lib/lighthouse/healthcare_cost_and_coverage @software/vsa-debt-resolution
 spec/lib/lighthouse/letters_generator @software/benefits-management-tools-be
 spec/lib/lighthouse/service_exception_spec.rb @software/disability-benefits @software/benefits-management-tools-be
 spec/lib/lighthouse/veteran_verification @software/vfs-authenticated-experience-backend
-spec/lib/lighthouse/veterans_health @software/va-cto-health-products
+spec/lib/lighthouse/veterans_health @software/vfs-mhv-integration
 spec/lib/logging @software/benefits-lifestage
 spec/lib/mail_automation @software/va-platform-backend
 spec/lib/map @software/octo-identity
-spec/lib/mdot @software/va-cto-health-products
+spec/lib/mdot @software/vfs-mhv-integration
 spec/lib/medical_copays @software/vsa-debt-resolution
 spec/lib/medical_records @software/vfs-mhv-integration
 spec/lib/mhv_ac @software/vfs-mhv-integration
@@ -1833,7 +1833,7 @@ spec/lib/ssoe @software/octo-identity
 spec/lib/string_helpers_spec.rb @software/va-platform-backend
 spec/lib/tasks/support/schema_camelizer_spec.rb @software/va-platform-backend
 spec/lib/token_validation @software/lighthouse-dash @software/lighthouse-banana-peels
-spec/lib/unified_health_data/ @software/va-cto-health-products @software/vfs-mhv-integration
+spec/lib/unified_health_data/ @software/vfs-mhv-integration
 spec/lib/unique_user_events @software/vfs-mhv-integration
 spec/lib/unique_user_events_spec.rb @software/vfs-mhv-integration
 spec/lib/user_profile_attribute_service_spec.rb @software/vfs-authenticated-experience-backend @software/octo-identity
@@ -1918,7 +1918,7 @@ spec/models/form_attachment_spec.rb @software/vfs-authenticated-experience-backe
 spec/models/form_attachment_unlock_pdf_spec.rb @software/vfs-authenticated-experience-backend @software/disability-benefits
 spec/models/form_intake_submission_spec.rb @software/bio-heart-team
 spec/models/form_profile_spec.rb @software/vfs-authenticated-experience-backend
-spec/models/form_profiles/mdot_spec.rb @software/va-cto-health-products
+spec/models/form_profiles/mdot_spec.rb @software/vfs-mhv-integration
 spec/models/form_profiles/va0803_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/va0810_spec.rb @software/govcio-vfep-codereviewers
 spec/models/form_profiles/va0839_spec.rb @software/govcio-vfep-codereviewers
@@ -2302,9 +2302,9 @@ spec/sidekiq/simple_forms_api/form_remediation/upload_retry_job_spec @software/p
 spec/sidekiq/terms_of_use @software/octo-identity
 spec/sidekiq/test_user_dashboard @software/qa-standards
 spec/sidekiq/transactional_email_analytics_job_spec.rb @software/vfs-authenticated-experience-backend
-spec/sidekiq/unified_health_data/facility_name_cache_job_spec.rb @software/va-cto-health-products
-spec/sidekiq/unified_health_data/imaging_refresh_job_spec.rb @software/va-cto-health-products
-spec/sidekiq/unified_health_data/labs_refresh_job_spec.rb @software/va-cto-health-products
+spec/sidekiq/unified_health_data/facility_name_cache_job_spec.rb @software/vfs-mhv-integration
+spec/sidekiq/unified_health_data/imaging_refresh_job_spec.rb @software/vfs-mhv-integration
+spec/sidekiq/unified_health_data/labs_refresh_job_spec.rb @software/vfs-mhv-integration
 spec/sidekiq/user_actions_cleanup_job_spec.rb @software/octo-identity
 spec/sidekiq/va_notify_dd_email_job_spec.rb @software/va-notify-write
 spec/sidekiq/va_notify_email_job_spec.rb @software/va-notify-write
@@ -2342,7 +2342,7 @@ spec/support/error_details.rb @software/va-platform-backend
 spec/support/excel_helpers.rb @software/govcio-vfep-codereviewers
 spec/support/factory_bot.rb @software/va-platform-backend
 spec/support/fake_api_key_for_lighthouse.txt @software/va-platform-backend
-spec/support/faraday_response_helper.rb @software/va-cto-health-products
+spec/support/faraday_response_helper.rb @software/vfs-mhv-integration
 spec/support/financial_status_report_helpers.rb @software/vsa-debt-resolution
 spec/support/fixture_helpers.rb @software/vfs-vaos
 spec/support/form1010_ezr @software/health-apps-backend
@@ -2350,7 +2350,7 @@ spec/support/form1010cg_helpers @software/health-apps-backend
 spec/support/form1095 @software/va-core-veteran-experiences
 spec/support/helpers/fhir_resource_builder.rb @software/vfs-mhv-integration
 spec/support/matchers @software/va-platform-backend
-spec/support/mdot_helpers.rb @software/va-cto-health-products
+spec/support/mdot_helpers.rb @software/vfs-mhv-integration
 spec/support/medical_copays @software/vsa-debt-resolution
 spec/support/mhv_user_account @software/vfs-mhv-integration @software/octo-identity
 spec/support/model_helpers.rb @software/va-platform-backend
@@ -2471,8 +2471,8 @@ spec/support/schemas/letter_beneficiary_benefit_information_veteran.json @softwa
 spec/support/schemas/letter_beneficiary.json @software/mobile-api-team
 spec/support/schemas/letter.json @software/va-platform-backend
 spec/support/schemas/letters.json @software/va-platform-backend
-spec/support/schemas/mdot_accepted.json @software/va-cto-health-products
-spec/support/schemas/mdot_supplies.json @software/va-cto-health-products
+spec/support/schemas/mdot_accepted.json @software/vfs-mhv-integration
+spec/support/schemas/mdot_supplies.json @software/vfs-mhv-integration
 spec/support/schemas/message_threads.json @software/vfs-mhv-integration
 spec/support/schemas/message_with_attachment.json @software/vfs-mhv-integration
 spec/support/schemas/message.json @software/vfs-mhv-integration
@@ -2513,7 +2513,7 @@ spec/support/schemas/veteran_verification @software/vfs-authenticated-experience
 spec/support/schemas/vre @software/govcio-vfep-codereviewers
 spec/support/serializer_spec_helper.rb @software/va-platform-backend
 spec/support/shared_contexts/uhd_security_endpoint.rb @software/vfs-mhv-integration
-spec/support/shared_examples_for_labs_and_tests.rb @software/va-cto-health-products @software/vfs-mhv-integration
+spec/support/shared_examples_for_labs_and_tests.rb @software/vfs-mhv-integration
 spec/support/shared_examples_for_mhv.rb @software/octo-identity
 spec/support/shared_examples_for_mr.rb @software/vfs-mhv-integration
 spec/support/sidekiq/batch.rb @software/va-platform-backend
@@ -2617,10 +2617,10 @@ spec/support/vcr_cassettes/lighthouse/facilities/v1/200_facilities.yml @software
 spec/support/vcr_cassettes/lighthouse/hcc/ @software/vsa-debt-resolution
 spec/support/vcr_cassettes/lighthouse/letters_generator @software/benefits-management-tools-be
 spec/support/vcr_cassettes/lighthouse/veteran_verification @software/benefits-management-tools-be @software/disability-benefits
-spec/support/vcr_cassettes/lighthouse/veterans_health @software/va-cto-health-products
+spec/support/vcr_cassettes/lighthouse/veterans_health @software/vfs-mhv-integration
 spec/support/vcr_cassettes/mail_automation @software/va-platform-backend
 spec/support/vcr_cassettes/map @software/octo-identity
-spec/support/vcr_cassettes/mdot @software/va-cto-health-products
+spec/support/vcr_cassettes/mdot @software/vfs-mhv-integration
 spec/support/vcr_cassettes/mhv_account_creation @software/octo-identity
 spec/support/vcr_cassettes/mhv_logging_client @software/vfs-mhv-integration
 spec/support/vcr_cassettes/mhv/account_creation @software/octo-identity
@@ -2655,7 +2655,7 @@ spec/support/vcr_cassettes/staccato @software/health-apps-backend
 spec/support/vcr_cassettes/token_validation @software/lighthouse-banana-peels
 spec/support/vcr_cassettes/travel_pay @software/travel-pay-integration
 spec/support/vcr_cassettes/tsa_letters @software/va-core-veteran-experiences
-spec/support/vcr_cassettes/unified_health_data @software/va-cto-health-products @software/vfs-mhv-integration
+spec/support/vcr_cassettes/unified_health_data @software/vfs-mhv-integration
 spec/support/vcr_cassettes/uploads/validate_document.yml @software/va-platform-backend
 spec/support/vcr_cassettes/user_eligibility_client @software/vfs-mhv-integration
 spec/support/vcr_cassettes/va_notify @software/va-notify-write
