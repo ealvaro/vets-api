@@ -1574,6 +1574,213 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
             expect(response).to have_http_status(:ok)
           end
         end
+
+        describe 'condition/evidence delta metrics' do
+          let(:ipf_metadata) { { returnUrl: '/conditions/summary' } }
+
+          def put_form(form_data, metadata: ipf_metadata)
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id),
+                params: { form_data:, metadata: }.to_json,
+                headers: { 'CONTENT_TYPE' => 'application/json' }
+          end
+
+          def loaded_metadata
+            InProgressForm.form_for_user(new_form.form_id, update_user).metadata
+          end
+
+          before do
+            allow(Rails.logger).to receive(:info).and_call_original
+          end
+
+          describe 'reached-evidence gate' do
+            it 'suppresses all emissions before Supporting Evidence is reached' do
+              put_form({ new_disabilities: [] })
+              put_form({ new_disabilities: [{ condition: 'asthma' }] })
+
+              expect(Rails.logger).not_to have_received(:info)
+                .with('Form526 conditions evidence delta event', anything)
+              expect(loaded_metadata['had_unpaired_condition_add']).to be(false)
+              expect(loaded_metadata['had_unpaired_condition_removal']).to be(false)
+            end
+
+            it 'opens the gate when formData carries a supporting-evidence marker' do
+              put_form({ new_disabilities: [], 'view:has_evidence': true })
+
+              put_form({ new_disabilities: [{ condition: 'asthma' }], 'view:has_evidence': true })
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'condition_added'))
+            end
+
+            it 'opens the gate when formData carries selectable_evidence_types marker' do
+              put_form({ new_disabilities: [], 'view:selectable_evidence_types': [] })
+
+              put_form({ new_disabilities: [{ condition: 'asthma' }], 'view:selectable_evidence_types': [] })
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'condition_added'))
+            end
+          end
+
+          describe 'condition events' do
+            before do
+              put_form({ new_disabilities: [], 'view:has_evidence': true })
+            end
+
+            it 'emits condition_added when the count increases' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }], 'view:has_evidence': true })
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'condition_added'))
+              expect(loaded_metadata['had_unpaired_condition_add']).to be(true)
+            end
+
+            it 'emits condition_removed when the count decreases' do
+              put_form(
+                {
+                  new_disabilities: [{ condition: 'asthma' }, { condition: 'bronchitis' }],
+                  'view:has_evidence': true
+                }
+              )
+              put_form({ new_disabilities: [{ condition: 'asthma' }], 'view:has_evidence': true })
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'condition_removed'))
+              expect(loaded_metadata['had_unpaired_condition_removal']).to be(true)
+            end
+          end
+
+          describe 'evidence-add pairing' do
+            before do
+              put_form({ new_disabilities: [], 'view:has_evidence': true })
+            end
+
+            it 'emits evidence_added only when paired with an unpaired condition_added' do
+              put_form({ new_disabilities: [], attachments: [], 'view:has_evidence': true })
+              # condition_added opens the latch
+              put_form({ new_disabilities: [{ condition: 'asthma' }], attachments: [], 'view:has_evidence': true })
+              # evidence_added consumes the latch
+              put_form({ new_disabilities: [{ condition: 'asthma' }],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true })
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_added'))
+              expect(loaded_metadata['had_unpaired_condition_add']).to be(false)
+            end
+
+            it 'suppresses evidence_added when no unpaired condition_added is open' do
+              # No condition ever added — evidence add is orphaned.
+              put_form({ attachments: [], 'view:has_evidence': true })
+              put_form({ attachments: [{ name: 'file_from_private_facility' }], 'view:has_evidence': true })
+
+              expect(Rails.logger).not_to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_added'))
+            end
+
+            it 'suppresses a second evidence_added within the same condition-add cycle' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }], attachments: [], 'view:has_evidence': true })
+              # 1st evidence add: pairs with condition_added, emits.
+              put_form({ new_disabilities: [{ condition: 'asthma' }],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true })
+              # 2nd evidence add: no new condition_added, so suppressed.
+              put_form(
+                { new_disabilities: [{ condition: 'asthma' }],
+                  attachments: [{ name: 'file_from_private_facility' }, { name: 'file_from_private_facility_2' }],
+                  'view:has_evidence': true }
+              )
+
+              # Exactly one evidence_added across all three PUTs.
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_added')).once
+            end
+
+            it 're-opens the latch when a new condition is added, allowing another paired evidence_added' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }], attachments: [], 'view:has_evidence': true })
+              # 1st condition_added arms + 1st evidence_added consumes latch.
+              put_form({ new_disabilities: [{ condition: 'asthma' }],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true })
+              # 2nd condition_added re-arms + 2nd evidence_added consumes.
+              put_form(
+                { new_disabilities: [{ condition: 'asthma' }, { condition: 'bronchitis' }],
+                  attachments: [{ name: 'file_from_private_facility' }, { name: 'file_from_private_facility_2' }],
+                  'view:has_evidence': true }
+              )
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'condition_added')).twice
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_added')).twice
+            end
+          end
+
+          describe 'evidence-remove pairing' do
+            before do
+              put_form({ new_disabilities: [], 'view:has_evidence': true })
+            end
+
+            it 'emits evidence_removed only when there is an unpaired condition_removed' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true })
+              put_form({
+                         new_disabilities: [],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true
+                       })
+              put_form({ new_disabilities: [], attachments: [], 'view:has_evidence': true })
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_removed'))
+              expect(loaded_metadata['had_unpaired_condition_removal']).to be(false)
+            end
+
+            it 'suppresses evidence_removed when there is no unpaired condition_removed' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true })
+              put_form({ new_disabilities: [{ condition: 'asthma' }], attachments: [], 'view:has_evidence': true })
+
+              expect(Rails.logger).not_to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_removed'))
+            end
+
+            it 'suppresses a second, unrelated evidence_removed after the latch is consumed' do
+              put_form({ new_disabilities: [{ condition: 'asthma' }], attachments:
+                [{ name: 'file_from_private_facility' }, { name: 'file_from_private_facility_2' }],
+                         'view:has_evidence': true })
+
+              # condition is removed, opening the latch
+              put_form({ new_disabilities: [],
+                         attachments: [{ name: 'file_from_private_facility' },
+                                       { name: 'file_from_private_facility_2' }],
+                         'view:has_evidence': true })
+              # a file is removed
+              put_form({
+                         new_disabilities: [],
+                         attachments: [{ name: 'file_from_private_facility' }],
+                         'view:has_evidence': true
+                       })
+              # a second file is removed
+              put_form({ new_disabilities: [], attachments: [], 'view:has_evidence': true })
+
+              # exactly one evidence_removed emitted
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event', hash_including(event: 'evidence_removed')).once
+            end
+          end
+
+          it 'swallows internal errors so that they do not disrupt the save' do
+            allow(Rails.logger).to receive(:info)
+              .with('Form526 conditions evidence delta event', anything)
+              .and_raise(StandardError, 'lorem')
+
+            expect do
+              put_form({ new_disabilities: [{ condition: 'asthma' }], 'view:has_evidence': true })
+            end.not_to raise_error
+            expect(response).to have_http_status(:ok)
+          end
+        end
       end
 
       context 'without a user' do

@@ -34,6 +34,7 @@ module V0
             parsed_form_data['disability_comp_new_conditions_workflow'] || false
         end
       end
+      track_conditions_and_evidence_deltas
       super
       log_form_update(previous_activity_at)
     end
@@ -99,6 +100,119 @@ module V0
       log_ipf_active_time_event(event_type: 'prefill', in_progress_form_id: nil, terminal: false)
     rescue => e
       Rails.logger.warn('Form526 IPF prefill engagement event failed', exception: e)
+    end
+
+    # Supporting-evidence array keys in form_data.
+    EVIDENCE_KEYS = %w[provider_facility va_treatment_facilities attachments].freeze
+
+    # Top-level formData keys whose presence indicates the user has reached
+    # the Supporting Evidence chapter at least once.
+    SUPPORTING_EVIDENCE_FORM_DATA_MARKERS = %w[
+      view:has_evidence
+      view:selectable_evidence_types
+    ].freeze
+
+    def reached_supporting_evidence_from_form_data?(form_data)
+      return false unless form_data.is_a?(Hash)
+
+      SUPPORTING_EVIDENCE_FORM_DATA_MARKERS.any? { |k| form_data.key?(k) }
+    end
+
+    # Compare the pre-update IPF form_data against the incoming form_data to
+    # detect condition and supporting-evidence add/remove transitions.
+    # Also maintains two per-IPF latches stored in metadata:
+    #
+    #   had_unpaired_condition_add      — set on condition_added, cleared by
+    #                                     a follow-up evidence_added.
+    #   had_unpaired_condition_removal  — set on condition_removed, cleared by
+    #                                     a follow-up evidence_removed.
+    #
+    # Evidence additions/removals are tracked only when they can be paired
+    # with an unpaired condition event on the same IPF.
+    def track_conditions_and_evidence_deltas
+      current = normalized_current_form_data
+      return unless current.is_a?(Hash)
+
+      previous_ipf = form_for_user
+      previous = previous_ipf&.form_data.presence ? JSON.parse(previous_ipf.form_data) : {}
+      deltas = compute_conditions_evidence_deltas(previous, current)
+      reached_evidence = reached_supporting_evidence_from_form_data?(current)
+
+      latches = {
+        add: previous_ipf&.metadata&.dig('had_unpaired_condition_add') == true,
+        removal: previous_ipf&.metadata&.dig('had_unpaired_condition_removal') == true
+      }
+      log_conditions_evidence_events(deltas, latches, previous_ipf&.id) if reached_evidence
+
+      # Always persist latch state regardless of reached_evidence — the parent
+      # update! overwrites the full metadata column with params[:metadata], so
+      # skipping this on non-evidence PUTs would silently wipe armed latches.
+      persist_conditions_evidence_metadata(latches)
+    rescue => e
+      Rails.logger.error('Form526 evidence/condition delta event failed', exception: e)
+    end
+
+    # JSON PUTs deliver form_data as ActionController::Parameters, which is
+    # not a Hash. Normalize to a plain Hash so `.key?` / `[]` behave the same
+    # regardless of transport.
+    def normalized_current_form_data
+      current = parsed_form_data
+      current.respond_to?(:to_unsafe_h) ? current.to_unsafe_h : current
+    end
+
+    def compute_conditions_evidence_deltas(previous, current)
+      prev_count = Array(previous['new_disabilities']).length
+      curr_count = Array(current['new_disabilities']).length
+      {
+        condition_added: curr_count > prev_count,
+        condition_removed: prev_count > curr_count,
+        evidence_added: EVIDENCE_KEYS.any? { |k| Array(current[k]).length > Array(previous[k]).length },
+        evidence_removed: EVIDENCE_KEYS.any? { |k| Array(current[k]).length < Array(previous[k]).length }
+      }
+    end
+
+    # Emits condition/evidence log events and evolves the pairing latches
+    # in-place. Evidence events are logged only when they can pair with
+    # an unpaired condition event; logging clears the corresponding latch.
+    def log_conditions_evidence_events(deltas, latches, ipf_id)
+      if deltas[:condition_added]
+        log_conditions_evidence_event('condition_added', ipf_id)
+        latches[:add] = true
+      end
+
+      if deltas[:condition_removed]
+        log_conditions_evidence_event('condition_removed', ipf_id)
+        latches[:removal] = true
+      end
+
+      if deltas[:evidence_added] && latches[:add]
+        log_conditions_evidence_event('evidence_added', ipf_id)
+        latches[:add] = false
+      end
+
+      return unless deltas[:evidence_removed] && latches[:removal]
+
+      log_conditions_evidence_event('evidence_removed', ipf_id)
+      latches[:removal] = false
+    end
+
+    def log_conditions_evidence_event(event, ipf_id)
+      Rails.logger.info(
+        'Form526 conditions evidence delta event',
+        event:,
+        in_progress_form_id: ipf_id,
+        user_uuid: @current_user&.uuid,
+        form_id: FormProfiles::VA526ez::FORM_ID
+      )
+    end
+
+    # Persist latch state by mutating params[:metadata] before calling `super`.
+    def persist_conditions_evidence_metadata(latches)
+      metadata = params[:metadata]
+      return if metadata.nil?
+
+      metadata[:had_unpaired_condition_add]     = latches[:add]
+      metadata[:had_unpaired_condition_removal] = latches[:removal]
     end
 
     def form_id

@@ -71,6 +71,7 @@ module V0
       saved_claim.save ? log_success(saved_claim) : log_failure(saved_claim, in_progress_form)
       submission = create_submission(saved_claim)
       log_submission(submission, saved_claim, in_progress_form)
+      log_conditions_evidence_pairing_history(in_progress_form)
 
       if Flipper.enabled?(:disability_526_toxic_exposure_opt_out_data_purge, @current_user)
         log_toxic_exposure_changes(saved_claim, submission, in_progress_form)
@@ -287,6 +288,25 @@ module V0
       else
         submission.start
       end
+    end
+
+    # Emits a submission-time log event capturing whether the user had condition
+    # additions or removals that never had a corresponding supporting evidence
+    # addition/removal. Populated from sticky flags maintained in the IPF controller.
+    def log_conditions_evidence_pairing_history(in_progress_form)
+      metadata = in_progress_form&.metadata || {}
+      unpaired_add     = metadata['had_unpaired_condition_add'] == true
+      unpaired_removal = metadata['had_unpaired_condition_removal'] == true
+      Rails.logger.info(
+        'Form526 submission conditions evidence pairing history',
+        had_unpaired_condition_add: unpaired_add,
+        had_unpaired_condition_removal: unpaired_removal,
+        in_progress_form_id: in_progress_form&.id,
+        user_uuid: @current_user&.uuid,
+        form_id: FormProfiles::VA526ez::FORM_ID
+      )
+    rescue => e
+      Rails.logger.error('Form526 submission conditions evidence pairing history event failed', exception: e)
     end
   end
 end

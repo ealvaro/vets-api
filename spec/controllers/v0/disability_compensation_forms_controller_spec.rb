@@ -233,6 +233,75 @@ RSpec.describe V0::DisabilityCompensationFormsController, type: :controller do
       post(:submit_all_claim, body: '{}', as: :json)
       expect(saved_claim.form_start_date).to be_nil
     end
+
+    describe 'conditions evidence pairing history event' do
+      let(:event_msg) { 'Form526 submission conditions evidence pairing history' }
+      let(:form_id) { FormProfiles::VA526ez::FORM_ID }
+      let(:fake_submission) { instance_double(Form526Submission, id: 1, start: 0) }
+
+      before do
+        allow(Rails.logger).to receive(:info).and_call_original
+        allow(controller).to receive(:create_submission).and_return(fake_submission)
+      end
+
+      def create_ipf(metadata)
+        create(:in_progress_526_form, user_uuid: user.uuid, metadata:)
+      end
+
+      it 'logs both unpaired flags as true when both latches are armed on the IPF' do
+        ipf = create_ipf(
+          'had_unpaired_condition_add' => true,
+          'had_unpaired_condition_removal' => true
+        )
+
+        post(:submit_all_claim, body: '{}', as: :json)
+
+        expect(Rails.logger).to have_received(:info).with(
+          event_msg,
+          hash_including(
+            had_unpaired_condition_add: true,
+            had_unpaired_condition_removal: true,
+            in_progress_form_id: ipf.id,
+            user_uuid: user.uuid,
+            form_id:
+          )
+        )
+      end
+
+      it 'logs both flags as false when the IPF has no latches set' do
+        create_ipf({})
+
+        post(:submit_all_claim, body: '{}', as: :json)
+
+        expect(Rails.logger).to have_received(:info).with(
+          event_msg,
+          hash_including(
+            had_unpaired_condition_add: false,
+            had_unpaired_condition_removal: false
+          )
+        )
+      end
+
+      it 'logs false flags and nil ipf id when no InProgressForm exists' do
+        post(:submit_all_claim, body: '{}', as: :json)
+
+        expect(Rails.logger).to have_received(:info).with(
+          event_msg,
+          hash_including(
+            had_unpaired_condition_add: false,
+            had_unpaired_condition_removal: false,
+            in_progress_form_id: nil
+          )
+        )
+      end
+
+      it 'swallows internal errors so submission is not disrupted' do
+        create_ipf('had_unpaired_condition_add' => true)
+        allow(Rails.logger).to receive(:info).with(event_msg, anything).and_raise(StandardError, 'boom')
+
+        expect { post(:submit_all_claim, body: '{}', as: :json) }.not_to raise_error
+      end
+    end
   end
 
   describe '#log_active_time' do
