@@ -17,7 +17,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
     allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, user).and_return(lighthouse_copays_enabled)
   end
 
-  describe '#accounts' do
+  describe '#facility_accounts' do
     let(:payment_history_enabled) { true }
     let(:lighthouse_copays_enabled) { true }
 
@@ -28,7 +28,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       ]
       allow(lighthouse_builder).to receive(:build_facility_accounts).and_return(facilities)
 
-      expect(service.accounts).to eq({ total_current_balance: 0.3, facilities: })
+      expect(service.facility_accounts).to eq({ total_current_balance: 0.3, facilities: })
     end
 
     context 'when served from VBS' do
@@ -45,7 +45,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       end
 
       it 'totals the current balance across the statement facilities' do
-        result = service.accounts
+        result = service.facility_accounts
 
         expect(result[:facilities].map(&:current_balance)).to contain_exactly(105.24, 15.0)
         expect(result[:total_current_balance]).to eq(120.24)
@@ -59,11 +59,11 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       let(:lighthouse_copays_enabled) { true }
 
       it 'forbids accounts' do
-        expect { service.accounts }.to raise_error(Common::Exceptions::Forbidden)
+        expect { service.facility_accounts }.to raise_error(Common::Exceptions::Forbidden)
       end
 
       it 'forbids account' do
-        expect { service.account('896') }.to raise_error(Common::Exceptions::Forbidden)
+        expect { service.facility_account('896') }.to raise_error(Common::Exceptions::Forbidden)
       end
 
       it 'forbids statements' do
@@ -78,7 +78,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       it 'serves accounts from the Lighthouse builder' do
         allow(lighthouse_builder).to receive(:build_facility_accounts).and_return([])
 
-        service.accounts
+        service.facility_accounts
 
         expect(lighthouse_builder).to have_received(:build_facility_accounts)
       end
@@ -91,7 +91,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       it 'serves accounts from the VBS builder' do
         allow(vbs_builder).to receive(:build_facility_accounts).and_return([])
 
-        service.accounts
+        service.facility_accounts
 
         expect(vbs_builder).to have_received(:build_facility_accounts)
       end

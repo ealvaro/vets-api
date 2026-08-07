@@ -15,7 +15,7 @@ module MedicalCopays
         end
       end
 
-      def build_facility_account(station_id, include_transactions: true)
+      def build_facility_account(station_id)
         # TODO: latest-statement snapshot for station_id
       end
 

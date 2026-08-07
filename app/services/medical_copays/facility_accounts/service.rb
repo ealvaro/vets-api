@@ -7,17 +7,17 @@ module MedicalCopays
         @user = user
       end
 
-      def accounts
+      def facility_accounts
         raise Common::Exceptions::Forbidden unless use_payment_history?
 
         facilities = builder.build_facility_accounts
         { total_current_balance: FacilityAccount.sum_balances(facilities), facilities: }
       end
 
-      def account(station_id, include_transactions: true)
+      def facility_account(station_id)
         raise Common::Exceptions::Forbidden unless use_payment_history?
 
-        builder.build_facility_account(station_id, include_transactions:)
+        builder.build_facility_account(station_id)
       end
 
       def statements(_station_id)

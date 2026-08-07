@@ -5,6 +5,17 @@ module Lighthouse
     class Invoice
       include Vets::Model
       include MedicalCopays::LighthouseIntegration::DataExtractor
+
+      CHARGED_COMPONENT_TYPES = %w[base surcharge].freeze
+
+      # Takes [type, amount] pairs so raw FHIR components and already-flattened
+      # line item components share one rule.
+      def self.sum_charged_amounts(typed_amounts)
+        (typed_amounts || []).sum do |type, amount|
+          CHARGED_COMPONENT_TYPES.include?(type) ? amount.to_f : 0.0
+        end
+      end
+
       attribute :external_id, String
       attribute :facility, String
       attribute :facility_id, String
@@ -76,9 +87,11 @@ module Lighthouse
       end
 
       def get_previous_unpaid_balance
-        @params['resource']['totalPriceComponent']
-          .select { |c| %w[base surcharge].include?(c['type']) }
-          .sum { |c| c.dig('amount', 'value').to_f }
+        typed_amounts = @params['resource']['totalPriceComponent'].map do |component|
+          [component['type'], component.dig('amount', 'value')]
+        end
+
+        self.class.sum_charged_amounts(typed_amounts)
       end
     end
   end

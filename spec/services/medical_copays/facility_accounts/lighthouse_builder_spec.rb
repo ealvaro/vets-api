@@ -30,6 +30,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
 
   def invoice_double(**overrides)
     defaults = {
+      external_id: 'I2-INVOICE1',
       facility_id: organization_id,
       facility: 'Chalmers P. Wylie Veterans Outpatient Clinic',
       current_balance: 105.24,
@@ -37,6 +38,33 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
       statement_generated_day: 11
     }
     instance_double(Lighthouse::HCC::Invoice, **defaults.merge(overrides))
+  end
+
+  # Keys mirror LineItemBuilder#build_line_item
+  def line_item_hash(**overrides)
+    {
+      billing_reference: 'I2-CHARGE1',
+      date_posted: '2025-11-20T04:00:00Z',
+      description: 'NX RX #2719324 (30 days)',
+      provider_name: 'COLUMBUS VAMC',
+      price_components: [{ type: 'base', code: 'Copay', amount: 2.03 }],
+      medication: { medication_name: 'ATORVASTATIN', rx_number: '2719324', quantity: 30, days_supply: 30 }
+    }.merge(overrides)
+  end
+
+  # Keys mirror CopayDetail#build_payment
+  def payment_hash(**overrides)
+    { payment_id: 'P2-PAYMENT1', payment_date: '2025-11-28', payment_amount: 10.0 }.merge(overrides)
+  end
+
+  def detail_double(**overrides)
+    defaults = {
+      account_number: '57 0000 0001 97750 IPOAD',
+      bill_number: 'K700DAC53',
+      line_items: [line_item_hash],
+      payments: [payment_hash]
+    }
+    instance_double(Lighthouse::HCC::CopayDetail, **defaults.merge(overrides))
   end
 
   describe '#build_facility_accounts' do
@@ -150,6 +178,188 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
         expect(lighthouse_service).to have_received(:fetch_organization)
           .with(failing_org_id, described_class::ORG_CACHE_STATSD_KEY).once
       end
+    end
+  end
+
+  describe '#build_facility_account' do
+    let(:invoice) { invoice_double }
+    let(:invoices) { [invoice] }
+    let(:bundle) { instance_double(Lighthouse::HCC::Bundle, entries: invoices) }
+    let(:detail) { detail_double }
+    let(:account) { builder.build_facility_account('896') }
+
+    before do
+      allow(lighthouse_service).to receive(:list_months).and_return(bundle)
+      allow(lighthouse_service).to receive(:get_detail)
+        .with(id: 'I2-INVOICE1', include_associated: false).and_return(detail)
+      Timecop.freeze(Time.zone.local(2025, 12, 15))
+    end
+
+    after { Timecop.return }
+
+    it 'builds the requested station account from its invoices' do
+      expect(account).to have_attributes(
+        station_id: '896',
+        facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+        is_cerner: false,
+        account_number: '57 0000 0001 97750 IPOAD',
+        current_balance: 105.24,
+        past_due_balance: 0.0,
+        statement_date: Date.new(2025, 12, 11),
+        due_date: Date.new(2026, 1, 5)
+      )
+    end
+
+    it 'returns nothing for a station the veteran has no invoices at' do
+      expect(builder.build_facility_account('123')).to be_nil
+    end
+
+    it 'maps charge rows from the invoice line items' do
+      charge = account.transactions.find { |transaction| transaction[:type] == 'charge' }
+
+      expect(charge).to eq(
+        id: 'I2-CHARGE1',
+        type: 'charge',
+        date: '2025-11-20',
+        description: 'NX RX #2719324 (30 days)',
+        amount: 2.03,
+        billing_reference: 'K700DAC53',
+        provider: 'COLUMBUS VAMC',
+        medication: { medication_name: 'ATORVASTATIN', rx_number: '2719324', quantity: 30, days_supply: 30 }
+      )
+    end
+
+    it 'maps payment rows without inventing a description' do
+      payment = account.transactions.find { |transaction| transaction[:type] == 'payment' }
+
+      expect(payment).to eq(id: 'P2-PAYMENT1', type: 'payment', date: '2025-11-28', amount: 10.0)
+    end
+
+    it 'orders charges and payments together, newest first' do
+      expect(account.transactions.map { |transaction| transaction[:date] })
+        .to eq(%w[2025-11-28 2025-11-20])
+    end
+
+    describe 'charge amount' do
+      # Shapes taken from spec/fixtures/lighthouse/hcc/bundle.json
+      def charge_amount_for(price_components)
+        allow(lighthouse_service).to receive(:get_detail)
+          .with(id: 'I2-INVOICE1', include_associated: false)
+          .and_return(detail_double(line_items: [line_item_hash(price_components:)], payments: []))
+
+        builder.build_facility_account('896').transactions.first[:amount]
+      end
+
+      it 'totals the charged components rather than reading the first one' do
+        components = [
+          { type: 'surcharge', code: 'Interest Charged', amount: 0.99 },
+          { type: 'surcharge', code: 'Administrative Charged', amount: 0.59 },
+          { type: 'informational', code: 'Total Charge', amount: 1.58 }
+        ]
+
+        expect(charge_amount_for(components)).to eq(1.58)
+      end
+
+      it 'takes the single component when a charge is not broken out' do
+        expect(charge_amount_for([{ type: 'base', code: 'Total Charge', amount: 76.19 }])).to eq(76.19)
+      end
+
+      it 'reports zero when a charge carries no priced components' do
+        expect(charge_amount_for([])).to eq(0.0)
+      end
+    end
+
+    describe 'transaction dates' do
+      it 'normalizes charge timestamps to a plain date' do
+        charge = account.transactions.find { |transaction| transaction[:type] == 'charge' }
+
+        expect(charge[:date]).to eq('2025-11-20')
+      end
+
+      context 'when a charge timestamp carries a UTC offset' do
+        let(:detail) do
+          detail_double(line_items: [line_item_hash(date_posted: '2025-11-20T23:00:00-05:00')], payments: [])
+        end
+
+        it 'keeps the date the charge was posted rather than shifting it to UTC' do
+          expect(account.transactions.first[:date]).to eq('2025-11-20')
+        end
+      end
+
+      context 'when charges and payments fall across offsets and formats' do
+        let(:detail) do
+          detail_double(
+            line_items: [
+              line_item_hash(billing_reference: 'I2-EARLY', date_posted: '2025-11-20T23:00:00-05:00'),
+              line_item_hash(billing_reference: 'I2-LATE', date_posted: '2025-12-01T09:30:00Z')
+            ],
+            payments: [payment_hash(payment_date: '2025-11-28')]
+          )
+        end
+
+        it 'orders on the normalized dates, newest first' do
+          expect(account.transactions.map { |transaction| transaction[:date] })
+            .to eq(%w[2025-12-01 2025-11-28 2025-11-20])
+        end
+      end
+    end
+
+    context 'when a payment amount arrives negative' do
+      let(:detail) { detail_double(payments: [payment_hash(payment_amount: -10.0)]) }
+
+      it 'reports it positive, since the type carries the credit' do
+        payment = account.transactions.find { |transaction| transaction[:type] == 'payment' }
+
+        expect(payment[:amount]).to eq(10.0)
+      end
+    end
+
+    context 'when a charge item did not come back from Lighthouse' do
+      let(:unenriched_line_item) do
+        { billing_reference: 'I2-CHARGE2', price_components: [{ type: 'base', amount: 5.0 }] }
+      end
+      let(:detail) { detail_double(line_items: [line_item_hash, unenriched_line_item], payments: []) }
+
+      it 'keeps the row so the amounts still reconcile, and sorts it last' do
+        expect(account.transactions.last).to include(id: 'I2-CHARGE2', amount: 5.0, date: nil, description: nil)
+      end
+
+      it 'logs the charge items it could not label' do
+        allow(Rails.logger).to receive(:warn)
+
+        account
+
+        expect(Rails.logger).to have_received(:warn)
+          .with('FacilityAccounts::LighthouseBuilder no charge item for: I2-CHARGE2, 1 unlabeled transaction(s)')
+      end
+    end
+
+    context 'when the station has invoices from several cycles' do
+      let(:older_invoice) do
+        invoice_double(external_id: 'I2-INVOICE2', current_balance: 50.0, invoice_date: '2025-11-20T04:00:00Z')
+      end
+      let(:invoices) { [invoice, older_invoice] }
+
+      before do
+        allow(lighthouse_service).to receive(:get_detail).with(id: 'I2-INVOICE2', include_associated: false).and_return(
+          detail_double(line_items: [line_item_hash(billing_reference: 'I2-CHARGE9',
+                                                    date_posted: '2025-10-15T04:00:00Z')], payments: [])
+        )
+      end
+
+      it 'sums the balances and merges both ledgers into one list' do
+        expect(account.current_balance).to eq(155.24)
+        expect(account.transactions.map { |transaction| transaction[:id] })
+          .to eq(%w[P2-PAYMENT1 I2-CHARGE1 I2-CHARGE9])
+      end
+    end
+
+    it 'leaves the account number and transactions off the index representation' do
+      index_account = builder.build_facility_accounts.first
+
+      expect(index_account.account_number).to be_nil
+      expect(index_account.transactions).to be_nil
+      expect(lighthouse_service).not_to have_received(:get_detail)
     end
   end
 

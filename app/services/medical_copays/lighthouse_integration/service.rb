@@ -93,11 +93,11 @@ module MedicalCopays
         Lighthouse::HCC::Bundle.new(new_bundle, formatted_entries)
       end
 
-      def get_detail(id:)
+      def get_detail(id:, include_associated: true)
         StatsD.increment("#{STATSD_KEY_PREFIX}.detail.initiated")
 
         record_success('detail') do
-          build_copay_detail(id)
+          build_copay_detail(id, include_associated:)
         end
       rescue => e
         StatsD.increment("#{STATSD_KEY_PREFIX}.detail.failure")
@@ -175,14 +175,18 @@ module MedicalCopays
         }
       end
 
-      def build_copay_detail(id)
+      def build_copay_detail(id, include_associated: true)
         invoice_data = invoice_service.read(id)
         patient_future = Concurrent::Promises.future { fetch_patient_data }
         invoice_deps = fetch_invoice_dependencies(invoice_data, id)
         org_id = extract_org_id_from_invoice(invoice_data, optional_org_data: true)
         org_address = retrieve_organization_address(org_id)
         patient_data = patient_future.value!
-        associated_statements = invoices_for_organization(DEFAULT_MONTH_COUNT, DEFAULT_INVOICE_COUNT, org_id, id)
+        associated_statements = if include_associated
+                                  invoices_for_organization(DEFAULT_MONTH_COUNT, DEFAULT_INVOICE_COUNT, org_id, id)
+                                else
+                                  []
+                                end
         charge_item_deps = fetch_charge_item_dependencies(invoice_deps[:charge_items])
         medications = fetch_medications(charge_item_deps[:medication_dispenses])
 

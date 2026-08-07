@@ -287,6 +287,63 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
         end
       end
 
+      context 'when associated invoices are not requested' do
+        before do
+          allow(service).to receive_messages(base_stubs)
+          allow(service).to receive_messages(retrieve_organization_address: nil, fetch_patient_data: nil)
+          allow(service).to receive(:invoices_for_organization).and_return([])
+          allow(Lighthouse::HCC::CopayDetail).to receive(:new).and_return(mock_detail)
+        end
+
+        it 'skips the organization invoice sweep' do
+          service.get_detail(id: 'invoice-1', include_associated: false)
+
+          expect(service).not_to have_received(:invoices_for_organization)
+        end
+
+        it 'builds the detail with no associated statements' do
+          expect(Lighthouse::HCC::CopayDetail).to receive(:new).with(
+            hash_including(associated_statements: [])
+          ).and_return(mock_detail)
+
+          service.get_detail(id: 'invoice-1', include_associated: false)
+        end
+
+        it 'still sweeps them when the caller does not opt out' do
+          service.get_detail(id: 'invoice-1')
+
+          expect(service).to have_received(:invoices_for_organization)
+        end
+      end
+
+      context 'when associated invoices are requested by default' do
+        let(:associated) { [{ 'resource' => { 'id' => 'assoc-1' } }] }
+
+        before do
+          allow(service).to receive_messages(base_stubs)
+          allow(service).to receive_messages(retrieve_organization_address: nil, fetch_patient_data: nil)
+          allow(service).to receive(:invoices_for_organization).and_return(associated)
+        end
+
+        it 'passes the swept invoices through to the detail' do
+          expect(Lighthouse::HCC::CopayDetail).to receive(:new).with(
+            hash_including(associated_statements: associated)
+          ).and_return(mock_detail)
+
+          service.get_detail(id: 'invoice-1')
+        end
+
+        it 'sweeps the invoice organization for the six month window' do
+          allow(Lighthouse::HCC::CopayDetail).to receive(:new).and_return(mock_detail)
+
+          service.get_detail(id: 'invoice-1')
+
+          expect(service).to have_received(:invoices_for_organization).with(
+            described_class::DEFAULT_MONTH_COUNT, described_class::DEFAULT_INVOICE_COUNT, nil, 'invoice-1'
+          )
+        end
+      end
+
       context 'on failure' do
         before do
           allow(service).to receive(:invoice_service).and_raise(StandardError.new('API error'))
