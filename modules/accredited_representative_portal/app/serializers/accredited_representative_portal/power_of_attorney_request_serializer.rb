@@ -12,7 +12,8 @@ module AccreditedRepresentativePortal
     attribute :power_of_attorney_form do |poa_request|
       next unless poa_request.power_of_attorney_form
 
-      poa_request.power_of_attorney_form.parsed_data.tap do |form|
+      cloned_form = poa_request.power_of_attorney_form.parsed_data.deep_dup
+      cloned_form.tap do |form|
         PowerOfAttorneyRequest::ClaimantTypes::ALL.product(REDACTION_POLICY[:FIELDS]).each do |(claimant_type, key)|
           value = form.dig(claimant_type, key).to_s
           next if value.blank?
@@ -102,10 +103,10 @@ module AccreditedRepresentativePortal
           birth_date: form_data.dig('veteran', 'dateOfBirth')
         }
         dependent = {
-          first_name: form_data.dig('claimant', 'name', 'first'),
-          last_name: form_data.dig('claimant', 'name', 'last'),
+          first_name: form_data.dig('dependent', 'name', 'first'),
+          last_name: form_data.dig('dependent', 'name', 'last'),
           icn: poa_request.claimant&.icn,
-          birth_date: form_data.dig('claimant', 'dateOfBirth')
+          birth_date: form_data.dig('dependent', 'dateOfBirth')
         }
 
         begin

@@ -199,7 +199,7 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestSerializer,
         let(:data) { described_class.new(poa_request, params: { include_dependent_status: true }).serializable_hash }
         let(:dependent_service) { instance_double(AccreditedRepresentativePortal::DependentLookupService) }
         let(:veteran) do
-          { first_name: 'John', last_name: 'Doe', ssn: '6789', birth_date: '1980-12-31' }
+          { first_name: 'John', last_name: 'Doe', ssn: '123456789', birth_date: '1980-12-31' }
         end
         let(:dependent) do
           { first_name: 'John', last_name: 'Doe', icn:, birth_date: '1980-12-31' }

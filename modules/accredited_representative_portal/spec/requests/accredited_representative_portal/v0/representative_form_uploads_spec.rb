@@ -44,6 +44,9 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
       allow(Flipper).to receive(:enabled?)
         .with(:accredited_representative_portal_killswitch)
         .and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:accredited_representative_portal_lighthouse_api_key)
+        .and_return(false)
 
       allow_any_instance_of(AccreditedRepresentativePortal::PowerOfAttorneyHolderMemberships)
         .to receive(:empty?).and_return(false)
@@ -624,6 +627,10 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
     end
 
     describe '#upload_scanned_form' do
+      before do
+        allow(RTesseract).to receive(:new).and_return(instance_double(RTesseract, to_s: ''))
+      end
+
       it 'renders the attachment as json' do
         clamscan = double(safe?: true)
         allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
