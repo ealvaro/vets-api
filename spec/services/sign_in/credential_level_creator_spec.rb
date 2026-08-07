@@ -293,6 +293,33 @@ RSpec.describe SignIn::CredentialLevelCreator do
       end
     end
 
+    context 'when type is entra' do
+      let(:type) { SignIn::Constants::Auth::ENTRA }
+      let(:expected_current_ial) { SignIn::Constants::Auth::IAL_TWO }
+      let(:expected_max_ial) { SignIn::Constants::Auth::IAL_TWO }
+
+      context 'and requested_acr is set to loa3' do
+        let(:requested_acr) { SignIn::Constants::Auth::LOA3 }
+
+        it_behaves_like 'a created credential level'
+      end
+
+      context 'and requested_acr is set to loa1' do
+        let(:requested_acr) { SignIn::Constants::Auth::LOA1 }
+
+        it_behaves_like 'a created credential level'
+      end
+
+      context 'and user info attributes are absent' do
+        let(:requested_acr) { SignIn::Constants::Auth::LOA3 }
+        let(:verified_at) { nil }
+        let(:credential_ial) { nil }
+        let(:level_of_assurance) { nil }
+
+        it_behaves_like 'a created credential level'
+      end
+    end
+
     context 'when type is some other supported value' do
       let(:type) { SignIn::Constants::Auth::IDME }
 

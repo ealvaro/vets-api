@@ -69,6 +69,8 @@ module SignIn
         mhv_max_ial
       when Constants::Auth::CLEAR
         clear_max_ial
+      when Constants::Auth::ENTRA
+        entra_max_ial
       else
         idme_max_ial
       end
@@ -82,6 +84,8 @@ module SignIn
         mhv_current_ial
       when Constants::Auth::CLEAR
         clear_current_ial
+      when Constants::Auth::ENTRA
+        entra_current_ial
       else
         idme_current_ial
       end
@@ -104,6 +108,14 @@ module SignIn
     end
 
     def clear_current_ial
+      verified_ial_level(true)
+    end
+
+    def entra_max_ial
+      verified_ial_level(true)
+    end
+
+    def entra_current_ial
       verified_ial_level(true)
     end
 
