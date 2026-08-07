@@ -1396,6 +1396,9 @@ search_gsa:
   affiliate: va
   mock_search: <%= ENV['search_gsa__mock_search'] %>
   url: <%= ENV['search_gsa__url'] %>
+search_kendra:
+  index_id: d1f6fae9-b3e5-43ef-8993-a52fd9a9f247
+  region: us-gov-west-1
 secret_key_base: <%= ENV['secret_key_base'] %>
 sharepoint:
   mobile_survey_storage:
