@@ -40,7 +40,7 @@ module SignIn
       CERTS_ROUTE_PATH = '/sign_in/openid_connect/certs'
       CLIENT_STATE_MINIMUM_LENGTH = 22
       CODE_CHALLENGE_METHOD = 'S256'
-      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv', CLEAR = 'clear'].freeze
+      CSP_TYPES = [IDME = 'idme', LOGINGOV = 'logingov', MHV = 'mhv', CLEAR = 'clear', ENTRA = 'entra'].freeze
       DEPRECATED_CSP_TYPES = [DSLOGON = 'dslogon'].freeze
       ENFORCED_TERMS = [VA_TERMS = 'VA'].freeze
       GRANT_TYPES = [AUTH_CODE_GRANT = 'authorization_code',
