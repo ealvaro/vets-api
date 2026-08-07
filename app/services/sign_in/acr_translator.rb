@@ -26,6 +26,8 @@ module SignIn
         translate_mhv_values
       when Constants::Auth::CLEAR
         translate_clear_values
+      when Constants::Auth::ENTRA
+        translate_entra_values
       else
         raise Errors::InvalidTypeError.new message: 'Invalid Type value'
       end
@@ -47,6 +49,15 @@ module SignIn
       case acr
       when 'ial2', Constants::Auth::IAL2_PREFERRED, Constants::Auth::IAL2_REQUIRED, 'min'
         Constants::Auth::CLEAR_IAL2
+      else
+        invalid_acr!(type:)
+      end
+    end
+
+    def translate_entra_values
+      case acr
+      when 'ial2', Constants::Auth::IAL2_PREFERRED, Constants::Auth::IAL2_REQUIRED, 'min'
+        Constants::Auth::ENTRA_IAL2
       else
         invalid_acr!(type:)
       end

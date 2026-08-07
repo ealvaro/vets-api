@@ -58,10 +58,13 @@ module V0
       def handle_credential_provider_error(error, type)
         if error == ::SignIn::Constants::Auth::ACCESS_DENIED
           error_message = 'User Declined to Authorize Client'
-          error_code = if type == ::SignIn::Constants::Auth::LOGINGOV
+          error_code = case type
+                       when ::SignIn::Constants::Auth::LOGINGOV
                          ::SignIn::Constants::ErrorCode::LOGINGOV_VERIFICATION_DENIED
-                       elsif type == ::SignIn::Constants::Auth::CLEAR
+                       when ::SignIn::Constants::Auth::CLEAR
                          ::SignIn::Constants::ErrorCode::CLEAR_VERIFICATION_DENIED
+                       when ::SignIn::Constants::Auth::ENTRA
+                         ::SignIn::Constants::ErrorCode::ENTRA_VERIFICATION_DENIED
                        else
                          ::SignIn::Constants::ErrorCode::IDME_VERIFICATION_DENIED
                        end

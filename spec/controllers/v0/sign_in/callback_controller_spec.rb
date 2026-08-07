@@ -903,6 +903,13 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
           it_behaves_like 'error response'
         end
 
+        context 'and type from state is entra' do
+          let(:type) { SignIn::Constants::Auth::ENTRA }
+          let(:error_code) { SignIn::Constants::ErrorCode::ENTRA_VERIFICATION_DENIED }
+
+          it_behaves_like 'error response'
+        end
+
         context 'and type from state is some other value' do
           let(:type) { SignIn::Constants::Auth::IDME }
           let(:error_code) { SignIn::Constants::ErrorCode::IDME_VERIFICATION_DENIED }

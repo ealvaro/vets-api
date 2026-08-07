@@ -29,7 +29,8 @@ module SignIn
                           LOGIN_GOV_IAL2_REQUIRED = 'urn:acr.login.gov:verified-facial-match-required',
                           LOGIN_GOV_IAL2_PREFERRED = 'urn:acr.login.gov:verified-facial-match-preferred',
                           CLEAR_IAL1 = 'ial1',
-                          CLEAR_IAL2 = 'ial2'].freeze
+                          CLEAR_IAL2 = 'ial2',
+                          ENTRA_IAL2 = 'ial2'].freeze
       ANTI_CSRF_COOKIE_NAME = 'vagov_anti_csrf_token'
       ASSERTION_ENCODE_ALGORITHM = 'RS256'
       AUTHENTICATION_TYPES = [COOKIE = 'cookie', API = 'api', MOCK = 'mock'].freeze

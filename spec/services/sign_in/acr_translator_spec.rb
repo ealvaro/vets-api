@@ -379,6 +379,42 @@ RSpec.describe SignIn::AcrTranslator do
       end
     end
 
+    context 'when type is entra' do
+      let(:type) { SignIn::Constants::Auth::ENTRA }
+      let(:expected_translated_acr) { { acr: SignIn::Constants::Auth::ENTRA_IAL2 } }
+      let(:expected_error) { SignIn::Errors::InvalidAcrError }
+      let(:expected_error_message) { 'Invalid ACR for entra' }
+
+      ['ial2',
+       'min',
+       SignIn::Constants::Auth::IAL2_PREFERRED,
+       SignIn::Constants::Auth::IAL2_REQUIRED].each do |ial2_equivalent_acr|
+        context "and acr is #{ial2_equivalent_acr}" do
+          let(:acr) { ial2_equivalent_acr }
+
+          it 'returns expected translated acr value' do
+            expect(subject).to eq(expected_translated_acr)
+          end
+        end
+      end
+
+      context 'and acr is ial1' do
+        let(:acr) { 'ial1' }
+
+        it 'raises invalid acr error' do
+          expect { subject }.to raise_error(expected_error, expected_error_message)
+        end
+      end
+
+      context 'and acr is an arbitrary value' do
+        let(:acr) { 'some-acr' }
+
+        it 'raises invalid acr error' do
+          expect { subject }.to raise_error(expected_error, expected_error_message)
+        end
+      end
+    end
+
     context 'when type is an arbitrary value' do
       let(:type) { 'some-type' }
       let(:expected_error) { SignIn::Errors::InvalidTypeError }
