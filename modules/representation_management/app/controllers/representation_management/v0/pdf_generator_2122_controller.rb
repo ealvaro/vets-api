@@ -5,6 +5,9 @@ module RepresentationManagement
     class PdfGenerator2122Controller < RepresentationManagement::V0::PowerOfAttorneyRequestBaseController
       skip_before_action :authenticate
       before_action :load_user
+      after_action :increment_statsd_metric, only: :create, if: -> { response.successful? }
+
+      STATSD_KEY_PREFIX = 'api.representation_management.pdf_generator_2122'
 
       def create
         form = RepresentationManagement::Form2122Data.new(flatten_form_params)
@@ -41,6 +44,13 @@ module RepresentationManagement
           consent_address_change: form_params[:consent_address_change]
         }.merge(flatten_veteran_params(form_params))
           .merge(flatten_claimant_params(form_params))
+      end
+
+      def increment_statsd_metric
+        # Common values passed by the front end: digital, mail, in person
+        submission_method = form_params[:representative_submission_method]&.gsub(/\s+/, '_')&.underscore || 'unknown'
+
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.#{submission_method}_submission.success")
       end
     end
   end

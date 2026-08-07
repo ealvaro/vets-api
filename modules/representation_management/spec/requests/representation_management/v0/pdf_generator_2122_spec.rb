@@ -70,27 +70,53 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
         .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+      allow(StatsD).to receive(:increment)
     end
 
-    context "When representative_submission_method is 'digital'" do
+    context "when representative_submission_method is 'digital'" do
       it 'does not clear the saved form' do
         expect_any_instance_of(ApplicationController).not_to receive(:clear_saved_form).with('21-22')
 
         post(base_path, params:)
       end
+
+      it 'increments the digital_submission StatsD metric' do
+        post(base_path, params:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
+      end
     end
 
-    context "When representative_submission_method is not 'digital'" do
-      it 'clears the saved form' do
-        params[:pdf_generator2122][:representative_submission_method] = 'paper'
+    context "when representative_submission_method is not 'digital'" do
+      before { params[:pdf_generator2122][:representative_submission_method] = 'in_person' }
 
+      it 'clears the saved form' do
         expect_any_instance_of(ApplicationController).to receive(:clear_saved_form).with('21-22').once
 
         post(base_path, params:)
       end
+
+      it 'increments the StatsD metric for the submission method' do
+        post(base_path, params:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.representation_management.pdf_generator_2122.create.in_person_submission.success')
+      end
     end
 
-    context 'When submitting all fields with valid data' do
+    context 'when representative_submission_method is nil' do
+      before { params[:pdf_generator2122][:representative_submission_method] = nil }
+
+      it 'increments the unknown_submission StatsD metric' do
+        post(base_path, params:)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.representation_management.pdf_generator_2122.create.unknown_submission.success')
+      end
+    end
+
+    context 'when submitting all fields with valid data' do
       before { post(base_path, params:) }
 
       it 'responds with an ok status' do
@@ -102,7 +128,7 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
       end
     end
 
-    context 'When submitting a valid request without a claimant' do
+    context 'when submitting a valid request without a claimant' do
       before do
         params[:pdf_generator2122].delete(:claimant)
         post(base_path, params:)
@@ -117,7 +143,7 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
       end
     end
 
-    context 'When submitting a valid request without a representative id' do
+    context 'when submitting a valid request without a representative id' do
       before do
         params[:pdf_generator2122][:representative].delete(:id)
         post(base_path, params:)
@@ -132,7 +158,7 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
       end
     end
 
-    context 'When submitting a valid request with the accredited organization and individual ids' do
+    context 'when submitting a valid request with the accredited organization and individual ids' do
       before do
         allow(Flipper).to receive(:enabled?)
           .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
@@ -197,12 +223,17 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
           post(base_path, params:)
         end
 
-        it 'responds with an unprocessable entity status' do
-          expect(response).to have_http_status(:unprocessable_entity)
+        it 'responds with an unprocessable content status' do
+          expect(response).to have_http_status(:unprocessable_content)
         end
 
         it 'responds with the expected body' do
           expect(response.body).to eq({ errors: ["Veteran first name can't be blank"] }.to_json)
+        end
+
+        it 'does not increment the StatsD metric' do
+          expect(StatsD).not_to have_received(:increment)
+            .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
         end
       end
 
@@ -215,8 +246,8 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
           post(base_path, params:)
         end
 
-        it 'responds with an unprocessable entity status' do
-          expect(response).to have_http_status(:unprocessable_entity)
+        it 'responds with an unprocessable content status' do
+          expect(response).to have_http_status(:unprocessable_content)
         end
 
         it 'responds with the expected body' do
@@ -225,6 +256,11 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
           expect(response.body).to include('Veteran social security number is invalid')
           expect(response.body).to include("Veteran last name can't be blank")
           expect(response.body).to include("Veteran date of birth can't be blank")
+        end
+
+        it 'does not increment the StatsD metric' do
+          expect(StatsD).not_to have_received(:increment)
+            .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
         end
       end
     end
