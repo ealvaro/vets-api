@@ -47,12 +47,35 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
         }
       }
     end
+    let(:claimant) do
+      {
+        address: {
+          address_line1: '123 Dependent St',
+          address_line2: '',
+          city: 'Portland',
+          state_code: 'OR',
+          country: 'USA',
+          zip_code: '12345',
+          zip_code_suffix: '6789'
+        },
+        date_of_birth: '1980-01-01',
+        email: 'dependent@example.com',
+        name: {
+          first: 'Cindy',
+          middle: 'Middle',
+          last: 'Dependent'
+        },
+        phone: '5555555555',
+        relationship: 'CHILD'
+      }
+    end
 
     before do
       # These cases use legacy acceptance fixtures; keep the submission on the legacy join.
       allow(Flipper).to receive(:enabled?).and_call_original
       allow(Flipper).to receive(:enabled?)
         .with(:arc_appoint_a_representative_use_accredited_models).and_return(false)
+      allow(StatsD).to receive(:increment)
     end
 
     context 'when appoint_a_representative_enable_v2_features is enabled' do
@@ -136,6 +159,26 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
               expect(response).to have_http_status(:created)
             end
           end
+
+          context 'when the claimant is a Veteran' do
+            it 'increments the veteran_claimant StatsD metric' do
+              post(base_path, params:)
+
+              expect(StatsD).to have_received(:increment)
+                .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
+            end
+          end
+
+          context 'when the claimant is a dependent' do
+            before { params[:power_of_attorney_request][:claimant] = claimant }
+
+            it 'increments the non_veteran_claimant StatsD metric' do
+              post(base_path, params:)
+
+              expect(StatsD).to have_received(:increment)
+                .with('api.representation_management.power_of_attorney_requests.create.non_veteran_claimant.success')
+            end
+          end
         end
 
         context 'when form validation fails' do
@@ -146,12 +189,17 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
             post(base_path, params:)
           end
 
-          it 'responds with a 422/unprocessable_entity status' do
-            expect(response).to have_http_status(:unprocessable_entity)
+          it 'responds with a 422/unprocessable_content status' do
+            expect(response).to have_http_status(:unprocessable_content)
           end
 
           it 'responds with an error message specifying the failed validation(s)' do
             expect(response.body).to eq({ errors: ["Veteran first name can't be blank"] }.to_json)
+          end
+
+          it 'does not increment the StatsD metric' do
+            expect(StatsD).not_to have_received(:increment)
+              .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
           end
 
           context 'when validation error logging is enabled' do
@@ -192,10 +240,10 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
         end
 
         context 'when representative does not have an active acceptance mode' do
-          it 'responds with a 422/unprocessable_entity status' do
+          it 'responds with a 422/unprocessable_content status' do
             post(base_path, params:)
 
-            expect(response).to have_http_status(:unprocessable_entity)
+            expect(response).to have_http_status(:unprocessable_content)
           end
 
           it 'responds with an error message about the representative' do
@@ -205,6 +253,11 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
             expect(parsed_errors).to include(
               "Representative #{RepresentationManagement::Form2122DigitalSubmission::REP_CANNOT_ACCEPT}"
             )
+          end
+
+          it 'does not increment the StatsD metric' do
+            expect(StatsD).not_to have_received(:increment)
+              .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
           end
         end
       end
@@ -252,10 +305,10 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
       end
 
       context 'when no active accreditation permits the representative' do
-        it 'responds with a 422/unprocessable_entity status' do
+        it 'responds with a 422/unprocessable_content status' do
           post(base_path, params:)
 
-          expect(response).to have_http_status(:unprocessable_entity)
+          expect(response).to have_http_status(:unprocessable_content)
         end
       end
     end

@@ -5,6 +5,9 @@ module RepresentationManagement
     class PowerOfAttorneyRequestsController < RepresentationManagement::V0::PowerOfAttorneyRequestBaseController
       service_tag 'representation-management'
       before_action :feature_enabled
+      after_action :increment_statsd_metric, only: :create, if: -> { response.successful? }
+
+      STATSD_KEY_PREFIX = 'api.representation_management.power_of_attorney_requests'
 
       def create
         if !form.valid?
@@ -68,6 +71,14 @@ module RepresentationManagement
             service_branch:,
             user: current_user
           ).call
+      end
+
+      def increment_statsd_metric
+        if form.dependent
+          StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.non_veteran_claimant.success")
+        else
+          StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.veteran_claimant.success")
+        end
       end
     end
   end
