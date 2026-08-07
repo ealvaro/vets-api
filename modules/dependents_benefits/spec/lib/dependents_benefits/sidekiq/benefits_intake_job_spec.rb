@@ -32,7 +32,7 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
     allow(DependentsBenefits::ClaimProcessor).to receive(:new).and_return(claim_processor)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
     allow(DependentsBenefits::NotificationEmail).to receive(:new).and_return(email)
-    allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:enable_686_674_benefits_intake_dpdf).and_return(false)
     allow(job).to receive(:collect_child_claims).and_return([claim686c, claim674])
   end
 
@@ -80,14 +80,16 @@ RSpec.describe DependentsBenefits::Sidekiq::BenefitsIntakeJob, type: :job do
 
     context 'with the digital pdf flag enabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:enable_686_674_benefits_intake_dpdf).and_return(true)
       end
 
-      it 'does not apply any stamps' do
+      it 'call to_dpdf and does not apply any stamps' do
         expect(DependentsBenefits::PdfStamper).to receive(:new).with([]).and_return(stamper)
         expect(stamper).to receive(:run).at_least(:once)
         expect(job).to receive(:handle_job_success)
         expect(job).to receive(:cleanup_file_paths)
+        expect(claim686c).to receive(:to_dpdf)
+        expect(claim674).to receive(:to_dpdf)
 
         job.perform(parent_claim.id)
       end

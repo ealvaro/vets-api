@@ -25,14 +25,18 @@ module DependentsBenefits
     # @param kwargs [Hash] Keyword arguments (form_id, student, created_at, etc.)
     # @return [String] Path to the generated PDF file
     def to_pdf(file_name = nil, fill_options = {}, **kwargs)
-      if Flipper.enabled?(:enable_686_674_digital_pdf)
-        monitor.track_info_event("Generating dPDF: #{self.class.name} #{id}", action: 'dpdf.generate')
-        # Future PR: call out to digital PDF service when it is ready
-      else
-        options = fill_options.merge(kwargs)
-        actual_file_name = kwargs.any? ? id.to_s : file_name
-        DependentsBenefits::PdfFill::Filler.fill_form(self, actual_file_name, options)
-      end
+      options = fill_options.merge(kwargs)
+      actual_file_name = kwargs.any? ? id.to_s : file_name
+      DependentsBenefits::PdfFill::Filler.fill_form(self, actual_file_name, options)
+    end
+
+    # Calls the digital pdf service to generate a pdf for this claim
+    #
+    # @return [String] Path to the generated PDF file
+    def to_dpdf
+      monitor.track_info_event("Generating dPDF: #{self.class.name} #{id}", action: 'dpdf.generate')
+      # Future PR: call out to digital PDF service when it is ready
+      '/tmp/todo'
     end
 
     # adds a signature date attribute into the parsed form for FDF

@@ -65,8 +65,8 @@ module DependentsBenefits::Sidekiq
       child_claims.each do |claim|
         claim.add_veteran_info(user_data)
         stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(claim.form_id)
-        pdf = if Flipper.enabled?(:enable_686_674_digital_pdf)
-                process_pdf(claim.to_pdf, []) # stamping handled by the digital pdf service
+        pdf = if Flipper.enabled?(:enable_686_674_benefits_intake_dpdf)
+                process_pdf(claim.to_dpdf, []) # stamping handled by the digital pdf service
               else
                 process_pdf(claim.to_pdf, stamp_set)
               end

@@ -92,6 +92,11 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
         allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(true)
       end
 
+      it 'calls the dpdf method on the claim' do
+        expect(saved_claim).to receive(:to_dpdf)
+        job.send(:submit_to_claims_evidence_api, saved_claim)
+      end
+
       it 'does not call the stamper' do
         stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(saved_claim.form_id)
         expect(DependentsBenefits::PdfStamper).to receive(:new).with(stamp_set).and_return stamper

@@ -4076,7 +4076,10 @@ features:
     description: Enables the DependentsBenefits::Sidekiq::ClaimsApiJob rather than the existing BGSFormJob
   enable_686_674_digital_pdf:
     actor_type: user
-    description: Enables using the digital pdf service for generating 686/674 pdfs
+    description: Enables using the digital pdf service for generating 686/674 pdfs in the ClaimsEvidenceFormJob
   va_dependents_674_term_section_redesign:
     actor_type: user
     description: Enables latest school term date flow in 21-674
+  enable_686_674_benefits_intake_dpdf:
+    actor_type: user
+    description: Enables using the digital pdf service for generating 686/674 pdfs in the BenefitsIntakeJob
