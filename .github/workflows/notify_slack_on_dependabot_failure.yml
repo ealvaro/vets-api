@@ -1,0 +1,92 @@
+name: Notify Slack on Dependabot failure
+
+on:
+  workflow_run:
+    workflows: ["dependabot-updates"]
+    types: [completed]
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - name: Generate cross-repo token for actions
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Checkout VSP actions
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: software/vsp-github-actions
+          ref: refs/heads/main
+          token: ${{ steps.vsp-bot-app-token.outputs.token }}
+          persist-credentials: false
+          path: ./.github/actions/vsp-github-actions
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/github_actions_slack_socket_token
+          env_variable_name: SLACK_APP_TOKEN
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/github_actions_slack_bot_user_token
+          env_variable_name: SLACK_BOT_TOKEN
+
+      - name: Slack notify - Dependabot update failure
+        uses: ./.github/actions/vsp-github-actions/slack-socket
+        with:
+          slack_app_token: ${{ env.SLACK_APP_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
+          channel_id: C0APA867M0V
+          message: "Dependency Update workflow is failing"
+          blocks: |
+            [
+              { "type": "divider" },
+              {
+                "type": "header",
+                "text": { "type": "plain_text", "text": ":x: Dependency Update workflow is failing", "emoji": true }
+              },
+              {
+                "type": "section",
+                "text": { "type": "mrkdwn", "text": "Dependabot can't open PRs for `${{ github.repository }}` because of an unresolved error." }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  { "type": "mrkdwn", "text": ":large_red_circle: *Status*: Failing" },
+                  { "type": "mrkdwn", "text": ":gear: *Workflow*: dependabot-updates" }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": { "type": "plain_text", "text": ":mag_right: View Failed Run", "emoji": true },
+                    "url": "${{ github.event.workflow_run.html_url || 'https://va.ghe.com/software/vets-api/actions/workflows/dependabot/dependabot-updates' }}",
+                    "style": "danger"
+                  },
+                  {
+                    "type": "button",
+                    "text": { "type": "plain_text", "text": ":recycle: View Recent Updates", "emoji": true },
+                    "url": "https://va.ghe.com/software/vets-api/network/updates"
+                  }
+                ]
+              },
+              { "type": "divider" }
+            ]
