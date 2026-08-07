@@ -25,6 +25,7 @@ app/controllers/concerns/appointment_authorization.rb @software/va-platform-back
 app/controllers/concerns/authentication_and_sso_concerns.rb @software/octo-identity
 app/controllers/concerns/chatbot/requires_edipi.rb @software/vfs-virtual-agent-chatbot
 app/controllers/concerns/controller_logging_context.rb @software/va-platform-backend
+app/controllers/concerns/disability_compensation/disability_application_interaction_time_logging.rb @software/disability-benefits
 app/controllers/concerns/email_verification_error_handler.rb @software/vfs-authenticated-experience-backend
 app/controllers/concerns/email_verification_rate_limited.rb @software/vfs-authenticated-experience-backend
 app/controllers/concerns/exception_handling.rb @software/va-platform-backend
@@ -1360,6 +1361,7 @@ spec/config/initializers/staccato_spec.rb @software/health-apps-backend
 spec/controllers/application_controller_spec.rb @software/octo-identity
 spec/controllers/benefits_discovery/gateway_controller_spec.rb @software/ves-benefits-discovery-service-devs
 spec/controllers/concerns/chatbot/requires_edipi_spec.rb @software/vfs-virtual-agent-chatbot
+spec/controllers/concerns/disability_compensation/disability_application_interaction_time_logging_spec.rb @software/disability-benefits
 spec/controllers/concerns/email_verification_error_handler_spec.rb @software/vfs-authenticated-experience-backend
 spec/controllers/concerns/third_party_transaction_logging_spec.rb @software/va-platform-backend
 spec/controllers/sign_in @software/octo-identity

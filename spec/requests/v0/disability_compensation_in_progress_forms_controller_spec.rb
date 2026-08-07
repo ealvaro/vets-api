@@ -147,6 +147,232 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
           end
         end
 
+        context 'IPF activity prefill engagement event' do
+          it 'emits a prefill engagement event when no IPF exists yet' do
+            sign_in_as(loa1_user)
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'prefill',
+                in_progress_form_id: nil,
+                user_uuid: loa1_user.uuid,
+                form_id: FormProfiles::VA526ez::FORM_ID,
+                terminal: false
+              )
+            )
+
+            get v0_disability_compensation_in_progress_form_url('21-526EZ'), params: nil
+
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        context 'IPF activity heartbeat event edge cases and error handling' do
+          let(:update_user) { loa3_user }
+          let(:new_form) { build(:in_progress_form, form_id: FormProfiles::VA526ez::FORM_ID) }
+
+          before do
+            sign_in_as(update_user)
+          end
+
+          it 'logs update heartbeat with correct request_id and controller info' do
+            # Create form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                controller: 'V0::DisabilityCompensationInProgressFormsController',
+                action: 'update',
+                request_id: kind_of(String)
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'logs prefill event with nil in_progress_form_id' do
+            sign_in_as(loa1_user)
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'prefill',
+                in_progress_form_id: nil,
+                terminal: false
+              )
+            )
+
+            get v0_disability_compensation_in_progress_form_url('21-526EZ'), params: nil
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'handles active_delta_seconds correctly for very recent updates' do
+            # Create the IPF first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            existing_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+            # Set updated_at to very recent (30 seconds ago)
+            metadata = (existing_form[:metadata] || {}).deep_dup
+            metadata['lastSessionActivityAt'] = 30.seconds.ago.utc.iso8601(3)
+            existing_form.update!(metadata:)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                active_delta_seconds: a_value_within(5).of(30)
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'reports the full active_delta_seconds and flags idle gap exceeded' do
+            # Create the IPF first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            existing_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+            # Set lastSessionActivityAt to beyond idle gap (15 minutes > 10-minute gap)
+            metadata = (existing_form[:metadata] || {}).deep_dup
+            metadata['lastSessionActivityAt'] = 15.minutes.ago.utc.iso8601(3)
+            existing_form.update!(metadata:)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                active_delta_seconds: a_value_within(5).of(15.minutes.to_i),
+                active_idle_gap_exceeded: true
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'includes form_id in all engagement events' do
+            # Create form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(form_id: FormProfiles::VA526ez::FORM_ID)
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+          end
+
+          it 'includes user_uuid in all engagement events' do
+            # Create form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(user_uuid: update_user.uuid)
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+          end
+
+          it 'includes occurred_at timestamp in ISO8601 format for all events' do
+            # Create form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                occurred_at: match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/)
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+          end
+
+          it 'logs interaction event with event_type: update' do
+            # Create form first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(event_type: 'update')
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+          end
+        end
+
         context 'when a form is found and rated_disabilities have updates' do
           it 'returns the form as JSON' do
             # change form data
@@ -1097,6 +1323,109 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
             put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
               formData: new_form.form_data,
               metadata: { returnUrl: '/supporting-evidence/evidence-types' }
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        context 'IPF activity heartbeat event on update' do
+          it 'emits a heartbeat log event after a successful update' do
+            allow(Rails.logger).to receive(:info).and_call_original
+
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                in_progress_form_id: be_a(Integer),
+                user_uuid: update_user.uuid,
+                form_id: FormProfiles::VA526ez::FORM_ID,
+                terminal: false
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'emits active_delta_seconds for update when previous activity is recent' do
+            # create the IPF first
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            existing_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+            metadata = (existing_form[:metadata] || {}).deep_dup
+            metadata['lastSessionActivityAt'] = 2.minutes.ago.utc.iso8601(3)
+            existing_form.update!(metadata:)
+
+            allow(Rails.logger).to receive(:info).and_call_original
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                in_progress_form_id: existing_form.id,
+                active_delta_seconds: a_value_within(5).of(2.minutes.to_i)
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+
+            expect(response).to have_http_status(:ok)
+          end
+
+          it 'resets lastSessionActivityAt on session boundary (show resets for next update)' do
+            # Create the IPF at midnight
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
+            }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+            expect(response).to have_http_status(:ok)
+
+            existing_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+
+            # Simulate prior session activity older than the current session start.
+            metadata = (existing_form[:metadata] || {}).deep_dup
+            previous_session_activity_at = 2.minutes.ago
+            metadata['lastSessionActivityAt'] = previous_session_activity_at.utc.iso8601(3)
+            existing_form.update!(metadata:)
+
+            # Simulate session break: user logs off and returns 8 hours later (show action)
+            # Show should reset lastSessionActivityAt to mark new session start
+            VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+              get v0_disability_compensation_in_progress_form_url(new_form.form_id), params: nil
+            end
+            expect(response).to have_http_status(:ok)
+
+            # Verify show reset the lastSessionActivityAt to current time
+            reloaded_form = InProgressForm.form_for_user(new_form.form_id, update_user)
+            current_last_session_activity_at = Time.zone.parse(reloaded_form[:metadata]['lastSessionActivityAt'])
+            expect(current_last_session_activity_at).to be > previous_session_activity_at
+
+            # Now user updates in the new session.
+            allow(Rails.logger).to receive(:info).and_call_original
+            expect(Rails.logger).to receive(:info).with(
+              'Form526 interaction',
+              hash_including(
+                event_type: 'update',
+                in_progress_form_id: reloaded_form.id,
+                # Delta should be near zero right after session reset on show.
+                active_delta_seconds: a_value_within(5).of(0)
+              )
+            )
+
+            put v0_disability_compensation_in_progress_form_url(new_form.form_id), params: {
+              formData: new_form.form_data,
+              metadata: new_form.metadata
             }.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
 
             expect(response).to have_http_status(:ok)

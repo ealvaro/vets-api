@@ -234,4 +234,161 @@ RSpec.describe V0::DisabilityCompensationFormsController, type: :controller do
       expect(saved_claim.form_start_date).to be_nil
     end
   end
+
+  describe '#log_active_time' do
+    let(:ipf_id) { 5655 }
+    let(:updated_at) { 2.minutes.ago }
+    let(:in_progress_form) do
+      double('InProgressForm', id: ipf_id,
+                               metadata: { 'lastSessionActivityAt' => updated_at.utc.iso8601(3) })
+    end
+
+    before do
+      controller.instance_variable_set(:@current_user, user)
+    end
+
+    it 'emits a submitted event log with lifespan' do
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          event_type: 'submitted',
+          in_progress_form_id: ipf_id,
+          user_uuid: user.uuid,
+          form_id: FormProfiles::VA526ez::FORM_ID,
+          terminal: true,
+          active_delta_seconds: a_value_within(5).of(2.minutes.to_f)
+        )
+      )
+
+      controller.send(:log_active_time, in_progress_form)
+    end
+
+    it 'emits a submitted event log with nil lifespan when created_at is nil' do
+      ipf = double('InProgressForm', id: ipf_id, metadata: nil)
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          event_type: 'submitted',
+          in_progress_form_id: ipf_id,
+          user_uuid: user.uuid,
+          form_id: FormProfiles::VA526ez::FORM_ID,
+          active_delta_seconds: nil
+        )
+      )
+
+      controller.send(:log_active_time, ipf)
+    end
+
+    it 'is a no-op when the in_progress_form is blank' do
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).not_to receive(:info).with(
+        'Form526 interaction',
+        anything
+      )
+
+      controller.send(:log_active_time, nil)
+    end
+
+    it 'swallows event-log errors and logs a warning' do
+      allow(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        anything
+      )
+                                           .and_raise(StandardError, 'error message')
+
+      allow(Rails.logger).to receive(:warn).and_call_original
+      expect(Rails.logger).to receive(:warn).with(
+        'Form526 IPF submitted event failed',
+        hash_including(exception: instance_of(StandardError))
+      )
+
+      expect { controller.send(:log_active_time, in_progress_form) }.not_to raise_error
+    end
+
+    it 'includes submission_id in the log payload when provided' do
+      submission_id = 987_654
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          submission_id:,
+          event_type: 'submitted'
+        )
+      )
+
+      controller.send(:log_active_time, in_progress_form, submission_id:)
+    end
+
+    it 'handles nil submission_id gracefully' do
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(submission_id: nil)
+      )
+
+      controller.send(:log_active_time, in_progress_form, submission_id: nil)
+    end
+
+    it 'handles very old in_progress_form correctly' do
+      very_old_form = double(
+        'InProgressForm',
+        id: ipf_id,
+        metadata: { 'lastSessionActivityAt' => 1.day.ago.utc.iso8601(3) }
+      )
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          active_delta_seconds: a_value_within(5).of(1.day.to_i),
+          active_idle_gap_exceeded: true
+        )
+      )
+
+      controller.send(:log_active_time, very_old_form)
+    end
+
+    it 'handles simultaneous creation and submission' do
+      now = Time.current
+      same_time_form = double('InProgressForm', id: ipf_id,
+                                                metadata: { 'lastSessionActivityAt' => now.utc.iso8601(3) })
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          active_delta_seconds: 0
+        )
+      )
+
+      controller.send(:log_active_time, same_time_form)
+    end
+
+    it 'reports the full active_delta_seconds and flags idle gap exceeded' do
+      old_updated = 15.minutes.ago
+      old_form = double(
+        'InProgressForm',
+        id: ipf_id,
+        metadata: { 'lastSessionActivityAt' => old_updated.utc.iso8601(3) }
+      )
+      allow(Rails.logger).to receive(:info).and_call_original
+
+      expect(Rails.logger).to receive(:info).with(
+        'Form526 interaction',
+        hash_including(
+          active_delta_seconds: a_value_within(5).of(15.minutes.to_i),
+          active_idle_gap_exceeded: true
+        )
+      )
+
+      controller.send(:log_active_time, old_form)
+    end
+  end
 end

@@ -12,6 +12,7 @@ module V0
   class DisabilityCompensationFormsController < ApplicationController
     include RetriableConcern
     include RatedDisabilitiesFetchConcern
+    include DisabilityCompensation::DisabilityApplicationInteractionTimeLogging
 
     service_tag 'disability-application'
     before_action(except: :rating_info) { authorize :evss, :access? }
@@ -165,6 +166,23 @@ module V0
         submission_id: submission&.id,
         user_uuid: @current_user&.uuid
       )
+      log_active_time(in_progress_form, submission_id: submission&.id)
+    end
+
+    def log_active_time(in_progress_form, submission_id: nil)
+      return if in_progress_form.blank?
+
+      log_ipf_active_time_event(
+        event_type: 'submitted',
+        in_progress_form_id: in_progress_form.id,
+        terminal: true,
+        context: {
+          submission_id:,
+          previous_activity_at: read_last_session_activity_at(in_progress_form)
+        }
+      )
+    rescue => e
+      Rails.logger.warn('Form526 IPF submitted event failed', exception: e)
     end
 
     def log_failure(claim, in_progress_form)

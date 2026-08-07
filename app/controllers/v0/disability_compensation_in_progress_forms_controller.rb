@@ -2,33 +2,27 @@
 
 module V0
   class DisabilityCompensationInProgressFormsController < InProgressFormsController
+    include DisabilityCompensation::DisabilityApplicationInteractionTimeLogging
+
     service_tag 'disability-application'
 
     def show
-      if form_for_user
-        # get IPF
+      existing_form = form_for_user
+
+      if existing_form
         data = data_and_metadata_with_updated_rated_disabilities
-        log_started_form_version(data, 'get IPF')
-        Rails.logger.info(
-          'Form526 InProgressForm show',
-          in_progress_form_id: form_for_user.id,
-          user_uuid: @current_user&.uuid,
-          return_url: form_for_user.metadata&.dig('returnUrl') || form_for_user.metadata&.dig('return_url')
-        )
+        log_show_existing_form(existing_form, data)
       else
         # create IPF
         data = camelized_prefill_for_user
-        log_started_form_version(data, 'create IPF')
-        # next call to #update will create the IPF
-        Rails.logger.info(
-          'Form526 InProgressForm show (prefill IPF)',
-          user_uuid: @current_user&.uuid
-        )
+        log_show_prefill(data)
       end
       render json: data
     end
 
     def update
+      previous_activity_at = read_last_session_activity_at(form_for_user)
+
       if params[:metadata].present? && parsed_form_data.present?
         if Flipper.enabled?(:disability_compensation_sync_modern0781_flow_metadata)
           params[:metadata][:sync_modern0781_flow] =
@@ -41,7 +35,7 @@ module V0
         end
       end
       super
-      log_form_update
+      log_form_update(previous_activity_at)
     end
 
     private
@@ -55,7 +49,7 @@ module V0
       end
     end
 
-    def log_form_update
+    def log_form_update(previous_activity_at = nil)
       updated_form = InProgressForm.form_for_user(form_id, @current_user)
       Rails.logger.info(
         'Form526 InProgressForm update',
@@ -63,6 +57,48 @@ module V0
         user_uuid: @current_user&.uuid,
         return_url: params.dig(:metadata, :returnUrl) || params.dig(:metadata, :return_url)
       )
+      track_ipf_activity_heartbeat(updated_form&.id, 'update', previous_activity_at:)
+      persist_last_session_activity_at!(updated_form)
+    end
+
+    def log_show_existing_form(existing_form, data)
+      persist_last_session_activity_at!(existing_form)
+      log_started_form_version(data, 'get IPF')
+      Rails.logger.info('Form526 InProgressForm show',
+                        in_progress_form_id: existing_form.id,
+                        user_uuid: @current_user&.uuid,
+                        return_url: existing_form.metadata&.dig('returnUrl') ||
+                          existing_form.metadata&.dig('return_url'))
+    end
+
+    def log_show_prefill(data)
+      log_started_form_version(data, 'create IPF')
+      # next call to #update will create the IPF
+      Rails.logger.info(
+        'Form526 InProgressForm show (prefill IPF)',
+        user_uuid: @current_user&.uuid
+      )
+      track_prefill_engagement_event
+    end
+
+    # Emits a structured log event per user interaction with a Form526 IPF.
+    def track_ipf_activity_heartbeat(ipf_id, action, previous_activity_at: nil)
+      return if ipf_id.blank?
+
+      log_ipf_active_time_event(
+        event_type: action,
+        in_progress_form_id: ipf_id,
+        terminal: false,
+        context: { previous_activity_at: }
+      )
+    rescue => e
+      Rails.logger.warn('Form526 IPF heartbeat event failed', exception: e)
+    end
+
+    def track_prefill_engagement_event
+      log_ipf_active_time_event(event_type: 'prefill', in_progress_form_id: nil, terminal: false)
+    rescue => e
+      Rails.logger.warn('Form526 IPF prefill engagement event failed', exception: e)
     end
 
     def form_id
