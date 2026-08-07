@@ -8,13 +8,12 @@ module AccreditedRepresentativePortal
       before_action :require_veteran_icn
 
       def show
-        form = find_form
+        form = find_or_build_form
         render json: form&.data_and_metadata || {}
       end
 
       def update
         form = find_form || build_form
-
         form.update!(
           form_data: params[:formData],
           metadata: params[:metadata],
@@ -44,8 +43,17 @@ module AccreditedRepresentativePortal
                status: :unprocessable_entity
       end
 
+      # Used by show/destroy — looks up by the full composite key.
       def find_form
         RepresentativeInProgressForm.for_rep_and_veteran(
+          params[:id],
+          @current_user.user_account_uuid,
+          veteran_icn
+        )
+      end
+
+      def find_or_build_form
+        RepresentativeInProgressForm.build_for_rep_and_veteran(
           params[:id],
           @current_user.user_account_uuid,
           veteran_icn

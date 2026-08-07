@@ -17,6 +17,12 @@ module AccreditedRepresentativePortal
       find_by(form_id:, rep_user_account_id:, veteran_icn:)
     end
 
+    def self.build_for_rep_and_veteran(form_id, rep_user_account_id, veteran_icn)
+      find_or_initialize_by(form_id:, rep_user_account_id:, veteran_icn:).tap do |form|
+        form.form_data ||= form.build_form_data(veteran_icn)
+      end
+    end
+
     def self.for_rep(rep_user_account_id)
       where(rep_user_account_id:)
     end
@@ -30,6 +36,37 @@ module AccreditedRepresentativePortal
 
     def next_expires_at
       Time.current + expires_after
+    end
+
+    def build_form_data(veteran_icn)
+      return form_data if form_data.present?
+
+      claimant_profile ||= MPI::Service.new.find_profile_by_identifier(
+        identifier: veteran_icn,
+        identifier_type: MPI::Constants::ICN
+      )&.profile
+
+      serialize_profile(claimant_profile) if claimant_profile
+    end
+
+    def serialize_profile(claimant_profile)
+      address = claimant_profile.address
+      self.form_data = {
+        veteranFullName: {
+          first: claimant_profile.given_names&.first,
+          last: claimant_profile.family_name
+        },
+        address: {
+          'view:militaryBaseDescription': {},
+          postalCode: address&.postal_code,
+          country: address&.country,
+          street: address&.street,
+          city: address&.city,
+          state: address&.state
+        },
+        veteranSsn: claimant_profile&.ssn,
+        veteranDateOfBirth: claimant_profile&.birth_date
+      }.to_json
     end
 
     def data_and_metadata

@@ -29,6 +29,12 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
   describe 'authenticated' do
     before { login_as(rep_user) }
 
+    around do |example|
+      VCR.use_cassette('mpi/find_candidate/valid_icn_full') do
+        example.run
+      end
+    end
+
     context 'when the accredited_representative_portal_submit_686c_v2 flag is disabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(
@@ -53,6 +59,32 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
     end
 
     describe 'GET show' do
+      let(:expected_response) do
+        {
+          formData: {
+            veteranFullName: {
+              first: 'Mitchell',
+              last: 'Jenkins'
+            },
+            address: {
+              'view:militaryBaseDescription': {},
+              postalCode: '78772',
+              country: 'USA',
+              street: '121 A St',
+              city: 'Austin',
+              state: 'TX'
+            },
+            veteranSsn: '796122306',
+            veteranDateOfBirth: '19490304'
+          },
+          metadata: {
+            expiresAt: nil,
+            lastUpdated: 0,
+            inProgressFormId: nil
+          }
+        }
+      end
+
       context 'without claimant_id' do
         it 'returns 422' do
           get base_path
@@ -64,7 +96,7 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
         it 'returns empty object' do
           get "#{base_path}?claimant_id=#{claimant_id}"
           expect(response).to have_http_status(:ok)
-          expect(response.parsed_body).to eq({})
+          expect(JSON.parse(response.body, symbolize_names: true)).to eq(expected_response)
         end
       end
 
@@ -93,10 +125,10 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
                  form_id:)
         end
 
-        it 'returns empty object' do
+        it 'returns a new object' do
           get "#{base_path}?claimant_id=#{claimant_id}"
           expect(response).to have_http_status(:ok)
-          expect(response.parsed_body).to eq({})
+          expect(JSON.parse(response.body, symbolize_names: true)).to eq(expected_response)
         end
       end
     end

@@ -45,4 +45,24 @@ RSpec.describe AccreditedRepresentativePortal::RepresentativeInProgressForm, typ
       ).to be_nil
     end
   end
+
+  describe '.build_for_rep_and_veteran' do
+    let(:rep_user_account) { create(:user_account) }
+    let(:expected_form_data) do
+      <<~HEREDOC
+        {"veteranFullName":{"first":"Maurice","last":"Murphy"},"address":{"view:militaryBaseDescription":{},"postalCode":"10458-5149","country":"USA","street":"441 E Fordham Rd","city":"Bronx","state":"NY"},"veteranSsn":"796265005","veteranDateOfBirth":"19730526"}
+      HEREDOC
+    end
+
+    let(:veteran_icn) { '1012832013V553700' }
+
+    it 'returns prefill data' do
+      VCR.use_cassette('mpi/find_candidate/find_profile_with_identifier') do
+        form = described_class.build_for_rep_and_veteran(nil, rep_user_account.id, veteran_icn)
+        expect(form.form_data).to eq expected_form_data.chomp
+        expect(form.rep_user_account_id).to eq rep_user_account.id
+        expect(form.veteran_icn).to eq veteran_icn
+      end
+    end
+  end
 end
