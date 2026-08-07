@@ -308,10 +308,17 @@ class SavedClaim < ApplicationRecord
 
     # @see PdfFill::Filler
     # https://va.ghe.com/software/vets-api/blob/96510bd1d17b9e5c95fb6c09d74e53f66b0a25be/lib/pdf_fill/filler.rb#L88
-    StatsD.increment('saved_claim.pdf.overflow', tags:) if filename.end_with?('_final.pdf')
+    if filename.end_with?('_final.pdf')
+      StatsD.increment('saved_claim.pdf.overflow', tags:)
+      track_pdf_overflow_by_field(form_class) if Flipper.enabled?(:track_pdf_overflow_by_field)
+    end
   rescue => e
     Rails.logger.warn("#{self.class} Error tracking PDF overflow", form_id:, saved_claim_id: id, error: e)
   ensure
     Common::FileHelpers.delete_file_if_exists(filename)
+  end
+
+  def track_pdf_overflow_by_field(_form_class = nil)
+    nil
   end
 end

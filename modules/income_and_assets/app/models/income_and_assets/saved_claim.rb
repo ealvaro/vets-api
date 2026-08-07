@@ -2,6 +2,7 @@
 
 require 'income_and_assets/benefits_intake/submit_claim_job'
 require 'pdf_fill/filler'
+require 'pdf_fill/concerns/field_overflow_monitoring'
 
 module IncomeAndAssets
   ##
@@ -9,6 +10,8 @@ module IncomeAndAssets
   # @see app/model/saved_claim
   #
   class SavedClaim < ::SavedClaim
+    include ::PdfFill::Concerns::FieldOverflowMonitoring
+
     # Income and Assets Form ID
     FORM = IncomeAndAssets::FORM_ID
 

@@ -4084,6 +4084,9 @@ features:
   va_dependents_674_term_section_redesign:
     actor_type: user
     description: Enables latest school term date flow in 21-674
+  track_pdf_overflow_by_field:
+    actor_type: user
+    description: Enables monitoring of PDF field and array overflow after claim creation
   enable_686_674_benefits_intake_dpdf:
     actor_type: user
     description: Enables using the digital pdf service for generating 686/674 pdfs in the BenefitsIntakeJob

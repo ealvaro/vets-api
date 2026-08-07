@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pdf_fill/concerns/field_overflow_monitoring'
+
 module Pensions
   ##
   # Pension 21P-527EZ Active::Record
@@ -8,6 +10,8 @@ module Pensions
   # todo: migrate encryption to Pensions::SavedClaim, remove inheritance and encrytion shim
   #
   class SavedClaim < ::SavedClaim
+    include ::PdfFill::Concerns::FieldOverflowMonitoring
+
     # We want to use the `Type` behavior but we want to override it with our custom type default scope behaviors.
     self.inheritance_column = :_type_disabled
 

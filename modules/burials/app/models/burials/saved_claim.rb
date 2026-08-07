@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'burials/processing_office'
+require 'pdf_fill/concerns/field_overflow_monitoring'
 
 module Burials
   ##
@@ -9,6 +10,8 @@ module Burials
   #
   # todo: migrate encryption to Burials::SavedClaim, remove inheritance and encryption shim
   class SavedClaim < ::SavedClaim
+    include ::PdfFill::Concerns::FieldOverflowMonitoring
+
     # We want to use the `Type` behavior but we want to override it with our custom type default scope behaviors.
     self.inheritance_column = :_type_disabled
 

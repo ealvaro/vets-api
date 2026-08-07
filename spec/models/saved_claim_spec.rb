@@ -13,6 +13,12 @@ class TestSavedClaim < SavedClaim
   def attachment_keys
     %i[some_key]
   end
+
+  def track_pdf_overflow_by_field(_form_class = nil)
+    self.class.some_side_effect
+  end
+
+  def self.some_side_effect; end
 end
 
 RSpec.describe TestSavedClaim, type: :model do # rubocop:disable RSpec/SpecFilePathFormat
@@ -95,9 +101,10 @@ RSpec.describe TestSavedClaim, type: :model do # rubocop:disable RSpec/SpecFileP
   describe 'callbacks' do
     let(:tags) { ["form_id:#{saved_claim.form_id}", "doctype:#{saved_claim.doctype}"] }
 
+    before { allow(StatsD).to receive_messages({ increment: nil, measure: nil }) }
+
     context 'after create' do
       it 'increments the saved_claim.create metric' do
-        allow(StatsD).to receive(:increment)
         saved_claim.save!
         expect(StatsD).to have_received(:increment).with('saved_claim.create', tags:)
       end
@@ -106,7 +113,6 @@ RSpec.describe TestSavedClaim, type: :model do # rubocop:disable RSpec/SpecFileP
         let(:form_start_date) { DateTime.now - 1 }
 
         it 'increments the saved_claim.time-to-file metric' do
-          allow(StatsD).to receive(:measure)
           saved_claim.form_start_date = form_start_date
           saved_claim.save!
 
@@ -121,12 +127,67 @@ RSpec.describe TestSavedClaim, type: :model do # rubocop:disable RSpec/SpecFileP
 
       context 'if form_id is not registered with PdfFill::Filler' do
         it 'skips tracking pdf overflow' do
-          allow(StatsD).to receive(:increment)
           saved_claim.save!
 
-          expect(StatsD).to have_received(:increment).with('saved_claim.create',
-                                                           tags: ['form_id:SOME_FORM_ID', 'doctype:10'])
+          expect(StatsD).to have_received(:increment).with('saved_claim.create', tags:)
           expect(StatsD).not_to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
+        end
+      end
+
+      context 'if saved_claim_pdf_overflow_tracking disabled' do
+        before { allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(false) }
+
+        it 'skips tracking pdf overflow and field overflow' do
+          saved_claim.save!
+          expect(StatsD).not_to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
+          expect(Flipper).not_to have_received(:enabled?).with(:track_pdf_overflow_by_field)
+        end
+      end
+
+      context 'if saved_claim_pdf_overflow_tracking enabled' do
+        before { allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true) }
+
+        context 'when pdf does not overflow' do
+          before { allow(PdfFill::Filler).to receive(:fill_form).and_return('form.pdf') }
+
+          it 'skips tracking pdf overflow and field overflow' do
+            saved_claim.save!
+            expect(StatsD).not_to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
+            expect(Flipper).not_to have_received(:enabled?).with(:track_pdf_overflow_by_field)
+          end
+        end
+
+        context 'when pdf overflows' do
+          before do
+            form_class = Class.new(PdfFill::Forms::FormBase)
+            allow(PdfFill::Filler::FORM_CLASSES).to receive(:[]).with(saved_claim.form_id).and_return(form_class)
+            allow(PdfFill::Filler).to receive(:fill_form).and_return('form_final.pdf')
+            allow(described_class).to receive(:some_side_effect)
+          end
+
+          it 'tracks pdf overflow' do
+            saved_claim.save!
+            expect(StatsD).to have_received(:increment).with('saved_claim.pdf.overflow', tags:).once
+            expect(StatsD).to have_received(:increment).with('saved_claim.create', tags:).once
+          end
+
+          context 'when track_pdf_overflow_by_field disabled' do
+            before { allow(Flipper).to receive(:enabled?).with(:track_pdf_overflow_by_field).and_return(false) }
+
+            it 'does not call track_pdf_overflow_by_field' do
+              saved_claim.save!
+              expect(described_class).not_to have_received(:some_side_effect)
+            end
+          end
+
+          context 'when track_pdf_overflow_by_field enabled' do
+            before { allow(Flipper).to receive(:enabled?).with(:track_pdf_overflow_by_field).and_return(true) }
+
+            it 'calls track_pdf_overflow_by_field' do
+              saved_claim.save!
+              expect(described_class).to have_received(:some_side_effect)
+            end
+          end
         end
       end
     end
