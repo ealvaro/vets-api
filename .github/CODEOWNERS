@@ -913,6 +913,7 @@ config/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
 config/puma.rb @software/va-platform-backend
 config/redis.yml @software/va-platform-backend
 config/routes.rb @software/va-platform-backend
+config/search @software/ws3-intelligent-search
 config/settings @software/va-platform-backend
 config/settings.local.yml.example @software/va-platform-backend
 config/settings.yml @software/va-platform-backend
