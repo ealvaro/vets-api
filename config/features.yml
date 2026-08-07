@@ -2766,6 +2766,10 @@ features:
       applicants receive real-time eligibility updates and automated confirmation emails.
       Does not affect Fry Scholarship applications.
     enable_in_development: true
+  meb_9_2_release:
+    actor_type: user
+    description: Feature flag for MEB 9.2 release
+    enable_in_development: false
   dgi_rudisill_hide_benefits_selection_step:
     actor_type: user
     description: Hides benefit selection page on original claims application.
