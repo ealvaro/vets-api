@@ -868,7 +868,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "access_token_audience"
     t.interval "access_token_duration", null: false
     t.boolean "anti_csrf", null: false
-    t.enum "auth_method", enum_type: "client_config_auth_method"
+    t.enum "auth_method", default: "pkce", null: false, enum_type: "client_config_auth_method"
     t.string "authentication", null: false
     t.string "client_id", null: false
     t.string "client_secret_digest"
