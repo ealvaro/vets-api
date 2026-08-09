@@ -832,6 +832,34 @@ RSpec.describe Lighthouse::LettersGenerator::Service do
           expect(error).to be_an_instance_of(Common::Exceptions::BadRequest)
         end
       end
+
+      it 'attributes a 422 to its cause and replaces the upstream detail' do
+        expect_any_instance_of(Lighthouse::LettersGenerator::Configuration)
+          .to receive(:get_access_token)
+          .and_return('faketoken')
+
+        fake_response_json = File.read("#{FAKE_RESPONSES_PATH}/fakeRequiredDataError.json")
+        fake_response_body = JSON.parse(fake_response_json)
+        @stubs.get('/letters/BENEFIT_SUMMARY/letter?icn=NOIDS') do
+          raise Faraday::UnprocessableEntityError.new(
+            'nope',
+            { status: 422, body: fake_response_body, headers: { 'content-type' => 'application/json' } }
+          )
+        end
+
+        client = Lighthouse::LettersGenerator::Service.new
+
+        expect { client.download_letter({ icn: 'NOIDS' }, 'BENEFIT_SUMMARY') }.to raise_error do |error|
+          expect(error).to be_an_instance_of(Common::Exceptions::UnprocessableEntity)
+          expect(error.errors.first).to include(
+            reason: 'missing_identifier_data',
+            detail: Lighthouse::LettersGenerator::DownloadFailure.message_for(
+              Lighthouse::LettersGenerator::DownloadFailure::MISSING_IDENTIFIER_DATA
+            ),
+            title: 'Required Data Error'
+          )
+        end
+      end
     end
   end
 

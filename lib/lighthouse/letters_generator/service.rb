@@ -2,6 +2,7 @@
 
 require 'lighthouse/letters_generator/configuration'
 require 'lighthouse/letters_generator/content'
+require 'lighthouse/letters_generator/download_failure'
 require 'lighthouse/letters_generator/service_error'
 require 'lighthouse/service_exception'
 require 'common/exceptions/bad_request'
@@ -86,6 +87,10 @@ module Lighthouse
 
         response = get_from_lighthouse(endpoint, params, log)
         response.body
+      rescue Common::Exceptions::UnprocessableEntity => e
+        # A 422 here means Lighthouse won't generate this letter for this veteran. Attribute it
+        # by cause and hand the caller a reason the veteran can act on. See DownloadFailure.
+        raise DownloadFailure.enrich(e, letter_type:)
       end
 
       def valid_type?(letter_type, user = nil)

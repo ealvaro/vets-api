@@ -81,6 +81,32 @@ RSpec.describe V0::LettersGeneratorController, type: :controller do
           expect(response_body['errors'].first).to include('status' => '422')
         end
       end
+
+      it 'returns the reason the letter could not be generated instead of the upstream jargon' do
+        VCR.use_cassette('lighthouse/letters_generator/download_error') do
+          post :download, params: { id: 'BENEFIT_SUMMARY' }
+
+          expect(JSON.parse(response.body)['errors'].first).to include(
+            'reason' => 'no_valid_address',
+            'detail' => Lighthouse::LettersGenerator::DownloadFailure.message_for(
+              Lighthouse::LettersGenerator::DownloadFailure::NO_VALID_ADDRESS
+            )
+          )
+        end
+      end
+
+      it 'counts the failure by cause' do
+        allow(StatsD).to receive(:increment)
+
+        VCR.use_cassette('lighthouse/letters_generator/download_error') do
+          post :download, params: { id: 'BENEFIT_SUMMARY' }
+        end
+
+        expect(StatsD).to have_received(:increment).with(
+          'api.letters_generator.download.failure',
+          tags: %w[reason:no_valid_address letter_type:benefit_summary source_app:unknown]
+        )
+      end
     end
   end
 

@@ -1,0 +1,7 @@
+{
+  "type": "https://api.va.gov/services/va-letter-generator/errors/required-data-exception",
+  "title": "Required Data Error",
+  "status": 422,
+  "detail": "The following errors are present: Missing Identifier Data",
+  "instance": "375763ad-de05-11ed-97d3-b54ca6e17d35"
+}

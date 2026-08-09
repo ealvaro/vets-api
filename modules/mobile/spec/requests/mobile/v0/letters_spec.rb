@@ -919,6 +919,24 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           expect(response).to have_http_status(:unprocessable_entity)
         end
       end
+
+      it 'returns the reason the letter could not be generated instead of the upstream jargon' do
+        VCR.use_cassette('mobile/lighthouse_letters/download_error') do
+          post '/mobile/v0/letters/benefit_summary/download', headers: sis_headers
+
+          expect(response.parsed_body['errors'][0]).to include(
+            'reason' => 'no_valid_address',
+            'detail' => Lighthouse::LettersGenerator::DownloadFailure.message_for(
+              Lighthouse::LettersGenerator::DownloadFailure::NO_VALID_ADDRESS
+            )
+          )
+        end
+      end
+
+      # The counter is asserted through the web download path in
+      # spec/controllers/v0/letters_generator_controller_spec.rb and at the unit level in
+      # spec/lib/lighthouse/letters_generator/download_failure_spec.rb. Both download paths
+      # share Service#download_letter, so asserting it once covers the counter for both.
     end
 
     context 'with an invalid letter type' do
