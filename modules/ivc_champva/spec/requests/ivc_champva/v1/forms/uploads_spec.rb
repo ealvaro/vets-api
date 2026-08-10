@@ -65,8 +65,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
   describe '#submit VES flow' do
     before do
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_update_datadog_tracking, @current_user)
-        .and_return(false)
+        .with(:champva_send_to_ves, @current_user)
+        .and_return(true)
     end
 
     forms.each do |form|
@@ -221,65 +221,26 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
-  describe '#submit with champva_update_datadog_tracking enabled' do
-    let(:form_with_track_submission) { 'vha_10_10d.json' }
-
+  describe '#submit with flipper champva_send_to_ves disabled' do
     before do
-      # Mirror the setup from the passing tests, but enable champva_update_datadog_tracking
       allow(Flipper).to receive(:enabled?)
-        .with(:champva_update_datadog_tracking, @current_user)
-        .and_return(true)
+        .with(:champva_send_to_ves, @current_user)
+        .and_return(false)
     end
 
-    it 'calls track_submission on form models that respond to it' do
-      fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json',
-                                     form_with_track_submission)
+    forms.each do |form|
+      fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', form)
       data = JSON.parse(fixture_path.read)
 
-      mock_form = double(first_name: 'Veteran', last_name: 'Surname', form_uuid: 'some_uuid')
-      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-        .and_return(double('Record1', created_at: 1.day.ago, id: 'some_uuid', file: double(id: 'file0')))
-      allow(IvcChampvaForm).to receive(:first).and_return(mock_form)
-      allow_any_instance_of(Aws::S3::Client).to receive(:put_object).and_return(
-        double('response',
-               context: double('context', http_response: double('http_response', status_code: 200)))
-      )
+      it 'does not format data for VES' do
+        post '/ivc_champva/v1/forms', params: data
+        expect(IvcChampva::VesDataFormatter).not_to have_received(:format_for_request)
+      end
 
-      # Allow all StatsD calls, but specifically check for the .submission call
-      allow(StatsD).to receive(:increment).and_call_original
-
-      post '/ivc_champva/v1/forms', params: data
-
-      expect(response).to have_http_status(:ok)
-      # Verify track_submission was called by checking the StatsD increment
-      expect(StatsD).to have_received(:increment).with(
-        'api.ivc_champva_form.10_10d.submission',
-        hash_including(:tags)
-      )
-    end
-
-    it 'calls track_submission on 7959F-1 form models' do
-      fixture_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_7959f_1.json')
-      data = JSON.parse(fixture_path.read)
-
-      mock_form = double(first_name: 'Veteran', last_name: 'Surname', form_uuid: 'some_uuid')
-      allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
-        .and_return(double('Record1', created_at: 1.day.ago, id: 'some_uuid', file: double(id: 'file0')))
-      allow(IvcChampvaForm).to receive(:first).and_return(mock_form)
-      allow_any_instance_of(Aws::S3::Client).to receive(:put_object).and_return(
-        double('response',
-               context: double('context', http_response: double('http_response', status_code: 200)))
-      )
-
-      allow(StatsD).to receive(:increment).and_call_original
-
-      post '/ivc_champva/v1/forms', params: data
-
-      expect(response).to have_http_status(:ok)
-      expect(StatsD).to have_received(:increment).with(
-        'api.ivc_champva_form.10_7959f_1.submission',
-        hash_including(:tags)
-      )
+      it 'does not submit to VES' do
+        post '/ivc_champva/v1/forms', params: data
+        expect(ves_client).not_to have_received(:submit_1010d)
+      end
     end
   end
 
@@ -628,7 +589,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     before do
       allow(Flipper).to receive(:enabled?).with(:champva_enable_ocr_on_submit, @current_user).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(false)
     end
 
     context 'successful transaction' do
@@ -815,12 +775,11 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           allow_any_instance_of(IvcChampva::V1::UploadsController)
             .to receive(:launch_background_job)
 
-          # Disable PDF conversion on upload for this test (not testing that feature here)
-          allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(false)
-
           # Mock Common::ConvertToPdf to avoid ImageMagick issues in test environment
           dummy_pdf_path = Rails.root.join('tmp', 'test_converted.pdf').to_s
           allow_any_instance_of(Common::ConvertToPdf).to receive(:run).and_return(dummy_pdf_path)
+          FileUtils.mkdir_p(File.dirname(dummy_pdf_path))
+          File.binwrite(dummy_pdf_path, '%PDF-1.4\n%mock\n')
 
           # Mock file existence check for LlmService.validate_file_exists
           allow(File).to receive(:exist?).and_call_original
@@ -844,6 +803,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
             'valid' => false,
             'confidence' => 0.9
           )
+        ensure
+          FileUtils.rm_f(dummy_pdf_path)
         end
       end
 
@@ -1256,11 +1217,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       allow(Flipper).to receive(:enabled?).and_return(false)
     end
 
-    context 'when feature flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(true)
-      end
-
+    context 'with PDF conversion on upload' do
       it 'converts image files to PDF at upload time' do
         image_file = fixture_file_upload('doctors-note.png', 'image/png')
 
@@ -1321,28 +1278,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       end
     end
 
-    context 'when feature flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(false)
-      end
-
-      it 'does not convert image files to PDF at upload time' do
-        image_file = fixture_file_upload('doctors-note.png', 'image/png')
-
-        post '/ivc_champva/v1/forms/submit_supporting_documents',
-             params: { form_id: '10-10D', file: image_file }
-
-        expect(response).to have_http_status(:ok)
-
-        attachment = PersistentAttachment.last
-        expect(attachment.file.content_type).to eq('image/png')
-        expect(attachment.original_filename).to eq('doctors-note.png')
-      end
-    end
-
     context 'when conversion fails' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(true)
         allow_any_instance_of(Common::ConvertToPdf).to receive(:run).and_raise(StandardError, 'Conversion failed')
       end
 
@@ -1366,11 +1303,7 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       allow(Flipper).to receive(:enabled?).and_return(false)
     end
 
-    context 'when champva_heif_attachments_enabled is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_heif_attachments_enabled, anything).and_return(true)
-      end
-
+    context 'with HEIC and HEIF file support' do
       it 'accepts HEIC files as supporting documents' do
         heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
 
@@ -1392,10 +1325,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       end
 
       context 'with convert_to_pdf_on_upload enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:champva_convert_to_pdf_on_upload, anything).and_return(true)
-        end
-
         it 'converts HEIC to PDF at upload time' do
           heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
 
@@ -1415,30 +1344,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
           temp_pdf&.close
           temp_pdf&.unlink
         end
-      end
-    end
-
-    context 'when champva_heif_attachments_enabled is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_heif_attachments_enabled, anything).and_return(false)
-      end
-
-      it 'rejects HEIC files' do
-        heic_file = fixture_file_upload('test_fixture.heic', 'image/heic')
-
-        post '/ivc_champva/v1/forms/submit_supporting_documents',
-             params: { form_id: '10-10D', file: heic_file }
-
-        expect(response).to have_http_status(:unprocessable_entity)
-      end
-
-      it 'rejects HEIF files' do
-        heif_file = fixture_file_upload('test_fixture.heif', 'image/heif')
-
-        post '/ivc_champva/v1/forms/submit_supporting_documents',
-             params: { form_id: '10-10D', file: heif_file }
-
-        expect(response).to have_http_status(:unprocessable_entity)
       end
     end
   end
@@ -1552,7 +1457,6 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
 
     before do
-      allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:champva_log_all_s3_uploads, anything).and_return(false)

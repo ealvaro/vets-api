@@ -81,8 +81,8 @@ module IvcChampva
     def self.stamp_signature(stamped_template_path, form)
       form_number = form.data['form_number']
       if FORM_REQUIRES_STAMP.include? form_number
-        # multiple checks to ensure we only log in non-production environments - PII risk
-        log_stamp_text = Flipper.enabled?(:champva_stamper_logging) && Settings.vsp_environment != 'production'
+        # only log in non-production environments - PII risk
+        log_stamp_text = Settings.vsp_environment != 'production'
 
         form.desired_stamps.each do |desired_stamp|
           if log_stamp_text
@@ -310,35 +310,6 @@ module IvcChampva
     # @note This method will stop stamping when it reaches the bottom margin defined by BOTTOM_MARGIN
     #       and will return any unstamped metadata items
     def self.stamp_metadata_items(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
-      if Flipper.enabled?(:champva_stamp_text_wrapping)
-        stamp_metadata_items_with_wrapping(pdf_path, metadata, start_y, page_number)
-      else
-        stamp_metadata_items_legacy(pdf_path, metadata, start_y, page_number)
-      end
-    end
-
-    def self.stamp_metadata_items_legacy(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
-      y_position = start_y
-      already_stamped = []
-
-      metadata.each do |key, value|
-        # If we hit the bottom margin, return what's left to process
-        return [already_stamped, metadata.except(*already_stamped)] if y_position < BOTTOM_MARGIN
-
-        # Format and stamp the metadata text
-        text = "#{key.humanize}: #{value}"
-        y_position -= LINE_HEIGHT
-        desired_stamp = { coords: [LEFT_MARGIN, y_position], text:, page: page_number }
-
-        stamp(desired_stamp, pdf_path)
-        already_stamped << key
-      end
-
-      # All items stamped successfully
-      [already_stamped, {}]
-    end
-
-    def self.stamp_metadata_items_with_wrapping(pdf_path, metadata, start_y = PAGE_HEIGHT, page_number = 0)
       generator = MetadataStampGenerator.new(metadata, start_y, page_number)
       generator.generate
 

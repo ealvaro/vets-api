@@ -467,12 +467,6 @@ features:
     actor_type: user
     enable_in_development: true
     description: This will override cerner.
-  champva_vanotify_custom_callback:
-    actor_type: user
-    description: Enables the custom callback_klass when sending IVC CHAMPVA failure emails with VA Notify
-  champva_vanotify_custom_confirmation_callback:
-    actor_type: user
-    description: Enables the custom callback_klass when sending IVC CHAMPVA confirmation emails with VA Notify
   champva_vanotify_custom_pega_alert_callback:
     actor_type: user
     description: Enables the custom callback_klass when sending missing Pega status alert emails with VA Notify
@@ -527,19 +521,12 @@ features:
   champva_pega_update_status_disabled:
     actor_type: user
     description: When enabled on the staging environment only, the IVC CHAMPVA Pega status callback endpoint (POST /ivc_champva/v1/forms/status_updates) acknowledges callbacks without modifying any records. This flag has no effect in any other environment (production, development, etc.), where callbacks are always processed. Used to stop Pega staging callbacks from overwriting pega_status during accessibility testing.
-  champva_resubmission_attachment_ids:
-    actor_type: user
-    description: Corrects attachment IDs for resubmission of form 10-7959a
   champva_cst_file_uploader_docs_only_resubmission:
     actor_type: user
     description: Enables docs-only resubmission flow for IVC CHAMPVA CST file uploader
   champva_foreign_address_fix:
     actor_type: user
     description: Enables the fix for foreign address fields on form submissions
-  champva_heif_attachments_enabled:
-    actor_type: user
-    enable_in_development: true
-    description: Enables HEIC/HEIF image files as supporting document attachments for IVC CHAMPVA forms.
   champva_form_versioning:
     actor_type: user
     description: Enables the form versioning for IVC CHAMPVA form submissions
@@ -555,9 +542,6 @@ features:
   champva_form_10_7959f_2_2025:
     actor_type: user
     description: If enabled uses the 2025 version of form 10-7959f-2 with expiration 12/31/2027
-  champva_ves_retry_failures_job:
-    actor_type: user
-    description: Enables the sidekiq job to retry VES submissions that failed
   champva_send_ohi_ves_to_pega:
     actor_type: user
     description: Enables sending VES OHI JSON to PEGA for 10-7959C form submissions (standalone and merged 10-10D-EXTENDED)
@@ -570,28 +554,16 @@ features:
   champva_use_hexapdf_to_combine_pdfs:
     actor_type: user
     description: Enables the use of HexaPDF instead of CombinePDF to combine PDFs
-  champva_convert_to_pdf_on_upload:
-    actor_type: user
-    description: Converts supporting documents to PDF at upload time instead of final submission to improve submit latency
   champva_auto_resize_on_upload:
     actor_type: user
     enable_in_development: true
     description: Auto-downscales oversized CHAMPVA supporting-document images to supported dimensions before attachment validation
-  champva_stamper_logging:
-    actor_type: user
-    description: Enables logging of the desired stamp text
   champva_update_metadata_keys:
     actor_type: user
     description: Enables the use of updated JSON key names in the Pega submission metadata
   champva_enable_notify_pega_missing_form_status_job:
     actor_type: user
     description: Enables the NotifyPegaMissingFormStatusJob to run
-  champva_missing_status_verbose_logging:
-    actor_type: user
-    description: Enables verbose logging of missing Pega status for IVC CHAMPVA form submissions
-  champva_update_datadog_tracking:
-    actor_type: user
-    description: Enables updated Datadog tracking for IVC CHAMPVA form submissions
   champva_claims_duty_to_assist:
     actor_type: user
     description: Enables stamping a blank document with the resubmission metadata for form 10-7959a
@@ -607,9 +579,6 @@ features:
   champva_ignore_recent_missing_statuses:
     actor_type: user
     description: Enables ignoring the most recent form submissions in the MissingFormStatusJob
-  champva_stamp_text_wrapping:
-    actor_type: user
-    description: Enables text wrapping for metadata stamped on blank PDF pages in IVC forms
   chapter_36_form_dd_rum_monitoring:
     actor_type: user
     description: Enables Datadog Real User Monitoring for the Chapter 36 (PCPG) form

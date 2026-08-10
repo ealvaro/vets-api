@@ -13,8 +13,6 @@ module IvcChampva
     LOG_PREFIX = 'VES Retry Failures Job'
 
     def perform
-      return unless Flipper.enabled?(:champva_ves_retry_failures_job)
-
       # Get one record per form_uuid for failed VES submissions.
       # Multiple records can share a form_uuid (form + supporting documents),
       # so we deduplicate to avoid sending duplicate retries.

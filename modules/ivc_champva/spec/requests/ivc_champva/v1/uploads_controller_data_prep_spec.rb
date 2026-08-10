@@ -19,7 +19,6 @@ RSpec.describe 'IvcChampva::V1::UploadsController data preparation', type: :requ
     allow(IvcChampva::VesApi::Client).to receive(:new).and_return(ves_client)
     allow(ves_client).to receive(:submit_1010d).with(anything, anything)
     allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:champva_update_datadog_tracking, anything).and_return(false)
   end
 
   after do

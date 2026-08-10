@@ -131,20 +131,18 @@ module IvcChampva
             form_uuid: form.form_uuid
           }
 
-        if Flipper.enabled?(:champva_vanotify_custom_confirmation_callback, @current_user)
-          # Adds custom callback to provide logging when emails are successfully sent
-          form_data = form_data.merge(
-            { callback_klass: 'IvcChampva::EmailNotificationCallback',
-              callback_metadata: {
-                statsd_tags: { service: 'veteran-ivc-champva-forms', function: 'IVC CHAMPVA send_email' },
-                additional_context: {
-                  form_id: form.form_number,
-                  form_uuid: form.form_uuid,
-                  notification_type: 'confirmation'
-                }
-              } }
-          )
-        end
+        # Adds custom callback to provide logging when emails are successfully sent
+        form_data = form_data.merge(
+          { callback_klass: 'IvcChampva::EmailNotificationCallback',
+            callback_metadata: {
+              statsd_tags: { service: 'veteran-ivc-champva-forms', function: 'IVC CHAMPVA send_email' },
+              additional_context: {
+                form_id: form.form_number,
+                form_uuid: form.form_uuid,
+                notification_type: 'confirmation'
+              }
+            } }
+        )
 
         ActiveRecord::Base.transaction do
           if IvcChampva::Email.new(form_data).send_email

@@ -90,10 +90,9 @@ Current feature flags used to control functionality:
 
 | Flag | Purpose | Notes |
 |------|---------|-------|
-| `champva_fmp_single_file_upload` | Enables combining FMP form and supporting docs into a single PDF | Only applies to form 10-7959f-2 |
-| `champva_vanotify_custom_callback` | Enables custom callback for failure emails with VA Notify | |
-| `champva_vanotify_custom_confirmation_callback` | Enables custom callback for confirmation emails | |
-| `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads | |
+| `champva_send_to_ves` | Enables sending form submission data to the VES API | Long-running feature flag pending integration signoff from VES team |
+| `champva_fmp_single_file_upload` | Enables combining FMP form and supporting docs into a single PDF | Only applies to form 10-7959f-2 | |
+| `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads |
 | `champva_claims_insurance_dates` | Uses the 12/31/2027 OMB revision of 10-7959A (requires `champva_form_versioning`); shared with FE | Adds beneficiary email, OHI effective/termination dates, signer email on the PDF and in Pega metadata |
 | `champva_send_7959c_to_ves` | Routes standalone 10-7959c (OHI) submissions to VES | 10-10d always routes to VES regardless of this flag |
 | (TODO) | Enables the endpoint to submit combined 10-10d/10-7959c form submissions | Feature is WIP |

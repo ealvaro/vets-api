@@ -19,8 +19,7 @@ module IvcChampva
       Datadog::Tracing.trace('IVC Champva Forms - Build Attachment IDs') do
         if dta_applies?(parsed_form_data)
           build_dta_attachment_ids(parsed_form_data, applicant_rounded_number)
-        elsif Flipper.enabled?(:champva_resubmission_attachment_ids) &&
-              parsed_form_data['claim_status'] == 'resubmission'
+        elsif parsed_form_data['claim_status'] == 'resubmission'
           selector = parsed_form_data['pdi_or_claim_number']
 
           if selector == 'Control number'

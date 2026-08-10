@@ -28,15 +28,14 @@ module IvcChampva
       # Send the count of forms to DataDog
       StatsD.gauge('ivc_champva.forms_missing_status.count', batches.count)
 
-      verbose_logging = Flipper.enabled?(:champva_missing_status_verbose_logging, @current_user)
       form_count = count_forms(batches)
 
-      if verbose_logging && form_count > 10
+      if form_count > 10
         Rails.logger.info "IVC Forms MissingFormStatusJob - Too many forms to log details (#{form_count} forms)"
       end
 
       current_time = Time.now.utc
-      process_batches(batches, current_time, verbose_logging, form_count)
+      process_batches(batches, current_time, form_count)
 
       Rails.logger.info 'IVC Forms MissingFormStatusJob - Job completed successfully'
     rescue => e
@@ -45,7 +44,7 @@ module IvcChampva
     end
 
     # Helper function to process batches of forms
-    def process_batches(batches, current_time, verbose_logging, form_count)
+    def process_batches(batches, current_time, form_count)
       batches.each_value do |batch|
         form = batch[0] # get a representative form from this submission batch
         elapsed_days = (current_time - form.created_at).to_i / 1.day
@@ -57,7 +56,7 @@ module IvcChampva
 
         send_failure_email_if_threshold_exceeded(form, elapsed_days)
         publish_missing_status_metric(form)
-        log_verbose_missing_status(form, elapsed_days, verbose_logging, form_count)
+        log_verbose_missing_status(form, elapsed_days, form_count)
       end
     end
 
@@ -88,8 +87,8 @@ module IvcChampva
       StatsD.increment('ivc_champva.form_missing_status', tags: ["key:#{key}"])
     end
 
-    def log_verbose_missing_status(form, elapsed_days, verbose_logging, form_count)
-      return unless verbose_logging && form_count <= 10
+    def log_verbose_missing_status(form, elapsed_days, form_count)
+      return unless form_count <= 10
 
       Rails.logger.info "IVC Forms MissingFormStatusJob - Missing status for Form #{form.form_uuid} " \
                         "- Elapsed days: #{elapsed_days} - File name: #{form.file_name} " \
@@ -119,16 +118,12 @@ module IvcChampva
     # @param additional_context [hash] contains properties form_id and form_uuid
     #   (e.g.: {form_id: '10-10d', form_uuid: '12345678-1234-5678-1234-567812345678'})
     def send_failure_email(form, template_id, additional_context)
-      form_data = construct_email_payload(form, template_id)
-
-      if (callback = Flipper.enabled?(:champva_vanotify_custom_callback, @current_user))
-        form_data = form_data.merge(callback_hash)
-      end
+      form_data = construct_email_payload(form, template_id).merge(callback_hash(additional_context))
 
       ActiveRecord::Base.transaction do
         if IvcChampva::Email.new(form_data).send_email
           IvcChampvaForm.where(form_uuid: form[:form_uuid]).update_all(email_sent: true) # rubocop:disable Rails/SkipsModelValidations
-          monitor.track_missing_status_email_sent(form[:form_number]) unless callback
+          monitor.track_missing_status_email_sent(form[:form_number])
         else
           monitor.log_silent_failure(additional_context)
           raise ActiveRecord::Rollback, 'Pega Status Update/Action Required Email send failure'
@@ -137,7 +132,7 @@ module IvcChampva
     end
 
     # return the hash fields used for vanotify callback
-    def callback_hash
+    def callback_hash(additional_context)
       {
         callback_klass: 'IvcChampva::ZsfEmailNotificationCallback',
         callback_metadata: {

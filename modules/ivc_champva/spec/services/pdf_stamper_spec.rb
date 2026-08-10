@@ -147,9 +147,8 @@ describe IvcChampva::PdfStamper do
       end
     end
 
-    context 'when flipper toggle is enabled and not in production' do
+    context 'when not in production' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(true)
         allow(Settings).to receive(:vsp_environment).and_return('development')
         allow(described_class).to receive(:stamp).and_return(true)
         allow(Rails.logger).to receive(:info)
@@ -174,36 +173,8 @@ describe IvcChampva::PdfStamper do
       end
     end
 
-    context 'when flipper toggle is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(false)
-        allow(Settings).to receive(:vsp_environment).and_return('development')
-        allow(described_class).to receive(:stamp).and_return(true)
-        allow(Rails.logger).to receive(:info)
-      end
-
-      it 'does not log the desired stamp text' do
-        stamp_signature
-
-        form.desired_stamps.each do |desired_stamp|
-          expect(Rails.logger).not_to have_received(:info).with(
-            "IVC Champva Forms - PdfStamper: desired stamp text: #{desired_stamp[:text]}"
-          )
-        end
-      end
-
-      it 'still calls stamp for each desired stamp' do
-        stamp_signature
-
-        form.desired_stamps.each do |desired_stamp|
-          expect(described_class).to have_received(:stamp).with(desired_stamp, path)
-        end
-      end
-    end
-
     context 'when in production environment' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(true)
         allow(Settings).to receive(:vsp_environment).and_return('production')
         allow(described_class).to receive(:stamp).and_return(true)
         allow(Rails.logger).to receive(:info)
@@ -454,77 +425,56 @@ describe IvcChampva::PdfStamper do
     end
 
     before do
+      FileUtils.mkdir_p(File.dirname(pdf_path))
+      Prawn::Document.generate(pdf_path) {}
       allow(Common::FileHelpers).to receive(:random_file_path).and_return(stamp_path)
       allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_call_original
     end
 
-    context 'when champva_stamp_text_wrapping flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamp_text_wrapping).and_return(false)
-        allow(described_class).to receive(:stamp)
-      end
-
-      it 'calls stamp for each metadata item' do
-        described_class.stamp_metadata_items(pdf_path, metadata)
-
-        expect(described_class).to have_received(:stamp).exactly(3).times
-      end
-
-      it 'returns all keys as stamped with empty remaining' do
-        stamped, remaining = described_class.stamp_metadata_items(pdf_path, metadata)
-
-        expect(stamped).to eq(%w[provider_name provider_phone additional_comments])
-        expect(remaining).to eq({})
-      end
+    after do
+      FileUtils.rm_f(pdf_path)
+      FileUtils.rm_f(stamp_path)
     end
 
-    context 'when champva_stamp_text_wrapping flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamp_text_wrapping).and_return(true)
-        allow(described_class).to receive(:verify).and_return(true)
-        allow(described_class).to receive(:perform_multistamp)
-      end
+    it 'stamps all short metadata items successfully' do
+      stamped, remaining = described_class.stamp_metadata_items(pdf_path, metadata)
 
-      it 'stamps all short metadata items successfully' do
-        stamped, remaining = described_class.stamp_metadata_items(pdf_path, metadata)
+      expect(stamped).to eq(%w[provider_name provider_phone additional_comments])
+      expect(remaining).to eq({})
+    end
 
-        expect(stamped).to eq(%w[provider_name provider_phone additional_comments])
-        expect(remaining).to eq({})
-      end
+    it 'handles long additional_comments with text wrapping' do
+      long_metadata = metadata.merge('additional_comments' => 'A' * 300)
 
-      it 'handles long additional_comments with text wrapping' do
-        long_metadata = metadata.merge('additional_comments' => 'A' * 300)
+      stamped, remaining = described_class.stamp_metadata_items(pdf_path, long_metadata)
 
-        stamped, remaining = described_class.stamp_metadata_items(pdf_path, long_metadata)
+      expect(stamped).to include('additional_comments')
+      expect(remaining).to be_empty
+    end
 
-        expect(stamped).to include('additional_comments')
-        expect(remaining).to be_empty
-      end
+    it 'respects the bottom margin and returns remaining items' do
+      many_items = (1..50).each_with_object({}) { |i, h| h["field_#{i}"] = 'x' * 100 }
 
-      it 'respects the bottom margin and returns remaining items' do
-        many_items = (1..50).each_with_object({}) { |i, h| h["field_#{i}"] = 'x' * 100 }
+      stamped, remaining = described_class.stamp_metadata_items(pdf_path, many_items)
 
-        stamped, remaining = described_class.stamp_metadata_items(pdf_path, many_items)
+      expect(stamped.length).to be < 50
+      expect(remaining).not_to be_empty
+    end
 
-        expect(stamped.length).to be < 50
-        expect(remaining).not_to be_empty
-      end
+    it 'cleans up the temp file' do
+      described_class.stamp_metadata_items(pdf_path, metadata)
 
-      it 'cleans up the temp file' do
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
+    end
+
+    it 'cleans up the temp file even when an error occurs during Prawn generation' do
+      allow(Prawn::Document).to receive(:generate).and_raise(StandardError, 'prawn error')
+
+      expect do
         described_class.stamp_metadata_items(pdf_path, metadata)
+      end.to raise_error(StandardError, 'prawn error')
 
-        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
-      end
-
-      it 'cleans up the temp file even when an error occurs during Prawn generation' do
-        allow(Prawn::Document).to receive(:generate).and_raise(StandardError, 'prawn error')
-
-        expect do
-          described_class.stamp_metadata_items(pdf_path, metadata)
-        end.to raise_error(StandardError, 'prawn error')
-
-        expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
-      end
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(stamp_path)
     end
   end
 end

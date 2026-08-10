@@ -3,10 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe StampableLogging do
-  before do
-    allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(true)
-  end
-
   describe 'VHA1010d logging' do
     let(:fixture_path) { Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json') }
     let(:fixture_data) { JSON.parse(fixture_path.read) }
@@ -68,23 +64,6 @@ RSpec.describe StampableLogging do
         )
 
         form_with_missing_applicant_country.desired_stamps
-      end
-    end
-
-    context 'when logging is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(false)
-      end
-
-      let(:data_without_veteran_country) do
-        fixture_data.merge('veteran' => fixture_data['veteran'].merge('address' => {}))
-      end
-      let(:form_without_veteran_country) { IvcChampva::VHA1010d.new(data_without_veteran_country) }
-
-      it 'does not log when feature flag is disabled' do
-        expect(Rails.logger).not_to receive(:info)
-
-        form_without_veteran_country.desired_stamps
       end
     end
   end
@@ -280,23 +259,6 @@ RSpec.describe StampableLogging do
   describe 'Feature flag control' do
     let(:fixture_path) { Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', 'vha_10_10d.json') }
     let(:fixture_data) { JSON.parse(fixture_path.read) }
-
-    context 'when logging is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_stamper_logging).and_return(false)
-      end
-
-      let(:data_without_veteran_country) do
-        fixture_data.merge('veteran' => fixture_data['veteran'].merge('address' => {}))
-      end
-      let(:form_without_veteran_country) { IvcChampva::VHA1010d.new(data_without_veteran_country) }
-
-      it 'does not log when feature flag is disabled' do
-        expect(Rails.logger).not_to receive(:info)
-
-        form_without_veteran_country.desired_stamps
-      end
-    end
   end
 
   describe 'Concern methods' do

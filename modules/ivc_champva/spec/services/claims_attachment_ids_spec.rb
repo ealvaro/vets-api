@@ -23,7 +23,6 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     context 'when DTA applies' do
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
       end
 
       it 'overrides PDI resubmission logic with DTA attachment IDs' do
@@ -59,7 +58,6 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     context 'when DTA does not apply (has_claim_docs is true)' do
       before do
         allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
       end
 
       it 'uses PDI resubmission logic when PDI number selected' do
@@ -89,29 +87,6 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
         result = control_form.build_attachment_ids('vha_10_7959a', control_data, 1)
 
         expect(result).to eq(['CVA Reopen', 'Medical Records', 'EOB'])
-      end
-    end
-
-    context 'when feature flag is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(false)
-      end
-
-      it 'uses default behavior' do
-        resubmission_data = base_form_data.merge(
-          'claim_status' => 'resubmission',
-          'pdi_or_claim_number' => 'Control number',
-          'has_claim_docs' => true
-        )
-
-        record = double('Record', created_at: Time.zone.now, file: double(id: 'file1'))
-        allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).and_return(record)
-
-        resubmission_form = IvcChampva::VHA107959a.new(resubmission_data)
-        result = resubmission_form.build_attachment_ids('vha_10_7959a', resubmission_data, 1)
-
-        expect(result).to eq(['vha_10_7959a', 'Medical Records', 'EOB'])
       end
     end
   end
@@ -190,7 +165,6 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
 
     before do
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:champva_resubmission_attachment_ids).and_return(true)
     end
 
     it 'uses the same DTA logic as VHA107959a' do

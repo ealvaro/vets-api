@@ -503,7 +503,7 @@ module IvcChampva
 
           if allowed_form_ids.include?(form_id)
             attachment = PersistentAttachments::MilitaryRecords.new(form_id:)
-            attachment.heif_enabled = Flipper.enabled?(:champva_heif_attachments_enabled, @current_user)
+            attachment.heif_enabled = true
 
             Rails.logger.info "submit_supporting_documents called for form #{form_id}"
 
@@ -531,9 +531,7 @@ module IvcChampva
             end
 
             # Convert to PDF before save to reduce final submission latency
-            if Flipper.enabled?(:champva_convert_to_pdf_on_upload, @current_user)
-              attachment.file = convert_to_pdf(attachment.file)
-            end
+            attachment.file = convert_to_pdf(attachment.file)
 
             Datadog::Tracing.trace('IVC Champva Forms - Save Attachment') do
               attachment.save
@@ -1546,9 +1544,7 @@ module IvcChampva
         form.track_user_identity
         form.track_current_user_loa(@current_user)
         form.track_email_usage
-        if Flipper.enabled?(:champva_update_datadog_tracking, @current_user) && form.respond_to?(:track_submission)
-          form.track_submission(@current_user)
-        end
+        form.track_submission(@current_user) if form.respond_to?(:track_submission)
       end
 
       def get_form_id
