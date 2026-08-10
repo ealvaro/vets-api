@@ -2,6 +2,7 @@
 
 require './modules/decision_reviews/spec/dr_spec_helper'
 require './modules/decision_reviews/spec/support/vcr_helper'
+require 'decision_reviews/util/response_comparison'
 require 'decision_reviews/v1/appealable_issues/service'
 require 'decision_reviews/v1/appealable_issues/configuration'
 
@@ -54,6 +55,9 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements::ContestableIssues', 
     }
   end
 
+  let(:comparison_message) { 'Appealable issues comparison' }
+  let(:comparison_statsd_key) { 'api.decision_reviews.appealable_issues_comparison' }
+
   before { sign_in_as(user) }
 
   describe '#index' do
@@ -74,6 +78,17 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements::ContestableIssues', 
       before do
         allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service,
                                                   instance_of(User)).and_return(false)
+      end
+
+      it 'does not call the appealable issues service and does not log a comparison' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          expect_any_instance_of(DecisionReviews::V1::AppealableIssues::Service)
+            .not_to receive(:get_notice_of_disagreement_issues)
+          allow(Rails.logger).to receive(:info)
+          expect(Rails.logger).not_to receive(:info).with(hash_including(message: comparison_message))
+          subject
+          expect(response).to be_successful
+        end
       end
 
       it 'fetches issues that the Veteran could contest via a notice of disagreement' do
@@ -101,6 +116,47 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements::ContestableIssues', 
     end
 
     context 'with feature flag enabled' do
+      # These expectations describe the cassettes, not the APIs: the two schemas define the same
+      # attributes, but the NOD fixtures were hand-written from different data and disagree on both
+      # the issue count and which attributes are filled in.
+      let(:cassette_comparison_log_args) do
+        {
+          message: 'Appealable issues comparison',
+          form_id: '10182',
+          result: 'mismatch',
+          comparison: {
+            decision_review_issue_count: 3,
+            appealable_issues_issue_count: 2,
+            differing_attribute_names: %w[isRating rampClaimId ratingIssueDiagnosticCode ratingIssueProfileDate
+                                          ratingIssueReferenceId sourceReviewType timely titleOfActiveReview],
+            ordering_differs: false
+          }
+        }
+      end
+      let(:no_issues_comparison_log_args) do
+        {
+          message: 'Appealable issues comparison',
+          form_id: '10182',
+          result: 'match',
+          comparison: {
+            decision_review_issue_count: 0,
+            appealable_issues_issue_count: 0,
+            differing_attribute_names: [],
+            ordering_differs: false
+          }
+        }
+      end
+      let(:error_comparison_log_args) do
+        {
+          message: 'Appealable issues comparison failed',
+          form_id: '10182',
+          result: 'error',
+          error_class: anything
+        }
+      end
+      # Two empty responses trivially match, so the appealable issues response is the one rendered.
+      let(:empty_issues_body) { { 'data' => [] } }
+
       before do
         allow(Flipper).to receive(:enabled?).with(:decision_review_use_new_appealable_issues_service,
                                                   instance_of(User)).and_return(true)
@@ -109,26 +165,115 @@ RSpec.describe 'DecisionReviews::V1::NoticeOfDisagreements::ContestableIssues', 
           .to receive(:access_token).and_return('fake-token-12345')
       end
 
-      it 'uses appealable issues service and returns issues successfully' do
-        VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
-          allow(Rails.logger).to receive(:info)
-          expect(Rails.logger).to receive(:info).with(appealable_issues_service_success_log_args)
-          subject
-          expect(response).to be_successful
-          expect(JSON.parse(response.body)['data']).to be_an Array
+      it 'calls both services and logs the comparison' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
+            allow(Rails.logger).to receive(:info)
+            expect(Rails.logger).to receive(:info).with(success_log_args)
+            expect(Rails.logger).to receive(:info).with(appealable_issues_service_success_log_args)
+            expect(Rails.logger).to receive(:info).with(cassette_comparison_log_args)
+            subject
+            expect(response).to be_successful
+          end
         end
       end
 
-      it 'logs errors to PersonalInformationLog when an exception is thrown' do
-        VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-404') do
-          # Override ICN to simulate veteran not found scenario
-          allow_any_instance_of(User).to receive(:icn).and_return('0000000000V000000')
+      it 'renders the decision review response when the two do not match' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
+            subject
+            expect(response).to be_successful
+            issues = JSON.parse(response.body)['data']
+            expect(issues.length).to be 3
+            expect(issues.map { |issue| issue['type'] }.uniq).to eq ['contestableIssue']
+          end
+        end
+      end
+
+      it 'increments a StatsD counter tagged by form type and result' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
+            expect { subject }.to trigger_statsd_increment(comparison_statsd_key,
+                                                           tags: ['form_id:10182', 'result:mismatch'])
+          end
+        end
+      end
+
+      it 'logs a match and renders the appealable issues response when neither API returns issues' do
+        allow_any_instance_of(DecisionReviews::V1::Service)
+          .to receive(:get_notice_of_disagreement_contestable_issues).and_return(double(body: empty_issues_body))
+        allow_any_instance_of(DecisionReviews::V1::AppealableIssues::Service)
+          .to receive(:get_notice_of_disagreement_issues).and_return(double(body: empty_issues_body))
+
+        allow(Rails.logger).to receive(:info)
+        expect(Rails.logger).to receive(:info).with(no_issues_comparison_log_args)
+        expect { subject }.to trigger_statsd_increment(comparison_statsd_key,
+                                                       tags: ['form_id:10182', 'result:match'])
+        expect(response).to be_successful
+        expect(JSON.parse(response.body)['data']).to eq []
+      end
+
+      it 'renders the decision review response when the appealable issues service fails' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-404') do
+            # Override ICN to simulate veteran not found scenario in the new API only; the existing
+            # API identifies the Veteran by a header, so its cassette still matches.
+            allow_any_instance_of(User).to receive(:icn).and_return('0000000000V000000')
+            allow(Rails.logger).to receive(:error)
+            expect(Rails.logger).to receive(:error).with(error_comparison_log_args)
+            subject
+            expect(response).to be_successful
+            expect(JSON.parse(response.body)['data'].length).to be 3
+            expect(personal_information_logs.count).to be 0
+          end
+        end
+      end
+
+      it 'renders the decision review response when the comparison itself fails' do
+        allow(DecisionReviews::Util::ResponseComparison)
+          .to receive(:new).and_raise(StandardError, 'comparison exploded')
+
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
+            allow(Rails.logger).to receive(:error)
+            expect(Rails.logger).to receive(:error).with(error_comparison_log_args)
+            subject
+            expect(response).to be_successful
+            expect(JSON.parse(response.body)['data'].length).to be 3
+          end
+        end
+      end
+
+      it 'still adds to the PersonalInformationLog and raises when the decision review service fails' do
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-404_V1') do
           expect(personal_information_logs.count).to be 0
           subject
+          expect(response).not_to be_successful
           expect(personal_information_logs.count).to be 1
-          pil = personal_information_logs.first
-          expect(pil.data['user']).to be_truthy
-          expect(pil.data['error']).to be_truthy
+        end
+      end
+
+      it 'does not log the user uuid or any value from either response body' do
+        logged = []
+        allow(Rails.logger).to receive(:info) { |payload| logged << payload.to_s }
+        allow(Rails.logger).to receive(:error) { |payload| logged << payload.to_s }
+
+        VCR.use_cassette('decision_review/NOD-GET-CONTESTABLE-ISSUES-RESPONSE-200_V1') do
+          VCR.use_cassette('decision_review/appealable_issues/NOD-GET-APPEALABLE-ISSUES-RESPONSE-200') do
+            subject
+            comparison_logs = logged.select { |entry| entry.include?(comparison_message) }
+            expect(comparison_logs).not_to be_empty
+            comparison_logs.each { |entry| expect(entry).not_to include user.uuid }
+            JSON.parse(response.body)['data'].each do |issue|
+              issue['attributes'].each_value do |value|
+                # Booleans and short numeric strings collide with the counts and booleans the
+                # comparison log legitimately contains.
+                next unless value.is_a?(String) && value.length >= 4
+
+                comparison_logs.each { |entry| expect(entry).not_to include value }
+              end
+            end
+          end
         end
       end
     end

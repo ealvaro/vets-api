@@ -44,13 +44,21 @@ module DecisionReviews
         end
 
         def get_appealable_issues
-          if use_new_appealable_issues_service?
-            appealable_issues_service
-              .get_higher_level_review_issues(user: current_user, benefit_type: params[:benefit_type])
-          else
-            decision_review_service
-              .get_higher_level_review_contestable_issues(user: current_user, benefit_type: params[:benefit_type])
-          end
+          appealable_issues_with_comparison(
+            form_id: '996',
+            decision_review: method(:fetch_from_decision_review_service),
+            appealable_issues: method(:fetch_from_appealable_issues_service)
+          )
+        end
+
+        def fetch_from_decision_review_service
+          decision_review_service.get_higher_level_review_contestable_issues(user: current_user,
+                                                                             benefit_type: params[:benefit_type])
+        end
+
+        def fetch_from_appealable_issues_service
+          appealable_issues_service.get_higher_level_review_issues(user: current_user,
+                                                                   benefit_type: params[:benefit_type])
         end
       end
     end
