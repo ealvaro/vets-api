@@ -21,7 +21,7 @@ module SignIn
         OAuth::Constants::ENTRA_IAL2
       end
 
-      def auth_params(_acr, state, _operation)
+      def auth_params(_acr, state, _operation, **)
         base_auth_params(state).merge(
           scope: config.scope,
           prompt: config.prompt
