@@ -11,6 +11,10 @@ RSpec.describe EducationForm::Forms::VA0989 do
     expect(subject.header_form_type).to eq('V0989')
   end
 
+  it 'hardcodes the benefit type for the spool header' do
+    expect(subject.benefit_type).to eq('33')
+  end
+
   it 'uses applicant name and identifier for the spool header' do
     expect(subject.applicant_name.first).to eq('John')
     expect(subject.applicant_ssn).to eq('123456789')
