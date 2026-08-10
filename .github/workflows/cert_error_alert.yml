@@ -1,0 +1,127 @@
+name: Certificate Error Alert
+
+# Scans failed "Build, Push, & Deploy" logs for cert install/verify failures and
+# notifies #platform-cop-be-ci-pipeline-failures. See .github/scripts/cert-error-alert/.
+# Tracks software/va.gov-team#147416.
+
+on:
+  workflow_run:
+    workflows: ["Build, Push, & Deploy"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Build/Push/Deploy run ID to scan (required for workflow_dispatch dry-runs)'
+        required: false
+        default: ''
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+env:
+  # #platform-cop-be-ci-pipeline-failures
+  SLACK_CHANNEL_ID: 'C0APA867M0V'
+
+jobs:
+  detect:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    outputs:
+      errors_found: ${{ steps.evaluate.outputs.errors_found }}
+      summary: ${{ steps.evaluate.outputs.summary }}
+      blocks: ${{ steps.evaluate.outputs.blocks }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Resolve target run
+        id: target
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            run_id="${{ github.event.workflow_run.id }}"
+            run_url="${{ github.event.workflow_run.html_url }}"
+          elif [ -n "${{ github.event.inputs.run_id }}" ]; then
+            run_id="${{ github.event.inputs.run_id }}"
+            run_url="https://va.ghe.com/${{ github.repository }}/actions/runs/${run_id}"
+          else
+            echo "::error::workflow_dispatch requires a run_id input when dry-running against a prior build"
+            exit 1
+          fi
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+          echo "run_url=${run_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Download failed workflow logs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ steps.target.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ci-logs
+          # gh run download only pulls artifacts; the REST logs endpoint returns the job log zip.
+          gh api \
+            --hostname va.ghe.com \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/actions/runs/${RUN_ID}/logs" > /tmp/ci-logs.zip
+          unzip -qo /tmp/ci-logs.zip -d /tmp/ci-logs
+          find /tmp/ci-logs -type f -name '*.txt' -print0 | sort -z | xargs -0 cat > /tmp/ci-logs/combined.log
+          echo "Combined log size: $(wc -c < /tmp/ci-logs/combined.log) bytes"
+
+      - name: Evaluate logs for certificate failures
+        id: evaluate
+        env:
+          CI_LOG_FILE: /tmp/ci-logs/combined.log
+          WORKFLOW_RUN_URL: ${{ steps.target.outputs.run_url }}
+        run: |
+          set -euo pipefail
+          ruby .github/scripts/cert-error-alert/cert_error_alert.rb
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [detect]
+    if: ${{ needs.detect.outputs.errors_found == 'true' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - name: Generate cross-repo token for actions
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Checkout VSP actions
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: software/vsp-github-actions
+          ref: refs/heads/main
+          token: ${{ steps.vsp-bot-app-token.outputs.token }}
+          persist-credentials: false
+          path: ./.github/actions/vsp-github-actions
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/github_actions_slack_socket_token
+          env_variable_name: SLACK_APP_TOKEN
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /devops/github_actions_slack_bot_user_token
+          env_variable_name: SLACK_BOT_TOKEN
+
+      - name: Notify platform-cop-be-ci-pipeline-failures in Slack
+        uses: ./.github/actions/vsp-github-actions/slack-socket
+        with:
+          slack_app_token: ${{ env.SLACK_APP_TOKEN }}
+          slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
+          message: 'Vets API CI certificate failure'
+          blocks: ${{ needs.detect.outputs.blocks }}
+          channel_id: ${{ env.SLACK_CHANNEL_ID }}
