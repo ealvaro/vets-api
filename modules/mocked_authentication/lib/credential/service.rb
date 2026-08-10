@@ -8,7 +8,7 @@ module MockedAuthentication
     class Service
       attr_accessor :type
 
-      def render_auth(state:, acr:, operation: SignIn::Constants::Auth::AUTHORIZE)
+      def render_auth(state:, acr:, operation: SignIn::Constants::Auth::AUTHORIZE, **)
         redirect_uri_with_params(state, acr, operation)
       end
 

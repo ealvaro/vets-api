@@ -15,7 +15,7 @@ module SignIn
         OAuth::Constants::CLEAR_IAL2
       end
 
-      def auth_params(_acr, state, _operation)
+      def auth_params(_acr, state, _operation, **)
         base_auth_params(state).merge(
           scope: config.scope,
           code_challenge: generate_code_challenge(state),

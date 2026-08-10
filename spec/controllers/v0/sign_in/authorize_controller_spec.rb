@@ -449,15 +449,24 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
         end
 
         context 'and prompt param is given' do
-          let(:authorize_params) { super().merge(prompt: SignIn::Constants::Auth::PROMPT_LOGIN) }
           let(:acr_value) { 'ial1' }
           let(:code_challenge_method) { { code_challenge_method: 'S256' } }
           let(:code_challenge) { { code_challenge: Base64.urlsafe_encode64('some-safe-code-challenge') } }
 
-          it 'ignores the prompt and does not forward it to the credential provider' do
-            expect(subject).to have_http_status(:ok)
-            expect(subject.body).to include('prompt=select_account')
-            expect(subject.body).not_to include('prompt=login')
+          context 'and prompt is login' do
+            let(:authorize_params) { super().merge(prompt: SignIn::Constants::Auth::PROMPT_LOGIN) }
+
+            it 'forwards the prompt to the logingov service' do
+              expect(subject).to have_http_status(:ok)
+              expect(subject.body).to include('prompt=login')
+            end
+          end
+
+          context 'and prompt is not a valid value' do
+            let(:authorize_params) { super().merge(prompt: 'some-prompt-value') }
+            let(:expected_error) { 'Prompt is not valid' }
+
+            it_behaves_like 'error response'
           end
         end
       end

@@ -22,8 +22,8 @@ module SignIn
         super()
       end
 
-      def render_auth(state: SecureRandom.hex, acr: { acr: default_acr }, operation: Constants::AUTHORIZE)
-        params_hash = auth_params(acr, state, operation)
+      def render_auth(state: SecureRandom.hex, acr: { acr: default_acr }, operation: Constants::AUTHORIZE, prompt: nil)
+        params_hash = auth_params(acr, state, operation, prompt:)
         log_rendering_auth(state:, acr:, operation:, params_hash:)
 
         "#{config.auth_url}?#{params_hash.to_query}"

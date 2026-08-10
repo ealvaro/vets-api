@@ -140,6 +140,37 @@ describe SignIn::Logingov::Service do
         end
       end
     end
+
+    context 'when a prompt is not provided' do
+      let(:optional_scopes) { [] }
+
+      it 'uses the configured default prompt' do
+        expect(response).to include('prompt=select_account')
+      end
+    end
+
+    context 'when a prompt is provided' do
+      subject { described_class.new(optional_scopes:) }
+
+      let(:response) { subject.render_auth(state:, acr: acr_param, operation:, prompt:).to_s }
+      let(:optional_scopes) { [] }
+
+      context 'and the prompt is login' do
+        let(:prompt) { SignIn::Constants::Auth::PROMPT_LOGIN }
+
+        it 'forwards the prompt in the auth url' do
+          expect(response).to include('prompt=login')
+        end
+      end
+
+      context 'and the prompt is blank' do
+        let(:prompt) { nil }
+
+        it 'falls back to the configured default prompt' do
+          expect(response).to include('prompt=select_account')
+        end
+      end
+    end
   end
 
   describe '#render_logout' do

@@ -163,26 +163,13 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         end
       end
 
-      context 'when stashing the request params fails validation' do
+      context 'when the client_id is blank' do
         let(:client_id_param) { '' }
-        let(:expected_error_message) { "Invalid params: Client can't be blank" }
+        let(:expected_error_message) { 'Invalid params: client_id' }
 
-        before do
-          request.cookies.clear
-          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
-        end
+        before { request.cookies.clear }
 
-        it_behaves_like 'an error response' do
-          let(:expected_log_payload) do
-            {
-              errors: expected_error_message,
-              error_code:,
-              client_id: client_id_param.to_s,
-              app_name:,
-              authorize_sso_id:
-            }
-          end
-        end
+        it_behaves_like 'an error response'
 
         it 'does not persist a container' do
           subject
@@ -192,7 +179,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
       context 'when an expired authorize_sso_id is replayed with a failed access token' do
         let(:authorize_sso_params) { { authorize_sso_id: } }
-        let(:expected_error_message) { "Invalid params: Client can't be blank" }
+        let(:expected_error_message) { 'Invalid params: client_id' }
 
         before do
           request.cookies.clear
@@ -266,6 +253,24 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         let(:expected_error_message) { 'Invalid params: client_id' }
 
         it_behaves_like 'an error response'
+      end
+
+      context 'and client_id does not map to a client config' do
+        let(:client_id_param) { 'some-unknown-client-id' }
+        let(:expected_error_message) { 'Invalid params: client_id' }
+
+        it_behaves_like 'an error response'
+
+        it 'renders the error page instead of redirecting to USIP' do
+          expect(subject).to have_http_status(:ok)
+          expect(subject.body).to include('/v0/sign_in/error')
+          expect(subject).not_to redirect_to(/sign-in/)
+        end
+
+        it 'does not invoke the session validator' do
+          expect(SignIn::AuthSSO::SessionValidator).not_to receive(:new)
+          subject
+        end
       end
 
       context 'and the client is configured for pkce authentication' do

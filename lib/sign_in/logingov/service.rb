@@ -84,11 +84,11 @@ module SignIn
         { access_token:, logingov_acr: }
       end
 
-      def auth_params(acr, state, _operation)
+      def auth_params(acr, state, _operation, prompt: nil)
         base_auth_params(state).merge(
           acr_values: acr[:acr],
           nonce: random_seed,
-          prompt: config.prompt,
+          prompt: prompt.presence || config.prompt,
           scope: (DEFAULT_SCOPES + optional_scopes).join(' ')
         )
       end

@@ -92,7 +92,7 @@ module SignIn
         client_error.body && client_error.body[:error_description]
       end
 
-      def auth_params(acr, state, operation)
+      def auth_params(acr, state, operation, **)
         override = override_acr_values?(acr[:acr], acr[:acr_values])
         scoped_acr = append_optional_scopes(acr[:acr], override)
         acr_values = override ? nil : acr[:acr_values]

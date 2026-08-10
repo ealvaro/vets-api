@@ -4,12 +4,10 @@ module V0
   module SignIn
     class AuthorizeSSOController < ApplicationController
       skip_before_action :authenticate, only: :authorize_sso
-      before_action :validate_prompt_param, only: :authorize_sso
+      before_action :validate_authorize_sso_params, only: :authorize_sso
       before_action :authenticate_authorize_sso, only: :authorize_sso
 
       def authorize_sso
-        validate_authorize_sso_params!
-
         return redirect_to_usip_for_prompt_login if prompt_login?
 
         redirect_url = authorize_sso_redirect_url(authorize_sso_user_code_map)
@@ -85,9 +83,16 @@ module V0
         nil
       end
 
+      def validate_authorize_sso_params
+        validate_authorize_sso_params!
+      rescue ::SignIn::Errors::MalformedParamsError => e
+        handle_authorize_sso_error(e, :error)
+      end
+
       def validate_authorize_sso_params!
         errors = [].tap do |err|
-          err << 'client_id' if client_id.blank?
+          err << 'client_id' if client_id.blank? || client_config(client_id).blank?
+          err << 'prompt' unless valid_prompt?
           if pkce_client?
             err << 'code_challenge' if authorize_sso_params[:code_challenge].blank?
 
@@ -104,12 +109,9 @@ module V0
         client_config(authorize_sso_params[:client_id])&.auth_method_pkce?
       end
 
-      def validate_prompt_param
+      def valid_prompt?
         prompt = authorize_sso_params[:prompt]
-        return if prompt.blank? || ::SignIn::Constants::Auth::PROMPT_TYPES.include?(prompt)
-
-        error = ::SignIn::Errors::MalformedParamsError.new(message: 'Invalid params: prompt')
-        handle_authorize_sso_error(error, :error)
+        prompt.blank? || ::SignIn::Constants::Auth::PROMPT_TYPES.include?(prompt)
       end
 
       def prompt_login?

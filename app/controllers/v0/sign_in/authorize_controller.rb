@@ -17,10 +17,12 @@ module V0
         nonce = params[:nonce].presence
         authorize_sso_id = params[:authorize_sso_id].presence
         app_name = params[:app_name].presence
+        prompt = params[:prompt].presence
         context = { type:, client_id:, acr:, operation:, authorize_sso_id: }.compact
         context[:app_name] = app_name if app_name
+        context[:prompt] = prompt if prompt
 
-        validate_authorize_params(type, client_id, acr, operation)
+        validate_authorize_params(type, client_id, acr, operation, prompt)
 
         delete_cookies if token_cookies
 
@@ -41,7 +43,7 @@ module V0
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_AUTHORIZE_SUCCESS,
                          tags: ["type:#{type}", "client_id:#{client_id}", "acr:#{acr}", "operation:#{operation}"])
 
-        auth_url = auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:)
+        auth_url = auth_service(type, client_id).render_auth(state:, acr: acr_for_type, operation:, prompt:)
         render body: ::SignIn::RedirectUrlGenerator.new(redirect_uri: auth_url).perform,
                content_type: 'text/html'
       rescue => e
@@ -54,7 +56,7 @@ module V0
 
       private
 
-      def validate_authorize_params(type, client_id, acr, operation)
+      def validate_authorize_params(type, client_id, acr, operation, prompt)
         if client_config(client_id).blank?
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Client id is not valid'
         end
@@ -69,6 +71,9 @@ module V0
         end
         unless client_config(client_id).valid_service_level?(acr)
           raise ::SignIn::Errors::MalformedParamsError.new message: 'ACR is not valid'
+        end
+        if prompt.present? && ::SignIn::Constants::Auth::PROMPT_TYPES.exclude?(prompt)
+          raise ::SignIn::Errors::MalformedParamsError.new message: 'Prompt is not valid'
         end
       end
     end
