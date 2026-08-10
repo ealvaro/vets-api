@@ -243,7 +243,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'forms',
                                             'intent_to_file', 'active.json').read)
 
-          let(:scopes) { %w[claim.write] }
+          let(:scopes) { %w[claim.write claim.read] }
           let(:type) { 'compensation' }
 
           before do |example|
@@ -278,7 +278,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'errors',
                                             'default.json').read)
 
-          let(:scopes) { %w[claim.write] }
+          let(:scopes) { %w[claim.read] }
           let(:type) { 'compensation' }
           let(:Authorization) { nil }
 
@@ -313,7 +313,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'errors',
                                             'default.json').read)
 
-          let(:scopes) { %w[claim.write] }
+          let(:scopes) { %w[claim.read] }
           let(:type) { 'compensation' }
 
           before do |example|
@@ -348,7 +348,7 @@ Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/c
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'errors',
                                             'default.json').read)
 
-          let(:scopes) { %w[claim.write] }
+          let(:scopes) { %w[claim.read] }
           let(:type) { 'HelloWorld' }
 
           before do |example|

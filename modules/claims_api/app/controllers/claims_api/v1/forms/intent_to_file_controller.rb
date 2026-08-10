@@ -8,8 +8,11 @@ module ClaimsApi
       class IntentToFileController < ClaimsApi::V1::Forms::Base
         include ClaimsApi::PoaVerification
 
-        before_action except: %i[schema] do
+        before_action only: %i[submit_form_0966 validate] do
           permit_scopes %w[claim.write]
+        end
+        before_action only: :active do
+          permit_scopes %w[claim.read claim.write]
         end
         before_action :verify_power_of_attorney!, if: :header_request?
         skip_before_action :validate_veteran_identifiers, only: %i[submit_form_0966 validate]

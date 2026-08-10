@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-def mock_acg(_scopes)
-  VCR.use_cassette('claims_api/token_validation/v3/indicates_token_is_valid_sandbox') do
+def mock_acg(scopes = nil)
+  VCR.use_cassette('claims_api/token_validation/v3/indicates_token_is_valid_sandbox',
+                   erb: { scopes: }) do
     VCR.use_cassette('claims_api/token_validation/v3/userinfo_sandbox') do
       profile = build(:mpi_profile, given_names: %w[abraham], family_name: 'lincoln', ssn: '796111863', suffix: 'IV')
       profile_response = build(:find_profile_response, profile:)

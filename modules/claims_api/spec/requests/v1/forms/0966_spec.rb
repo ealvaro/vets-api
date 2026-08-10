@@ -14,7 +14,9 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
       'X-VA-Birth-Date': '1986-05-06T00:00:00+00:00',
       'X-VA-Gender': 'M' }
   end
-  let(:scopes) { %w[claim.write] }
+  let(:scopes) { %w[claim.write claim.read] }
+  let(:invalid_post_scopes) { %w[claim.read] }
+  let(:invalid_get_scopes) { %w[claim.other] }
   let(:path) { '/services/claims/v1/forms/0966' }
   let(:data) { { data: { attributes: { type: 'compensation' } } } }
   let(:extra) do
@@ -46,6 +48,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
             expect(response).to have_http_status(:ok)
             expect(JSON.parse(response.body)['data']['attributes']['status']).to eq('duplicate')
           end
+        end
+      end
+
+      it 'returns a 401 when the token scopes do not permit writing an intent to file' do
+        mock_acg(invalid_post_scopes) do |auth_header|
+          post path, params: data.to_json, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:unauthorized)
         end
       end
 
@@ -307,6 +316,13 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
           expect(response).to have_http_status(:ok)
           expect(JSON.parse(response.body)['data']['attributes']['status']).to eq('active')
         end
+      end
+    end
+
+    it 'returns a 401 when the token scopes do not permit reading the active intent to file' do
+      mock_acg(invalid_get_scopes) do |auth_header|
+        get "#{path}/active", params: { type: 'compensation' }, headers: headers.merge(auth_header)
+        expect(response).to have_http_status(:unauthorized)
       end
     end
 
