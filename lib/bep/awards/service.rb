@@ -19,27 +19,27 @@ module BEP
       # Retrieves pension awards information for the current user
       # @return [Faraday::Response] the HTTP response containing pension award data
       def get_awards_pension(participant_id)
-        with_monitoring do
-          perform(
-            :get,
-            "#{config.base_path}pension/#{participant_id}",
-            nil,
-            request_headers
-          )
-        end
+        perform_with_monitoring(
+          method: :get,
+          path: "#{config.base_path}pension/#{participant_id}",
+          headers: request_headers
+        )
       end
 
       # This method will retrieve a list of current award events for the user
       # Mock response is defined in: spec/lib/bep/awards/support/current_awards_response.rb (RSpec shared context)
       def get_current_awards(participant_id)
-        with_monitoring do
-          perform(
-            :get,
-            "#{config.base_path}current/#{participant_id}/beneficiaryId/#{participant_id}?awardTC=CPL",
-            nil,
-            request_headers
-          )
-        end
+        perform_with_monitoring(
+          method: :get,
+          path: "#{config.base_path}current/#{participant_id}/beneficiaryId/#{participant_id}?awardTC=CPL",
+          headers: request_headers
+        )
+      end
+
+      protected
+
+      def monitor
+        @monitor ||= Monitor.new('bep-awards-api', metric_prefix: 'api.bep.awards')
       end
 
       private

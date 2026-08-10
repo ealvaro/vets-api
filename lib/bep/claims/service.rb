@@ -18,25 +18,29 @@ module BEP
       # Retrieves pension claims information for the current user
       # @return [Faraday::Response] the HTTP response containing pension award data
       def create_claim(params)
-        with_monitoring do
-          perform(
-            :post,
-            "#{config.base_path}claims",
-            params.to_json,
-            request_headers
-          )
-        end
+        perform_with_monitoring(
+          method: :post,
+          path: "#{config.base_path}claims",
+          params: params.to_json,
+          headers: request_headers,
+          endpoint_name: 'create_claim'
+        )
       end
 
       def create_contentions(claim_id, params)
-        with_monitoring do
-          perform(
-            :post,
-            "#{config.base_path}claims/#{claim_id}/contentions",
-            params.to_json,
-            request_headers
-          )
-        end
+        perform_with_monitoring(
+          method: :post,
+          path: "#{config.base_path}claims/#{claim_id}/contentions",
+          params: params.to_json,
+          headers: request_headers,
+          endpoint_name: 'create_contentions'
+        )
+      end
+
+      protected
+
+      def monitor
+        @monitor ||= Monitor.new('bep-claims-api', metric_prefix: 'api.bep.claims')
       end
 
       private

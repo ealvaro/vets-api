@@ -13,20 +13,21 @@ module BEP
     class Service < BEP::Service
       configuration BEP::Persons::Configuration
 
-      # StatsD key prefix for metrics tracking
-      STATSD_KEY_PREFIX = 'api.bep.persons'
-
       # Retrieves relationships information for current user
       # @return [Faraday::Response] the HTTP response containing relationships data
       def get_relationships(participant_id)
-        with_monitoring do
-          perform(
-            :get,
-            "#{config.base_path}relationships/#{participant_id}",
-            nil,
-            request_headers
-          )
-        end
+        perform_with_monitoring(
+          method: :get,
+          path: "#{config.base_path}relationships/#{participant_id}",
+          headers: request_headers,
+          endpoint_name: 'get_relationships'
+        )
+      end
+
+      protected
+
+      def monitor
+        @monitor ||= Monitor.new('bep-persons-api', metric_prefix: 'api.bep.persons')
       end
 
       private
