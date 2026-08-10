@@ -128,56 +128,24 @@ RSpec.describe Lighthouse::SubmitCareerCounselingJob do
       allow(monitor).to receive :track_submission_exhaustion
     end
 
-    context 'when va_notify_v2_edu_career_counseling_failure_email is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_career_counseling_failure_email).and_return(false)
-      end
-
-      it 'logs error when retries are exhausted' do
-        Lighthouse::SubmitCareerCounselingJob.within_sidekiq_retries_exhausted_block(
-          { 'args' => [claim.id, user_account_uuid] }
-        ) do
-          expect(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
-          exhaustion_msg['args'] = [claim.id, user_account_uuid]
-          expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim, 'foo@foo.com')
-          expect(VANotify::EmailJob).to receive(:perform_async).with(
-            'foo@foo.com',
-            'form27_8832_action_needed_email_template_id',
-            {
-              'first_name' => 'DERRICK',
-              'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-              'confirmation_number' => claim.confirmation_number
-            }
-          )
-        end
-      end
-    end
-
-    context 'when va_notify_v2_edu_career_counseling_failure_email is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_career_counseling_failure_email).and_return(true)
-        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-      end
-
-      it 'sends failure email via V2 QueueEmailJob' do
-        Lighthouse::SubmitCareerCounselingJob.within_sidekiq_retries_exhausted_block(
-          { 'args' => [claim.id, user_account_uuid] }
-        ) do
-          expect(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
-          exhaustion_msg['args'] = [claim.id, user_account_uuid]
-          expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim, 'foo@foo.com')
-          expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
-            'foo@foo.com',
-            'form27_8832_action_needed_email_template_id',
-            {
-              'first_name' => 'DERRICK',
-              'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-              'confirmation_number' => claim.confirmation_number
-            },
-            'Settings.vanotify.services.va_gov.api_key'
-          )
-          expect(VANotify::EmailJob).not_to receive(:perform_async)
-        end
+    it 'sends failure email via V2 QueueEmailJob' do
+      Lighthouse::SubmitCareerCounselingJob.within_sidekiq_retries_exhausted_block(
+        { 'args' => [claim.id, user_account_uuid] }
+      ) do
+        expect(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
+        exhaustion_msg['args'] = [claim.id, user_account_uuid]
+        expect(monitor).to receive(:track_submission_exhaustion).with(exhaustion_msg, claim, 'foo@foo.com')
+        expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
+          'foo@foo.com',
+          'form27_8832_action_needed_email_template_id',
+          {
+            'first_name' => 'DERRICK',
+            'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+            'confirmation_number' => claim.confirmation_number
+          },
+          'Settings.vanotify.services.va_gov.api_key'
+        )
+        expect(VANotify::EmailJob).not_to receive(:perform_async)
       end
     end
 

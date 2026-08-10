@@ -348,40 +348,15 @@ RSpec.describe BenefitsIntakeStatusJob, type: :job do
       let(:claim) { create(:education_career_counseling_claim) }
 
       context 'when claim and email are present' do
-        context 'when va_notify_v2_edu_career_counseling_failure_email is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_career_counseling_failure_email)
-                                                .and_return(false)
-          end
+        it 'sends failure email via V2 QueueEmailJob and logs silent failure no confirmation' do
+          expect(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+          expect(VANotify::V2::QueueEmailJob).not_to receive(:perform_async)
 
-          it 'sends failure email via V1 EmailJob and logs silent failure no confirmation' do
-            expect(VANotify::EmailJob).to receive(:perform_async)
+          monitor = instance_double(PCPG::Monitor)
+          allow(PCPG::Monitor).to receive(:new).and_return(monitor)
+          expect(monitor).to receive(:log_silent_failure_no_confirmation)
 
-            monitor = instance_double(PCPG::Monitor)
-            allow(PCPG::Monitor).to receive(:new).and_return(monitor)
-            expect(monitor).to receive(:log_silent_failure_no_confirmation)
-
-            BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, claim.id, benefits_intake_uuid)
-          end
-        end
-
-        context 'when va_notify_v2_edu_career_counseling_failure_email is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?).with(:va_notify_v2_edu_career_counseling_failure_email)
-                                                .and_return(true)
-            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-          end
-
-          it 'sends failure email via V2 QueueEmailJob and logs silent failure no confirmation' do
-            expect(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-            expect(VANotify::EmailJob).not_to receive(:perform_async)
-
-            monitor = instance_double(PCPG::Monitor)
-            allow(PCPG::Monitor).to receive(:new).and_return(monitor)
-            expect(monitor).to receive(:log_silent_failure_no_confirmation)
-
-            BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, claim.id, benefits_intake_uuid)
-          end
+          BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, claim.id, benefits_intake_uuid)
         end
       end
 
