@@ -828,7 +828,7 @@ GEM
     oj (3.17.3)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
-    okcomputer (1.19.1)
+    okcomputer (1.19.2)
       benchmark
     olive_branch (4.0.1)
       multi_json
