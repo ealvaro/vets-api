@@ -21,6 +21,14 @@ module VAProfile
         end
 
         CONTACT_INFO_CHANGE_TEMPLATE = Settings.vanotify.services.va_gov.template_id.contact_info_change
+        # statsd `service`/`function` tags attached to contact-info-change email sends so VA
+        # Notify delivery failures are attributed (instead of landing under service:none-provided)
+        # and each send path can be alerted on separately. The email-change old-address send is
+        # the account-takeover tripwire, so it carries its own function.
+        CONTACT_INFO_STATSD_SERVICE = 'profile-contact-info'
+        CONTACT_INFO_CHANGE_FUNCTION = 'contact_info_change'
+        EMAIL_CHANGE_OLD_ADDRESS_FUNCTION = 'contact_info_email_change_old_address'
+        EMAIL_CHANGE_NEW_ADDRESS_FUNCTION = 'contact_info_email_change_new_address'
         VA_PROFILE_ID_POSTFIX = '^PI^200VETS^USDVA'
         REDACTED_AAID = '[REDACTED_AAID]'
         EMAIL_PERSONALISATIONS = {
@@ -310,15 +318,7 @@ module VAProfile
             email = @user.va_profile_email
             return if email.blank?
 
-            if Flipper.enabled?(:va_notify_v2_contact_info_change)
-              enqueue_email_job(email, get_email_personalisation(personalisation))
-            else
-              VANotifyEmailJob.perform_async(
-                email,
-                CONTACT_INFO_CHANGE_TEMPLATE,
-                get_email_personalisation(personalisation)
-              )
-            end
+            enqueue_email_job(email, get_email_personalisation(personalisation), CONTACT_INFO_CHANGE_FUNCTION)
 
             TransactionNotification.create(transaction_id:)
           end
@@ -332,31 +332,39 @@ module VAProfile
             return if old_email.nil?
 
             personalisation = get_email_personalisation(:email)
-            if Flipper.enabled?(:va_notify_v2_contact_info_change)
-              enqueue_email_job(old_email.email, personalisation)
-              enqueue_email_job(transaction_status.new_email, personalisation) if transaction_status.new_email.present?
-            else
-              VANotifyEmailJob.perform_async(old_email.email, CONTACT_INFO_CHANGE_TEMPLATE, personalisation)
-              if transaction_status.new_email.present?
-                VANotifyEmailJob.perform_async(
-                  transaction_status.new_email,
-                  CONTACT_INFO_CHANGE_TEMPLATE,
-                  personalisation
-                )
-              end
+            enqueue_email_job(old_email.email, personalisation, EMAIL_CHANGE_OLD_ADDRESS_FUNCTION)
+            if transaction_status.new_email.present?
+              enqueue_email_job(transaction_status.new_email, personalisation, EMAIL_CHANGE_NEW_ADDRESS_FUNCTION)
             end
 
             old_email.destroy
           end
         end
 
-        def enqueue_email_job(email, personalisation)
-          VANotify::V2::QueueEmailJob.enqueue(
-            email,
-            CONTACT_INFO_CHANGE_TEMPLATE,
-            personalisation,
-            'Settings.vanotify.services.va_gov.api_key'
-          )
+        def enqueue_email_job(email, personalisation, function)
+          if Flipper.enabled?(:va_notify_v2_contact_info_change)
+            VANotify::V2::QueueEmailJob.enqueue(
+              email, CONTACT_INFO_CHANGE_TEMPLATE, personalisation,
+              'Settings.vanotify.services.va_gov.api_key', callback_options(function)
+            )
+          else
+            VANotifyEmailJob.perform_async(email, CONTACT_INFO_CHANGE_TEMPLATE, personalisation)
+          end
+        end
+
+        # Callback metadata so VANotify::DefaultCallback attributes delivery failures to this
+        # service/function (statsd `silent_failure`) instead of the unowned service:none-provided.
+        def callback_options(function)
+          {
+            callback_metadata: {
+              notification_type: 'error',
+              statsd_tags: {
+                service: CONTACT_INFO_STATSD_SERVICE,
+                function:,
+                template_id: CONTACT_INFO_CHANGE_TEMPLATE
+              }
+            }
+          }
         end
 
         def post_or_put_data(method, model, path, response_class)

@@ -545,13 +545,21 @@ describe VAProfile::ContactInformation::V2::Service do
                 'email@email.com',
                 described_class::CONTACT_INFO_CHANGE_TEMPLATE,
                 { 'contact_info' => 'Email address', 'first_name' => user.first_name },
-                'Settings.vanotify.services.va_gov.api_key'
+                'Settings.vanotify.services.va_gov.api_key',
+                { callback_metadata: { notification_type: 'error',
+                                       statsd_tags: { service: 'profile-contact-info',
+                                                      function: 'contact_info_email_change_old_address',
+                                                      template_id: described_class::CONTACT_INFO_CHANGE_TEMPLATE } } }
               )
               expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
                 'person43@example.com',
                 described_class::CONTACT_INFO_CHANGE_TEMPLATE,
                 { 'contact_info' => 'Email address', 'first_name' => user.first_name },
-                'Settings.vanotify.services.va_gov.api_key'
+                'Settings.vanotify.services.va_gov.api_key',
+                { callback_metadata: { notification_type: 'error',
+                                       statsd_tags: { service: 'profile-contact-info',
+                                                      function: 'contact_info_email_change_new_address',
+                                                      template_id: described_class::CONTACT_INFO_CHANGE_TEMPLATE } } }
               )
 
               subject.get_email_transaction_status(transaction_id)
@@ -709,7 +717,11 @@ describe VAProfile::ContactInformation::V2::Service do
                   user.va_profile_email,
                   described_class::CONTACT_INFO_CHANGE_TEMPLATE,
                   { 'contact_info' => 'Email address', 'first_name' => user.first_name },
-                  'Settings.vanotify.services.va_gov.api_key'
+                  'Settings.vanotify.services.va_gov.api_key',
+                  { callback_metadata: { notification_type: 'error',
+                                         statsd_tags: { service: 'profile-contact-info',
+                                                        function: 'contact_info_change',
+                                                        template_id: described_class::CONTACT_INFO_CHANGE_TEMPLATE } } }
                 )
 
                 subject.send(:send_contact_change_notification, transaction_status, :email)
