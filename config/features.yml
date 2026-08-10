@@ -4049,6 +4049,9 @@ features:
   va_dependents_674_term_section_redesign:
     actor_type: user
     description: Enables latest school term date flow in 21-674
+  enable_hexapdf_watermark_direct_processing:
+    actor_type: user
+    description: If on, use the 'direct' method of calling HexaPDF::Watermark rather than using the CLI approach
   track_pdf_overflow_by_field:
     actor_type: user
     description: Enables monitoring of PDF field and array overflow after claim creation

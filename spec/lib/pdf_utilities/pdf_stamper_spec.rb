@@ -18,6 +18,7 @@ RSpec.describe PDFUtilities::PDFStamper do
     PDFUtilities::PDFStamper.register_stamps('TEST', stamps)
 
     allow(Logging::Monitor).to receive(:new).and_return(logging_monitor_double)
+    allow(Flipper).to receive(:enabled?).with(:enable_hexapdf_watermark_direct_processing).and_return(false)
   end
 
   after do
@@ -47,6 +48,19 @@ RSpec.describe PDFUtilities::PDFStamper do
         with_template = PDFUtilities::PDFStamper.new(stamp_template)
         out_path = with_template.run random_pdf
         assert_pdf_stamp(out_path, 'VA.GOV 1999-12-31 11:59 PM UTC. FOOBAR')
+      end
+    end
+
+    context 'with alternate processing flag enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:enable_hexapdf_watermark_direct_processing).and_return(true)
+      end
+
+      it 'adds text with a datestamp at the given location' do
+        Timecop.travel(Time.zone.local(1999, 12, 31, 23, 59, 59)) do
+          out_path = instance.run random_pdf
+          assert_pdf_stamp(out_path, 'VA.GOV 1999-12-31 11:59 PM UTC. FOOBAR')
+        end
       end
     end
 
@@ -81,14 +95,30 @@ RSpec.describe PDFUtilities::PDFStamper do
       end
 
       it 'logs and raises error in #stamp_pdf' do
-        allow(HexaPDF::CLI).to receive(:run).and_raise(error_message)
-        expect(logging_monitor_double).to receive(:track_request).at_least(:once).with(
-          :error,
-          /Failed to generate/,
-          PDFUtilities::PDFStamper::STATS_KEY,
-          anything
-        )
-        expect { instance.run random_pdf }.to raise_error RuntimeError, /bad news bears/
+        allow(HexaPDF::CLI::Application).to receive(:new).and_raise(error_message)
+        expect(logging_monitor_double).not_to receive(:track_request)
+        expect do
+          instance.run random_pdf
+        end.to raise_error(SystemExit).and output(/might indicate a faulty PDF/).to_stderr
+      end
+
+      context 'with alternate processing flag enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:enable_hexapdf_watermark_direct_processing).and_return(true)
+        end
+
+        it 'catches the error, logs, and re-raises' do
+          allow(HexaPDF::CLI::Application).to receive(:new).and_raise(error_message)
+
+          expect(Common::FileHelpers).to receive(:delete_file_if_exists).at_least(:once)
+          expect(logging_monitor_double).to receive(:track_request).with(:error,
+                                                                         'Failed to generate stamp: bad news bears',
+                                                                         'api.pdf_stamper.error',
+                                                                         exception: RuntimeError,
+                                                                         backtrace: Array)
+
+          expect { instance.run random_pdf }.to raise_error RuntimeError, /bad news bears/
+        end
       end
     end
   end

@@ -173,7 +173,16 @@ module PDFUtilities
       reader = PDF::Reader.new(stamp_path)
       pages = multistamp ? [*1..reader.page_count].join(',') : '1'
 
-      HexaPDF::CLI.run(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', pdf_path, stamped_pdf])
+      if Flipper.enabled?(:enable_hexapdf_watermark_direct_processing)
+        # This method of call 'watermark' will raise an error if something goes wrong,
+        # which is desirable  as it allows us to rescue/log/reraise it for later
+        # debugging. The alternate approach below calls `exit(1)` on error and
+        # just kills the process.
+        HexaPDF::CLI::Application.new.parse(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp',
+                                             pdf_path, stamped_pdf])
+      else
+        HexaPDF::CLI.run(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', pdf_path, stamped_pdf])
+      end
 
       raise StampGenerationError, 'Stamped PDF was not created' unless File.exist?(stamped_pdf)
 
