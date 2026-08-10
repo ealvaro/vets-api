@@ -8,6 +8,7 @@ require 'debt_management_center/debts_configuration'
 require 'decision_review/configuration'
 require 'vye/dgib/service'
 require 'dgi/automation/configuration'
+require 'dgi/contact_info/configuration'
 require 'dgi/eligibility/configuration'
 require 'dgi/status/configuration'
 require 'dgi/submission/configuration'
@@ -146,6 +147,11 @@ Rails.application.reloader.to_prepare do
     PagerDuty::Configuration.instance.breakers_service,
     ClaimsApi::LocalBGS.breakers_service,
     MebApi::DGI::Configuration.instance.breakers_service,
+    MebApi::DGI::ContactInfo::Configuration.instance.breakers_service,
+    MebApi::DGI::Eligibility::Configuration.instance.breakers_service,
+    MebApi::DGI::Status::Configuration.instance.breakers_service,
+    MebApi::DGI::Submission::Configuration.instance.breakers_service,
+    MebApi::DGI::Automation::Configuration.instance.breakers_service,
     MebApi::DGI::Letters::Configuration.instance.breakers_service,
     UnifiedHealthData::Configuration.instance.breakers_service,
     VHANotification::Configuration.instance.breakers_service,
