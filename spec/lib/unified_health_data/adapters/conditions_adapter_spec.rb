@@ -69,7 +69,7 @@ RSpec.describe UnifiedHealthData::Adapters::ConditionsAdapter, type: :service do
       expect(parsed_condition).to have_attributes(
         id: 'p1533314061',
         name: 'Disease caused by 2019-nCoV',
-        date: '2025-01-20',
+        date: '2025-01-20T19:29:02.000Z',
         provider: 'SYSTEM, SYSTEM Cerner, Cerner Managed Acct',
         facility: '0089C-AMC Womack-Liberty',
         comments: ['This problem was added by Discern Expert for positive COVID-19 lab test.']
@@ -316,6 +316,62 @@ RSpec.describe UnifiedHealthData::Adapters::ConditionsAdapter, type: :service do
         expect(result.name).to eq('Resolved Test')
         expect(result.date).to eq('2024-01-15')
       end
+    end
+  end
+
+  describe 'date extraction' do
+    def build_condition(overrides = {})
+      {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => '1',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'coding' => [{ 'display' => 'Active Condition' }] }
+        }.merge(overrides)
+      }
+    end
+
+    it 'prefers recordedDate when both recordedDate and onsetDateTime are present' do
+      record = build_condition('recordedDate' => '2025-01-20T19:29:02.000Z',
+                               'onsetDateTime' => '2025-01-20')
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2025-01-20T19:29:02.000Z')
+    end
+
+    it 'uses recordedDate when only recordedDate is present' do
+      record = build_condition('recordedDate' => '2024-01-20')
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2024-01-20')
+    end
+
+    it 'falls back to onsetDateTime when recordedDate is missing' do
+      record = build_condition('onsetDateTime' => '2024-01-15')
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2024-01-15')
+    end
+
+    it 'increments a StatsD metric when falling back to onsetDateTime' do
+      record = build_condition('onsetDateTime' => '2024-01-15')
+
+      expect(StatsD).to receive(:increment).with('unified_health_data.condition.replace_date_with_onset')
+      adapter.parse_single_condition(record)
+    end
+
+    it 'does not increment the fallback metric when recordedDate is present' do
+      record = build_condition('recordedDate' => '2024-01-20', 'onsetDateTime' => '2024-01-15')
+
+      expect(StatsD).not_to receive(:increment).with('unified_health_data.condition.replace_date_with_onset')
+      adapter.parse_single_condition(record)
+    end
+
+    it 'returns a nil date when neither recordedDate nor onsetDateTime is present' do
+      record = build_condition
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to be_nil
     end
   end
 

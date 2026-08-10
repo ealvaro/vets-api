@@ -35,10 +35,12 @@ module UnifiedHealthData
         return nil if record.nil? || record['resource'].nil?
 
         resource = record['resource']
-        date_value = resource['onsetDateTime'] || resource['recordedDate']
 
         # Filter out conditions without active clinical status if filtering is enabled
         return nil if filter_by_status && !should_include_condition?(resource)
+
+        # Prefer recordedDate (date entered) to match V1 and allergies behavior
+        date_value = extract_condition_date(resource)
 
         UnifiedHealthData::Condition.new(
           id: resource['id'],
@@ -52,6 +54,21 @@ module UnifiedHealthData
       end
 
       private
+
+      # Extracts the date from a condition resource, falling back to onsetDateTime if
+      # recordedDate is missing (e.g. some VistA records). Prefers recordedDate (date
+      # entered) to match V1 and allergies behavior.
+      #
+      # @param resource [Hash] FHIR Condition resource
+      # @return [String, nil] The date value from recordedDate or onsetDateTime
+      def extract_condition_date(resource)
+        date_value = resource['recordedDate'].presence
+        if date_value.blank?
+          date_value = resource['onsetDateTime'].presence
+          StatsD.increment('unified_health_data.condition.replace_date_with_onset') if date_value.present?
+        end
+        date_value
+      end
 
       # Determines if a condition should be included based on its clinical status
       # Only includes conditions with clinicalStatus of 'active'
