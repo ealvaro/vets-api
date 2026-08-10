@@ -9,6 +9,7 @@
 .github/instructions/my-health-medical-records.instructions.md @software/vfs-mhv-integration
 .github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration
 .github/instructions/my-health-prescriptions.instructions.md @software/vfs-mhv-integration
+.gitattributes @software/va-platform-backend
 .gitignore @software/va-platform-backend
 .postman_disability_benefits @software/disability-benefits
 .reek.yml @software/va-platform-backend

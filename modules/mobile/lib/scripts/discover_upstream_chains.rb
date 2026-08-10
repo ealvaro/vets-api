@@ -35,11 +35,12 @@ class DiscoverUpstreamChains
   # Method names that indicate service instantiation.
   INSTANTIATION_METHODS = %i[new build].freeze
 
-  def initialize
+  def initialize(output_file: nil)
     config = YAML.safe_load_file(CONFIG_PATH, permitted_classes: [], permitted_symbols: [], aliases: false) || {}
     @upstream_groups = config['upstream_groups'] || {}
     @excluded_classes = config['excluded_classes'] || []
     @unresolved = []
+    @output_file = output_file
   end
 
   def run
@@ -55,7 +56,9 @@ class DiscoverUpstreamChains
   # through proxies down to external services.
   def discover_all_chains
     controller_glob = File.join(SCAN_DIR, '**', '*.rb')
-    Dir.glob(controller_glob).filter_map { |path| build_chain_entry(path) }
+    Dir.glob(controller_glob)
+       .reject { |path| path.split('/').include?('concerns') }
+       .filter_map { |path| build_chain_entry(path) }
   end
 
   # Builds a chain entry for a single controller file.
@@ -65,6 +68,7 @@ class DiscoverUpstreamChains
     feature_name = feature_name_from_path(relative_path)
 
     instantiations = find_instantiations_in_file(controller_path)
+    instantiations = find_inherited_instantiations(controller_path) if instantiations.empty?
     return if instantiations.empty?
 
     chains = instantiations.flat_map do |inst|
@@ -152,9 +156,12 @@ class DiscoverUpstreamChains
     resolve_and_trace(constant_name, source_file, visited, current_chain)
   end
 
-  # Returns a chain result if the constant is a known external service
-  # nil if it should be resolved further
-  # Mobile:: classes are always traced through (they're internal proxies)
+  # Returns a chain result if the constant is a known external service, nil if it
+  # should be resolved further. Mobile:: classes are always traced through.
+  #
+  # NOTE: Short circuits when known upstream found, deeper calls inside matched services
+  # are never discovered.
+  # TODO: script classifies AND continues tracing.
   def classify_known_upstream(constant_name, current_chain)
     is_internal_class = constant_name.start_with?('Mobile::')
     return nil if is_internal_class
@@ -222,29 +229,53 @@ class DiscoverUpstreamChains
     []
   end
 
-  # Records a constant that couldn't be resolved or classified.
-  def record_unclassified(constant_name, source_file, reason = 'no matching file found')
-    relative_path = source_file.sub("#{MOBILE_ROOT}/", '')
-    # For files outside the mobile module, make path relative to vets-api root
-    outside_mobile_module = relative_path == source_file
-    relative_path = source_file.sub("#{VETS_API_ROOT}/", '') if outside_mobile_module
+  # Controller Inheritance — resolves dependencies inherited from parent controllers
 
-    @unresolved << {
-      constant: constant_name,
-      referenced_from: relative_path,
-      reason:
-    }
+  # Walks the controller's superclass chain to find inherited service instantiations.
+  # Used when a controller has no direct .new/.build calls but inherits a service
+  # method (e.g., `def client`) from a parent controller.
+  # Returns an array of instantiation hashes or an empty array.
+  def find_inherited_instantiations(controller_path)
+    controller_class = controller_class_from_path(controller_path)
+    return [] unless controller_class
+
+    ancestor_source_files(controller_class).each do |file|
+      instantiations = find_instantiations_in_file(file)
+      return instantiations unless instantiations.empty?
+    end
+
+    []
   end
 
-  # Resolves constant name to its source file using Rails' Zeitwerk autoloader
-  # Returns the file path or nil if the constant cannot be resolved and will be unresolved
-  def resolve_constant_to_file(constant_name, _referencing_file)
-    Object.const_get(constant_name)
-    file, _line = Module.const_source_location(constant_name)
-    file
+  # Returns source file paths for each superclass that lives within the vets-api app.
+  # Stops when the ancestry leaves the application boundary (e.g., enters Rails/gem code).
+  def ancestor_source_files(klass)
+    files = []
+    klass = klass.superclass
+    while klass
+      file, _line = Module.const_source_location(klass.name)
+      break unless file&.start_with?(VETS_API_ROOT)
+
+      files << file
+      klass = klass.superclass
+    end
+    files
+  end
+
+  # Resolves a controller file path to its Ruby class using Zeitwerk autoloading.
+  # Returns the class or nil if it cannot be resolved or is not a Class (e.g., modules/concerns).
+  def controller_class_from_path(controller_path)
+    # Convert file path to constant name using Zeitwerk conventions:
+    # app/controllers/mobile/v0/folders_controller.rb -> Mobile::V0::FoldersController
+    relative = controller_path.sub(%r{.*/app/controllers/}, '')
+    const_name = relative.delete_suffix('.rb').camelize
+    resolved = Object.const_get(const_name)
+    resolved.is_a?(Class) ? resolved : nil
   rescue NameError
     nil
   end
+
+  # Service Classification — maps service constants to upstream groups
 
   # Checks if a constant matches a known upstream service group from upstream_services.yml.
   # Returns the group name (ex: "VAOS") or nil if not found
@@ -278,6 +309,32 @@ class DiscoverUpstreamChains
     nil
   end
 
+  # Resolution & Output
+
+  # Resolves constant name to its source file using Rails' Zeitwerk autoloader
+  # Returns the file path or nil if the constant cannot be resolved and will be unresolved
+  def resolve_constant_to_file(constant_name, _referencing_file)
+    Object.const_get(constant_name)
+    file, _line = Module.const_source_location(constant_name)
+    file
+  rescue NameError
+    nil
+  end
+
+  # Records a constant that couldn't be resolved or classified.
+  def record_unclassified(constant_name, source_file, reason = 'no matching file found')
+    relative_path = source_file.sub("#{MOBILE_ROOT}/", '')
+    # For files outside the mobile module, make path relative to vets-api root
+    outside_mobile_module = relative_path == source_file
+    relative_path = source_file.sub("#{VETS_API_ROOT}/", '') if outside_mobile_module
+
+    @unresolved << {
+      constant: constant_name,
+      referenced_from: relative_path,
+      reason:
+    }
+  end
+
   # Infer human readable feature name from a controller file path
   # app/controllers/mobile/v0/appointments_controller.rb -> "Appointments"
   def feature_name_from_path(relative_path)
@@ -293,8 +350,18 @@ class DiscoverUpstreamChains
       unresolved: @unresolved.uniq { |u| u[:constant] }
     }
 
-    $stdout.puts JSON.pretty_generate(output)
+    json = JSON.pretty_generate(output)
+    if @output_file
+      File.write(@output_file, json)
+    else
+      $stdout.puts json
+    end
   end
 end
 
-DiscoverUpstreamChains.new.run
+if $PROGRAM_NAME == __FILE__
+  output_index = ARGV.index('--output')
+  output_file = output_index ? ARGV[output_index + 1] : nil
+
+  DiscoverUpstreamChains.new(output_file:).run
+end

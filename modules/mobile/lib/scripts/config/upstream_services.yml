@@ -3,6 +3,7 @@
 # Maintained by the discover-upstream-services skill.
 
 upstream_groups:
+  Avs::V0::AvsService: "AVS (After Visit Summary)"
   BenefitsClaims::Service: "Benefits Claims API (Lighthouse)"
   BenefitsDocuments::Service: "Benefits Intake API (Lighthouse)"
   BGS::AwardsService: "BEP (Benefits Enterprise Platform)"
@@ -17,6 +18,7 @@ upstream_groups:
   DebtsApi::V0::FinancialStatusReportService: "Debt Management Center (DMC)"
   DirectDeposit::Client: "Direct Deposit Management API (Lighthouse)"
   Efolder::Service: "VBMS/eFolder"
+  Eps::ProviderService: "EPS (Wellhive)"
   FacilitiesApi::V2::PPMS::Client: "PPMS (Community Care)"
   LGY::Service: "LGY"
   Lighthouse::LettersGenerator::Service: "VA Letter Generator API (Lighthouse)"
@@ -32,24 +34,28 @@ upstream_groups:
   Mobile::V0::VeteranVerification::Service: "Vet Service History & Eligibility API (Lighthouse)"
   Preneeds::Service: "EOAS/Preneeds"
   TravelPay::AuthManager: "Travel Pay (BTSSS)"
+  TravelPay::ClaimsClient: "Travel Pay (BTSSS)"
   TravelPay::ClaimsService: "Travel Pay (BTSSS)"
   TravelPay::DocumentsService: "Travel Pay (BTSSS)"
   TravelPay::SmocService: "Travel Pay (BTSSS)"
+  UnifiedHealthData::AvsService: "Unified Health Data"
   UnifiedHealthData::MedicalRecordsService: "Unified Health Data"
   UnifiedHealthData::PrescriptionService: "Unified Health Data"
   VAOS::CCEligibilityService: "VAOS"
-  VAOS::V2::AppointmentsService: "VAOS"
   VAOS::V2::MobileFacilityService: "VAOS"
   VAOS::V2::PatientsService: "VAOS"
   VAOS::V2::SystemsService: "VAOS"
   VAProfile::AddressValidation::V3::Service: "VA Profile"
   VAProfile::Demographics::Service: "VA Profile"
   VAProfile::MilitaryPersonnel::Service: "VA Profile"
+  VEText::Service: "VEText (Push Notifications)"
   VeteranVerification::Service: "Vet Service History & Eligibility API (Lighthouse)"
 
 # Service classes that are internal (not upstream dependencies).
 excluded_classes:
+  - "Eps::RedisClient"
+  - "FeatureTogglesService"
   - "Mobile::V0::Adapters::MedicalService"
   - "Mobile::V0::Profile::SyncUpdateService"
-  - "FeatureTogglesService"
+  - "VAOS::V2::AppointmentsReasonCodeService"
   - "Ccra::RedisClient"

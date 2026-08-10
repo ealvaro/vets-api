@@ -1,6 +1,6 @@
 ---
 name: discover-upstream-services
-description: 'Discover and classify upstream service dependencies for the VA Mobile API. Run the discovery script to find unclassified dependencies and propose changes to upstream_services.yml.'
+description: 'Discover and classify upstream service dependencies for the VA Mobile API. Run the discovery script to find unclassified dependencies and propose changes to upstream_services.yml'
 argument-hint: 'Optional: full-report (show all dependency chains)'
 ---
 
@@ -14,7 +14,7 @@ argument-hint: 'Optional: full-report (show all dependency chains)'
 ## Key Files
 - **Discovery script:** `modules/mobile/lib/scripts/discover_upstream_chains.rb`
 - **Dependency map:** `modules/mobile/lib/scripts/config/upstream_services.yml`
-- **Classification prompt:** `modules/mobile/lib/scripts/config/classify_prompt_template.txt`
+- **Classification prompt:** `modules/mobile/lib/scripts/config/classification_prompt_template.txt`
 
 ## Procedure
 
@@ -68,7 +68,7 @@ Inspect the `unresolved` array from the JSON output.
 
 Read these three inputs:
 
-1. **The prompt template** — read `modules/mobile/lib/scripts/config/classify_prompt_template.txt`
+1. **The prompt template** — read `modules/mobile/lib/scripts/config/classification_prompt_template.txt`
 2. **Known mappings** — read `modules/mobile/lib/scripts/config/upstream_services.yml`
 3. **Unknown services** — the `unresolved` entries from step 1
 
@@ -82,7 +82,7 @@ Build the classification prompt by substituting the template placeholders:
 
 Then follow the populated prompt instructions to classify each unknown service. Produce exactly two sections as specified by the template:
 
-1. **Proposed diff** — a unified diff of `upstream_services.yml` showing the exact lines to add (under `upstream_groups` and/or `excluded_classes`)
+1. **Proposed additions** — new entries to add to `upstream_services.yml` (under `upstream_groups` and/or `excluded_classes`)
 2. **Reasoning** — a markdown table with columns: Mobile Endpoint, Service, Upstream Group, Confidence, Reasoning
 
 ### 6. Present results and ask for confirmation
@@ -92,7 +92,7 @@ Show both sections from step 5. Then **stop** and ask:
 > **Which entries should be added to `upstream_services.yml`?**
 >
 > Reply with:
-> - `all` to apply the entire proposed diff
+> - `all` to apply all proposed additions
 > - A comma-separated list of service classes to add selectively (e.g. `NewModule::Service, AnotherClient`)
 > - `none` to skip — no changes will be made
 

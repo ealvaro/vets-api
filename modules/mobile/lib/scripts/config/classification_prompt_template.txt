@@ -17,6 +17,11 @@ You are classifying upstream service dependencies for the VA mobile API.
 - Do NOT classify a class as upstream based on what other classes in its namespace do.
   Classify only the specific class presented.
 
+## Upstream group overrides:
+Some services route through a different upstream than their namespace suggests.
+Use these mappings instead of inferring from the class name or namespace:
+- `Ccra::` classes → map to **"VAOS"** (CCRA data is received through the VAOS service)
+
 ## Examples:
 - `SomeModule::ApiClient` (inherits Common::Client::Base, calls Faraday) → upstream
 - `SomeModule::RedisClient` (reads/writes Rails.cache) → excluded (internal)
@@ -32,7 +37,7 @@ For each unknown service, determine:
 
 ## Response format:
 The response must contain exactly two sections and nothing else:
-1. Proposed Diff (unified diff of upstream_services.yml showing lines to add)
+1. Proposed Additions (new entries to add to upstream_services.yml)
 2. Reasoning
 
 If there are no entries for a section, write "None" under that heading.
@@ -45,25 +50,19 @@ Do not include:
 - Any sections other than the two listed above
 
 
-### Proposed Diff:
-Return a unified diff block showing the exact changes to `upstream_services.yml`.
-- For upstream services: show the new line inserted in alphabetical order under `upstream_groups:`
-- For excluded (internal) classes: show the new line appended under `excluded_classes:`
-- Include 3 lines of context before and after each change so the insertion point is clear.
-- Use standard unified diff format with `---`, `+++`, `@@`, and `+` line prefixes.
+### Proposed Additions:
+List only the new lines to add to `upstream_services.yml`. Do not show context
+lines, diff headers, or `@@` markers. Group entries by section.
 
 Example:
 
-```diff
---- a/modules/mobile/lib/scripts/config/upstream_services.yml
-+++ b/modules/mobile/lib/scripts/config/upstream_services.yml
-@@ upstream_groups @@
-   Existing::Service::Before: "Some Group"
-+  Full::Class::Name: "Upstream Group Name"
-   Existing::Service::After: "Another Group"
-@@ excluded_classes @@
-   - "Existing::ExcludedClass"
-+  - "Full::Internal::Class"
+```yaml
+# Add to upstream_groups (in alphabetical order):
+  Full::Class::Name: "Upstream Group Name"
+  Another::Service: "Another Group"
+
+# Add to excluded_classes:
+  - "Full::Internal::Class"
 ```
 
 ### Reasoning:
