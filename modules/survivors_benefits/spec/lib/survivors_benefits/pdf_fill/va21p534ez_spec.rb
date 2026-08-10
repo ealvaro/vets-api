@@ -4,6 +4,7 @@ require 'rails_helper'
 require 'lib/pdf_fill/fill_form_examples'
 require 'survivors_benefits/pdf_fill/va21p534ez'
 require 'pdf_utilities/datestamp_pdf'
+require 'pdf/reader'
 require 'fileutils'
 require 'tmpdir'
 require 'timecop'
@@ -367,6 +368,62 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
 
       result = described_class.stamp_signature(pdf_path, { 'claimantSignature' => 'Jane Doe' })
       expect(result).to eq(pdf_path)
+    end
+  end
+
+  describe '.stamp_submission_footer' do
+    let(:timestamp) { Time.utc(2023, 12, 13, 11, 30) }
+
+    it 'returns the original PDF (untouched) when the timestamp is blank' do
+      expect(HexaPDF::Document).not_to receive(:open)
+
+      expect(described_class.stamp_submission_footer('/tmp/does_not_matter.pdf', nil))
+        .to eq('/tmp/does_not_matter.pdf')
+    end
+
+    it 'returns nil (untouched) when the pdf path is blank' do
+      expect(HexaPDF::Document).not_to receive(:open)
+
+      expect(described_class.stamp_submission_footer(nil, timestamp)).to be_nil
+    end
+
+    it 'fails open on stamping errors: logs, emits a metric, and returns the original PDF' do
+      allow(HexaPDF::Document).to receive(:open).and_raise(StandardError, 'boom')
+      allow(Rails.logger).to receive(:error)
+      allow(StatsD).to receive(:increment)
+
+      result = described_class.stamp_submission_footer('/tmp/x.pdf', timestamp)
+
+      expect(result).to eq('/tmp/x.pdf')
+      expect(StatsD).to have_received(:increment).with(described_class::SUBMISSION_STAMP_ERROR_METRIC)
+    end
+
+    context 'with a real multi-page PDF' do
+      let(:source) { "#{Common::FileHelpers.random_file_path}.pdf" }
+      let(:outputs) { [] }
+
+      before do
+        doc = HexaPDF::Document.new
+        2.times { doc.pages.add }
+        doc.write(source)
+      end
+
+      after do
+        Common::FileHelpers.delete_file_if_exists(source)
+        outputs.each { |p| Common::FileHelpers.delete_file_if_exists(p) }
+      end
+
+      it 'renders the two-line watermark (timestamp + IAL2 auth) on every page' do
+        out = described_class.stamp_submission_footer(source, timestamp)
+        outputs << out
+
+        reader = PDF::Reader.new(out)
+        expect(reader.pages.size).to eq(2)
+        reader.pages.each do |page|
+          expect(page.text).to include('Signed electronically and submitted via VA.gov at 11:30 UTC 2023-12-13.')
+          expect(page.text).to include('Signee signed with an identity-verified account.')
+        end
+      end
     end
   end
 

@@ -64,6 +64,25 @@ RSpec.describe SurvivorsBenefits::V0::ClaimsController, type: :request do
     end
   end
 
+  describe '#stamped_pdf_url' do
+    let(:instance) { described_class.new }
+    let(:claim) { build(:survivors_benefits_claim) }
+
+    # The confirmation-page download copy must carry the same watermark as the Benefits Intake
+    # upload, so it is generated stamped instead of letting upload_to_s3 fall back to claim.to_pdf.
+    it 'uploads the watermark-stamped copy rather than the default unstamped PDF' do
+      allow(claim).to receive(:to_stamped_pdf).with(claim.guid).and_return('tmp/stamped.pdf')
+
+      expect(instance).to receive(:upload_to_s3).with(
+        claim,
+        config: an_instance_of(SurvivorsBenefits::ZsfConfig),
+        pdf_path: 'tmp/stamped.pdf'
+      ).and_return(MOCK_URL)
+
+      expect(instance.send(:stamped_pdf_url, claim)).to eq(MOCK_URL)
+    end
+  end
+
   describe '#show' do
     it 'logs an error if no claim found' do
       expect(monitor).to receive(:track_show404).once

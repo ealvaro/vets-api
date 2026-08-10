@@ -19,8 +19,6 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     let(:response) { double('response') }
     let(:pdf_path) { 'random/path/to/pdf' }
     let(:location) { 'test_location' }
-    let(:omit_esign_stamp) { true }
-    let(:extras_redesign) { true }
     let(:parsed_form) do
       {
         'veteranFullName' => { 'first' => 'John', 'last' => 'Doe' },
@@ -32,7 +30,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     before do
       job.instance_variable_set(:@claim, claim)
       allow(SurvivorsBenefits::SavedClaim).to receive(:find).and_return(claim)
-      allow(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
+      allow(claim).to receive(:to_stamped_pdf).with(claim.id).and_return(pdf_path)
       allow(claim).to receive_messages(persistent_attachments: [], parsed_form:)
 
       job.instance_variable_set(:@intake_service, service)
@@ -61,7 +59,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
         allow(job).to receive(:process_document).and_return(pdf_path)
 
         expect(SurvivorsBenefits::SavedClaim).to receive(:find).and_return(claim)
-        expect(claim).to receive(:to_pdf)
+        expect(claim).to receive(:to_stamped_pdf)
         expect(service).to receive(:perform_upload)
         expect(job).to receive(:cleanup_file_paths)
 
@@ -73,7 +71,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
         allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_enabled).and_return(false)
 
         expect(SurvivorsBenefits::SavedClaim).not_to receive(:find)
-        expect(claim).not_to receive(:to_pdf)
+        expect(claim).not_to receive(:to_stamped_pdf)
         expect(service).not_to receive(:perform_upload)
 
         result = job.perform(claim.id, user_account_uuid)
@@ -84,7 +82,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     it 'submits the saved claim successfully' do
       allow(job).to receive(:process_document).and_return(pdf_path)
 
-      expect(claim).to receive(:to_pdf).with(claim.id, { extras_redesign:, omit_esign_stamp: }).and_return(pdf_path)
+      expect(claim).to receive(:to_stamped_pdf).with(claim.id).and_return(pdf_path)
       expect(Lighthouse::Submission).to receive(:create)
       expect(Lighthouse::SubmissionAttempt).to receive(:create)
       expect(Datadog::Tracing).to receive(:active_trace)
@@ -101,7 +99,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     it 'is unable to find user_account' do
       expect(SurvivorsBenefits::SavedClaim).not_to receive(:find)
       expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
+      expect(claim).not_to receive(:to_stamped_pdf)
 
       expect(job).to receive(:cleanup_file_paths)
       expect(monitor).to receive(:track_submission_retry)
@@ -118,7 +116,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
       expect(UserAccount).to receive(:find)
 
       expect(BenefitsIntake::Service).not_to receive(:new)
-      expect(claim).not_to receive(:to_pdf)
+      expect(claim).not_to receive(:to_stamped_pdf)
 
       expect(job).to receive(:cleanup_file_paths)
       expect(monitor).to receive(:track_submission_retry)
@@ -324,6 +322,27 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmitClaimJob, :uploader_help
     it 'errors and logs but does not reraise' do
       expect(monitor).to receive(:track_file_cleanup_error)
       job.send(:cleanup_file_paths)
+    end
+
+    it 'deletes the footer-stamped intermediate PDF alongside the form path' do
+      job.instance_variable_set(:@attachment_paths, [])
+      job.instance_variable_set(:@stamped_pdf_path, 'tmp/stamped.pdf')
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      job.send(:cleanup_file_paths)
+
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with('path/file.pdf')
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with('tmp/stamped.pdf')
+    end
+
+    it 'does not double-delete when the stamped PDF is also the form path' do
+      job.instance_variable_set(:@attachment_paths, [])
+      job.instance_variable_set(:@stamped_pdf_path, 'path/file.pdf')
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      job.send(:cleanup_file_paths)
+
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with('path/file.pdf').once
     end
   end
 

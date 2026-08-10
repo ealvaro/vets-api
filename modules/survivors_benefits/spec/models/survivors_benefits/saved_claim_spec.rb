@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'common/file_helpers'
+require 'pdf/reader'
 
 RSpec.describe SurvivorsBenefits::SavedClaim do
   subject { described_class.new }
@@ -159,6 +161,62 @@ RSpec.describe SurvivorsBenefits::SavedClaim do
         expect(PdfFill::Filler).not_to receive(:merge_pdfs)
 
         expect(claim.to_pdf).to eq('tmp/pdfs/base.pdf')
+      end
+    end
+  end
+
+  describe '#to_stamped_pdf' do
+    let(:claim) { create(:survivors_benefits_claim) }
+    let(:raw_path) { 'tmp/raw.pdf' }
+    let(:stamped_path) { 'tmp/stamped.pdf' }
+
+    it 'suppresses the built-in footers, stamps the watermark, and removes the intermediate PDF' do
+      expect(claim).to receive(:to_pdf)
+        .with('file-name', { extras_redesign: true, omit_esign_stamp: true, omit_footer: true })
+        .and_return(raw_path)
+      expect(SurvivorsBenefits::PdfFill::Va21p534ez).to receive(:stamp_submission_footer)
+        .with(raw_path, claim.created_at).and_return(stamped_path)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      expect(claim.to_stamped_pdf('file-name')).to eq(stamped_path)
+      expect(Common::FileHelpers).to have_received(:delete_file_if_exists).with(raw_path)
+    end
+
+    it 'keeps the unstamped file when stamping fails open and returns the original path' do
+      allow(claim).to receive(:to_pdf).and_return(raw_path)
+      allow(SurvivorsBenefits::PdfFill::Va21p534ez).to receive(:stamp_submission_footer).and_return(raw_path)
+      allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+
+      expect(claim.to_stamped_pdf).to eq(raw_path)
+      expect(Common::FileHelpers).not_to have_received(:delete_file_if_exists)
+    end
+
+    it 'returns nil without stamping when the fill produces no PDF' do
+      allow(claim).to receive(:to_pdf).and_return(nil)
+      expect(SurvivorsBenefits::PdfFill::Va21p534ez).not_to receive(:stamp_submission_footer)
+
+      expect(claim.to_stamped_pdf).to be_nil
+    end
+
+    # Asserts against each page's content stream rather than PDF::Reader's extracted text: the two
+    # footer baselines are only 9pt apart, so on some pages the extractor collapses them into a single
+    # row and mangles the timestamp line even though both are drawn correctly.
+    it 'renders the watermark exactly once on every page of the generated PDF' do
+      path = claim.to_stamped_pdf(claim.guid)
+
+      begin
+        pages = HexaPDF::Document.open(path).pages.to_a
+        expect(pages).not_to be_empty
+
+        pages.each_with_index do |page, index|
+          contents = page.contents
+          expect(contents.scan('Signed electronically and submitted via VA.gov at').count)
+            .to eq(1), "expected exactly one watermark timestamp line on page #{index + 1}"
+          expect(contents.scan('Signee signed with an identity-verified account.').count)
+            .to eq(1), "expected exactly one watermark authentication line on page #{index + 1}"
+        end
+      ensure
+        Common::FileHelpers.delete_file_if_exists(path)
       end
     end
   end

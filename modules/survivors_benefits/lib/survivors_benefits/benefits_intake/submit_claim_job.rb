@@ -46,8 +46,12 @@ module SurvivorsBenefits
         # benefits_intake_uuid comes from here
         @intake_service ||= reset_intake_service
 
-        # generate and validate claim pdf documents
-        @form_path = process_document(@claim.to_pdf(@claim.id, { extras_redesign: true, omit_esign_stamp: true }))
+        # generate and validate claim pdf documents.
+        # to_stamped_pdf suppresses the shared machinery's built-in bottom-left footer and stamps the
+        # submission date/timestamp/authentication watermark on the bottom-right of every page — the
+        # same treatment the confirmation-page download copy gets in ClaimsController#create.
+        @stamped_pdf_path = @claim.to_stamped_pdf(@claim.id)
+        @form_path = process_document(@stamped_pdf_path)
         @attachment_paths = @claim.persistent_attachments.map { |pa| process_document(pa.to_pdf) }
         @metadata = generate_metadata
         @ibm_payload = @claim.to_ibm if Flipper.enabled?(:survivors_benefits_structured_data_transmission)
@@ -238,6 +242,11 @@ module SurvivorsBenefits
       def cleanup_file_paths
         Common::FileHelpers.delete_file_if_exists(@form_path) if @form_path
         @attachment_paths&.each { |p| Common::FileHelpers.delete_file_if_exists(p) }
+        # Remove the footer-stamped PDF produced between to_stamped_pdf and process_document,
+        # skipping it when process_document returned it unchanged (@form_path is deleted above).
+        if @stamped_pdf_path && @stamped_pdf_path != @form_path
+          Common::FileHelpers.delete_file_if_exists(@stamped_pdf_path)
+        end
       rescue => e
         monitor.track_file_cleanup_error(@claim, @intake_service, @user_account_uuid, e)
       end

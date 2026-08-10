@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'common/file_helpers'
 require 'survivors_benefits/benefits_intake/submit_claim_job'
 require 'survivors_benefits/custodian_addendum'
 require 'survivors_benefits/helpers'
@@ -126,6 +127,28 @@ module SurvivorsBenefits
     end
 
     ##
+    # Generates the completed-form PDF as it is submitted downstream: redesigned extras, the shared
+    # machinery's built-in footers suppressed, and the submission date/timestamp/authentication
+    # watermark stamped on the bottom-right of every page. Every rendition of the completed form (the
+    # Benefits Intake upload and the S3 copy behind the confirmation-page download link) must carry the
+    # same watermark, so both are generated through here.
+    #
+    # @param file_name [String, nil] Optional name for the output PDF file
+    # @return [String, nil] Path to the stamped PDF file (nil when the fill produced no PDF)
+    #
+    def to_stamped_pdf(file_name = nil)
+      raw_pdf = to_pdf(file_name, extras_redesign: true, omit_esign_stamp: true, omit_footer: true)
+      return raw_pdf if raw_pdf.blank?
+
+      stamped_pdf = SurvivorsBenefits::PdfFill::Va21p534ez.stamp_submission_footer(raw_pdf, created_at)
+      # stamp_submission_footer fails open and returns raw_pdf on error; only remove the
+      # intermediate when a new stamped copy replaced it.
+      Common::FileHelpers.delete_file_if_exists(raw_pdf) unless stamped_pdf == raw_pdf
+      stamped_pdf
+    end
+
+    ##
+    # Fills a Form 21-4138 with the raw JSON from CAVE if the Claim has a CaveSubmission
     # Whether a custodian is filing this claim on behalf of a child under 18. Such claims get a
     # 21-4138 addendum even without a CaveSubmission, because the custodian's relationship to the
     # child, address, and email have nowhere to go on the 21P-534EZ itself.
