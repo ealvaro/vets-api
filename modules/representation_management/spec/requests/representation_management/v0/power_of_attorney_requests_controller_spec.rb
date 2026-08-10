@@ -114,10 +114,10 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
             expect(parsed_response['data']['id']).to eq(poa_request.id)
           end
 
-          context 'with an international veteran address and no state/zip' do
+          context 'with an international veteran address and no zip' do
             before do
               params[:power_of_attorney_request][:veteran][:address][:country] = 'GBR'
-              params[:power_of_attorney_request][:veteran][:address][:state_code] = nil
+              params[:power_of_attorney_request][:veteran][:address][:state_code] = 'GB'
               params[:power_of_attorney_request][:veteran][:address][:zip_code] = nil
               params[:power_of_attorney_request][:veteran][:address][:zip_code_suffix] = nil
             end
@@ -129,7 +129,7 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
             end
           end
 
-          context 'with an international claimant address and no state/zip' do
+          context 'with an international claimant address and no zip' do
             before do
               params[:power_of_attorney_request][:claimant] = {
                 date_of_birth: '1980-12-31',
@@ -145,7 +145,7 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
                   address_line1: '123 Fake Claimant St',
                   address_line2: '',
                   city: 'London',
-                  state_code: nil,
+                  state_code: 'GB',
                   country: 'GBR',
                   zip_code: nil,
                   zip_code_suffix: nil
@@ -236,6 +236,41 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
 
               expect(monitor).not_to have_received(:track_validation_errors)
             end
+          end
+        end
+
+        context 'when international address zip is blank' do
+          let(:poa_request) do
+            instance_double(
+              AccreditedRepresentativePortal::PowerOfAttorneyRequest,
+              id: 'efd18b43-4421-4539-941a-7397fadfe5dc',
+              created_at: '2025-02-21T00:00:00.000000000Z'.to_datetime,
+              expires_at: '2025-04-22T00:00:00.000000000Z'.to_datetime,
+              notifications: instance_double(
+                ActiveRecord::Associations::CollectionProxy,
+                create!: instance_double(AccreditedRepresentativePortal::PowerOfAttorneyRequestNotification)
+              )
+            )
+          end
+
+          before do
+            create(:veteran_organization_representative,
+                   representative:, organization:, acceptance_mode: 'any_request')
+            params[:power_of_attorney_request][:veteran][:address][:country] = 'GBR'
+            params[:power_of_attorney_request][:veteran][:address][:state_code] = 'GB'
+            params[:power_of_attorney_request][:veteran][:address][:zip_code] = ''
+            params[:power_of_attorney_request][:veteran][:address][:zip_code_suffix] = ''
+            allow_any_instance_of(RepresentationManagement::PowerOfAttorneyRequestService::Orchestrate)
+              .to receive(:call)
+              .and_return({ request: poa_request })
+            allow(AccreditedRepresentativePortal::PowerOfAttorneyRequestEmailJob)
+              .to receive(:perform_async)
+          end
+
+          it 'returns 201 when international zip fields are blank strings' do
+            post(base_path, params:)
+
+            expect(response).to have_http_status(:created)
           end
         end
 

@@ -28,6 +28,8 @@ module AccreditedRepresentativePortal
       :claimant_zip_code
     )
 
+    attr_reader :schema_validation_errors
+
     validate :data_must_comply_with_schema
     before_validation :set_location
 
@@ -54,8 +56,8 @@ module AccreditedRepresentativePortal
     end
 
     def data_must_comply_with_schema
-      data_errors = JSONSchemer.schema(SCHEMA).validate(parsed_data)
-      return if data_errors.none?
+      @schema_validation_errors = JSONSchemer.schema(SCHEMA).validate(parsed_data).to_a
+      return if @schema_validation_errors.none?
 
       errors.add :data, 'does not comply with schema'
     end
@@ -170,7 +172,7 @@ module AccreditedRepresentativePortal
                     "example": "US"
                   },
                   "zipCode": {
-                    "type": "string",
+                    "type": ["string", "null"],
                     "example": "62704"
                   },
                   "zipCodeSuffix": {
@@ -184,7 +186,6 @@ module AccreditedRepresentativePortal
                   "city",
                   "stateCode",
                   "country",
-                  "zipCode",
                   "zipCodeSuffix"
                 ]
               },
@@ -268,7 +269,7 @@ module AccreditedRepresentativePortal
                     "example": "US"
                   },
                   "zipCode": {
-                    "type": "string",
+                    "type": ["string", "null"],
                     "example": "62704"
                   },
                   "zipCodeSuffix": {
@@ -282,7 +283,6 @@ module AccreditedRepresentativePortal
                   "city",
                   "stateCode",
                   "country",
-                  "zipCode",
                   "zipCodeSuffix"
                 ]
               },

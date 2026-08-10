@@ -73,10 +73,11 @@ module RepresentationManagement
     validates :veteran_address_line2, length: { maximum: 5 }, if: -> { veteran_address_line2.present? }
     validates :veteran_city, presence: true, length: { maximum: 18 }
     validates :veteran_country, presence: true, length: { is: 2 }
+    # LH request should contain 'NA' if international and no state code is provided (client should do this)
+    validates :veteran_state_code, presence: true, length: { minimum: 2 }
 
-    # State and zip code are only required for USA-based addresses (per VaProfile)
+    # Zip code is only required for USA-based addresses (per VaProfile)
     with_options if: -> { veteran_address_usa_based? } do
-      validates :veteran_state_code, presence: true, length: { minimum: 2 }
       validates :veteran_zip_code, presence: true, length: { minimum: 4 }
     end
 
@@ -98,13 +99,14 @@ module RepresentationManagement
       validates :claimant_address_line2, length: { maximum: 5 }
       validates :claimant_city, presence: true, length: { maximum: 18 }
       validates :claimant_country, presence: true, length: { is: 2 }
+      # LH request should contain 'NA' if international and no state code is provided (client should do this)
+      validates :claimant_state_code, presence: true, length: { minimum: 2 }
 
       validates :claimant_phone, length: { is: 10 }, format: { with: TEN_DIGIT_NUMBER }
     end
 
-    # State and zip code are only required for USA-based addresses (per VaProfile)
+    # Zip code is only required for USA-based addresses (per VaProfile)
     with_options if: -> { claimant_address_usa_based? } do
-      validates :claimant_state_code, presence: true, length: { minimum: 2 }
       validates :claimant_zip_code, presence: true, length: { minimum: 4 }
     end
 

@@ -65,6 +65,9 @@ module AccreditedRepresentativePortal
             end
 
             request.save!
+          rescue ActiveRecord::RecordInvalid => e
+            handle_form_validation_error(request)
+            raise e
           end
 
           pathway = @registration_number.present? ? 'rep_first' : 'org_first'
@@ -76,6 +79,32 @@ module AccreditedRepresentativePortal
         end
       end
       # rubocop:enable Metrics/MethodLength
+
+      def handle_form_validation_error(request)
+        if request.power_of_attorney_form&.errors&.any?
+          form = request.power_of_attorney_form
+          schema_errors = form.schema_validation_errors || []
+
+          # Only track and log if there are actual schema validation errors
+          if schema_errors.any?
+            ar_monitoring.track_count(
+              'ar.poa.form.schema_validation_error',
+              tags: {
+                'poa_request.poa_code' => @poa_code,
+                'form.error_count' => schema_errors.length.to_s
+              }
+            )
+
+            Rails.logger.error(
+              'POA form schema validation failed',
+              {
+                poa_code: @poa_code,
+                errors: schema_errors.map { |e| "#{e['instanceLocation']} #{e['error']}".strip }
+              }
+            )
+          end
+        end
+      end
 
       def ar_monitoring
         @ar_monitoring ||= AccreditedRepresentativePortal::Monitoring.new(

@@ -238,6 +238,58 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
 
               expect(result[:errors]).to eq([error_message])
             end
+
+            it 'tracks form schema validation errors in Datadog' do
+              form_data.delete('authorizations')
+
+              allow(monitoring).to receive(:track_count)
+              allow(Rails.logger).to receive(:error)
+
+              subject.call
+
+              expect(monitoring).to have_received(:track_count).with(
+                'ar.poa.form.schema_validation_error',
+                tags: {
+                  'poa_request.poa_code' => poa_code,
+                  'form.error_count' => '1'
+                }
+              )
+
+              expect(Rails.logger).to have_received(:error) do |message, details|
+                expect(message).to eq('POA form schema validation failed')
+                expect(details[:poa_code]).to eq(poa_code)
+                expect(details[:errors]).to eq(
+                  ['object at root is missing required properties: authorizations']
+                )
+              end
+            end
+
+            it 'tracks multiple schema validation errors' do
+              form_data.delete('authorizations')
+              form_data['veteran']['address'].delete('stateCode')
+
+              allow(monitoring).to receive(:track_count)
+              allow(Rails.logger).to receive(:error)
+
+              subject.call
+
+              expect(monitoring).to have_received(:track_count).with(
+                'ar.poa.form.schema_validation_error',
+                tags: {
+                  'poa_request.poa_code' => poa_code,
+                  'form.error_count' => '2'
+                }
+              )
+
+              expect(Rails.logger).to have_received(:error) do |message, details|
+                expect(message).to eq('POA form schema validation failed')
+                expect(details[:poa_code]).to eq(poa_code)
+                expect(details[:errors]).to contain_exactly(
+                  'object at root is missing required properties: authorizations',
+                  'object at `/veteran/address` is missing required properties: stateCode'
+                )
+              end
+            end
           end
 
           context 'when the request data does not pass validation' do

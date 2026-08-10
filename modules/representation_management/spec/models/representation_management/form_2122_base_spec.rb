@@ -168,7 +168,7 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
     it { expect(subject_with_claimant).not_to allow_value('123456789').for(:claimant_phone) }
 
     describe 'conditional state/zip validations for international addresses' do
-      it 'does not require veteran_state_code or veteran_zip_code for international veteran addresses' do
+      it 'requires veteran_state_code but not veteran_zip_code for international veteran addresses' do
         form = described_class.new(
           veteran_first_name: 'John',
           veteran_last_name: 'Veteran',
@@ -177,7 +177,7 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
           veteran_address_line1: '123 Fake Veteran St',
           veteran_city: 'London',
           veteran_country: 'GB',
-          veteran_state_code: nil,
+          veteran_state_code: 'GB',
           veteran_zip_code: nil
         )
 
@@ -186,12 +186,12 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
         expect(form.errors[:veteran_state_code]).to be_empty
         expect(form.errors[:veteran_zip_code]).to be_empty
         expect { form.veteran_state_code_truncated }.not_to raise_error
-        expect(form.veteran_state_code_truncated).to eq('')
+        expect(form.veteran_state_code_truncated).to eq('GB')
         expect { form.veteran_zip_code_expanded }.not_to raise_error
         expect(form.veteran_zip_code_expanded).to eq(['', ''])
       end
 
-      it 'does not require claimant_state_code or claimant_zip_code for international claimant addresses' do
+      it 'requires claimant_state_code but not claimant_zip_code for international claimant addresses' do
         form = described_class.new(
           claimant_first_name: 'John',
           claimant_last_name: 'Claimant',
@@ -201,7 +201,7 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
           claimant_city: 'London',
           claimant_country: 'GB',
           claimant_phone: '5555555555',
-          claimant_state_code: nil,
+          claimant_state_code: 'GB',
           claimant_zip_code: nil
         )
 
@@ -210,7 +210,7 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
         expect(form.errors[:claimant_state_code]).to be_empty
         expect(form.errors[:claimant_zip_code]).to be_empty
         expect { form.claimant_state_code_truncated }.not_to raise_error
-        expect(form.claimant_state_code_truncated).to eq('')
+        expect(form.claimant_state_code_truncated).to eq('GB')
         expect { form.claimant_zip_code_expanded }.not_to raise_error
         expect(form.claimant_zip_code_expanded).to eq(['', ''])
       end

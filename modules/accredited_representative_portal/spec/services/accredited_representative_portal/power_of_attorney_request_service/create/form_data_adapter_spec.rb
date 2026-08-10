@@ -141,6 +141,25 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
       end
     end
 
+    context 'when international addresses have blank zip fields' do
+      it 'normalizes blank zip codes to nil and still validates' do
+        data[:veteran_country] = 'GB'
+        data[:veteran_state_code] = 'GB'
+        data[:veteran_zip_code] = ''
+        data[:claimant_country] = 'GB'
+        data[:claimant_state_code] = 'GB'
+        data[:claimant_zip_code] = ''
+
+        result = subject.call
+
+        expect(result[:data]['veteran']['address']['stateCode']).to eq('GB')
+        expect(result[:data]['veteran']['address']['zipCode']).to be_nil
+        expect(result[:data]['dependent']['address']['stateCode']).to eq('GB')
+        expect(result[:data]['dependent']['address']['zipCode']).to be_nil
+        expect(result[:errors]).to eq([])
+      end
+    end
+
     context 'when there is an error with validation' do
       it 'adds the error message to the errors attribute' do
         data[:consent_limits] = ['abc']
