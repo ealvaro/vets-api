@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
+require 'identity/model/inspect'
+
 module SignIn
   module OAuth
     class UserInfo
       include ActiveModel::Model
       include ActiveModel::Attributes
+      include Identity::Model::Inspect
 
       attribute :sub
       attribute :email
@@ -20,7 +23,8 @@ module SignIn
       attribute :level_of_assurance
       attribute :credential_ial
       attribute :verified_at
-      attribute :mhv_icn
+      attribute :icn
+      attribute :secid
       attribute :mhv_credential_uuid
       attribute :mhv_assurance
 

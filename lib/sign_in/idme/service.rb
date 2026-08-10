@@ -31,7 +31,7 @@ module SignIn
           address: normalize_address(info),
           level_of_assurance: info[:level_of_assurance] || default_level_of_assurance(info),
           credential_ial: info[:credential_ial] || default_credential_ial(info),
-          mhv_icn: info[:mhv_icn],
+          icn: info[:mhv_icn],
           mhv_credential_uuid: info[:mhv_uuid],
           mhv_assurance: info[:mhv_assurance]
         )
@@ -62,7 +62,7 @@ module SignIn
         when OAuth::Constants::MHV
           {
             mhv_credential_uuid: user_info.mhv_credential_uuid,
-            mhv_icn: user_info.mhv_icn,
+            mhv_icn: user_info.icn,
             mhv_assurance: user_info.mhv_assurance
           }
         end

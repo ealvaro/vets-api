@@ -274,7 +274,7 @@ describe MockedAuthentication::Credential::Service do
           email:,
           multifactor:,
           mhv_credential_uuid:,
-          mhv_icn:,
+          icn: mhv_icn,
           mhv_assurance:,
           level_of_assurance: 3,
           credential_ial: 'classic_loa3'

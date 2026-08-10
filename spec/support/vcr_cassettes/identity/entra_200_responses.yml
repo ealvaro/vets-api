@@ -1,0 +1,72 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://login.microsoftonline.com/e95f1b23-abaf-45ee-821d-b7ab251ab3bf/oauth2/v2.0/token
+    body:
+      encoding: US-ASCII
+      string: grant_type=authorization_code&code=some-code&client_id=3f7019bf-4510-4a2d-a782-ae0b6b119e9d&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fv0%2Fsign_in%2Fcallback&scope=openid+profile+email+offline_access&client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer&client_assertion=some-client-assertion
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sat, 18 Jul 2026 16:00:00 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Cache-Control:
+      - no-store, no-cache
+      Pragma:
+      - no-cache
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Ms-Request-Id:
+      - 6d38f2c1-1b0a-4c8e-9f3d-2a1b8e5b3a7c
+    body:
+      encoding: ASCII-8BIT
+      string: '{"token_type":"Bearer","scope":"email openid profile","expires_in":3599,"ext_expires_in":3599,"access_token":"eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTAwMDAtYzAwMC0wMDAwMDAwMDAwMDAiLCJpc3MiOiJodHRwczovL2xvZ2luLm1pY3Jvc29mdG9ubGluZS5jb20vZTk1ZjFiMjMtYWJhZi00NWVlLTgyMWQtYjdhYjI1MWFiM2JmL3YyLjAiLCJpYXQiOjE3ODQ1NjMyMDAsIm5iZiI6MTc4NDU2MzIwMCwiZXhwIjoxNzg0NTY2Nzk5LCJhcHBfZGlzcGxheW5hbWUiOiJWQS5nb3YgU2lnbiBpbiBTZXJ2aWNlIiwiYXBwaWQiOiIzZjcwMTliZi00NTEwLTRhMmQtYTc4Mi1hZTBiNmIxMTllOWQiLCJzY3AiOiJlbWFpbCBvcGVuaWQgcHJvZmlsZSIsInN1YiI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUIxY1hrNVBXRzNmVDJ4UWhaczFGTW8iLCJ0aWQiOiJlOTVmMWIyMy1hYmFmLTQ1ZWUtODIxZC1iN2FiMjUxYWIzYmYiLCJ2ZXIiOiIyLjAifQ.","id_token":"eyJ0eXAiOiJKV1QiLCJraWQiOiJzb21lLWtpZCIsImFsZyI6IlJTMjU2In0.eyJhdWQiOiIzZjcwMTliZi00NTEwLTRhMmQtYTc4Mi1hZTBiNmIxMTllOWQiLCJpc3MiOiJodHRwczovL2xvZ2luLm1pY3Jvc29mdG9ubGluZS5jb20vZTk1ZjFiMjMtYWJhZi00NWVlLTgyMWQtYjdhYjI1MWFiM2JmL3YyLjAiLCJpYXQiOjE3ODQ1NjMyMDAsIm5iZiI6MTc4NDU2MzIwMCwiZXhwIjoxNzg0NTY2Nzk5LCJlbWFpbCI6ImpvaG4uZG9lQHZhLmdvdiIsIm5hbWUiOiJKb2huIERvZSIsImdpdmVuX25hbWUiOiJKb2huIiwiZmFtaWx5X25hbWUiOiJEb2UiLCJvaWQiOiJjNTNkMThlYi01MmMwLTRiMzctYTZiOC02ZDFhOTBkZTVmNzciLCJpY24iOiIxMDEyNjY3MTQ1Vjc2MjE0MiIsInNlY2lkIjoiMDAwMDAyODAwNyIsInByZWZlcnJlZF91c2VybmFtZSI6ImpvaG4uZG9lQHZhLmdvdiIsInJoIjoiMC5BUXdBSTdsZjZxLXI3a1dDSGJlckpScXp2NDlHclZOSjdjdExuaDNZU2pZYjF6OE1BRkUuIiwic3ViIjoiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQjFjWGs1UFdHM2ZUMnhRaFpzMUZNbyIsInRpZCI6ImU5NWYxYjIzLWFiYWYtNDVlZS04MjFkLWI3YWIyNTFhYjNiZiIsInV0aSI6ImFCY0RlRmdIaUprTG1Ob1BxUnNUdVYiLCJ2ZXIiOiIyLjAifQ.k143gc_GehF9gks-CB39NIHWgOdubv2HEIdkzSaLZklYDkoBa5VpQTkKRxpY3I__Zv056msJXkJR5RgB3DA4qCvbqDPpW9Q_lESCg9XpNz6SOFHzPjuX8u1VeBJl5In0vwwh1ClkuNpYNqxlOkIMjS_dPT3PmOK_-qlM8gu745eV0pt7HzyDFxNUOPlBr-193GuRSEJ_LTj8OSs9jazU97ACwtjDFLow15gcppPJZUIjS3fBCLZm7puW0ArE_9V0r3GOgPSQWKpNJKRVirFaSQu9p2n8u2VGqHV72LPhHGB-J3WIPSnd6jcAu_V1LzM6nxIN3XAVboBIQzjJR0DVow"}'
+  recorded_at: Sat, 18 Jul 2026 16:00:00 GMT
+- request:
+    method: get
+    uri: https://login.microsoftonline.com/e95f1b23-abaf-45ee-821d-b7ab251ab3bf/discovery/v2.0/keys
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sat, 18 Jul 2026 16:00:01 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Cache-Control:
+      - max-age=86400, private
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      X-Ms-Request-Id:
+      - 9c1b8e5b-3a7c-4f7a-a1d2-6d38f2c11b0a
+    body:
+      encoding: ASCII-8BIT
+      string: '{"keys":[{"kty":"RSA","n":"sZNMujmG0xjWt1e7Y0hW4U5AJDhDJZBtRZZBBO0JLovv1q9qirQLDIRFpcVCkd0VsqUZ6I91U2z-c1OLWiS28BaJsemLVxkzC0ItCPh463xy38g20ZznBRSSfVP9vJr4me7HXMKFfZyl1dFEZAKf_f9UtFVVSAQWIUGJSRAmDRt9tbtCYI9599NRZAgg9A93IDFwmMgeFMW__2CzC8no-7dBQ67nMSoDUFpk3oDh2pHRombsL6c26SDKgKCdZFbxpBpVLGqzzQhLWE69NhGViR3LYUI-ufZi7-0tmUqFAcY3D-XBEOFeBAf_T6Kas-POjOa1cAnqMwnCfJG0nGYHVQ","e":"AQAB","kid":"some-kid","use":"sig","alg":"RS256"}]}'
+  recorded_at: Sat, 18 Jul 2026 16:00:01 GMT

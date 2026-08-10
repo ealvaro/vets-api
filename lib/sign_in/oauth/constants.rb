@@ -28,6 +28,8 @@ module SignIn
 
       CLEAR_IAL2 = 'ial2'
 
+      ENTRA_IAL2 = 'ial2'
+
       REVIEW_INSTANCE_CALLBACK_PROXY_PATH = 'v0/sign_in/review_instance_callback_proxy'
     end
   end

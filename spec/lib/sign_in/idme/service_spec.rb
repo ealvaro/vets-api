@@ -562,7 +562,7 @@ describe SignIn::Idme::Service do
           email:,
           all_emails: emails_confirmed,
           multifactor:,
-          mhv_icn:,
+          icn: mhv_icn,
           mhv_credential_uuid:,
           mhv_assurance:
         )

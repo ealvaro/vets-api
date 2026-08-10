@@ -720,7 +720,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
                 level_of_assurance:,
                 credential_ial:,
                 mhv_credential_uuid: mhv_uuid,
-                mhv_icn:,
+                icn: mhv_icn,
                 mhv_assurance:,
                 email: 'some-email'
               )
@@ -734,7 +734,7 @@ RSpec.describe V0::SignIn::CallbackController, type: :controller do
             let(:mhv_assurance) { 'some-mhv-assurance' }
             let(:mpi_profile) do
               build(:mpi_profile,
-                    icn: user_info.mhv_icn,
+                    icn: user_info.icn,
                     mhv_ids: [user_info.mhv_credential_uuid])
             end
 
