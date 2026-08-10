@@ -9,6 +9,21 @@ FactoryBot.define do
     created_at { DateTime.now.utc }
   end
 
+  factory :cst_sc_evidence_submission, class: 'EvidenceSubmission' do
+    transient do
+      file_name { 'doctors-note.pdf' }
+      document_type { 'Correspondence' }
+    end
+
+    association :user_account, factory: :user_account
+    created_at { DateTime.now.utc }
+    caseflow_claim_id { 'SC10879' }
+    upload_status { BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS] }
+    file_size { 1234 }
+    delete_date { DateTime.now.utc + 60.days }
+    template_metadata { { personalisation: { file_name:, document_type: } }.to_json }
+  end
+
   factory :bd_evidence_submission_for_deletion, class: 'EvidenceSubmission' do
     association :user_account, factory: :user_account
     created_at { DateTime.now.utc - 61.days }

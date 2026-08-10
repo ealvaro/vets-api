@@ -111,5 +111,29 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
         expect { subject.new.perform }.not_to raise_error
       end
     end
+
+    context 'when a caseflow-scoped (SC) record has a past delete_date' do
+      let(:user_account) { create(:user_account) }
+      let!(:sc_success_past_delete) { create(:cst_sc_evidence_submission, user_account:, delete_date: 1.day.ago) }
+      let!(:lighthouse_success_past_delete) do
+        create(:bd_evidence_submission_for_deletion, job_class: 'BenefitsDocuments::Service')
+      end
+
+      # SC rows share the same 60-day retention as Lighthouse rows; the sweep applies to both.
+      it 'deletes SC rows alongside Lighthouse rows when their delete_date has passed' do
+        expect(StatsD).to receive(:increment)
+          .with('worker.cst.delete_evidence_submission_records.count', 2, tags: ['status:success'])
+        expect(StatsD).to receive(:increment)
+          .with('worker.cst.delete_evidence_submission_records.count', 0, tags: ['status:failed'])
+        expect(Rails.logger)
+          .to receive(:info)
+          .with("#{subject} deleted 2 of 2 EvidenceSubmission records (2 success, 0 failed)")
+
+        subject.new.perform
+
+        expect(EvidenceSubmission.where(id: sc_success_past_delete.id).count).to eq(0)
+        expect(EvidenceSubmission.where(id: lighthouse_success_past_delete.id).count).to eq(0)
+      end
+    end
   end
 end

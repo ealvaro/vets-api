@@ -36,6 +36,14 @@ module Swagger
             key :type, :integer
           end
 
+          parameter do
+            key :name, :supplementalClaimId
+            key :in, :formData
+            key :description, 'Caseflow supplemental claim identifier (e.g. "SC10879") the upload is associated with'
+            key :required, true
+            key :type, :string
+          end
+
           response 200 do
             key :description, 'File uploaded successfully; returns the Claims Evidence file UUID'
             schema do

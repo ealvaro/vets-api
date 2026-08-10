@@ -18,12 +18,18 @@ class EvidenceSubmission < ApplicationRecord
   # SUCCESS: the workflow has completed all steps successfully.
   # FAILED: the workflow could not complete because a step encountered a non-recoverable error.
 
+  # Distinguishes non-Caseflow rows (Lighthouse, ChampVA, and other providers that leave
+  # caseflow_claim_id nil) from Caseflow supplemental-claim rows. Only :completed is chained
+  # through without_caseflow_claim because SUCCESS is the one lifecycle status Caseflow SC
+  # rows share with Lighthouse rows.
+  scope :without_caseflow_claim, -> { where(caseflow_claim_id: nil) }
+
   scope :created, -> { where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED]) }
   scope :queued, -> { where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:QUEUED]) }
   scope :pending, lambda {
     where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:PENDING]).where.not(request_id: nil)
   }
-  scope :completed, -> { where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS]) }
+  scope :completed, -> { without_caseflow_claim.where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS]) }
   scope :failed, -> { where(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:FAILED]) }
   # used for sending failure notification emails
   scope :va_notify_email_queued, lambda {

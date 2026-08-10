@@ -2949,7 +2949,8 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       let(:ce_success) { build(:claims_evidence_service_files_response, :success) }
       let(:ce_headers) { { '_headers' => { 'Cookie' => sign_in(mhv_user, nil, true) } } }
       let(:file_data) do
-        { '_data' => { file: fixture_file_upload('doctors-note.pdf', 'application/pdf'), documentTypeId: 34 } }
+        { '_data' => { file: fixture_file_upload('doctors-note.pdf', 'application/pdf'),
+                       documentTypeId: 34, supplementalClaimId: 'SC10879' } }
       end
 
       before do
