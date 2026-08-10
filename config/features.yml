@@ -3672,10 +3672,6 @@ features:
   form_10275_release:
     actor_type: user
     description: If enabled, show link to digitized form on SCO page
-  tsa_safe_travel_letter:
-    actor_type: user
-    description: Enables displaying TSA Safe Travel Letter on Letters page
-    enable_in_development: true
   accredited_representative_portal_full_poa_redaction:
     actor_type: user
     description: Enables redaction for the Accredited Representative Portal POA requests
