@@ -5507,6 +5507,89 @@
         "summary": "/v0/messaging/health/folders/{id}/threads"
       }
     },
+    "/v0/messaging/health/threads/{id}/move": {
+      "patch": {
+        "description": "Moves all messages in a secure messaging thread to a specified folder",
+        "parameters": [
+          {
+            "description": "The id of the thread that is to be moved",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The id of the folder that the thread is to be moved to",
+            "in": "query",
+            "name": "folder_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/InflectionHeader"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The thread was moved successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "errors": [
+                    {
+                      "code": "SM115",
+                      "detail": "Thread not found",
+                      "status": "400",
+                      "title": "Thread not found"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            },
+            "description": "Invalid thread id"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "408": {
+            "$ref": "#/components/responses/408"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "502": {
+            "$ref": "#/components/responses/502"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          },
+          "504": {
+            "$ref": "#/components/responses/504"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "summary": "/v0/messaging/health/threads/{id}/move"
+      }
+    },
     "/v0/messaging/health/message_drafts": {
       "post": {
         "description": "Save a new draft message",

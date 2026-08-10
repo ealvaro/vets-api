@@ -95,5 +95,42 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders::Threads', type: :request
       end
       expect(response).to have_http_status(:bad_request)
     end
+
+    describe '#move' do
+      let(:thread_id) { 7_065_799 }
+
+      it 'responds to PATCH threads/move' do
+        VCR.use_cassette('sm_client/threads/moves_a_thread_with_id') do
+          patch "/mobile/v0/messaging/health/threads/#{thread_id}/move",
+                headers: sis_headers,
+                params: { folder_id: 0 }
+        end
+
+        expect(response).to be_successful
+        expect(response).to have_http_status(:no_content)
+      end
+
+      it 'responds with error to PATCH threads/move with invalid thread id' do
+        VCR.use_cassette('sm_client/threads/moves_a_thread_with_invalid_thread_id') do
+          patch '/mobile/v0/messaging/health/threads/123/move',
+                headers: sis_headers,
+                params: { folder_id: 0 }
+        end
+
+        json_response = response.parsed_body['errors'].first
+        expect(json_response['code']).to eq('SM115')
+      end
+
+      it 'responds with error to PATCH threads/move with invalid folder id' do
+        VCR.use_cassette('sm_client/threads/moves_a_thread_with_invalid_folder_id') do
+          patch '/mobile/v0/messaging/health/threads/3470562/move',
+                headers: sis_headers,
+                params: { folder_id: 123 }
+        end
+
+        json_response = response.parsed_body['errors'].first
+        expect(json_response['detail']).to eq("Folder Doesn't exists")
+      end
+    end
   end
 end

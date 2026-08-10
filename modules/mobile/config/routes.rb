@@ -62,6 +62,7 @@ Mobile::Engine.routes.draw do
     post '/messaging/health/folders', to: 'folders#create'
     get '/messaging/health/folders/:folder_id/messages', to: 'messages#index'
     get '/messaging/health/folders/:folder_id/threads', to: 'threads#index'
+    patch '/messaging/health/threads/:id/move', to: 'threads#move'
     get '/messaging/health/folders/:id', to: 'folders#show', as: 'folder'
     delete '/messaging/health/folders/:id', to: 'folders#destroy'
     post '/messaging/health/messages', to: 'messages#create'

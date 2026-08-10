@@ -29,6 +29,12 @@ module Mobile
         options = { meta: resource.metadata }
         render json: MyHealth::V1::ThreadsSerializer.new(resource.data, options)
       end
+
+      def move
+        folder_id = params.require(:folder_id)
+        client.post_move_thread(params[:id], folder_id)
+        head :no_content
+      end
     end
   end
 end
