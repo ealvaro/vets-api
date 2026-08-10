@@ -1696,6 +1696,7 @@ spec/lib/common/s3_helpers_spec.rb @software/va-platform-backend
 spec/lib/common/virus_scan_spec.rb @software/va-platform-backend
 spec/lib/contention_classification @software/benefits-vro-engineers @software/benefits-contention-classification-engineers
 spec/lib/dangerfile/ @software/va-platform-backend
+spec/lib/data_migrations/evss_claims_sequence_reset_spec.rb @software/va-platform-backend
 spec/lib/debt_management_center @software/vsa-debt-resolution
 spec/lib/decision_review @software/benefits-decision-reviews-be
 spec/lib/decision_review_v1 @software/benefits-decision-reviews-be
@@ -2042,6 +2043,7 @@ spec/rails_helper.rb @software/va-platform-backend
 spec/rakelib/credential_uuid_icn_lookup_spec.rb @software/octo-identity
 spec/rakelib/decision_reviews_recovered_failures_remediation_spec.rb @software/benefits-decision-reviews-be
 spec/rakelib/disability_compensation @software/disability-benefits
+spec/rakelib/evss_claims_sequence_reset_spec.rb @software/va-platform-backend
 spec/rakelib/fixtures @software/va-platform-backend
 spec/rakelib/form526_spec.rb @software/disability-benefits
 spec/rakelib/jobs_spec.rb @software/govcio-vfep-codereviewers
