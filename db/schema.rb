@@ -94,7 +94,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "international_postal_code"
     t.string "last_name"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "middle_initial"
     t.uuid "ogc_id", null: false
@@ -128,7 +128,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "default_new_rep_acceptance_mode", default: "no_acceptance", null: false
     t.string "international_postal_code"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "name"
     t.uuid "ogc_id", null: false
@@ -504,7 +504,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "fingerprint"
     t.jsonb "hours"
     t.float "lat", null: false
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long", null: false
     t.boolean "mobile"
     t.string "name", null: false
@@ -703,7 +703,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "default_new_rep_acceptance_mode", default: "no_acceptance", null: false
     t.string "international_postal_code"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "name"
     t.string "phone"
@@ -804,7 +804,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "international_postal_code"
     t.string "last_name"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "middle_initial"
     t.string "phone"
@@ -1066,7 +1066,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.integer "max"
     t.integer "min"
     t.string "name"
-    t.geography "polygon", limit: {:srid=>4326, :type=>"st_polygon", :geographic=>true}, null: false
+    t.geography "polygon", limit: {srid: 4326, type: "st_polygon", geographic: true}, null: false
     t.string "unit"
     t.datetime "updated_at", null: false
     t.string "vha_facility_id", null: false
@@ -2388,7 +2388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "default_new_rep_acceptance_mode", default: "no_acceptance", null: false
     t.string "international_postal_code"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "name"
     t.string "phone"
@@ -2426,7 +2426,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.string "international_postal_code"
     t.string "last_name"
     t.float "lat"
-    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}
+    t.geography "location", limit: {srid: 4326, type: "st_point", geographic: true}
     t.float "long"
     t.string "middle_initial"
     t.string "phone"
