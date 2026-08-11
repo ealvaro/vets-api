@@ -2274,6 +2274,7 @@ spec/sidekiq/form526_status_polling_job_spec.rb @software/disability-benefits
 spec/sidekiq/form526_submission_failed_email_job_spec.rb @software/disability-benefits
 spec/sidekiq/form526_submission_failure_email_job_spec.rb @software/disability-benefits
 spec/sidekiq/form526_submission_processing_report_job_spec.rb @software/disability-benefits
+spec/sidekiq/form526_submitted_email_job_spec.rb @software/disability-benefits
 spec/sidekiq/form5655 @software/vsa-debt-resolution
 spec/sidekiq/gi_bill_feedback_submission_job_spec.rb @software/govcio-vfep-codereviewers
 spec/sidekiq/hca @software/health-apps-backend

@@ -1319,60 +1319,45 @@ RSpec.describe Form526Submission do
         end
       end
 
-      context 'with multiple successful jobs and email and submitted time in PM' do
+      context 'when enqueueing the confirmation email' do
         subject { create(:form526_submission, :with_multiple_succesful_jobs, submitted_claim_id: 123_654_879) }
 
-        before { Timecop.freeze(Time.zone.parse('2012-07-20 14:15:00 UTC')) }
-
-        after { Timecop.return }
-
-        it 'calls confirmation email job with correct personalization' do
+        it 'enqueues confirmation email job with submission id only' do
           allow(Form526ConfirmationEmailJob).to receive(:perform_async) do |*args|
-            expect(args[0]['first_name']).to eql('firstname')
-            expect(args[0]['submitted_claim_id']).to be(123_654_879)
-            expect(args[0]['email']).to eql('test@email.com')
-            expect(args[0]['date_submitted']).to eql('July 20, 2012 2:15 p.m. UTC')
+            expect(args).to eq([subject.id])
           end
 
           subject.workflow_complete_handler(nil, options)
         end
-      end
 
-      context 'with multiple successful jobs and email and submitted time in PM with two digit hour' do
-        subject { create(:form526_submission, :with_multiple_succesful_jobs, submitted_claim_id: 123_654_879) }
+        context 'with submitted time in PM' do
+          before { Timecop.freeze(Time.zone.parse('2012-07-20 14:15:00 UTC')) }
 
-        before { Timecop.freeze(Time.zone.parse('2012-07-20 11:12:00 UTC')) }
+          after { Timecop.return }
 
-        after { Timecop.return }
-
-        it 'calls confirmation email job with correct personalization' do
-          allow(Form526ConfirmationEmailJob).to receive(:perform_async) do |*args|
-            expect(args[0]['first_name']).to eql('firstname')
-            expect(args[0]['submitted_claim_id']).to be(123_654_879)
-            expect(args[0]['email']).to eql('test@email.com')
-            expect(args[0]['date_submitted']).to eql('July 20, 2012 11:12 a.m. UTC')
+          it 'formats creation time for mailers' do
+            expect(subject.format_creation_time_for_mailers).to eql('July 20, 2012 2:15 p.m. UTC')
           end
-
-          subject.workflow_complete_handler(nil, options)
         end
-      end
 
-      context 'with multiple successful jobs and email and submitted time in morning' do
-        subject { create(:form526_submission, :with_multiple_succesful_jobs, submitted_claim_id: 123_654_879) }
+        context 'with submitted time in PM with two digit hour' do
+          before { Timecop.freeze(Time.zone.parse('2012-07-20 11:12:00 UTC')) }
 
-        before { Timecop.freeze(Time.zone.parse('2012-07-20 8:07:00 UTC')) }
+          after { Timecop.return }
 
-        after { Timecop.return }
-
-        it 'calls confirmation email job with correct personalization' do
-          allow(Form526ConfirmationEmailJob).to receive(:perform_async) do |*args|
-            expect(args[0]['first_name']).to eql('firstname')
-            expect(args[0]['submitted_claim_id']).to be(123_654_879)
-            expect(args[0]['email']).to eql('test@email.com')
-            expect(args[0]['date_submitted']).to eql('July 20, 2012 8:07 a.m. UTC')
+          it 'formats creation time for mailers' do
+            expect(subject.format_creation_time_for_mailers).to eql('July 20, 2012 11:12 a.m. UTC')
           end
+        end
 
-          subject.workflow_complete_handler(nil, options)
+        context 'with submitted time in morning' do
+          before { Timecop.freeze(Time.zone.parse('2012-07-20 8:07:00 UTC')) }
+
+          after { Timecop.return }
+
+          it 'formats creation time for mailers' do
+            expect(subject.format_creation_time_for_mailers).to eql('July 20, 2012 8:07 a.m. UTC')
+          end
         end
       end
 

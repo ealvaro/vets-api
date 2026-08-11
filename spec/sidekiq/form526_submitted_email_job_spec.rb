@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Form526ConfirmationEmailJob, type: :job do
+RSpec.describe Form526SubmittedEmailJob, type: :job do
   subject { described_class }
 
   let(:email_service) { instance_double(VaNotify::Service) }
@@ -16,24 +16,19 @@ RSpec.describe Form526ConfirmationEmailJob, type: :job do
   end
 
   describe '#perform' do
-    around do |example|
-      Timecop.freeze(Time.zone.parse('2020-07-15 12:00:00 UTC')) { example.run }
-    end
-
     let(:expected_params) do
       {
         email_address: 'test@email.com',
-        template_id: Settings.vanotify.services.va_gov.template_id.form526_confirmation_email,
+        template_id: Settings.vanotify.services.va_gov.template_id.form526_submitted_email,
         personalisation: {
           'claim_id' => 600_191_990,
           'date_submitted' => form526_submission.format_creation_time_for_mailers,
-          'date_received' => 'July 15, 2020 12:00 p.m. UTC',
           'first_name' => form526_submission.get_first_name
         }
       }
     end
 
-    it 'sends a confirmation email using submission data' do
+    it 'sends a submitted email using submission data' do
       expect(email_service).to receive(:send_email).with(expected_params)
 
       subject.new.perform(form526_submission.id)
@@ -51,30 +46,5 @@ RSpec.describe Form526ConfirmationEmailJob, type: :job do
       expect { subject.new.perform(form526_submission.id) }
         .to trigger_statsd_increment(described_class::STATSD_SUCCESS_NAME)
     end
-
-    # it 'handles 4xx errors when sending an email' do
-    #   error = Common::Exceptions::BackendServiceException.new(
-    #     'VANOTIFY_400',
-    #     { source: VaNotify::Service.to_s },
-    #     400,
-    #     'Error'
-    #   )
-    #   allow(email_service).to receive(:send_email).and_raise(error)
-    #
-    #   expect(Rails.logger).to receive(:error).with('Form526ConfirmationEmailJob error', error:)
-    #   expect { subject.new.perform(form526_submission.id) }
-    #     .to trigger_statsd_increment('worker.form526_confirmation_email.error')
-    # end
-    #
-    # it 'handles 5xx errors when sending an email' do
-    #   error = Common::Exceptions::BackendServiceException.new(
-    #     'VANOTIFY_500',
-    #     { source: VaNotify::Service.to_s },
-    #     500,
-    #     'Error'
-    #   )
-    #   allow(email_service).to receive(:send_email).and_raise(error)
-    #   expect(Rails.logger).to receive(:error).with('Form526ConfirmationEmailJob error', error:)
-    # end
   end
 end

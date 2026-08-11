@@ -349,7 +349,7 @@ class Form526Submission < ApplicationRecord
       # If the received_email_from_polling feature enabled, skip this call
       unless Flipper.enabled?(:disability_526_call_received_email_from_polling,
                               OpenStruct.new({ flipper_id: user_uuid }))
-        submission.send_received_email('Form526Submission#workflow_complete_handler', options['first_name'])
+        submission.send_received_email('Form526Submission#workflow_complete_handler')
       end
       submission.workflow_complete = true
       submission.save
@@ -360,19 +360,6 @@ class Form526Submission < ApplicationRecord
 
   def bdd?
     form.dig('form526', 'form526', 'bddQualified') || false
-  end
-
-  def personalization_parameters(first_name)
-    {
-      'email' => form['form526']['form526']['veteran']['emailAddress'],
-      # for email templates using VANotify,
-      # we can conditionally display fields
-      # by sending an empty string through the payload
-      'submitted_claim_id' => submitted_claim_id || '',
-      'date_submitted' => created_at.strftime('%B %-d, %Y %-l:%M %P %Z').sub(/([ap])m/, '\1.m.'),
-      'date_received' => Time.now.utc.strftime('%B %-d, %Y %-l:%M %P %Z').sub(/([ap])m/, '\1.m.'),
-      'first_name' => first_name
-    }
   end
 
   def veteran_email_address
@@ -474,9 +461,7 @@ class Form526Submission < ApplicationRecord
   def send_submitted_email(invoker)
     if Flipper.enabled?(:disability_526_send_form526_submitted_email)
       Rails.logger.info("Form526SubmittedEmailJob called for user #{user_uuid}, submission: #{id} from #{invoker}")
-      first_name = get_first_name
-      params = personalization_parameters(first_name)
-      Form526SubmittedEmailJob.perform_async(params)
+      Form526SubmittedEmailJob.perform_async(id)
     end
   end
 
@@ -484,11 +469,9 @@ class Form526Submission < ApplicationRecord
   # Primary Path: when the poll for PollForm526PDF job is successful
   # Backup Path: when Form526StatusPollingJob reaches "paranoid_success" status
   # @param invoker: string where the Received Email trigger is being called from
-  def send_received_email(invoker, first_name = nil)
+  def send_received_email(invoker)
     Rails.logger.info("Form526ConfirmationEmailJob called for user #{user_uuid}, submission: #{id} from #{invoker}")
-    first_name = get_first_name if first_name.nil?
-    params = personalization_parameters(first_name)
-    Form526ConfirmationEmailJob.perform_async(params)
+    Form526ConfirmationEmailJob.perform_async(id)
   end
 
   private
