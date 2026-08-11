@@ -273,6 +273,25 @@ RSpec.describe 'MockedAuthentication::Credentials', type: :request do
 
         context 'and state parameter is included' do
           it_behaves_like 'successful response'
+
+          context 'and state contains a malicious XSS payload' do
+            let(:passed_state) { '`;alert(document.cookie);let x=`' }
+
+            it 'places the state value in the data-state HTML attribute' do
+              subject
+              expect(response.body).to include("data-state=\"#{passed_state}\"")
+            end
+
+            it 'does not interpolate the state value directly into JavaScript source' do
+              subject
+              expect(response.body).not_to include("state=#{passed_state}")
+            end
+
+            it 'reads state from the data attribute in the JavaScript url construction' do
+              subject
+              expect(response.body).to include('authorizeBtn.dataset.state')
+            end
+          end
         end
       end
     end
