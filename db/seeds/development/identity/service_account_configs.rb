@@ -90,6 +90,7 @@ mhv_ac = SignIn::ServiceAccountConfig.find_or_initialize_by(service_account_id: 
 mhv_ac.update!(
   description: 'MHV Account Creation - localhost',
   scopes: ['https://apigw-intb.aws.myhealth.va.gov/v1/usermgmt/account-service/account',
+           'https://mhv-intb-api.myhealth.va.gov/mhvapi/v1/usermgmt/account-service/account',
            'http://localhost:3000/sts/terms_of_use/current_status'],
   access_token_audience: 'http://localhost:3000',
   access_token_user_attributes: ['icn'],
