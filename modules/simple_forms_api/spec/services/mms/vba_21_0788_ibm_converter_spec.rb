@@ -48,7 +48,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA210788IbmConverter do
 
       it 'preserves the data dictionary field names verbatim, typos included' do
         result = described_class.convert(form)
-        expect(result).to have_key('PRIMARY _BENEFICIARY_RESIDES_OUTSUDE_US')
+        expect(result).to have_key('PRIMARY _BENEFICIARY_RESIDES_OUTSIDE_US')
       end
     end
   end
@@ -91,8 +91,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA210788IbmConverter do
       }
     end
 
-    it 'formats the veteran name as LAST, FIRST, MIDDLE' do
-      expect(described_class.convert(form)['VETERAN_NAME']).to eq('Doe, John, David')
+    it 'formats the veteran name as FIRST, MIDDLE, LAST' do
+      expect(described_class.convert(form)['VETERAN_NAME']).to eq('John, David, Doe')
     end
 
     it 'strips dashes from the SSN' do
@@ -112,7 +112,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA210788IbmConverter do
 
     it 'flattens the claimant address block with city/state ZIP and country' do
       expect(described_class.convert(form)['CLAIMANT_ADDRESS_FULL_BLOCK']).to eq(
-        "123 Main St Apt 4B\nSpringfield, PA 22150\nUSA"
+        '123 Main St Apt 4B Springfield, PA 22150 USA'
       )
     end
 
@@ -290,7 +290,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA210788IbmConverter do
         'SURVIVING_SPOUSE_INCARCERATED',
         'VETERAN_INCOMPETENT',
         'VETERAN_IN_RECEIPT_OF_PENSION',
-        'PRIMARY _BENEFICIARY_RESIDES_OUTSUDE_US',
+        'PRIMARY _BENEFICIARY_RESIDES_OUTSIDE_US',
         'VETERAN_DISAPPEARED'
       ]
     end

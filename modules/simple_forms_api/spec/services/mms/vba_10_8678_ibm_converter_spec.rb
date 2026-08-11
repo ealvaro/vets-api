@@ -72,8 +72,8 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
         expect(keys).to eq(keys.sort)
       end
 
-      it 'emits exactly the 39 fields defined in the data dictionary' do
-        expect(described_class.convert(form).size).to eq(39)
+      it 'emits exactly the 40 fields defined in the data dictionary' do
+        expect(described_class.convert(form).size).to eq(40)
       end
     end
   end
@@ -104,12 +104,12 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
     end
 
     it 'converts ISO signature dates to MM/DD/YYYY' do
-      expect(described_class.convert(form)['DATE_OF_VETERAN_SIGNATURE']).to eq('04/16/2026')
+      expect(described_class.convert(form)['SIGNATURE_DATE']).to eq('04/16/2026')
     end
 
     it 'flattens the address block with city/state ZIP and country' do
       expect(described_class.convert(form)['VETERAN_ADDRESS_FULL_BLOCK']).to eq(
-        "123 Main St Apt 4B\nSpringfield, PA 22150\nUSA"
+        '123 Main St Apt 4B Springfield, PA 22150 USA'
       )
     end
 

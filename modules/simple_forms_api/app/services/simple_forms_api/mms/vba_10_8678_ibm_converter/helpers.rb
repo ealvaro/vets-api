@@ -62,7 +62,7 @@ module SimpleFormsApi
             block['postal_code']
           ].reject { |s| s.to_s.empty? }.join(', ').sub(/, (\S+)\z/, ' \1')
 
-          [line1, city_state_zip, block['country']].reject { |s| s.to_s.empty? }.join("\n")
+          [line1, city_state_zip, block['country']].reject { |s| s.to_s.empty? }.join(' ')
         end
 
         def normalize_last_4_ssn(ssn)

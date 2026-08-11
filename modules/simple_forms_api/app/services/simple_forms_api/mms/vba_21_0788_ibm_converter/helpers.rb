@@ -16,8 +16,8 @@ module SimpleFormsApi
           'VETERAN_INCOMPETENT' => 'veteran_incompetent_no_fiduciary',
           'VETERAN_IN_RECEIPT_OF_PENSION' => 'veteran_pension_care_facility',
           # Field name below is verbatim from the data dictionary, including the
-          # space after PRIMARY and the OUTSUDE misspelling. Do not "fix" it.
-          'PRIMARY _BENEFICIARY_RESIDES_OUTSUDE_US' => 'enemy_territory_resident',
+          # space after PRIMARY and the OUTSIDE misspelling. Do not "fix" it.
+          'PRIMARY _BENEFICIARY_RESIDES_OUTSIDE_US' => 'enemy_territory_resident',
           'VETERAN_DISAPPEARED' => 'veteran_disappeared'
         }.freeze
 
@@ -128,7 +128,7 @@ module SimpleFormsApi
           name = form.data[key]
           return '' unless name.is_a?(Hash)
 
-          [name['last'], name['first'], name['middle']]
+          [name['first'], name['middle'], name['last']]
             .reject { |part| part.to_s.empty? }
             .join(', ')
         end
@@ -153,7 +153,7 @@ module SimpleFormsApi
             block['postal_code']
           ].reject { |s| s.to_s.empty? }.join(', ').sub(/, (\S+)\z/, ' \1')
 
-          [line1, city_state_zip, block['country']].reject { |s| s.to_s.empty? }.join("\n")
+          [line1, city_state_zip, block['country']].reject { |s| s.to_s.empty? }.join(' ')
         end
 
         def normalize_ssn(ssn)

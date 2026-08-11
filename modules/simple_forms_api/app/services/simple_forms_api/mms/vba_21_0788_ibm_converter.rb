@@ -39,11 +39,6 @@ module SimpleFormsApi
         'VETERAN_CHILD_ADOPTED_YES' => ->(form) { form.data['legally_adopted'] == true ? 1 : 0 },
         'VETERAN_CHILD_ADOPTED_NO' => ->(form) { form.data['legally_adopted'] == false ? 1 : 0 },
 
-        # 13A Reasons for Apportionment
-        # handled in #reason_checkbox_fields
-        # typo field expained above
-        # 'PRIMARY _BENEFICIARY_RESIDES_OUTSIDE_US' => ->(_) {},
-
         'BENEFICIARY_FACILITY_NAME' => ->(form) { form.facility_name || '' },
         'BENEFICIARY_FACILITY_ADDRESS_FULL_BLOCK' => ->(form) { form.facility_address || '' },
         'REMARKS' => ->(form) { form.data['remarks'] || '' },
@@ -58,6 +53,7 @@ module SimpleFormsApi
       def self.convert(form)
         result = MAPPINGS.transform_values { |proc| proc.call(form) }
         result.merge!(apportion_section(form.data['apportionment_people'], MAX_APPORTIONEES))
+        # 13A Reasons for Apportionment
         result.merge!(reason_checkbox_fields(form.data))
 
         result.sort.to_h
