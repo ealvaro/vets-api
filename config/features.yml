@@ -2673,9 +2673,9 @@ features:
   enable_lighthouse_copays:
     actor_type: user
     description: Selects Lighthouse (vs VBS) as the medical copays data source — Payment History 2.0
-  enable_copays_payment_history:
+  enable_facility_account_history:
     actor_type: user
-    description: Enables the copays payment history feature — Payment History 2.0
+    description: Enables the facility payment history feature — Payment History 2.0
     enable_in_development: true
   meb_1606_30_automation:
     actor_type: user
@@ -2911,7 +2911,8 @@ features:
     enable_in_development: true
   va_online_scheduling_cc_direct_scheduling_v2_post_mvp:
     actor_type: user
-    description: Enables post-MVP unified scheduling enhancements, including surfacing providers that can only
+    description:
+      Enables post-MVP unified scheduling enhancements, including surfacing providers that can only
       be scheduled by phone (non-online-scheduling) and the onlineScheduling indicator on the provider list.
     enable_in_development: true
   va_online_scheduling_mobile_presentation_filter_update:

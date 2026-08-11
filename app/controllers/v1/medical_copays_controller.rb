@@ -59,7 +59,26 @@ module V1
     private
 
     def use_vbs?
-      !Flipper.enabled?(:vha_show_payment_history) || cerner_copay_user?
+      return true if cerner_copay_user?
+
+      # If the feature flag is enabled, we want to log a warning so we can track usage of the route
+      if payment_history_enabled?
+        Rails.logger.warn('medical_copays route hit when enable_facility_account_history true')
+      end
+
+      !show_payment_history_enabled?
+    end
+
+    def show_payment_history_enabled?
+      MedicalCopays::FeatureFlagHelpers.show_payment_history_enabled?(current_user)
+    end
+
+    def use_lighthouse?
+      MedicalCopays::FeatureFlagHelpers.lighthouse_copays_enabled?(current_user)
+    end
+
+    def payment_history_enabled?
+      MedicalCopays::FeatureFlagHelpers.facility_account_history_enabled?(current_user)
     end
 
     def medical_copay_service

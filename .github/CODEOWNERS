@@ -149,6 +149,7 @@ app/controllers/v0/veteran_status_cards_controller.rb @software/mobile-api-team
 app/controllers/v1/apidocs_controller.rb @software/va-platform-backend
 app/controllers/v1/gids @software/govcio-vfep-codereviewers
 app/controllers/v1/medical_copays_controller.rb @software/vsa-debt-resolution
+app/controllers/v1/facility_accounts_controller.rb @software/vsa-debt-resolution
 app/controllers/v1/post911_gi_bill_statuses_controller.rb @software/govcio-vfep-codereviewers
 app/controllers/v1/profile @software/vfs-authenticated-experience-backend
 app/controllers/v1/sessions_controller.rb @software/octo-identity
@@ -1428,6 +1429,7 @@ spec/controllers/v0/users_controller_spec.rb @software/octo-identity
 spec/controllers/v0/veteran_onboardings_controller_spec.rb @software/va-core-veteran-experiences
 spec/controllers/v0/veteran_readiness_employment_claims_controller_spec.rb @software/govcio-vfep-codereviewers
 spec/controllers/v1/gids @software/govcio-vfep-codereviewers
+spec/controllers/v1/medical_copays_controller_spec.rb @software/vsa-debt-resolution
 spec/controllers/v1/post911_gi_bill_statuses_controller_spec.rb @software/govcio-vfep-codereviewers
 spec/controllers/v1/profile @software/vfs-authenticated-experience-backend
 spec/controllers/v1/sessions_controller_spec.rb @software/octo-identity

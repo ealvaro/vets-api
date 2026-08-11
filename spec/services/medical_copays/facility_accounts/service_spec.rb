@@ -13,7 +13,8 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
     allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(lighthouse_builder)
     allow(MedicalCopays::FacilityAccounts::VBSBuilder).to receive(:new).and_return(vbs_builder)
     allow(MedicalCopays::VBS::Service).to receive(:build).and_return(instance_double(MedicalCopays::VBS::Service))
-    allow(Flipper).to receive(:enabled?).with(:enable_copays_payment_history, user).and_return(payment_history_enabled)
+    allow(Flipper).to receive(:enabled?).with(:enable_facility_account_history,
+                                              user).and_return(payment_history_enabled)
     allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, user).and_return(lighthouse_copays_enabled)
   end
 
@@ -54,7 +55,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
   end
 
   describe 'feature gating' do
-    context 'when enable_copays_payment_history is disabled' do
+    context 'when enable_facility_account_history is disabled' do
       let(:payment_history_enabled) { false }
       let(:lighthouse_copays_enabled) { true }
 
@@ -71,7 +72,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       end
     end
 
-    context 'when enable_copays_payment_history and enable_lighthouse_copays are enabled' do
+    context 'when enable_facility_account_history and enable_lighthouse_copays are enabled' do
       let(:payment_history_enabled) { true }
       let(:lighthouse_copays_enabled) { true }
 
@@ -84,7 +85,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
       end
     end
 
-    context 'when enable_copays_payment_history is enabled but enable_lighthouse_copays is disabled' do
+    context 'when enable_facility_account_history is enabled but enable_lighthouse_copays is disabled' do
       let(:payment_history_enabled) { true }
       let(:lighthouse_copays_enabled) { false }
 
