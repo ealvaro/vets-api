@@ -7,7 +7,7 @@ module RepresentationManagement
     class Client
       ALLOWED_TYPES = %w[agents attorneys representatives veteran_service_organizations].freeze
       DEFAULT_PAGE = 1
-      DEFAULT_PAGE_SIZE = 100
+      DEFAULT_PAGE_SIZE = 1000
 
       # Retrieves accredited entities from the GCLAWS API with error handling
       #
@@ -18,7 +18,7 @@ module RepresentationManagement
       #
       # @param type [String] The entity type to retrieve (must be in ALLOWED_TYPES)
       # @param page [Integer] The page number for pagination (default: 1)
-      # @param page_size [Integer] The number of records per page (default: 100)
+      # @param page_size [Integer] The number of records per page (default: 1000)
       # @return [Hash, Faraday::Response] Returns empty hash for invalid types,
       #   successful Faraday response for valid requests, or error response for failures
       #

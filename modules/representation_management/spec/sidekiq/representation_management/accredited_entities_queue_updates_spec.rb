@@ -895,6 +895,43 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
     end
   end
 
+  describe '#raw_address_from_entity (normalization)' do
+    it 'keeps the type-specific fields the API provides for each entity type' do
+      expect(job.send(:raw_address_for_agent, {}).keys)
+        .to match_array(%w[address_line1 address_line2 address_line3 zip_code work_country])
+      expect(job.send(:raw_address_for_attorney, {}).keys)
+        .to match_array(%w[address_line1 address_line2 address_line3 zip_code city state_code])
+      expect(job.send(:raw_address_for_representative, {}).keys)
+        .to match_array(%w[address_line1 address_line2 address_line3 zip_code city state_code])
+    end
+
+    it 'preserves the agent work_country value the API sends' do
+      result = job.send(:raw_address_for_agent, { 'workCountry' => 'USA' })
+      expect(result['work_country']).to eq('USA')
+    end
+
+    it 'strips surrounding whitespace' do
+      result = job.send(:raw_address_for_attorney, { 'workAddress1' => '  123 Main St  ', 'workCity' => ' Denver ' })
+      expect(result['address_line1']).to eq('123 Main St')
+      expect(result['city']).to eq('Denver')
+    end
+
+    it 'maps blank and literal "null" values to nil' do
+      result = job.send(:raw_address_for_attorney,
+                        { 'workAddress1' => 'x', 'workAddress2' => '', 'workAddress3' => 'null', 'workState' => '  ' })
+      expect(result['address_line2']).to be_nil
+      expect(result['address_line3']).to be_nil
+      expect(result['state_code']).to be_nil
+    end
+
+    it 'pads the 5-digit zip and any +4 segment, matching the XLSX pipeline' do
+      expect(job.send(:raw_address_for_agent, { 'workZip' => '6053' })['zip_code']).to eq('06053')
+      expect(job.send(:raw_address_for_agent, { 'workZip' => '01020-432' })['zip_code']).to eq('01020-0432')
+      expect(job.send(:raw_address_for_agent, { 'workZip' => ' 12345 ' })['zip_code']).to eq('12345')
+      expect(job.send(:raw_address_for_agent, { 'workZip' => '' })['zip_code']).to be_nil
+    end
+  end
+
   describe '#process_orgs_and_reps' do
     let(:vso_response) { { 'items' => [vso1] } }
     let(:rep_response) { { 'items' => [rep1] } }
@@ -2419,72 +2456,6 @@ RSpec.describe RepresentationManagement::AccreditedEntitiesQueueUpdates, type: :
 
     it 'returns the raw rows processed for representatives to match validate_all_counts' do
       expect(job.send(:get_processed_count_for_type, :representatives)).to eq(42)
-    end
-  end
-
-  describe '#single_page_size' do
-    let(:entity_counts) { instance_double(RepresentationManagement::AccreditationApiEntityCount) }
-
-    before do
-      job.instance_variable_set(:@entity_counts, entity_counts)
-      allow(entity_counts).to receive(:current_api_counts).and_return({
-                                                                        agents: 666,
-                                                                        attorneys: 5933,
-                                                                        representatives: 18_693,
-                                                                        veteran_service_organizations: 87
-                                                                      })
-    end
-
-    it 'sizes agents to totalRecords + 100 rounded up to the next hundred' do
-      expect(job.send(:single_page_size, RepresentationManagement::AGENTS)).to eq(800)
-    end
-
-    it 'sizes VSOs to totalRecords + 100 rounded up to the next hundred' do
-      expect(job.send(:single_page_size, RepresentationManagement::VSOS)).to eq(200)
-    end
-
-    it 'returns nil for paginated types (attorneys, representatives)' do
-      expect(job.send(:single_page_size, RepresentationManagement::ATTORNEYS)).to be_nil
-      expect(job.send(:single_page_size, RepresentationManagement::REPRESENTATIVES)).to be_nil
-    end
-
-    it 'returns nil when the total is unavailable' do
-      allow(entity_counts).to receive(:current_api_counts).and_return({})
-      expect(job.send(:single_page_size, RepresentationManagement::AGENTS)).to be_nil
-    end
-  end
-
-  describe 'single-page fetch for agents' do
-    let(:entity_counts) { instance_double(RepresentationManagement::AccreditationApiEntityCount) }
-    let(:agent) do
-      {
-        'id' => '1', 'number' => 10, 'poa' => 'ABC', 'firstName' => 'A', 'lastName' => 'B',
-        'workAddress1' => 'x', 'workZip' => '12345'
-      }
-    end
-
-    before do
-      job.instance_variable_set(:@entity_counts, entity_counts)
-      job.instance_variable_set(:@agent_ids, [])
-      job.instance_variable_set(:@agent_ids_for_address_validation, [])
-      job.instance_variable_set(:@processing_error_types, [])
-      allow(entity_counts).to receive(:current_api_counts).and_return({ agents: 666 })
-      allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::AGENTS, page: 1, page_size: 800)
-        .and_return(instance_double(Faraday::Response, body: { 'items' => [agent] }))
-      allow(client).to receive(:get_accredited_entities)
-        .with(type: RepresentationManagement::AGENTS, page: 2, page_size: 800)
-        .and_return(instance_double(Faraday::Response, body: { 'items' => [] }))
-      record = instance_double(AccreditedIndividual, id: 1, raw_address: nil)
-      allow(AccreditedIndividual).to receive(:find_or_create_by).and_return(record)
-      allow(record).to receive(:update).and_return(true)
-    end
-
-    it 'requests agents in a single large page sized to totalRecords' do
-      job.send(:update_agents)
-
-      expect(client).to have_received(:get_accredited_entities)
-        .with(type: RepresentationManagement::AGENTS, page: 1, page_size: 800)
     end
   end
 end

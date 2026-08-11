@@ -39,12 +39,6 @@ module RepresentationManagement
     VSOS = RepresentationManagement::VSOS
     ENTITY_CONFIG = RepresentationManagement::ENTITY_CONFIG
 
-    # Entity types small enough to fetch in a single page. Fetching everything in one request
-    # avoids the GCLAWS multi-page boundary bug, which duplicates records across adjacent pages
-    # and silently drops others. Larger types (attorneys, representatives) continue to paginate
-    # at the client default until GCLAWS supports a unique sort column for stable pagination.
-    SINGLE_PAGE_FETCH_TYPES = [AGENTS, VSOS].freeze
-
     # Main job method that processes accredited entities
     #
     # @param force_update_types [Array<String>] Optional array of entity types to force update
@@ -446,10 +440,9 @@ module RepresentationManagement
     def update_entities(entity_type)
       config = ENTITY_CONFIG[entity_type]
       page = 1
-      page_size = single_page_size(entity_type)
 
       loop do
-        response = fetch_entities_page(entity_type, page, page_size)
+        response = client.get_accredited_entities(type: entity_type, page:)
         entities = response.body['items']
         break if entities.empty?
 
@@ -467,10 +460,9 @@ module RepresentationManagement
     # @return [void]
     def update_vsos
       page = 1
-      page_size = single_page_size(VSOS)
 
       loop do
-        response = fetch_entities_page(VSOS, page, page_size)
+        response = client.get_accredited_entities(type: VSOS, page:)
         vsos = response.body['items']
         break if vsos.empty?
 
@@ -605,14 +597,7 @@ module RepresentationManagement
     # @param rep [Hash] Raw representative data from the GCLAWS API
     # @return [Hash] Standardized address data
     def raw_address_for_representative(rep)
-      {
-        'address_line1' => rep['workAddress1'],
-        'address_line2' => rep['workAddress2'],
-        'address_line3' => rep['workAddress3'],
-        'city' => rep['workCity'],
-        'state_code' => rep['workState'],
-        'zip_code' => rep['workZip']
-      }
+      raw_address_from_entity(rep, city: 'workCity', state_code: 'workState')
     end
 
     def processed_individual_types
@@ -835,19 +820,26 @@ module RepresentationManagement
       }.merge(extra_attrs)
     end
 
-    # Extracts address data from an entity record with optional extra fields
+    # Builds the base raw_address hash (string keys) with values normalized to align with the XLSX
+    # pipeline (XlsxFileProcessor) so API-sourced and XLSX-sourced addresses compare equal and don't
+    # trigger spurious revalidation: whitespace stripped, blank/"null" -> nil, zip padded/formatted
+    # (ZZZZZ or ZZZZZ-NNNN). extra_fields adds the type-specific keys the API provides for that entity
+    # (e.g. work_country for agents; city/state_code for attorneys and representatives).
     #
     # @param entity [Hash] Raw entity data from the GCLAWS API
-    # @param extra_fields [Hash] Additional fields to include, with mapping to entity keys
+    # @param extra_fields [Hash] raw_address key (Symbol) => API field name (String)
     # @return [Hash] Standardized address data
     def raw_address_from_entity(entity, extra_fields = {})
-      {
-        address_line1: entity['workAddress1'],
-        address_line2: entity['workAddress2'],
-        address_line3: entity['workAddress3'],
-        zip_code: entity['workZip']
-      }.merge(extra_fields.transform_values { |key| entity[key] })
-        .transform_keys(&:to_s)
+      base = {
+        'address_line1' => normalize_address_value(entity['workAddress1']),
+        'address_line2' => normalize_address_value(entity['workAddress2']),
+        'address_line3' => normalize_address_value(entity['workAddress3']),
+        'zip_code' => normalize_zip(entity['workZip'])
+      }
+      extra = extra_fields.each_with_object({}) do |(key, api_field), hash|
+        hash[key.to_s] = normalize_address_value(entity[api_field])
+      end
+      base.merge(extra)
     end
 
     # Creates a standardized address hash for an agent
@@ -864,6 +856,31 @@ module RepresentationManagement
     # @return [Hash] Standardized address data
     def raw_address_for_attorney(attorney)
       raw_address_from_entity(attorney, city: 'workCity', state_code: 'workState')
+    end
+
+    # Normalizes a raw address string the same way XlsxFileProcessor does: strips surrounding
+    # whitespace and treats blank or the literal "null" as nil.
+    def normalize_address_value(value)
+      stripped = value.to_s.strip
+      return nil if stripped.empty? || stripped.casecmp('null').zero?
+
+      stripped
+    end
+
+    # Formats a raw zip the same way XlsxFileProcessor does: pads the 5-digit part to 5 and any
+    # +4 part to 4, rejoining with a hyphen. Returns nil when blank/"null".
+    def normalize_zip(value)
+      stripped = value.to_s.strip
+      return nil if stripped.empty? || stripped.casecmp('null').zero?
+
+      zip5, zip4 = stripped.split('-', 2)
+      zip5 = zip5.to_s.strip
+      zip5 = zip5.rjust(5, '0') if zip5.length < 5
+      zip4 = zip4.to_s.strip
+      return zip5 if zip4.empty?
+
+      zip4 = zip4.rjust(4, '0') if zip4.length < 4
+      "#{zip5}-#{zip4}"
     end
 
     # Queues address validation jobs for a batch of record IDs
@@ -930,40 +947,6 @@ module RepresentationManagement
     # @return [RepresentationManagement::GCLAWS::Client] The client for GCLAWS API calls
     def client
       RepresentationManagement::GCLAWS::Client
-    end
-
-    # Computes a one-request page size for the given type: totalRecords + 100, rounded up to the
-    # next hundred. Returns nil for types that should keep paginating at the client default, or
-    # when the total is unavailable.
-    #
-    # @param entity_type [String] The entity type
-    # @return [Integer, nil]
-    def single_page_size(entity_type)
-      return nil unless SINGLE_PAGE_FETCH_TYPES.include?(entity_type)
-
-      # current_api_counts lazily fetches totals directly from the API and is independent of
-      # save_api_counts, so this still returns a real total on forced runs (where save_api_counts is
-      # skipped). It only falls back to nil — and therefore paginated fetching — if the count
-      # endpoint itself returns no total (e.g. the API is unavailable).
-      total = @entity_counts&.current_api_counts&.dig(entity_type.to_sym).to_i
-      return nil unless total.positive?
-
-      ((total + 100) / 100.0).ceil * 100
-    end
-
-    # Fetches a page of entities, passing an explicit page size only when one is provided so that
-    # paginated types keep using the client's default page size.
-    #
-    # @param entity_type [String] The entity type
-    # @param page [Integer] The page number
-    # @param page_size [Integer, nil] Optional page size
-    # @return [Faraday::Response]
-    def fetch_entities_page(entity_type, page, page_size)
-      if page_size
-        client.get_accredited_entities(type: entity_type, page:, page_size:)
-      else
-        client.get_accredited_entities(type: entity_type, page:)
-      end
     end
 
     # Outputs progress messages to stdout when running in an interactive terminal (e.g., Rails console).

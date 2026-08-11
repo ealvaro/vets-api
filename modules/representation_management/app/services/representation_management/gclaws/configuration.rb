@@ -11,9 +11,12 @@ module RepresentationManagement
           'sortOrder' => 'ASC'
         },
         'attorneys' => {
-          'sortColumn' => 'LastName',
+          'sortColumn' => 'Number',
           'sortOrder' => 'ASC'
         },
+        # The representatives endpoint only honors LastName/FirstName as sort columns; any other value is
+        # ignored and falls back to the default (LastName). LastName gives the best paginated coverage and
+        # stability of the two, though the endpoint is non-deterministic so minor churn remains. See #126323.
         'representatives' => {
           'sortColumn' => 'LastName',
           'sortOrder' => 'ASC'
