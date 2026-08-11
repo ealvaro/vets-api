@@ -180,7 +180,7 @@ describe VANotify::InProgressFormReminder, type: :worker do
     describe 'generic template fallback logging (686C-674-V2)' do
       let(:user_with_icn) { double('VANotify::Veteran', icn: 'icn', first_name: 'first_name', uuid: 'uuid') }
       let(:log_message) do
-        'VANotify::InProgressFormReminder#find_template_id fell back to generic template'
+        'VANotify::InProgressFormReminder#find_template_id'
       end
 
       before do
@@ -212,6 +212,7 @@ describe VANotify::InProgressFormReminder, type: :worker do
               error_class: nil
             )
           )
+          expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
         end
       end
 
@@ -240,6 +241,7 @@ describe VANotify::InProgressFormReminder, type: :worker do
               error_class: 'NoMethodError'
             )
           )
+          expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
         end
       end
 

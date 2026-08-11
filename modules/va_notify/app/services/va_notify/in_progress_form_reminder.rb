@@ -19,6 +19,8 @@ module VANotify
 
       if only_one_supported_in_progress_form?
         template_id = find_template_id(in_progress_form)
+        return unless template_id
+
         send_single(in_progress_form, template_id)
       elsif oldest_in_progress_form?
         template_id = VANotify::InProgressFormHelper::TEMPLATE_ID.fetch('generic')
@@ -126,12 +128,14 @@ module VANotify
             '674-only'
           else
             log_generic_fallback(in_progress_form, reason: 'predicates_returned_false')
-            'generic'
+            nil
           end
         rescue => e
           log_generic_fallback(in_progress_form, reason: 'exception_raised', error: e)
-          'generic'
+          nil
         end
+        return nil if key.nil?
+
         VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(key)
       else
         VANotify::InProgressFormHelper::TEMPLATE_ID.fetch(in_progress_form.form_id)
@@ -144,7 +148,7 @@ module VANotify
     # the form_id, the branch reason, and the exception class/message.
     def log_generic_fallback(in_progress_form, reason:, error: nil)
       Rails.logger.warn(
-        'VANotify::InProgressFormReminder#find_template_id fell back to generic template',
+        'VANotify::InProgressFormReminder#find_template_id',
         in_progress_form_id: in_progress_form.id,
         form_id: in_progress_form.form_id,
         reason:,
