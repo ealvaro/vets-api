@@ -64,7 +64,8 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
             task_status: 'requested',
             task_intent: 'order',
             task_type: 'refill',
-            source_system: 'oracle-health'
+            source_system: 'oracle-health',
+            rx_id_suffix: '2345'
           )
         end
 
@@ -128,6 +129,10 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(payload[:rx_id_hash]).to eq(Digest::SHA256.hexdigest('12345'))
         expect(payload[:rx_id_hash]).not_to eq('12345')
 
+        # Only the last-4 suffix is logged for triage, never the full id.
+        expect(payload[:rx_id_suffix]).to eq('2345')
+        expect(payload[:rx_id_suffix]).not_to eq('12345')
+
         forbidden_keys = %i[prescription_name prescription_number instructions drug_name patient_name icn edipi id]
         expect(payload.keys & forbidden_keys).to be_empty
 
@@ -135,6 +140,26 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(payload.values).not_to include('Test Medication')
         expect(payload.values).not_to include('Take as directed')
         expect(payload.values.map(&:to_s)).not_to include(a_string_including('12345'))
+      end
+    end
+
+    describe 'user correlation' do
+      subject { described_class.new(current_user) }
+
+      let(:current_user) { build(:user) }
+
+      it 'logs the opaque account uuid (never ICN/EDIPI)' do
+        payload = nil
+        travel_to(now) do
+          payload = capture_window_payload do
+            subject.parse(fhir_resource_with_task(task_status: 'requested',
+                                                  task_date: '2025-06-10T00:00:00Z'))
+          end
+        end
+
+        expect(payload[:user_uuid]).to eq(current_user.uuid)
+        expect(payload[:user_uuid]).not_to eq(current_user.icn)
+        expect(payload[:user_uuid]).not_to eq(current_user.edipi)
       end
     end
 

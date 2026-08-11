@@ -2,6 +2,7 @@
 
 require 'digest'
 require_relative 'oracle_health_task_helper'
+require_relative 'oracle_health_refill_window_logging_formatters'
 
 module UnifiedHealthData
   module Adapters
@@ -16,9 +17,10 @@ module UnifiedHealthData
     #
     # This module is strictly side-effect-free with respect to classification: it only
     # reads the already-computed prescription attributes and dispense data and never
-    # mutates them. All logged fields are PII/PHI-safe (the raw prescription id is
-    # one-way hashed; drug name, sig, prescription number, patient identifiers and
-    # facility names are never logged).
+    # mutates them. All logged fields are PII/PHI-safe: the raw prescription id is
+    # one-way hashed and reduced to its last-4 suffix; the opaque account uuid (never
+    # ICN/EDIPI) is logged for user correlation; drug name, sig, prescription number,
+    # patient identifiers and facility names are never logged.
     #
     # Depends on methods provided by the including adapter / its other mixins:
     # - most_recent_contained_task, valid_task_date?, honored_refill_statuses,
@@ -27,6 +29,8 @@ module UnifiedHealthData
     # - extract_station_number (OracleHealthPrescriptionAdapter)
     # - @current_user
     module OracleHealthRefillWindowLoggingHelper
+      include OracleHealthRefillWindowLoggingFormatters
+
       REFILL_WINDOW_LOG_MESSAGE = 'OH in-flight refill window measurement'
       STATSD_WINDOW_DROPPED = 'api.uhd.oh_refill.window_dropped'
       STATSD_DISPENSE_CLEARED = 'api.uhd.oh_refill.dispense_cleared'
@@ -84,6 +88,8 @@ module UnifiedHealthData
           service: 'unified_health_data',
           source_system: 'oracle-health',
           rx_id_hash: rx_id_hash(resource['id']),
+          rx_id_suffix: rx_id_suffix(resource['id']),
+          user_uuid: @current_user&.uuid,
           station_number: refill_window_station_number(resource, task),
           task_status: task['status'],
           task_intent: task['intent'],
@@ -129,39 +135,6 @@ module UnifiedHealthData
 
       def task_meta_value(task, url)
         (task.dig('meta', 'extension') || []).find { |e| e['url'] == url }&.dig('valueString')
-      end
-
-      # One-way SHA256 hash of the raw prescription id. Never log the raw id.
-      def rx_id_hash(id)
-        return nil if id.blank?
-
-        Digest::SHA256.hexdigest(id.to_s)
-      end
-
-      def days_between(from_time, to_time)
-        return nil if from_time.nil? || to_time.nil?
-
-        ((to_time - from_time) / 1.day).floor
-      end
-
-      # Bucketed day ranges for low-cardinality StatsD tagging.
-      def bucket_days(days)
-        return 'unknown' if days.nil?
-
-        case days
-        when ..3 then '0-3'
-        when 4..7 then '4-7'
-        when 8..14 then '8-14'
-        when 15..30 then '15-30'
-        else '30+'
-        end
-      end
-
-      # Parsed fill times of completed dispenses (both whenPrepared and whenHandedOver).
-      def completed_dispense_times(dispenses_data)
-        dispenses_data.select { |d| d[:status] == 'completed' }.flat_map do |d|
-          [d[:when_prepared], d[:when_handed_over]].compact_blank.map { |raw| parse_date_or_epoch(raw) }
-        end
       end
     end
   end
