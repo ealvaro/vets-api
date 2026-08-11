@@ -49,7 +49,7 @@ WORKDIR /app
 
 RUN apt-get update --fix-missing \
   && apt-get install -y poppler-utils build-essential libpq-dev libffi-dev libyaml-dev git curl wget unzip ca-certificates ca-certificates-java openssl file \
-  pdftk tesseract-ocr libjemalloc2 \
+  pdftk tesseract-ocr libjemalloc2 procps \
   libpng16-16 libjpeg62-turbo libtiff6 libfreetype6 libfontconfig1 ghostscript libgomp1 libomp5 libde265-0 libx265-199 liblcms2-2 libgif7 libbrotli1 libxext6 \
   && ln -sf "$(dpkg -L libjemalloc2 | grep 'libjemalloc.so.2$')" /usr/local/lib/libjemalloc.so.2 \
   && apt-get clean \
