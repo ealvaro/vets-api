@@ -34,6 +34,9 @@ RSpec.describe SignIn::AttributeValidator do
           service_name:,
           auto_uplevel:,
           mhv_icn:,
+          icn:,
+          entra_uuid:,
+          secid:,
           mhv_credential_uuid:,
           edipi:,
           digest:
@@ -68,6 +71,9 @@ RSpec.describe SignIn::AttributeValidator do
       let(:city) { nil }
       let(:country) { nil }
       let(:mhv_icn) { nil }
+      let(:icn) { nil }
+      let(:entra_uuid) { nil }
+      let(:secid) { nil }
       let(:auto_uplevel) { false }
       let(:add_person_response) { 'some-add-person-response' }
       let(:find_profile_response) { 'some-find-profile-response' }
@@ -619,7 +625,7 @@ RSpec.describe SignIn::AttributeValidator do
         context 'and credential is not missing any required attributes' do
           context 'and mpi record does not exist for user' do
             let(:find_profile_response) { nil }
-            let(:expected_error) { SignIn::Errors::MHVMissingMPIRecordError }
+            let(:expected_error) { SignIn::Errors::MPIMissingRecordError }
             let(:expected_error_message) { 'No MPI Record for MHV Account' }
             let(:expected_error_code) { SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE }
 
@@ -931,6 +937,85 @@ RSpec.describe SignIn::AttributeValidator do
           it_behaves_like 'credential mpi verification'
           it_behaves_like 'get traits service'
         end
+      end
+
+      context 'and authentication is with entra' do
+        let(:service_name) { SignIn::Constants::Auth::ENTRA }
+        let(:entra_uuid) { 'some-entra-uuid' }
+        let(:icn) { 'some-icn' }
+        let(:secid) { 'some-secid' }
+        let(:csp_id) { entra_uuid }
+        let(:email) { 'some-email' }
+        let(:identifier) { icn }
+        let(:identifier_type) { MPI::Constants::ICN }
+
+        context 'and credential is missing entra uuid' do
+          let(:entra_uuid) { nil }
+          let(:attribute) { 'uuid' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is missing icn' do
+          let(:icn) { nil }
+          let(:attribute) { 'icn' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is missing email' do
+          let(:email) { nil }
+          let(:attribute) { 'email' }
+
+          it_behaves_like 'missing credential attribute'
+        end
+
+        context 'and credential is not missing any required attributes' do
+          context 'and mpi record does not exist for user' do
+            let(:find_profile_response) { nil }
+            let(:expected_error) { SignIn::Errors::MPIMissingRecordError }
+            let(:expected_error_message) { 'No MPI Record for Entra Account' }
+            let(:expected_error_code) { SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE }
+
+            it_behaves_like 'error response'
+          end
+
+          context 'and mpi record exists for user' do
+            let(:find_profile_response) { create(:find_profile_response, profile: mpi_profile) }
+            let(:mpi_profile) { build(:mpi_profile, icn: mpi_icn) }
+            let(:mpi_icn) { icn }
+
+            context 'and MPI icn does not match credential icn' do
+              let(:mpi_icn) { 'some-non-matching-icn' }
+              let(:expected_error_message) { 'Attribute mismatch, icn in credential does not match MPI attribute' }
+
+              it 'logs the icn mismatch' do
+                subject
+                expect(sign_in_logger).to have_received(:info).with(
+                  'attribute validator error',
+                  hash_including(errors: expected_error_message,
+                                 error_code: SignIn::Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,
+                                 credential_uuid: csp_id,
+                                 type: service_name)
+                )
+              end
+            end
+
+            context 'and MPI icn matches credential icn' do
+              it 'returns the verified icn' do
+                expect(subject).to eq(icn)
+              end
+
+              it 'does not create or update an mpi record' do
+                subject
+                expect(mpi_service).not_to have_received(:add_person_implicit_search)
+                expect(mpi_service).not_to have_received(:update_profile)
+              end
+            end
+          end
+        end
+
+        it_behaves_like 'get traits service'
       end
     end
   end

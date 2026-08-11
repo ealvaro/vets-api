@@ -14,6 +14,9 @@ module SignIn
       if mhv_auth?
         validate_mhv_mpi_record
         validate_existing_mpi_attributes
+      elsif entra_auth?
+        validate_entra_mpi_record
+        validate_existing_mpi_attributes
       elsif mpi_record_exists?
         validate_existing_mpi_attributes
         validate_sec_id
@@ -101,11 +104,13 @@ module SignIn
       if mhv_auth?
         credential_attribute_check(:icn, mhv_icn)
         credential_attribute_check(:mhv_uuid, mhv_credential_uuid)
+      elsif entra_auth?
+        credential_attribute_check(:icn, icn)
       else
         credential_attribute_check(:last_name, last_name) unless auto_uplevel
         credential_attribute_check(:birth_date, birth_date) unless auto_uplevel
       end
-      credential_attribute_check(:uuid, logingov_uuid || idme_uuid || clear_uuid)
+      credential_attribute_check(:uuid, logingov_uuid || idme_uuid || clear_uuid || entra_uuid)
       credential_attribute_check(:email, credential_email)
     end
 
@@ -166,9 +171,18 @@ module SignIn
       unless mpi_response_profile
         handle_error('No MPI Record for MHV Account',
                      Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,
-                     error: Errors::MHVMissingMPIRecordError)
+                     error: Errors::MPIMissingRecordError)
       end
       attribute_mismatch_check(:icn, mhv_icn, verified_icn)
+    end
+
+    def validate_entra_mpi_record
+      unless mpi_response_profile
+        handle_error('No MPI Record for Entra Account',
+                     Constants::ErrorCode::GENERIC_EXTERNAL_ISSUE,
+                     error: Errors::MPIMissingRecordError)
+      end
+      attribute_mismatch_check(:icn, icn, verified_icn)
     end
 
     def check_lock_flag(attribute, attribute_description, code)
@@ -214,6 +228,8 @@ module SignIn
                                                  identifier_type: MPI::Constants::CLEAR_UUID)&.profile
         elsif mhv_icn
           mpi_service.find_profile_by_identifier(identifier: mhv_icn, identifier_type: MPI::Constants::ICN)&.profile
+        elsif icn
+          mpi_service.find_profile_by_identifier(identifier: icn, identifier_type: MPI::Constants::ICN)&.profile
         end
     end
 
@@ -230,7 +246,7 @@ module SignIn
     end
 
     def credential_uuid
-      @credential_uuid ||= idme_uuid || logingov_uuid || clear_uuid
+      @credential_uuid ||= idme_uuid || logingov_uuid || clear_uuid || entra_uuid
     end
 
     def mpi_record_exists?
@@ -249,6 +265,10 @@ module SignIn
       service_name == Constants::Auth::MHV
     end
 
+    def entra_auth?
+      service_name == Constants::Auth::ENTRA
+    end
+
     def verified_credential?
       current_ial == Constants::Auth::IAL_TWO
     end
@@ -260,6 +280,7 @@ module SignIn
     def idme_uuid                    = user_attributes[:idme_uuid]
     def logingov_uuid                = user_attributes[:logingov_uuid]
     def clear_uuid                   = user_attributes[:clear_uuid]
+    def entra_uuid                   = user_attributes[:entra_uuid]
     def auto_uplevel                 = user_attributes[:auto_uplevel]
     def current_ial                  = user_attributes[:current_ial]
     def service_name                 = user_attributes[:service_name]
@@ -271,6 +292,8 @@ module SignIn
     def phone_number                 = user_attributes[:phone_number]
     def ssn                          = user_attributes[:ssn]
     def mhv_icn                      = user_attributes[:mhv_icn]
+    def icn                          = user_attributes[:icn]
+    def secid                        = user_attributes[:secid]
     def edipi                        = user_attributes[:edipi]
     def mhv_credential_uuid          = user_attributes[:mhv_credential_uuid]
     def credential_attributes_digest = user_attributes[:digest]
@@ -281,6 +304,7 @@ module SignIn
       when Constants::Auth::IDME     then idme_uuid
       when Constants::Auth::LOGINGOV then logingov_uuid
       when Constants::Auth::CLEAR    then clear_uuid
+      when Constants::Auth::ENTRA    then entra_uuid
       end
     end
 

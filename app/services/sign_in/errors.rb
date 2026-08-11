@@ -53,10 +53,10 @@ module SignIn
     class LogingovRiscEventHandlerError < StandardError; end
     class LogoutAuthorizationError < StandardError; end
     class MalformedParamsError < StandardError; end
-    class MHVMissingMPIRecordError < StandardError; end
     class MissingParamsError < StandardError; end
     class MPILockedAccountError < StandardError; end
     class MPIMalformedAccountError < StandardError; end
+    class MPIMissingRecordError < StandardError; end
     class MPIUserCreationFailedError < StandardError; end
     class RefreshNonceMismatchError < StandardError; end
     class RefreshTokenDecryptionError < StandardError; end
