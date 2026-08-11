@@ -52,6 +52,40 @@ RSpec.describe Identity::LogUserVeteranStatusJob do
     end
   end
 
+  context 'when the VA Profile circuit breaker is open' do
+    let(:mock_service) { instance_double(Breakers::Service, name: 'VAProfile/VeteranStatus') }
+    let(:mock_outage) { instance_double(Breakers::Outage, start_time: Time.zone.now) }
+
+    before do
+      allow(user).to receive(:veteran?).and_raise(Breakers::OutageException.new(mock_outage, mock_service))
+      allow(Rails.logger).to receive(:warn)
+    end
+
+    it 'records that the attempt was made and why it failed' do
+      subject
+
+      expect(Rails.logger).to have_received(:warn).with(
+        'user_veteran_status unavailable',
+        {
+          icn: user.icn,
+          user_uuid: user.uuid,
+          reason: 'VA Profile veteran status unavailable',
+          safe_keys: [:icn]
+        }
+      )
+    end
+
+    it 'ends the job without writing the standard record' do
+      subject
+
+      expect(Rails.logger).not_to have_received(:info).with('user_veteran_status', anything)
+    end
+
+    it 'does not raise, so the job is not retried into the open breaker' do
+      expect { subject }.not_to raise_error
+    end
+  end
+
   context 'for unverified users' do
     let(:user) { create(:user, :loa1, icn: nil) }
 

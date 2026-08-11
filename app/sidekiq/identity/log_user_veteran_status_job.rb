@@ -24,12 +24,27 @@ module Identity
         mpi_vet_person_type: mpi_vet_person_type(user),
         safe_keys: [:icn]
       )
+    rescue Breakers::OutageException
+      # An open circuit stays open for the duration of the outage, so retrying cannot succeed. End
+      # the job here and record why, in place of the user_veteran_status line that will not be
+      # written — otherwise the attempt leaves no trace at all.
+      log_veteran_status_unavailable(user)
     end
 
     private
 
     def mpi_vet_person_type(user)
       Array(user.person_types).include?('VET')
+    end
+
+    def log_veteran_status_unavailable(user)
+      Rails.logger.warn(
+        'user_veteran_status unavailable',
+        icn: user.icn,
+        user_uuid: user.uuid,
+        reason: 'VA Profile veteran status unavailable',
+        safe_keys: [:icn]
+      )
     end
 
     def fetch_user_veteran_status(user)
