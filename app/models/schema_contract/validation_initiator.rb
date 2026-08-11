@@ -22,7 +22,8 @@ module SchemaContract
     end
 
     def self.initiate_validation(user:, body:, contract_name:)
-      if Flipper.enabled?("schema_contract_#{contract_name}")
+      if Settings.vsp_environment.to_s == 'staging'
+        return if user.user_account_uuid.blank?
         return if SchemaContract::Validation.where(contract_name:, created_at: Time.zone.today.all_day).any?
 
         record = SchemaContract::Validation.create(

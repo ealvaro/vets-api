@@ -307,9 +307,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::AllRecipients', type: :request do
         user.save!
       end
 
-      context 'when :schema_contract_triage_teams is enabled' do
+      context 'when in the staging environment' do
         before do
-          allow(Flipper).to receive(:enabled?).with('schema_contract_triage_teams').and_return(true)
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
         end
 
         it 'validates schema for get_all_triage_teams' do

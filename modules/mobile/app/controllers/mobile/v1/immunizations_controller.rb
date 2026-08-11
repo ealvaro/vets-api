@@ -36,7 +36,9 @@ module Mobile
           records = fetch_uhd_immunizations
           return if performed? # ErrorHandler already rendered a response
         else
-          records = immunizations_adapter.parse(service.get_immunizations)
+          body = service.get_immunizations
+          validate_response_schema(@current_user, body, 'lighthouse_get_immunizations')
+          records = immunizations_adapter.parse(body)
         end
 
         log_immunization_access
@@ -126,6 +128,15 @@ module Mobile
         @pagination_params ||= Mobile::V0::Contracts::PaginationBase.new.call(
           page_number: params.dig(:page, :number),
           page_size: params.dig(:page, :size)
+        )
+      end
+
+      def validate_response_schema(user, body, contract_name)
+        # check for successful response structure
+        return if !body.is_a?(Hash) || body[:resource_type] != 'Bundle'
+
+        SchemaContract::ValidationInitiator.call_with_body(
+          user:, body:, contract_name:
         )
       end
     end

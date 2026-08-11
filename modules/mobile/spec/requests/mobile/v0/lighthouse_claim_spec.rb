@@ -29,7 +29,6 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         allow(Flipper).to receive(:enabled?)
           .with(:efolder_use_lighthouse_benefits_documents_service, anything)
           .and_return(false)
-        allow(Flipper).to receive(:enabled?).with('schema_contract_claims_and_appeals_get_claim').and_return(false)
       end
 
       it 'matches our schema is successfully returned with the 200 status',
@@ -157,9 +156,9 @@ RSpec.describe 'Mobile::V0::Claim', type: :request do
         end
       end
 
-      context 'when :schema_contract_claims_and_appeals_get_claim is enabled' do
+      context 'when in the staging environment' do
         before do
-          allow(Flipper).to receive(:enabled?).with('schema_contract_claims_and_appeals_get_claim').and_return(true)
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
 
           user.user_account_uuid = user_account.id
           user.save!

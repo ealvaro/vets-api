@@ -13,10 +13,10 @@ describe SchemaContract::ValidationInitiator do
 
     before do
       Timecop.freeze
-      Flipper.enable(:schema_contract_test_index) # rubocop:disable Project/ForbidFlipperToggleInSpecs
+      allow(Settings).to receive(:vsp_environment).and_return('staging')
     end
 
-    context 'response is successful, feature flag is on, and no record exists for the current day' do
+    context 'response is successful, in staging, and no record exists for the current day' do
       before do
         create(:schema_contract_validation, contract_name: 'test_index', user_account_id:, user_uuid: '1234', response:,
                                             status: 'initialized', created_at: Time.zone.yesterday.beginning_of_day)
@@ -44,8 +44,8 @@ describe SchemaContract::ValidationInitiator do
       end
     end
 
-    context 'when feature flag is off' do
-      before { Flipper.disable(:schema_contract_test_index) } # rubocop:disable Project/ForbidFlipperToggleInSpecs
+    context 'when not in the staging environment' do
+      before { allow(Settings).to receive(:vsp_environment).and_return('production') }
 
       it 'does not create a record or enqueue a job' do
         expect(SchemaContract::ValidationJob).not_to receive(:perform_async)

@@ -659,9 +659,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
           user.save!
         end
 
-        context 'when :schema_contract_message_show is enabled' do
+        context 'when in the staging environment for get_message' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_message_show').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_message' do
@@ -676,9 +676,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
           end
         end
 
-        context 'when :schema_contract_message_history is enabled' do
+        context 'when in the staging environment for get_message_history' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_message_history').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_message_history' do
@@ -691,9 +691,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
           end
         end
 
-        context 'when :schema_contract_categories is enabled' do
+        context 'when in the staging environment for get_categories' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_categories').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_categories' do
@@ -706,9 +706,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Messages', type: :request do
           end
         end
 
-        context 'when :schema_contract_message_signature is enabled' do
+        context 'when in the staging environment for get_signature' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_message_signature').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_signature' do

@@ -209,9 +209,9 @@ RSpec.describe 'Mobile::V1::Messaging::Health::Messages', type: :request do
           user.save!
         end
 
-        context 'when :schema_contract_messages_for_thread is enabled' do
+        context 'when in the staging environment' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_messages_for_thread').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_messages_for_thread' do

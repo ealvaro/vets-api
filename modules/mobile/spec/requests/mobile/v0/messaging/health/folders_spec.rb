@@ -222,9 +222,9 @@ RSpec.describe 'Mobile::V0::Messaging::Health::Folders', :skip_json_api_validati
           user.save!
         end
 
-        context 'when :schema_contract_messages_index is enabled' do
+        context 'when in the staging environment' do
           before do
-            allow(Flipper).to receive(:enabled?).with('schema_contract_messages_index').and_return(true)
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
           end
 
           it 'validates schema for get_folder_messages' do

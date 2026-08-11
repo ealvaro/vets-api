@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resource_type", "type"],
+  "properties": {
+    "resource_type": { "type": "string" },
+    "type": { "type": "string" },
+    "total": { "type": "integer" },
+    "link": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relation": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "entry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["resource"],
+        "properties": {
+          "full_url": { "type": "string" },
+          "search": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": { "type": "string" }
+            }
+          },
+          "resource": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["resource_type", "id", "status", "vaccine_code"],
+            "properties": {
+              "resource_type": { "type": "string" },
+              "id": { "type": "string" },
+              "meta": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "last_updated": { "type": "string" }
+                }
+              },
+              "status": { "type": "string" },
+              "vaccine_code": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "coding": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "system": { "type": "string" },
+                        "code": { "type": "string" },
+                        "display": { "type": "string" }
+                      }
+                    }
+                  },
+                  "text": { "type": "string" }
+                }
+              },
+              "patient": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "reference": { "type": "string" },
+                  "display": { "type": "string" }
+                }
+              },
+              "encounter": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "reference": { "type": "string" }
+                }
+              },
+              "occurrence_date_time": { "type": "string" },
+              "primary_source": { "type": "boolean" },
+              "manufacturer": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "display": { "type": "string" }
+                }
+              },
+              "location": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "reference": { "type": "string" },
+                  "display": { "type": "string" }
+                }
+              },
+              "dose_quantity": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "value": { "type": "number" },
+                  "unit": { "type": "string" },
+                  "system": { "type": "string" },
+                  "code": { "type": "string" }
+                }
+              },
+              "performer": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actor": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "reference": { "type": "string" },
+                        "display": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              },
+              "note": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "text": { "type": "string" }
+                  }
+                }
+              },
+              "reaction": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "detail": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "display": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              },
+              "protocol_applied": {
+                "type": ["array", "null"],
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "dose_number_positive_int": { "type": "integer" },
+                    "dose_number_string": { "type": "string" },
+                    "series_doses_positive_int": { "type": "integer" },
+                    "series_doses_string": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -21,9 +21,9 @@ RSpec.describe 'Mobile::V0::Pensions', type: :request do
       )
     end
 
-    context 'when :schema_contract_get_awards_pension is enabled' do
+    context 'when in the staging environment' do
       before do
-        allow(Flipper).to receive(:enabled?).with('schema_contract_get_awards_pension').and_return(true)
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
       end
 
       let(:user_account) { create(:user_account) }

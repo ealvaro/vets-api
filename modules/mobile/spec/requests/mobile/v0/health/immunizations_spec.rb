@@ -440,6 +440,37 @@ RSpec.describe 'Mobile::V0::Health::Immunizations', :skip_json_api_validation, t
       end
     end
 
+    context 'when in the staging environment' do
+      let(:user_account) { create(:user_account) }
+
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'initiates schema contract validation' do
+        user.user_account_uuid = user_account.id
+        user.save!
+
+        VCR.use_cassette('mobile/lighthouse_health/get_immunizations_old', match_requests_on: %i[method uri]) do
+          get '/mobile/v0/health/immunizations', headers: sis_headers, params: nil
+        end
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last.contract_name).to eq('lighthouse_get_immunizations')
+        expect(SchemaContract::Validation.last.status).to eq('success')
+      end
+
+      it 'does not initiate schema contract validation for unsuccessful response shape' do
+        allow_any_instance_of(Mobile::V0::LighthouseHealth::Service)
+          .to receive(:get_immunizations)
+          .and_return({ resource_type: 'OperationOutcome', issue: [{ severity: 'error' }] })
+
+        get '/mobile/v0/health/immunizations', headers: sis_headers, params: nil
+
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last).to be_nil
+      end
+    end
+
     context 'when entry is missing' do
       before do
         VCR.use_cassette('mobile/lighthouse_health/get_immunizations_no_entry', match_requests_on: %i[method uri]) do

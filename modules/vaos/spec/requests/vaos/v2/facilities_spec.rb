@@ -84,7 +84,6 @@ RSpec.describe 'VAOS::V2::Facilities', type: :request do
         before do
           allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg,
                                                     instance_of(User)).and_return(false)
-          allow(Flipper).to receive(:enabled?).with('schema_contract_appointments_index').and_return(false)
           allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details,
                                                     instance_of(User)).and_return(false)
           allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg).and_return(false)
