@@ -113,6 +113,15 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
       end
     end
 
+    context 'when there is a dependent' do
+      it 'adds dependent and veteran' do
+        expect(subject.call[:data]['dependent']).not_to be_nil
+        expect(subject.call[:data]['veteran']).not_to be_nil
+
+        expect(subject.call[:errors]).to eq([])
+      end
+    end
+
     context 'when there is no service branch' do
       let(:service_branch) { nil }
 

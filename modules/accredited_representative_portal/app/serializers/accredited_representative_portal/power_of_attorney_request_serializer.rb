@@ -25,6 +25,7 @@ module AccreditedRepresentativePortal
         case poa_request.claimant_type
         when PowerOfAttorneyRequest::ClaimantTypes::DEPENDENT
           form['claimant'] = form.delete('dependent')
+          form['veteran'] = form.delete('veteran')
         when PowerOfAttorneyRequest::ClaimantTypes::VETERAN
           form['claimant'] = form.delete('veteran')
           form.delete('dependent')
