@@ -13,6 +13,15 @@ module IvcChampva
     # @return [String] Path to the converted PDF file
     def convert_to_pdf
       Common::ConvertToPdf.new(@uploaded_file).run
+    rescue MiniMagick::Error => e
+      if e.message.include?('Unsupported feature')
+        Rails.logger.warn("IVC ChampVA PDF conversion rejected unsupported HEIC codec: #{e.message}")
+        raise Common::Exceptions::UnprocessableEntity.new(
+          detail: 'This HEIC file uses an unsupported codec. Please convert to JPEG or PNG before uploading.'
+        )
+      end
+      Rails.logger.error("IVC ChampVA Forms - Failed to convert file to PDF: #{e.message}")
+      raise
     rescue => e
       Rails.logger.error("IVC ChampVA Forms - Failed to convert file to PDF: #{e.message}")
       raise
