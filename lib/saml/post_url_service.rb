@@ -33,7 +33,7 @@ module SAML
     end
 
     def login_redirect_url(auth: 'success', code: nil, request_id: nil)
-      return client_redirect_target if auth == 'success' && @tracker.payload_attr(:redirect).present?
+      return client_redirect_target if auth == 'success' && trusted_client_redirect?
 
       # if the original auth request was an inbound ssoe autologin (type custom)
       # and authentication failed, set 'force-needed' so the FE can silently fail
@@ -107,6 +107,11 @@ module SAML
       end
 
       base_url
+    end
+
+    def trusted_client_redirect?
+      redirect_target = @tracker.payload_attr(:redirect)
+      redirect_target.present? && trusted_redirect_url?(redirect_target)
     end
 
     def client_redirect_target

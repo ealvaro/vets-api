@@ -253,6 +253,53 @@ RSpec.describe SAML::PostURLService do
                 expect(subject.login_redirect_url).to eq(redirect)
               end
             end
+
+            context 'with an untrusted redirect URL' do
+              let(:params) { { action: 'saml_callback', RelayState: '{"type":"idme"}', redirect: } }
+              let(:expected_url) { "#{values[:base_redirect]}#{SAML::URLService::LOGIN_REDIRECT_PARTIAL}?type=idme" }
+
+              before do
+                allow(Rails.logger).to receive(:info)
+              end
+
+              context 'with an external host' do
+                let(:redirect) { 'https://google.com' }
+
+                it 'ignores the redirect' do
+                  expect(subject.login_redirect_url).to eq(expected_url)
+                end
+
+                it 'logs the blocked redirect' do
+                  expect(Rails.logger).to receive(:info)
+                    .with('[SAML::URLService] Blocked untrusted redirect', redirect:)
+                  subject.login_redirect_url
+                end
+              end
+
+              context 'with a lookalike domain' do
+                let(:redirect) { 'https://va.gov.evil.com' }
+
+                it 'ignores the redirect' do
+                  expect(subject.login_redirect_url).to eq(expected_url)
+                end
+              end
+
+              context 'with a non-https va.gov url' do
+                let(:redirect) { 'http://int.eauth.va.gov/mhv-portal-web/eauth' }
+
+                it 'ignores the redirect' do
+                  expect(subject.login_redirect_url).to eq(expected_url)
+                end
+              end
+
+              context 'with an unparseable url' do
+                let(:redirect) { 'https://##va.gov' }
+
+                it 'ignores the redirect' do
+                  expect(subject.login_redirect_url).to eq(expected_url)
+                end
+              end
+            end
           end
 
           context 'for login' do

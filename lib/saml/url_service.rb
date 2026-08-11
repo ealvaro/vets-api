@@ -27,6 +27,7 @@ module SAML
     UNIFIED_SIGN_IN_CLIENTS = %w[vaweb mhv myvahealth ebenefits vamobile vaoccmobile].freeze
     TERMS_OF_USE_DECLINED_PATH = '/terms-of-use/declined'
     SKIP_MHV_ACCOUNT_CREATION_CLIENTS = %w[mhv custom].freeze
+    TRUSTED_REDIRECT_DOMAINS = %w[va.gov].freeze
 
     attr_reader :saml_settings, :session, :user, :authn_context, :type, :query_params, :tracker
 
@@ -219,7 +220,7 @@ module SAML
       previous = uuid && SAMLRequestTracker.find(uuid)
       type = previous&.payload_attr(:type) || params[:type]
       transaction_id = previous&.payload_attr(:transaction_id) || SecureRandom.uuid
-      redirect = previous&.payload_attr(:redirect) || params[:redirect]
+      redirect = sanitized_redirect(previous&.payload_attr(:redirect) || params[:redirect])
       application = previous&.payload_attr(:application) || params[:application] || 'vaweb'
       post_login = previous&.payload_attr(:post_login) || params[:postLogin]
       operation = previous&.payload_attr(:operation) || params[:operation] || 'authorize'
@@ -236,6 +237,26 @@ module SAML
 
         created_at: previous&.created_at
       )
+    end
+
+    def sanitized_redirect(redirect)
+      return nil if redirect.blank?
+      return redirect if trusted_redirect_url?(redirect)
+
+      Rails.logger.info('[SAML::URLService] Blocked untrusted redirect', redirect:)
+      nil
+    end
+
+    def trusted_redirect_url?(url)
+      uri = URI.parse(url.to_s)
+      host = uri.host&.downcase
+      return false if host.blank?
+      return true if host == URI.parse(base_redirect_url).host&.downcase
+
+      uri.scheme == 'https' &&
+        TRUSTED_REDIRECT_DOMAINS.any? { |domain| host == domain || host.end_with?(".#{domain}") }
+    rescue URI::InvalidURIError
+      false
     end
 
     def save_saml_request_tracker(uuid, authn_context)
