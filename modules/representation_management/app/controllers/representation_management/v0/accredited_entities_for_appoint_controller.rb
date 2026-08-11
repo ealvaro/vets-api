@@ -8,21 +8,18 @@ module RepresentationManagement
       before_action :feature_enabled
 
       def index
-        data = RepresentationManagement::AccreditedEntityQuery.new(
-          params[:query],
-          data_source_log: current_data_source_log
-        ).results
+        data = RepresentationManagement::AccreditedEntityQuery.new(params[:query]).results
 
-        individuals = data.select { |record| individual_record?(record) }
+        individuals = data.select { |record| record.is_a?(AccreditedIndividual) }
         acceptance_modes =
           RepresentationManagement::OrganizationWithAcceptanceMode.acceptance_modes_for(individuals)
         serializer_options = { params: { acceptance_modes: } }
 
         json_response = data.map do |record|
-          if individual_record?(record)
+          if record.is_a?(AccreditedIndividual)
             RepresentationManagement::AccreditedEntities::IndividualSerializer
               .new(record, serializer_options).serializable_hash
-          elsif record.is_a?(AccreditedOrganization) || record.is_a?(RepresentationManagement::AccreditedOrganizationAdapter)
+          elsif record.is_a?(AccreditedOrganization)
             RepresentationManagement::AccreditedIndividuals::OrganizationSerializer.new(record).serializable_hash
           end
         end
@@ -32,18 +29,8 @@ module RepresentationManagement
 
       private
 
-      def individual_record?(record)
-        record.is_a?(AccreditedIndividual) ||
-          record.is_a?(RepresentationManagement::VeteranRepresentativeAdapter)
-      end
-
       def feature_enabled
         routing_error unless Flipper.enabled?(:arc_appoint_a_representative_use_accredited_models)
-      end
-
-      def current_data_source_log
-        @current_data_source_log ||=
-          RepresentationManagement::AccreditationDataIngestionLog.most_recent_successful
       end
     end
   end

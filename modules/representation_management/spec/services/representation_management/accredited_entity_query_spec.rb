@@ -104,5 +104,25 @@ RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
 
       expect(results.size).to be < 9
     end
+
+    context 'when the most recent ingestion log is the trexler file (legacy) dataset' do
+      # Regression: the search must always read the Accredited* tables and never
+      # fall back to the legacy Veteran::Service tables based on the ingestion
+      # log's dataset. Falling back returned legacy IDs (representative_id/poa)
+      # that the PDF resolver's AccreditedIndividual/Organization.find_by(id:)
+      # could not match, causing "Representative/Organization not found".
+      before do
+        create(:accreditation_data_ingestion_log, :trexler_file, :completed)
+      end
+
+      it 'still returns Accredited* records, not legacy records' do
+        results = described_class.new('Bob').results
+
+        expect(results).to all(be_a(AccreditedIndividual).or(be_a(AccreditedOrganization)))
+        expect(results.map(&:id)).to contain_exactly(
+          individual1.id, individual2.id, organization1.id, organization2.id
+        )
+      end
+    end
   end
 end
