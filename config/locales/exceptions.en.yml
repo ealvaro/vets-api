@@ -1022,6 +1022,48 @@ en:
         code: 'SEARCH_GSA_504'
         detail: 'Did not receive a timely response from api.gsa.gov'
         status: 504
+      SEARCH_KENDRA_ACCESSDENIEDEXCEPTION:
+        <<: *external_defaults
+        title: Access Denied
+        code: 'SEARCH_KENDRA_ACCESSDENIEDEXCEPTION'
+        detail: 'Kendra service denied access to the requested resource'
+        status: 403
+      SEARCH_KENDRA_CONFLICTEXCEPTION:
+        <<: *external_defaults
+        title: Conflict
+        code: 'SEARCH_KENDRA_CONFLICTEXCEPTION'
+        detail: 'Kendra service reported a conflict with the request'
+        status: 400
+      SEARCH_KENDRA_RESOURCENOTFOUNDEXCEPTION:
+        <<: *external_defaults
+        title: Resource Not Found
+        code: 'SEARCH_KENDRA_RESOURCENOTFOUNDEXCEPTION'
+        detail: 'Kendra service could not find the requested resource'
+        status: 404
+      SEARCH_KENDRA_SERVICEQUOTAEXCEEDEDEXCEPTION:
+        <<: *external_defaults
+        title: Service Quota Exceeded
+        code: 'SEARCH_KENDRA_SERVICEQUOTAEXCEEDEDEXCEPTION'
+        detail: 'Kendra service quota has been exceeded'
+        status: 429
+      SEARCH_KENDRA_VALIDATIONEXCEPTION:
+        <<: *external_defaults
+        title: Validation Error
+        code: 'SEARCH_KENDRA_VALIDATIONEXCEPTION'
+        detail: 'Kendra service rejected the request due to invalid input'
+        status: 400
+      SEARCH_KENDRA_THROTTLINGEXCEPTION:
+        <<: *external_defaults
+        title: Exceeded rate limit
+        code: 'SEARCH_KENDRA_THROTTLINGEXCEPTION'
+        detail: 'Kendra service responded with a throttling error'
+        status: 429
+      SEARCH_KENDRA_INTERNALSERVEREXCEPTION:
+        <<: *external_defaults
+        title: Internal Server Error
+        code: 'SEARCH_KENDRA_INTERNALSERVEREXCEPTION'
+        detail: 'Kendra service responded with an internal server error'
+        status: 500
       SEARCH_CLICK_TRACKING_400:
         <<: *external_defaults
         title: Bad Request
