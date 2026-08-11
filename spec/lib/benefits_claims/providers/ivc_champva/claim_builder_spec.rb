@@ -377,7 +377,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
     end
 
     it 'substitutes [Name] everywhere it appears, including mid-string' do
-      result = described_class.translate_ves_reason('adopted >2 yrs spon dod', 'Jane')
+      result = described_class.translate_ves_reason('adopted >2yrs spon dod', 'Jane')
       expect(result).not_to include('John')
       expect(result).to include('We mailed Jane a letter')
     end
