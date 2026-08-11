@@ -48,9 +48,10 @@ module RepresentationManagement
 
       def increment_statsd_metric
         # Common values passed by the front end: digital, mail, in person
-        submission_method = form_params[:representative_submission_method]&.gsub(/\s+/, '_')&.underscore || 'unknown'
+        submission_method = form_params[:representative_submission_method]
 
-        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.#{submission_method}_submission.success")
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.success",
+                         tags: ["submission_method:#{submission_method == 'digital' ? 'online' : 'other'}"])
       end
     end
   end

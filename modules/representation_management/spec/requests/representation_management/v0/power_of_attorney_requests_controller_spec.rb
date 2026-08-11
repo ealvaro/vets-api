@@ -161,22 +161,24 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
           end
 
           context 'when the claimant is a Veteran' do
-            it 'increments the veteran_claimant StatsD metric' do
+            it "increments the StatsD success metric using 'claimant_type:veteran'" do
               post(base_path, params:)
 
               expect(StatsD).to have_received(:increment)
-                .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
+                .with('api.representation_management.power_of_attorney_requests.create.success',
+                      tags: ['claimant_type:veteran'])
             end
           end
 
           context 'when the claimant is a dependent' do
             before { params[:power_of_attorney_request][:claimant] = claimant }
 
-            it 'increments the non_veteran_claimant StatsD metric' do
+            it "increments the StatsD success metric using 'claimant_type:non_veteran'" do
               post(base_path, params:)
 
               expect(StatsD).to have_received(:increment)
-                .with('api.representation_management.power_of_attorney_requests.create.non_veteran_claimant.success')
+                .with('api.representation_management.power_of_attorney_requests.create.success',
+                      tags: ['claimant_type:non_veteran'])
             end
           end
         end
@@ -199,7 +201,8 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
 
           it 'does not increment the StatsD metric' do
             expect(StatsD).not_to have_received(:increment)
-              .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
+              .with('api.representation_management.power_of_attorney_requests.create.success',
+                    tags: ['claimant_type:veteran'])
           end
 
           context 'when validation error logging is enabled' do
@@ -292,7 +295,8 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
 
           it 'does not increment the StatsD metric' do
             expect(StatsD).not_to have_received(:increment)
-              .with('api.representation_management.power_of_attorney_requests.create.veteran_claimant.success')
+              .with('api.representation_management.power_of_attorney_requests.create.success',
+                    tags: ['claimant_type:veteran'])
           end
         end
       end

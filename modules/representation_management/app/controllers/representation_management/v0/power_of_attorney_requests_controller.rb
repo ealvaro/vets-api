@@ -74,11 +74,8 @@ module RepresentationManagement
       end
 
       def increment_statsd_metric
-        if form.dependent
-          StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.non_veteran_claimant.success")
-        else
-          StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.veteran_claimant.success")
-        end
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action_name}.success",
+                         tags: ["claimant_type:#{form.dependent.present? ? 'non_veteran' : 'veteran'}"])
       end
     end
   end

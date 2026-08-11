@@ -80,11 +80,12 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
         post(base_path, params:)
       end
 
-      it 'increments the digital_submission StatsD metric' do
+      it "increments the StatsD success metric using 'submission_method:online'" do
         post(base_path, params:)
 
         expect(StatsD).to have_received(:increment)
-          .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
+          .with('api.representation_management.pdf_generator_2122.create.success',
+                tags: ['submission_method:online'])
       end
     end
 
@@ -97,22 +98,24 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
         post(base_path, params:)
       end
 
-      it 'increments the StatsD metric for the submission method' do
+      it "increments the StatsD success metric using 'submission_method:other'" do
         post(base_path, params:)
 
         expect(StatsD).to have_received(:increment)
-          .with('api.representation_management.pdf_generator_2122.create.in_person_submission.success')
+          .with('api.representation_management.pdf_generator_2122.create.success',
+                tags: ['submission_method:other'])
       end
     end
 
     context 'when representative_submission_method is nil' do
       before { params[:pdf_generator2122][:representative_submission_method] = nil }
 
-      it 'increments the unknown_submission StatsD metric' do
+      it "increments the StatsD success metric using 'submission_method:other'" do
         post(base_path, params:)
 
         expect(StatsD).to have_received(:increment)
-          .with('api.representation_management.pdf_generator_2122.create.unknown_submission.success')
+          .with('api.representation_management.pdf_generator_2122.create.success',
+                tags: ['submission_method:other'])
       end
     end
 
@@ -233,7 +236,8 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
 
         it 'does not increment the StatsD metric' do
           expect(StatsD).not_to have_received(:increment)
-            .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
+            .with('api.representation_management.pdf_generator_2122.create.success',
+                  tags: ['submission_method:online'])
         end
       end
 
@@ -260,7 +264,8 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
 
         it 'does not increment the StatsD metric' do
           expect(StatsD).not_to have_received(:increment)
-            .with('api.representation_management.pdf_generator_2122.create.digital_submission.success')
+            .with('api.representation_management.pdf_generator_2122.create.success',
+                  tags: ['submission_method:online'])
         end
       end
     end
