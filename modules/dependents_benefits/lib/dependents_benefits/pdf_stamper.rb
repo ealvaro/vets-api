@@ -15,17 +15,6 @@ module DependentsBenefits
         y: 5
       }],
       dependents_benefits_21_686C_generated_claim: [{
-        text: 'VA.GOV',
-        timestamp: nil,
-        x: 5,
-        y: 5
-      }, {
-        text: 'FDC Reviewed - VA.gov Submission',
-        timestamp: nil,
-        x: 430,
-        y: 820,
-        text_only: true
-      }, {
         text: 'Application Submitted on va.gov',
         x: 440,
         y: 745,
@@ -37,17 +26,6 @@ module DependentsBenefits
         multistamp: true
       }],
       dependents_benefits_21_674_generated_claim: [{
-        text: 'VA.GOV',
-        timestamp: nil,
-        x: 5,
-        y: 5
-      }, {
-        text: 'FDC Reviewed - VA.gov Submission',
-        timestamp: nil,
-        x: 430,
-        y: 820,
-        text_only: true
-      }, {
         text: 'Application Submitted on va.gov',
         x: 440,
         y: 745,
