@@ -23,7 +23,7 @@ RSpec.describe 'IVC CHAMPVA Integration Failure Scenarios', type: :request do
           'applicant_name' => { 'first' => 'Applicant', 'last' => 'Name' },
           'ssn_or_tin' => '987654321',
           'applicant_dob' => '1985-01-01',
-          'vet_relationship' => 'spouse'
+          'applicant_relationship_to_sponsor' => 'spouse'
         }
       ],
       'certification' => {

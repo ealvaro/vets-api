@@ -97,6 +97,30 @@ RSpec.describe IvcChampva::FormMappers::VHA1010d2027 do
       it 'maps applicant 1 relationship' do
         expect(fields['applicant_1_relationship']).to eq('spouse')
       end
+
+      context 'when applicant_gender is a flat String' do
+        let(:string_gender_data) do
+          fixture_data.deep_dup.tap { |d| d['applicants'][0]['applicant_gender'] = 'female' }
+        end
+        let(:form) { IvcChampva::VHA1010d2027.new(string_gender_data) }
+
+        it 'still maps the gender radio value' do
+          expect(fields['applicant_1_gender_radio']).to eq(1)
+        end
+      end
+
+      context 'when applicant_relationship_to_sponsor is a flat String' do
+        let(:flat_relationship_data) do
+          fixture_data.deep_dup.tap do |d|
+            d['applicants'][0]['applicant_relationship_to_sponsor'] = 'child'
+          end
+        end
+        let(:form) { IvcChampva::VHA1010d2027.new(flat_relationship_data) }
+
+        it 'maps the flat relationship value' do
+          expect(fields['applicant_1_relationship']).to eq('child')
+        end
+      end
     end
 
     context 'certification fields' do

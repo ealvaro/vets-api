@@ -25,6 +25,14 @@ module IvcChampva
         when 'female' then 1
         end
       end
+
+      # A field may be a flat String value, or a Hash nesting the value under `subkey`.
+      # Backwards compatible during FE/BE nested-data-structure rollout.
+      def extract_flat_or_nested(field, subkey)
+        return nil if field.nil?
+
+        field.is_a?(Hash) ? field[subkey] : field
+      end
     end
   end
 end

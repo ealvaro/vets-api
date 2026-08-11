@@ -1430,7 +1430,7 @@ module IvcChampva
             'first' => source_form.first_name,
             'last' => source_form.last_name
           },
-          'vet_relationship' => 'spouse'
+          'applicant_relationship_to_sponsor' => 'spouse'
         }
       end
 

@@ -146,13 +146,12 @@ module IvcChampva
         suffix: data.dig('applicant_name', 'suffix'),
         ssn: data['ssn_or_tin'] || data.dig('applicant_ssn', 'ssn'),
         date_of_birth: data['applicant_dob'],
-        gender: normalize_gender(data.dig('applicant_gender', 'gender')),
+        gender: normalize_gender(extract_gender(data)),
         email_address: data['applicant_email_address'],
         phone_number: format_phone_number(data['applicant_phone']),
         address: map_address(data['applicant_address']),
-        relationship_to_sponsor: convert_relationship(data['vet_relationship']),
-        child_type: normalize_childtype(data.dig('childtype', 'relationship_to_veteran') ||
-          data.dig('applicant_relationship_origin', 'relationship_to_veteran')),
+        relationship_to_sponsor: convert_relationship(extract_relationship_to_veteran(data)),
+        child_type: normalize_childtype(extract_relationship_origin(data)),
         enrolled_in_medicare: data.dig('applicant_medicare_status', 'eligibility') == 'enrolled' ||
           data['is_enrolled_in_medicare'],
         has_other_insurance: data.dig('applicant_has_ohi', 'has_ohi') == 'yes' || data['has_other_health_insurance']
@@ -302,11 +301,29 @@ module IvcChampva
 
     # Handles both nested { 'applicant_gender' => { 'gender' => 'male' } } and flat structures.
     def self.extract_gender(applicant_data)
-      gender_field = applicant_data['applicant_gender']
-      return nil if gender_field.nil?
-      return gender_field['gender'] if gender_field.is_a?(Hash)
+      extract_flat_or_nested(applicant_data['applicant_gender'], 'gender')
+    end
 
-      gender_field
+    # Relationship to veteran (child/spouse) arrives under `applicant_relationship_to_sponsor`
+    # as either a String or a Hash with a `relationship_to_veteran` key. Backwards compatible
+    # during FE/BE rollout.
+    def self.extract_relationship_to_veteran(applicant_data)
+      extract_flat_or_nested(applicant_data['applicant_relationship_to_sponsor'], 'relationship_to_veteran')
+    end
+
+    # Relationship origin (blood/step/adoption) arrives under `applicant_relationship_origin`
+    # as either a String or a Hash with a `relationship_to_veteran` key. Backwards compatible
+    # during FE/BE rollout.
+    def self.extract_relationship_origin(applicant_data)
+      extract_flat_or_nested(applicant_data['applicant_relationship_origin'], 'relationship_to_veteran')
+    end
+
+    # Generic helper: a field may be a flat String value, or a Hash nesting the value under
+    # `subkey`. Returns nil if the field itself is nil.
+    def self.extract_flat_or_nested(field, subkey)
+      return nil if field.nil?
+
+      field.is_a?(Hash) ? field[subkey] : field
     end
 
     # Handles both nested { 'applicant_ssn' => { 'ssn' => '...' } } and flat structures.

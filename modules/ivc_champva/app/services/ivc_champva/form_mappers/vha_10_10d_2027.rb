@@ -59,10 +59,11 @@ module IvcChampva
           "#{prefix}_zip" => app.dig('applicant_address', 'postal_code'),
           "#{prefix}_email" => app['applicant_email_address'],
           "#{prefix}_phone" => app['applicant_phone'],
-          "#{prefix}_gender_radio" => gender_radio(app.dig('applicant_gender', 'gender')),
+          "#{prefix}_gender_radio" => gender_radio(extract_flat_or_nested(app['applicant_gender'], 'gender')),
           "#{prefix}_medicare_radio" => app.dig('applicant_medicare_status', 'eligibility') == 'enrolled' ? 1 : 0,
           "#{prefix}_ohi_radio" => app.dig('applicant_has_ohi', 'has_ohi') == 'yes' ? 1 : 0,
-          "#{prefix}_relationship" => app['vet_relationship']
+          "#{prefix}_relationship" => extract_flat_or_nested(app['applicant_relationship_to_sponsor'],
+                                                             'relationship_to_veteran')
         }
       end
 
