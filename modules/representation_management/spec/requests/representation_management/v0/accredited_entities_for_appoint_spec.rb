@@ -51,10 +51,12 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', typ
       expect(parsed_response[3]['data']['attributes']['name']).to eq('Bob Smith Firm')
     end
 
-    it 'includes the per-rep acceptance_mode on each nested organization' do
+    it 'gates a nested organization can_accept_digital_poa_requests by the per-rep acceptance_mode' do
       individual = create(:accredited_individual, :with_organizations, :with_location,
                           first_name: 'Bob', last_name: 'Jones')
-      individual.accreditations.first.update!(acceptance_mode: 'any_request')
+      individual.accredited_organizations.first.update!(can_accept_digital_poa_requests: true)
+
+      individual.accreditations.first.update!(acceptance_mode: 'self_only')
 
       get path, params: { query: 'Bob' }
 
@@ -62,7 +64,39 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', typ
       entry = parsed_response.find { |e| e['data']['attributes']['full_name'] == 'Bob Jones' }
       organization = entry['data']['attributes']['accredited_organizations']['data'].first
 
-      expect(organization['attributes']['acceptance_mode']).to eq('any_request')
+      expect(organization['attributes']['can_accept_digital_poa_requests']).to be(true)
+      expect(organization['attributes']).not_to have_key('acceptance_mode')
+      expect(organization['attributes']).not_to have_key('reps_can_accept_any_request')
+    end
+
+    it 'reports a nested organization as not accepting when the per-rep acceptance_mode is no_acceptance' do
+      individual = create(:accredited_individual, :with_organizations, :with_location,
+                          first_name: 'Bob', last_name: 'Jones')
+      individual.accredited_organizations.first.update!(can_accept_digital_poa_requests: true)
+
+      individual.accreditations.first.update!(acceptance_mode: 'no_acceptance')
+
+      get path, params: { query: 'Bob' }
+
+      parsed_response = JSON.parse(response.body)
+      entry = parsed_response.find { |e| e['data']['attributes']['full_name'] == 'Bob Jones' }
+      organization = entry['data']['attributes']['accredited_organizations']['data'].first
+
+      expect(organization['attributes']['can_accept_digital_poa_requests']).to be(false)
+    end
+
+    it 'includes reps_can_accept_any_request on a top-level organization result' do
+      org = create(:accredited_organization, :with_location, :with_representatives,
+                   name: 'Bob Any Request Org', can_accept_digital_poa_requests: true)
+      org.accreditations.first.update!(acceptance_mode: 'any_request')
+
+      get path, params: { query: 'Bob Any Request Org' }
+
+      parsed_response = JSON.parse(response.body)
+      entry = parsed_response.find { |e| e['data']['attributes']['name'] == 'Bob Any Request Org' }
+
+      expect(entry['data']['attributes']['reps_can_accept_any_request']).to be(true)
+      expect(entry['data']['attributes']['can_accept_digital_poa_requests']).to be(true)
     end
   end
 

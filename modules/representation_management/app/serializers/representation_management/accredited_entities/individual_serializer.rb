@@ -20,7 +20,7 @@ module RepresentationManagement
             org, acceptance_mode: modes[org.poa_code]
           )
         end
-        RepresentationManagement::AccreditedIndividuals::OrganizationSerializer.new(organizations)
+        RepresentationManagement::AccreditedEntities::RepresentativeOrganizationSerializer.new(organizations)
       end
     end
   end
