@@ -845,6 +845,27 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
       end
     end
 
+    context 'when saving the attachment raises ActiveRecord::RecordInvalid' do
+      # save! runs after attachment.valid? and after convert_to_pdf swaps in the
+      # converted file, so a RecordInvalid here is not caught by the controller's
+      # explicit valid? guard. It falls through the global rescue_from 'Exception'
+      # chain, which has no `when` clause for RecordInvalid, so it maps to
+      # Common::Exceptions::InternalServerError (HTTP 500), not a 422.
+      it 'surfaces as a 500 via the global rescue chain and persists nothing' do
+        clamscan = double(safe?: true)
+        allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+        allow_any_instance_of(PersistentAttachments::MilitaryRecords)
+          .to receive(:save!)
+          .and_raise(ActiveRecord::RecordInvalid.new(PersistentAttachments::MilitaryRecords.new))
+
+        expect do
+          post '/ivc_champva/v1/forms/submit_supporting_documents', params: { form_id: '10-10D', file: }
+        end.not_to change(PersistentAttachment, :count)
+
+        expect(response).to have_http_status(:internal_server_error)
+      end
+    end
+
     context 'image auto-resize' do
       let(:oversized_image) { fixture_file_upload('oversized-image.png', 'image/png') }
       let(:within_bounds_image) { fixture_file_upload('doctors-note.png', 'image/png') }
@@ -1280,7 +1301,8 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
 
     context 'when conversion fails' do
       before do
-        allow_any_instance_of(Common::ConvertToPdf).to receive(:run).and_raise(StandardError, 'Conversion failed')
+        allow_any_instance_of(IvcChampva::PdfConverter).to receive(:convert_to_pdf).and_raise(StandardError,
+                                                                                              'Conversion failed')
       end
 
       it 'raises an error and returns internal server error' do

@@ -530,11 +530,10 @@ module IvcChampva
               end
             end
 
-            # Convert to PDF before save to reduce final submission latency
             attachment.file = convert_to_pdf(attachment.file)
 
             Datadog::Tracing.trace('IVC Champva Forms - Save Attachment') do
-              attachment.save
+              attachment.save!
             end
 
             persist_claim_evidence_submission(attachment)
