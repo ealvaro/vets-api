@@ -49,8 +49,8 @@ module V0
         'id' => evidence_submission.id.to_s,
         'fileName' => metadata.dig('personalisation', 'file_name'),
         'documentType' => metadata.dig('personalisation', 'document_type'),
-        'status' => evidence_submission.upload_status,
-        'uploadedAt' => evidence_submission.created_at.iso8601
+        'uploadStatus' => evidence_submission.upload_status,
+        'createdAt' => evidence_submission.created_at.iso8601
       }
     end
 

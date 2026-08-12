@@ -18,6 +18,9 @@
     - :method: :post
       :path: "/api/v1/rest/folders/files:search"
       :file_path: "claims_evidence_api/search/default"
+    - :method: :post
+      :path: "/api/v1/rest/files"
+      :file_path: "claims_evidence_api/files/create/default"
 
 # BID Awards
 - :name: "BEP Awards"

@@ -185,9 +185,9 @@ RSpec.describe 'V0::Appeals', type: :request do
               'id' => submission.id.to_s,
               'fileName' => 'doctors-note.pdf',
               'documentType' => 'Correspondence',
-              'status' => 'SUCCESS'
+              'uploadStatus' => 'SUCCESS'
             )
-            expect(submissions.first['uploadedAt']).to be_present
+            expect(submissions.first['createdAt']).to be_present
           end
 
           it 'attaches an empty array to SC entries without matching rows' do
