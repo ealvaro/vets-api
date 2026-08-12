@@ -1046,8 +1046,9 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
 
             # Run the job inline to verify it routes to PoaAssignDependentClaimantJob, not PoaUpdater
             allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
-            expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform_async).with(dependent_poa.id)
-            expect(ClaimsApi::PoaUpdater).not_to receive(:perform_async)
+            dependent_assignment_job = instance_double(ClaimsApi::PoaAssignDependentClaimantJob)
+            expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:new).and_return(dependent_assignment_job)
+            expect(dependent_assignment_job).to receive(:perform).with(dependent_poa.id)
             ClaimsApi::PoaVBMSUploadJob.new.perform(dependent_poa.id, 'put')
           end
         end

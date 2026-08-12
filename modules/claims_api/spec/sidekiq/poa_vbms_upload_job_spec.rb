@@ -86,6 +86,10 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
   describe 'uploading to benefits documents' do
     let(:power_of_attorney) { create_poa }
 
+    before do
+      allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).and_return(true)
+    end
+
     context "the 'post' action" do
       it 'calls the PoaDocumentService with doc_type L075' do
         allow_any_instance_of(BGS::VetRecordWebService).to receive(:update_birls_record)
@@ -127,10 +131,18 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
     end
 
     context 'with errors' do
-      it 'retries the job if there is a failure' do
-        VCR.use_cassette('claims_api/poa_vbms_upload_job/bd/document_upload_500') do
-          expect(ClaimsApi::PoaUpdater).not_to receive(:perform_async)
+      let(:service_error) do
+        Common::Exceptions::BackendServiceException.new(
+          'Unknown service error', status: 500, detail: nil, code: 'VA900', source: nil
+        )
+      end
 
+      let(:not_found_message) { 'File could not be retrieved from AWS' }
+      let(:not_found_error) { Errno::ENOENT.new(not_found_message) }
+
+      it 'retries the job if there is a failure' do
+        # simulate update failure with service error
+        VCR.use_cassette('claims_api/poa_vbms_upload_job/bd/document_upload_500') do
           expect { subject.new.perform(power_of_attorney.id) }
             .to raise_error(Common::Exceptions::BackendServiceException)
           power_of_attorney.reload
@@ -142,16 +154,23 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
         end
       end
 
-      it 'rescues file not found from S3, updates POA record, and re-raises to allow Sidekiq retries' do
-        allow_any_instance_of(described_class).to receive(:benefits_doc_upload).and_raise(Errno::ENOENT)
+      it 'does not upload to benefits documents if POA assignment fails' do
+        allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).and_raise(service_error)
+        expect_any_instance_of(ClaimsApi::PoaDocumentService).not_to receive(:create_upload)
 
-        expect { subject.new.perform(power_of_attorney.id) }.to raise_error(Errno::ENOENT)
+        expect { subject.new.perform(power_of_attorney.id) }
+          .to raise_error(Common::Exceptions::BackendServiceException)
+      end
+
+      it 'rescues file not found from S3, updates POA record, and re-raises to allow Sidekiq retries' do
+        # simulate s3 not found error
+        allow_any_instance_of(described_class).to receive(:benefits_doc_upload).and_raise(not_found_error)
+
+        expect { subject.new.perform(power_of_attorney.id) }.to raise_error(not_found_error)
         power_of_attorney.reload
 
         expect(power_of_attorney.status).to eq('errored')
-        expect(power_of_attorney.vbms_error_message).to eq(
-          'File could not be retrieved from AWS'
-        )
+        expect(power_of_attorney.vbms_error_message).to eq(not_found_message)
       end
     end
   end
@@ -175,10 +194,21 @@ RSpec.describe ClaimsApi::PoaVBMSUploadJob, type: :job do
         doc_type: power_of_attorney.file_data['doc_type'],
         action:
       )
-      expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform_async).with(power_of_attorney.id)
-      expect(ClaimsApi::PoaUpdater).not_to receive(:perform_async)
+      expect(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:new).and_return(double(perform: true))
+      expect(ClaimsApi::PoaUpdater).not_to receive(:new)
 
       subject.new.perform(power_of_attorney.id, action)
+    end
+
+    it 'does not upload to benefits documents if dependent assignment fails' do
+      dependent_assignment_error = RuntimeError.new('dependent assignment failed')
+      dependent_assignment_job = instance_double(ClaimsApi::PoaAssignDependentClaimantJob)
+      allow(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:new).and_return(dependent_assignment_job)
+      allow(dependent_assignment_job).to receive(:perform).and_raise(dependent_assignment_error)
+      expect_any_instance_of(ClaimsApi::PoaDocumentService).not_to receive(:create_upload)
+
+      expect { subject.new.perform(power_of_attorney.id, action) }
+        .to raise_error(RuntimeError, 'dependent assignment failed')
     end
   end
 
