@@ -65,7 +65,7 @@
                     </scopingOrganization>
                   </asOtherIDs>
                   <personalRelationship>
-                    <code codeSystemName="RoleCode" codeSystem="2.16.840.1.113883.5.111" code="DEL" displayName="VA Healthcare Proxy">
+                    <code codeSystemName="RoleCode" codeSystem="2.16.840.1.113883.5.111" code="CGP" displayName="Caregiver Primary">
                     <translation codeSystemName="RoleCode" codeSystem="2.16.840.1.113883.5.111" code="PRS"/>
                     </code>
                     <telecom value="mailto:Daniel.Rocha@va.gov" use="H"/>
@@ -161,4 +161,4 @@
       </controlActProcess>
     </idm:PRPA_IN201306UV02>
   </env:Body>
-</env:Envelope> 
+</env:Envelope>

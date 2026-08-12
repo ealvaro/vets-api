@@ -51,6 +51,11 @@ module MPI
 
       STATSD_KEY_PREFIX = 'api.mvi.caregiver'
       CAREGIVER_PERSON_TYPES = %w[CG CGP CGS CGG].freeze
+      CAREGIVER_RELATIONSHIP_ROLE_CODES = %w[CGP CGS CGG].freeze
+      VETERAN_PERSON_TYPE = 'VET'
+      RELATIONSHIP_TRANSLATION_CODE_XPATH = 'code/translation/@code'
+      CAREGIVER_EXPECTED_TRANSLATION_CODE = 'PRS'
+      VETERAN_EXPECTED_TRANSLATION_CODE = 'QUAL'
 
       def initialize(response)
         @transaction_id = response.response_headers['x-global-transaction-id']
@@ -103,15 +108,17 @@ module MPI
       def build_mpi_profile(patient)
         profile_identity_hash = create_mpi_profile_identity(patient)
         profile_ids_hash = create_mpi_profile_ids(patient)
+        raw_relationships = patient.locate(PATIENT_RELATIONSHIP_XPATH)
         misc_hash = {
           search_token: locate_element(@original_body, 'id').attributes[:extension],
-          relationships: parse_relationships(patient.locate(PATIENT_RELATIONSHIP_XPATH)),
+          relationships: parse_relationships(raw_relationships),
           id_theft_flag: parse_id_theft_flag(patient),
           transaction_id: @transaction_id
         }
         mpi_attribute_validations(profile_identity_hash, profile_ids_hash)
         log_mpi_relationships(misc_hash[:relationships]) if misc_hash[:relationships].present?
         log_mpi_caregiver_person_types(profile_identity_hash[:person_types], misc_hash[:relationships])
+        log_mpi_relationship_translation_codes(profile_identity_hash[:person_types], raw_relationships)
 
         MPI::Models::MviProfile.new(profile_identity_hash.merge(profile_ids_hash).merge(misc_hash))
       end
@@ -226,15 +233,20 @@ module MPI
       # Fires only when the logged-in user's own MPI person_types include a caregiver type.
       # Tracks:
       #   - api.mvi.caregiver.person_type_present (tagged by type) — caregiver login count by identity type
-      #   - api.mvi.caregiver.relationship_type (tagged by rel type) — count of relationship role codes
-      #     present for caregivers with relationships
-      #   - api.mvi.caregiver.without_relationships — count of caregiver logins where MPI returned no relationship data
+      #   - api.mvi.caregiver.relationship_type (tagged by rel type) — count of caregiver relationship role codes
+      #     (CGP, CGS, CGG, CG) present for caregivers with caregiver-type relationships
+      #   - api.mvi.caregiver.without_relationships — count of caregiver logins where MPI returned no
+      #     caregiver-type relationship data (no relationships at all, or none with a caregiver role code)
       def log_mpi_caregiver_person_types(person_types, relationships)
         caregiver_types = Array(person_types) & CAREGIVER_PERSON_TYPES
         return if caregiver_types.empty?
 
-        if relationships.present?
-          relationships.flat_map(&:person_types).compact.uniq.each do |rel_type|
+        caregiver_rel_types = relationships.flat_map(&:person_types).compact
+                                           .select { |t| CAREGIVER_RELATIONSHIP_ROLE_CODES.include?(t) }
+                                           .uniq
+
+        if caregiver_rel_types.any?
+          caregiver_rel_types.each do |rel_type|
             StatsD.increment("#{STATSD_KEY_PREFIX}.relationship_type",
                              tags: ["relationship_type:#{rel_type}"])
           end
@@ -247,6 +259,55 @@ module MPI
                            tags: ["person_type:#{person_type}"])
         end
       end
+
+      # Emits DataDog StatsD counters for relationship translation codes on caregiver and veteran profiles.
+      # Only fires when the logged-in user is a caregiver or veteran AND has personalRelationships
+      # with caregiver role codes (CGP, CGS, CGG). Tracks:
+      #   - api.mvi.caregiver.relationship_translation (tagged by translation_code, relationship_count,
+      #     and user_type) — fires when the expected code (PRS for caregivers, QUAL for veterans) is present
+      #   - api.mvi.caregiver.unexpected_relationship_translation (tagged by translation_code and user_type)
+      #     — fires when a translation code other than the expected one is returned
+      # rubocop:disable Metrics/MethodLength
+      def log_mpi_relationship_translation_codes(person_types, raw_relationships)
+        return if raw_relationships.blank?
+
+        person_types_arr = Array(person_types)
+        is_caregiver = person_types_arr.intersect?(CAREGIVER_PERSON_TYPES)
+        is_veteran = person_types_arr.include?(VETERAN_PERSON_TYPE)
+
+        return unless is_caregiver || is_veteran
+
+        caregiver_relationships = raw_relationships.select do |rel|
+          next unless rel.locate(RELATIONSHIP_PERSON_TYPE_CODE_XPATH).first == RELATIONSHIP_PERSON_TYPE
+
+          CAREGIVER_RELATIONSHIP_ROLE_CODES.include?(rel.locate(RELATIONSHIP_PERSON_TYPE_VALUE_XPATH).first)
+        end
+
+        return if caregiver_relationships.empty?
+
+        user_type = is_caregiver ? 'caregiver' : 'veteran'
+        expected_code = is_caregiver ? CAREGIVER_EXPECTED_TRANSLATION_CODE : VETERAN_EXPECTED_TRANSLATION_CODE
+        count_tag = caregiver_relationships.size == 1 ? 'one' : 'multiple'
+
+        translation_codes = caregiver_relationships.filter_map do |rel|
+          rel.locate(RELATIONSHIP_TRANSLATION_CODE_XPATH).first
+        end
+
+        return if translation_codes.empty?
+
+        translation_codes.uniq.each do |code|
+          if code == expected_code
+            StatsD.increment("#{STATSD_KEY_PREFIX}.relationship_translation",
+                             tags: ["translation_code:#{code}",
+                                    "relationship_count:#{count_tag}",
+                                    "user_type:#{user_type}"])
+          else
+            StatsD.increment("#{STATSD_KEY_PREFIX}.unexpected_relationship_translation",
+                             tags: ["translation_code:#{code}", "user_type:#{user_type}"])
+          end
+        end
+      end
+      # rubocop:enable Metrics/MethodLength
 
       def log_inactive_mhv_ids(mhv_ids, active_mhv_ids)
         return if mhv_ids.blank?

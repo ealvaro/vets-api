@@ -334,7 +334,9 @@ describe MPI::Responses::ProfileParser do
     let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_with_relationship_response.xml')) }
 
     describe '#parse' do
-      context 'when the user has caregiver person_types and relationships are present' do
+      context 'when the user has caregiver person_types and caregiver-type relationships are present' do
+        let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_with_caregiver_relationship_response.xml')) }
+
         before do
           allow(parser).to receive(:parse_person_type).and_return(%w[CG CGP])
         end
@@ -345,20 +347,42 @@ describe MPI::Responses::ProfileParser do
           expect(StatsD).to receive(:increment)
             .with('api.mvi.caregiver.person_type_present', tags: ['person_type:CGP'])
           allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_translation', anything)
           parser.parse
         end
 
-        it 'increments a StatsD counter for each relationship type' do
+        it 'increments relationship_type only for caregiver role codes' do
           allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_translation', anything)
           expect(StatsD).to receive(:increment)
-            .with('api.mvi.caregiver.relationship_type', tags: ['relationship_type:DEL'])
+            .with('api.mvi.caregiver.relationship_type', tags: ['relationship_type:CGP'])
           parser.parse
         end
 
         it 'does not increment caregiver_without_relationships' do
           allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
           allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.relationship_translation', anything)
           expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+      end
+
+      context 'when the user has caregiver person_types but relationships have non-caregiver role codes' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[CG CGP])
+        end
+
+        it 'increments without_relationships because no caregiver-type relationship codes were found' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          expect(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+
+        it 'does not increment relationship_type' do
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
+          allow(StatsD).to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
           parser.parse
         end
       end
@@ -425,6 +449,85 @@ describe MPI::Responses::ProfileParser do
           expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.person_type_present', anything)
           expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.relationship_type', anything)
           expect(StatsD).not_to receive(:increment).with('api.mvi.caregiver.without_relationships')
+          parser.parse
+        end
+      end
+    end
+  end
+
+  context 'given a valid response with relationship translation codes' do
+    let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_with_caregiver_relationship_response.xml')) }
+
+    describe '#parse' do
+      context 'when the logged-in user is a caregiver with a CGP relationship and PRS translation code' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[CGP])
+        end
+
+        it 'increments relationship_translation with PRS translation code and one relationship' do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).to receive(:increment)
+            .with('api.mvi.caregiver.relationship_translation',
+                  tags: ['translation_code:PRS', 'relationship_count:one', 'user_type:caregiver'])
+          parser.parse
+        end
+
+        it 'does not increment unexpected_relationship_translation' do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.unexpected_relationship_translation', anything)
+          parser.parse
+        end
+      end
+
+      context 'when the logged-in user is a veteran with a CGP relationship and PRS translation code' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[VET])
+        end
+
+        it 'does not increment relationship_translation (PRS is not the expected QUAL code for veterans)' do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.relationship_translation', anything)
+          parser.parse
+        end
+
+        it 'increments unexpected_relationship_translation with PRS and user_type veteran' do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).to receive(:increment)
+            .with('api.mvi.caregiver.unexpected_relationship_translation',
+                  tags: ['translation_code:PRS', 'user_type:veteran'])
+          parser.parse
+        end
+      end
+
+      context 'when the logged-in user is neither a caregiver nor a veteran' do
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[DEP])
+        end
+
+        it 'does not increment any relationship_translation metric' do
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.relationship_translation', anything)
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.unexpected_relationship_translation', anything)
+          parser.parse
+        end
+      end
+
+      context 'when the logged-in user has no relationships' do
+        let(:body) { Ox.parse(File.read('spec/support/mpi/find_candidate_response.xml')) }
+
+        before do
+          allow(parser).to receive(:parse_person_type).and_return(%w[CGP])
+        end
+
+        it 'does not increment any relationship_translation metric' do
+          allow(StatsD).to receive(:increment)
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.relationship_translation', anything)
+          expect(StatsD).not_to receive(:increment)
+            .with('api.mvi.caregiver.unexpected_relationship_translation', anything)
           parser.parse
         end
       end
