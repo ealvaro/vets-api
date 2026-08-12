@@ -130,14 +130,14 @@ RSpec.describe IvcChampva::DataTransformations do
       end
 
       it 'orders supporting document ids by date created' do
-        result = form.supporting_document_ids(form_data)
+        result = form.supporting_document_ids
         expect(result).to eq(%w[doc1 doc2])
       end
     end
 
     it 'returns empty array when no supporting docs exist' do
-      form_data_without_docs = { 'form_number' => '10-10D' }
-      result = form.supporting_document_ids(form_data_without_docs)
+      no_docs_form = IvcChampva::VHA1010d.new({ 'form_number' => '10-10D' })
+      result = no_docs_form.supporting_document_ids
       expect(result).to eq([])
     end
 
@@ -148,6 +148,7 @@ RSpec.describe IvcChampva::DataTransformations do
           { 'claim_id' => 'claim2', 'confirmation_code' => 'code2' }
         ]
       }
+      claim_form = IvcChampva::VHA1010d.new(claim_data)
 
       allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
         .with(guid: 'code1')
@@ -156,7 +157,7 @@ RSpec.describe IvcChampva::DataTransformations do
         .with(guid: 'code2')
         .and_return(double('Record2', created_at: 1.day.ago, file: double(id: 'file2')))
 
-      result = form.supporting_document_ids(claim_data)
+      result = claim_form.supporting_document_ids
       expect(result).to eq(%w[claim1 claim2])
     end
 
@@ -166,11 +167,12 @@ RSpec.describe IvcChampva::DataTransformations do
           { 'confirmation_code' => 'invalid_code', 'attachment_id' => 'doc1' }
         ]
       }
+      invalid_form = IvcChampva::VHA1010d.new(invalid_data)
       allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
         .with(guid: 'invalid_code')
         .and_return(nil)
 
-      expect { form.supporting_document_ids(invalid_data) }.to raise_error(NoMethodError)
+      expect { invalid_form.supporting_document_ids }.to raise_error(NoMethodError)
     end
 
     it 'keeps original order for equal created_at values when OHI docs are present' do
@@ -181,6 +183,7 @@ RSpec.describe IvcChampva::DataTransformations do
           { 'confirmation_code' => 'code2', 'attachment_id' => 'VA form 10-7959c' }
         ]
       }
+      tie_form = IvcChampva::VHA1010d.new(tie_break_data)
 
       allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
 
@@ -191,7 +194,7 @@ RSpec.describe IvcChampva::DataTransformations do
         .with(guid: 'code2')
         .and_return(double('Record2', created_at: equal_time, file: double(id: 'file2')))
 
-      result = form.supporting_document_ids(tie_break_data)
+      result = tie_form.supporting_document_ids
       expect(result).to eq(['Front of insurance card', 'VA form 10-7959c'])
     end
 
@@ -204,6 +207,7 @@ RSpec.describe IvcChampva::DataTransformations do
           { 'confirmation_code' => 'code2', 'attachment_id' => 'Marriage certificate' }
         ]
       }
+      non_ohi_form = IvcChampva::VHA1010d.new(non_ohi_data)
 
       allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(true)
 
@@ -214,7 +218,7 @@ RSpec.describe IvcChampva::DataTransformations do
         .with(guid: 'code2')
         .and_return(double('Record2', created_at: later_time, file: double(id: 'file1')))
 
-      result = form.supporting_document_ids(non_ohi_data)
+      result = non_ohi_form.supporting_document_ids
       expect(result).to eq(['Birth certificate', 'Marriage certificate'])
     end
 
@@ -226,10 +230,10 @@ RSpec.describe IvcChampva::DataTransformations do
           { 'confirmation_code' => 'code2', 'attachment_id' => 'VA form 10-7959c' }
         ]
       }
+      tie_form = IvcChampva::VHA1010d.new(tie_break_data)
 
       allow(Flipper).to receive(:enabled?).with(:champva_supporting_docs_ordering).and_return(false)
 
-      # Simulate non-deterministic DB retrieval order for equal created_at values.
       allow(PersistentAttachments::MilitaryRecords).to receive(:find_by)
         .with(guid: 'code1')
         .and_return(double('Record1', created_at: equal_time, file: double(id: 'file2')))
@@ -237,7 +241,7 @@ RSpec.describe IvcChampva::DataTransformations do
         .with(guid: 'code2')
         .and_return(double('Record2', created_at: equal_time, file: double(id: 'file1')))
 
-      result = form.supporting_document_ids(tie_break_data)
+      result = tie_form.supporting_document_ids
       expect(result).to eq(['Front of insurance card', 'VA form 10-7959c'])
     end
   end
@@ -245,7 +249,7 @@ RSpec.describe IvcChampva::DataTransformations do
   describe '#applicant_pdf_count' do
     it 'returns ceiling of applicants count divided by ADDITIONAL_PDF_COUNT' do
       # VHA1010d has ADDITIONAL_PDF_COUNT=3, so 2 applicants / 3 = ceil(0.67) = 1
-      result = form.applicant_pdf_count(form_data)
+      result = form.applicant_pdf_count
       expect(result).to eq(1)
     end
 
@@ -253,13 +257,15 @@ RSpec.describe IvcChampva::DataTransformations do
       many_applicants_data = form_data.merge(
         'applicants' => Array.new(4) { { 'first_name' => 'Test' } }
       )
+      many_form = IvcChampva::VHA1010d.new(many_applicants_data)
       # 4 applicants / 3 = ceil(1.33) = 2
-      result = form.applicant_pdf_count(many_applicants_data)
+      result = many_form.applicant_pdf_count
       expect(result).to eq(2)
     end
 
     it 'returns 1 when no applicants are present' do
-      result = form.applicant_pdf_count({ 'applicants' => nil })
+      no_app_form = IvcChampva::VHA1010d.new({ 'applicants' => nil })
+      result = no_app_form.applicant_pdf_count
       expect(result).to eq(1)
     end
 
@@ -267,7 +273,7 @@ RSpec.describe IvcChampva::DataTransformations do
       # VHA107959a uses ADDITIONAL_PDF_KEY='claims' and ADDITIONAL_PDF_COUNT=1
       claims_data = { 'claims' => [{ 'id' => 1 }] }
       claims_form = IvcChampva::VHA107959a.new(claims_data)
-      result = claims_form.applicant_pdf_count(claims_data)
+      result = claims_form.applicant_pdf_count
       expect(result).to eq(1)
     end
   end
@@ -279,7 +285,7 @@ RSpec.describe IvcChampva::DataTransformations do
     end
 
     it 'builds default attachment IDs with form_id prefix and supporting doc IDs' do
-      result = form.build_attachment_ids('vha_10_10d', form_data, 1)
+      result = form.build_attachment_ids('vha_10_10d', 1)
       expect(result).to eq(%w[vha_10_10d doc1 doc2])
     end
   end
@@ -291,12 +297,13 @@ RSpec.describe IvcChampva::DataTransformations do
     end
 
     it 'creates an array with form_id repeated for main pages plus supporting doc IDs' do
-      result = form.build_default_attachment_ids('vha_10_10d', form_data, 2)
+      result = form.build_default_attachment_ids('vha_10_10d', 2)
       expect(result).to eq(%w[vha_10_10d vha_10_10d doc1 doc2])
     end
 
     it 'handles submissions with no supporting docs' do
-      result = form.build_default_attachment_ids('vha_10_10d', { 'form_number' => '10-10D' }, 1)
+      no_docs_form = IvcChampva::VHA1010d.new({ 'form_number' => '10-10D' })
+      result = no_docs_form.build_default_attachment_ids('vha_10_10d', 1)
       expect(result).to eq(['vha_10_10d'])
     end
   end
@@ -340,19 +347,6 @@ RSpec.describe IvcChampva::DataTransformations do
     end
   end
 
-  describe '#add_blank_doc_and_stamp' do
-    let(:controller) { IvcChampva::V1::UploadsController.new }
-    let(:parsed_form_data) { { 'form_number' => '10-10D', 'supporting_docs' => [] } }
-
-    it 'does nothing when form has no stamp_metadata method' do
-      # VHA1010d does not define stamp_metadata, so this should be a no-op
-      no_stamp_form = IvcChampva::VHA1010d.new({})
-      expect(IvcChampva::PdfStamper).not_to receive(:stamp_metadata_items)
-
-      no_stamp_form.add_blank_doc_and_stamp(parsed_form_data, controller)
-    end
-  end
-
   describe '#prepare_submission_data' do
     let(:current_user) { double('User', loa: { current: 3 }) }
 
@@ -367,7 +361,7 @@ RSpec.describe IvcChampva::DataTransformations do
       end
 
       it 'returns attachment_ids and nil stamped_page for forms without stamp_metadata' do
-        attachment_ids, stamped_page = form.prepare_submission_data('vha_10_10d', form_data, current_user)
+        attachment_ids, stamped_page = form.prepare_submission_data('vha_10_10d', current_user)
 
         expect(attachment_ids).to include('vha_10_10d')
         expect(stamped_page).to be_nil
@@ -380,7 +374,7 @@ RSpec.describe IvcChampva::DataTransformations do
       end
 
       it 'returns attachment_ids and nil stamped_page' do
-        attachment_ids, stamped_page = form.prepare_submission_data('vha_10_10d', form_data, current_user)
+        attachment_ids, stamped_page = form.prepare_submission_data('vha_10_10d', current_user)
 
         expect(attachment_ids).to include('vha_10_10d')
         expect(stamped_page).to be_nil
@@ -392,7 +386,7 @@ RSpec.describe IvcChampva::DataTransformations do
       empty_data = { 'form_number' => '10-10D' }
       empty_form = IvcChampva::VHA1010d.new(empty_data)
 
-      attachment_ids, = empty_form.prepare_submission_data('vha_10_10d', empty_data, current_user)
+      attachment_ids, = empty_form.prepare_submission_data('vha_10_10d', current_user)
 
       expect(attachment_ids).to eq(['vha_10_10d'])
     end

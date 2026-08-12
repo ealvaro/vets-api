@@ -37,7 +37,7 @@ module IvcChampva
     def initialize(data)
       @uuid = SecureRandom.uuid
       @form_id = 'vha_10_7959c_rev2025'
-      @data = transform_data(data)
+      @data = transform_data(data).freeze
     end
 
     def desired_stamps
@@ -124,7 +124,7 @@ module IvcChampva
       return incoming_data if incoming_data.nil?
 
       # If data already has flat policy fields, it's been pre-transformed
-      return incoming_data if data_already_transformed?(incoming_data)
+      return incoming_data.deep_dup if data_already_transformed?(incoming_data)
 
       # Extract first applicant and merge with form-level data
       transformed = flatten_applicant_data(incoming_data)

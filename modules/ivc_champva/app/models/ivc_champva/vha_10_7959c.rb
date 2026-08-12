@@ -16,7 +16,7 @@ module IvcChampva
     attr_reader :form_id
 
     def initialize(data)
-      @data = data
+      @data = data.deep_dup.freeze
       @uuid = SecureRandom.uuid
       @form_id = 'vha_10_7959c'
     end

@@ -33,7 +33,7 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
         )
         dta_form = IvcChampva::VHA107959a.new(dta_data)
 
-        result = dta_form.build_attachment_ids('vha_10_7959a', dta_data, 1)
+        result = dta_form.build_attachment_ids('vha_10_7959a', 1)
 
         expect(result).to eq(['Duty to Assist', 'Duty to Assist', 'Duty to Assist'])
       end
@@ -49,7 +49,7 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
         record = double('Record', created_at: Time.zone.now, file: double(id: 'file1'))
         allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).and_return(record)
 
-        result = dta_form.build_attachment_ids('vha_10_7959a', dta_data, 1)
+        result = dta_form.build_attachment_ids('vha_10_7959a', 1)
 
         expect(result).to eq(['Duty to Assist', 'Duty to Assist', 'Duty to Assist'])
       end
@@ -68,7 +68,7 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
         )
         pdi_form = IvcChampva::VHA107959a.new(pdi_data)
 
-        result = pdi_form.build_attachment_ids('vha_10_7959a', pdi_data, 1)
+        result = pdi_form.build_attachment_ids('vha_10_7959a', 1)
 
         expect(result).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
       end
@@ -84,7 +84,7 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
         record = double('Record', created_at: Time.zone.now, file: double(id: 'file1'))
         allow(PersistentAttachments::MilitaryRecords).to receive(:find_by).and_return(record)
 
-        result = control_form.build_attachment_ids('vha_10_7959a', control_data, 1)
+        result = control_form.build_attachment_ids('vha_10_7959a', 1)
 
         expect(result).to eq(['CVA Reopen', 'Medical Records', 'EOB'])
       end
@@ -93,32 +93,26 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
 
   describe '#build_pdi_resubmission_attachment_ids (private)' do
     it 'labels all documents as CVA Bene Response' do
-      parsed_form_data = {
-        'supporting_docs' => [
-          { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' },
-          { 'confirmation_code' => 'code2', 'attachment_id' => 'EOB' }
-        ]
-      }
-
-      result = form.send(:build_pdi_resubmission_attachment_ids, parsed_form_data, 1)
+      result = form.send(:build_pdi_resubmission_attachment_ids, 1)
 
       expect(result).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
     end
 
     it 'handles submissions with no supporting docs' do
-      result = form.send(:build_pdi_resubmission_attachment_ids, { 'supporting_docs' => nil }, 1)
+      no_docs_form = IvcChampva::VHA107959a.new({ 'supporting_docs' => nil })
+      result = no_docs_form.send(:build_pdi_resubmission_attachment_ids, 1)
 
       expect(result).to eq(['CVA Bene Response'])
     end
 
     it 'handles multiple main form pages' do
-      parsed_form_data = {
+      one_doc_form = IvcChampva::VHA107959a.new(
         'supporting_docs' => [
           { 'confirmation_code' => 'code1', 'attachment_id' => 'Medical Records' }
         ]
-      }
+      )
 
-      result = form.send(:build_pdi_resubmission_attachment_ids, parsed_form_data, 2)
+      result = one_doc_form.send(:build_pdi_resubmission_attachment_ids, 2)
 
       expect(result).to eq(['CVA Bene Response', 'CVA Bene Response', 'CVA Bene Response'])
     end
@@ -128,8 +122,10 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     it 'returns true when all conditions are met' do
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
 
-      dta_data = { 'claim_status' => 'resubmission', 'has_claim_docs' => false }
-      result = form.send(:dta_applies?, dta_data)
+      dta_form = IvcChampva::VHA107959a.new(
+        'claim_status' => 'resubmission', 'has_claim_docs' => false
+      )
+      result = dta_form.send(:dta_applies?)
 
       expect(result).to be true
     end
@@ -137,8 +133,10 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     it 'returns false when feature flag is disabled' do
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(false)
 
-      dta_data = { 'claim_status' => 'resubmission', 'has_claim_docs' => false }
-      result = form.send(:dta_applies?, dta_data)
+      dta_form = IvcChampva::VHA107959a.new(
+        'claim_status' => 'resubmission', 'has_claim_docs' => false
+      )
+      result = dta_form.send(:dta_applies?)
 
       expect(result).to be false
     end
@@ -146,7 +144,10 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     it 'returns false when claim_status is not resubmission' do
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
 
-      result = form.send(:dta_applies?, { 'claim_status' => 'new', 'has_claim_docs' => false })
+      non_resub_form = IvcChampva::VHA107959a.new(
+        'claim_status' => 'new', 'has_claim_docs' => false
+      )
+      result = non_resub_form.send(:dta_applies?)
 
       expect(result).to be false
     end
@@ -154,7 +155,10 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
     it 'returns false when has_claim_docs is true' do
       allow(Flipper).to receive(:enabled?).with(:champva_claims_duty_to_assist).and_return(true)
 
-      result = form.send(:dta_applies?, { 'claim_status' => 'resubmission', 'has_claim_docs' => true })
+      has_docs_form = IvcChampva::VHA107959a.new(
+        'claim_status' => 'resubmission', 'has_claim_docs' => true
+      )
+      result = has_docs_form.send(:dta_applies?)
 
       expect(result).to be false
     end
@@ -174,7 +178,7 @@ RSpec.describe IvcChampva::ClaimsAttachmentIds do
       )
       dta_form = IvcChampva::VHA107959a2027.new(dta_data)
 
-      result = dta_form.build_attachment_ids('vha_10_7959a', dta_data, 1)
+      result = dta_form.build_attachment_ids('vha_10_7959a', 1)
 
       expect(result).to eq(['Duty to Assist', 'Duty to Assist', 'Duty to Assist'])
     end

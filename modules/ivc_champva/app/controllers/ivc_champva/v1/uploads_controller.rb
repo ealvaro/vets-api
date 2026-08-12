@@ -735,7 +735,7 @@ module IvcChampva
       end
 
       def append_ves_json_files(form, parsed_form_data, collections)
-        file_paths, attachment_ids, metadata, legacy_form_id = collections
+        file_paths, attachment_ids, legacy_form_id = collections
 
         if Flipper.enabled?(:champva_send_ohi_ves_to_pega, @current_user)
           ves_json_results = generate_ves_json_files(form, parsed_form_data)
@@ -744,7 +744,7 @@ module IvcChampva
             attachment_ids << result[:attachment_id]
           end
           afm = build_additional_file_metadata(file_paths, attachment_ids, ves_json_results, legacy_form_id)
-          metadata['additional_file_metadata'] = afm if afm.any?
+          return afm if afm.any?
         elsif should_generate_ves_json?(form.form_id)
           ves_json_path = generate_ves_json_file(form, parsed_form_data)
           if ves_json_path
@@ -752,6 +752,7 @@ module IvcChampva
             attachment_ids << 'VES JSON'
           end
         end
+        nil
       end
 
       def map_form_pdfs_to_ves_json(additional, file_paths, attachment_ids, ves_json, legacy_form_id)
@@ -1065,9 +1066,7 @@ module IvcChampva
           else
             # OLD: Manually map policies to applicant_primary_*/applicant_secondary_* fields
             applicant_with_mapped_policies = map_policies_to_applicant(policies_pair, applicant_data)
-            form = IvcChampva::VHA107959cRev2025.new(applicant_with_mapped_policies)
-            form.data['form_number'] = '10-7959C'
-            forms << form
+            forms << IvcChampva::VHA107959cRev2025.new(applicant_with_mapped_policies)
           end
         end
 
@@ -1087,8 +1086,7 @@ module IvcChampva
       # so an OHI (10-7959c) PDF can be stamped with this info
       #
       def map_policies_to_applicant(policies, applicant)
-        # Create a copy of the applicant hash to avoid modifying the original
-        updated_applicant = Marshal.load(Marshal.dump(applicant))
+        updated_applicant = applicant.deep_dup
 
         # Map primary and secondary insurance policies
         map_primary_policy_to_applicant(policies[0], updated_applicant) if policies&.[](0)
@@ -1139,6 +1137,21 @@ module IvcChampva
           filler.generate(@current_user.loa[:current])
         else
           filler.generate
+        end
+      end
+
+      def add_blank_doc_and_stamp(form, parsed_form_data)
+        Datadog::Tracing.trace('IVC Champva Forms - Add Blank Document') do
+          if form.methods.include?(:stamp_metadata)
+            stamps = form.stamp_metadata
+
+            if !stamps.nil? && stamps.is_a?(Hash)
+              blank_page_path = IvcChampva::Attachments.get_blank_page
+              IvcChampva::PdfStamper.stamp_metadata_items(blank_page_path, stamps[:metadata])
+              att = create_custom_attachment(form, blank_page_path, stamps[:attachment_id])
+              add_supporting_doc(parsed_form_data, att)
+            end
+          end
         end
       end
 
@@ -1256,15 +1269,17 @@ module IvcChampva
           form = IvcChampva::FormVersionManager.create_form_instance(base_form_id, parsed_form_data, @current_user)
           track_form_submission_metrics(form)
 
-          attachment_ids, stamped_page = form.prepare_submission_data(
-            base_form_id, parsed_form_data, @current_user, controller: self
-          )
+          attachment_ids, stamped_page = form.prepare_submission_data(base_form_id, @current_user)
+
+          add_blank_doc_and_stamp(form, parsed_form_data) unless stamped_page
 
           file_paths, metadata, legacy_form_id = generate_pdf_and_assemble_paths(form, attachment_ids, stamped_page)
 
-          append_ves_json_files(form, parsed_form_data, [file_paths, attachment_ids, metadata, legacy_form_id])
+          afm = append_ves_json_files(form, parsed_form_data, [file_paths, attachment_ids, legacy_form_id])
 
-          [file_paths, metadata.merge({ 'attachment_ids' => attachment_ids })]
+          merged = { 'attachment_ids' => attachment_ids }
+          merged['additional_file_metadata'] = afm if afm
+          [file_paths, metadata.merge(merged)]
         end
       end
 
@@ -1470,7 +1485,7 @@ module IvcChampva
           claim_id_present = claim_id.present?
           form.uuid = claim_id if claim_id_present
 
-          attachment_ids = form.supporting_document_ids(parsed_form_data)
+          attachment_ids = form.supporting_document_ids
           if attachment_ids.blank?
             raise ArgumentError, 'supporting documents must resolve to at least one attachment id for upload'
           end

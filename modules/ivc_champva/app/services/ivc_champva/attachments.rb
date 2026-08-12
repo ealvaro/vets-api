@@ -125,8 +125,7 @@ module IvcChampva
     end
 
     def generate_additional_pdf(additional_data, index)
-      # Deep copy @data so we don't clobber the ADDITIONAL_PDF_KEY array:
-      additional_form_data = Marshal.load(Marshal.dump(@data))
+      additional_form_data = @data.deep_dup
 
       additional_form_data[self.class::ADDITIONAL_PDF_KEY] = additional_data
       filler = IvcChampva::PdfFiller.new(

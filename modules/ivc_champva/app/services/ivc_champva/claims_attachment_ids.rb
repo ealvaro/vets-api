@@ -15,43 +15,43 @@ module IvcChampva
     # @param parsed_form_data [Hash] complete form submission data object
     # @param applicant_rounded_number [Integer] number of main form attachments needed
     # @return [Array<String>] array of attachment_ids for all documents
-    def build_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
+    def build_attachment_ids(base_form_id, applicant_rounded_number)
       Datadog::Tracing.trace('IVC Champva Forms - Build Attachment IDs') do
-        if dta_applies?(parsed_form_data)
-          build_dta_attachment_ids(parsed_form_data, applicant_rounded_number)
-        elsif parsed_form_data['claim_status'] == 'resubmission'
-          selector = parsed_form_data['pdi_or_claim_number']
+        if dta_applies?
+          build_dta_attachment_ids(applicant_rounded_number)
+        elsif data['claim_status'] == 'resubmission'
+          selector = data['pdi_or_claim_number']
 
           if selector == 'Control number'
             main = Array.new(applicant_rounded_number) { 'CVA Reopen' }
-            main.concat(supporting_document_ids(parsed_form_data))
+            main.concat(supporting_document_ids)
           elsif selector == 'PDI number'
-            build_pdi_resubmission_attachment_ids(parsed_form_data, applicant_rounded_number)
+            build_pdi_resubmission_attachment_ids(applicant_rounded_number)
           else
-            build_default_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
+            build_default_attachment_ids(base_form_id, applicant_rounded_number)
           end
         else
-          build_default_attachment_ids(base_form_id, parsed_form_data, applicant_rounded_number)
+          build_default_attachment_ids(base_form_id, applicant_rounded_number)
         end
       end
     end
 
     private
 
-    def dta_applies?(parsed_form_data)
+    def dta_applies?
       Flipper.enabled?(:champva_claims_duty_to_assist) &&
-        parsed_form_data['claim_status'] == 'resubmission' &&
-        parsed_form_data['has_claim_docs'] == false
+        data['claim_status'] == 'resubmission' &&
+        data['has_claim_docs'] == false
     end
 
-    def build_dta_attachment_ids(parsed_form_data, applicant_rounded_number)
-      supporting_doc_count = parsed_form_data['supporting_docs']&.count.to_i
+    def build_dta_attachment_ids(applicant_rounded_number)
+      supporting_doc_count = data['supporting_docs']&.count.to_i
       total_doc_count = applicant_rounded_number + supporting_doc_count
       Array.new(total_doc_count) { 'Duty to Assist' }
     end
 
-    def build_pdi_resubmission_attachment_ids(parsed_form_data, applicant_rounded_number)
-      supporting_doc_count = parsed_form_data['supporting_docs']&.count.to_i
+    def build_pdi_resubmission_attachment_ids(applicant_rounded_number)
+      supporting_doc_count = data['supporting_docs']&.count.to_i
       total_doc_count = applicant_rounded_number + supporting_doc_count
       Array.new(total_doc_count) { 'CVA Bene Response' }
     end

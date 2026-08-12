@@ -58,21 +58,11 @@ module IvcChampva
       FileUtils.copy_file(tempfile.path, stamped_template_path)
     end
 
-    def process_stamped_template(form, stamped_template_path, generated_form_path, current_loa)
-      transliterate_fields(form) if Flipper.enabled?(:champva_foreign_address_fix)
+    def process_stamped_template(_form, stamped_template_path, generated_form_path, current_loa)
       stamp_and_fill_pdf(stamped_template_path, generated_form_path, current_loa)
       generated_form_path
     ensure
       Common::FileHelpers.delete_file_if_exists(stamped_template_path)
-    end
-
-    def transliterate_fields(form)
-      field_patterns = [
-        /street/i, /city/i, /state/i, /country/i, /postal_code/i,
-        /^.*_address$/i, /^.*_address_string$/i, /address$/i
-      ]
-      skip_keys = %w[email_address applicant_email_address]
-      IvcChampva::FieldTransliterator.transliterate_all!(form.data, field_patterns:, skip_keys:)
     end
 
     def stamp_and_fill_pdf(stamped_template_path, generated_form_path, current_loa)
@@ -95,7 +85,10 @@ module IvcChampva
       b.local_variable_set(:data, form)
 
       mapper_class = FORM_MAPPERS[form_number]
-      b.local_variable_set(:mapper, mapper_class.new(form.data).mapped_fields) if mapper_class && use_mapped_template?
+      if mapper_class && use_mapped_template?
+        source_data = Flipper.enabled?(:champva_foreign_address_fix) ? form.transliterated_data : form.data
+        b.local_variable_set(:mapper, mapper_class.new(source_data).mapped_fields)
+      end
 
       result = ERB.new(template).result(b)
       JSON.parse(escape_json_string(result))

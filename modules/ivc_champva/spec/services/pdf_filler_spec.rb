@@ -62,7 +62,6 @@ describe IvcChampva::PdfFiller do
 
         forms.each do |form_number|
           it "transliterates address fields for #{form_number}" do
-            uuid = 'eb8ec19d-3934-48c7-b878-dca41c6cd534'
             file_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json',
                                         "#{form_number}.json")
             expect(File.exist?(file_path)).to be(true), "Fixture file not found: #{file_path}"
@@ -73,12 +72,10 @@ describe IvcChampva::PdfFiller do
             add_accented_characters_to_form(data, form_number)
 
             form = "IvcChampva::#{form_number.titleize.gsub(' ', '')}".constantize.new(data)
-            pdf_filler = described_class.new(form_number:, form:, uuid:)
 
-            pdf_filler.generate
-
-            # Verify that address fields have been transliterated
-            verify_transliteration(form.data, form_number)
+            verify_transliteration(form.transliterated_data, form_number)
+            expect(form.data).to be_frozen
+            expect(form.transliterated_data).to be_frozen
           end
         end
 
