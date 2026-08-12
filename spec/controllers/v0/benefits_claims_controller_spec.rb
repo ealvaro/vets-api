@@ -1676,7 +1676,35 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
     context "when 'cst_multi_claim_provider' is disabled" do
       before do
-        allow(Flipper).to receive(:enabled?).with(:cst_multi_claim_provider, anything).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, anything).and_return(false)
+      end
+
+      it 'does not 500 when contentions and claimPhaseDates are missing from the claim' do
+        claim_without_contentions = {
+          'data' => {
+            'id' => '600383363',
+            'type' => 'evss_claims',
+            'attributes' => {
+              'claimType' => 'Compensation',
+              'claimTypeCode' => '020NEW',
+              'claimDate' => '2022-09-27',
+              'endProductCode' => '020',
+              'decisionLetterSent' => false,
+              'developmentLetterSent' => true,
+              'trackedItems' => []
+            }
+          }
+        }
+        allow_any_instance_of(BenefitsClaims::Service).to receive(:get_claim).and_return(claim_without_contentions)
+
+        get(:show, params: { id: '600383363' })
+
+        expect(response).to have_http_status(:ok)
+        expect(Rails.logger)
+          .to have_received(:info)
+          .with('Claim Type Details',
+                hash_including(num_contentions: nil, current_phase_back: nil, latest_phase_type: nil))
       end
 
       it 'returns tracked items with content override fields from TrackedItemContent' do

@@ -345,10 +345,10 @@ module V0
                             claim_type: claim_info['claimType'],
                             claim_type_code: claim_info['claimTypeCode'],
                             claim_date: claim_info['claimDate'],
-                            num_contentions: claim_info['contentions'].count,
+                            num_contentions: claim_info['contentions']&.count,
                             ep_code: claim_info['endProductCode'],
-                            current_phase_back: claim_info['claimPhaseDates']['currentPhaseBack'],
-                            latest_phase_type: claim_info['claimPhaseDates']['latestPhaseType'],
+                            current_phase_back: claim_info.dig('claimPhaseDates', 'currentPhaseBack'),
+                            latest_phase_type: claim_info.dig('claimPhaseDates', 'latestPhaseType'),
                             decision_letter_sent: claim_info['decisionLetterSent'],
                             development_letter_sent: claim_info['developmentLetterSent'],
                             claim_id: params[:id] })
