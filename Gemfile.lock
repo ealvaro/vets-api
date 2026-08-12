@@ -1148,7 +1148,7 @@ GEM
     shellany (0.0.1)
     shoulda-matchers (8.0.1)
       activesupport (>= 7.2)
-    shrine (3.8.0)
+    shrine (3.9.0)
       content_disposition (~> 1.0)
       down (~> 5.1)
     sidekiq (7.3.7)
