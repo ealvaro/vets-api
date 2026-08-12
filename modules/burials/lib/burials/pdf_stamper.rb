@@ -14,12 +14,14 @@ module Burials
     def self.stamp_sets
       if Burials.use_v2?
         fdc_y = 820
-        app_x = 0
-        app_y = 807
+        app_x = 472
+        app_y = 745
+        size = 8.5
       else
         fdc_y = 815
         app_x = 425
         app_y = 720
+        size = 9
       end
 
       {
@@ -47,7 +49,7 @@ module Burials
           text_only: true, # passing as text only because we override how the date is stamped in this instance
           timestamp: nil,
           page_number: 5,
-          size: 9,
+          size:,
           template: Burials.pdf_path,
           multistamp: true
         }]

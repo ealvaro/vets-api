@@ -49,7 +49,6 @@ RSpec.describe Burials::PDFStamper do
             text_only: true,
             timestamp: nil,
             page_number: 5,
-            size: 9,
             multistamp: true,
             template: Burials.pdf_path
           )
@@ -71,8 +70,13 @@ RSpec.describe Burials::PDFStamper do
 
       it 'positions the Application Submitted stamp at x=0 y=807' do
         app_stamp = generated_claim_stamps.third
-        expect(app_stamp[:x]).to eq(0)
-        expect(app_stamp[:y]).to eq(807)
+        expect(app_stamp[:x]).to eq(472)
+        expect(app_stamp[:y]).to eq(745)
+      end
+
+      it 'uses text size 8.5 for Application Submitted stamp' do
+        app_stamp = generated_claim_stamps.third
+        expect(app_stamp[:size]).to eq(8.5)
       end
     end
 
@@ -92,6 +96,11 @@ RSpec.describe Burials::PDFStamper do
         app_stamp = generated_claim_stamps.third
         expect(app_stamp[:x]).to eq(425)
         expect(app_stamp[:y]).to eq(720)
+      end
+
+      it 'uses text size 9 for Application Submitted stamp' do
+        app_stamp = generated_claim_stamps.third
+        expect(app_stamp[:size]).to eq(9)
       end
     end
   end
