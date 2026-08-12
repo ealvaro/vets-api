@@ -147,36 +147,15 @@ module VAOS
         end
 
         if Flipper.enabled?(:appointments_consolidation, user)
-          eps_before_appts = appointments.select do |appt|
-            appt[:type] == 'epsAppointment' || appt.dig(:provider, :id).present?
-          end
-          eps_before_facilities = extract_facility_identifiers(eps_before_appts)
-
           # TODO: remove this filter from the web/service side once we trust the
           # upstream VAOS response to only return user-facing appointments. The
           # mobile proxy still invokes the same filter for its own callers.
           filterer = AppointmentsPresentationFilter.new(user:)
           appointments.keep_if { |appt| filterer.user_facing?(appt) }
-
-          eps_after_appts = appointments.select do |appt|
-            appt[:type] == 'epsAppointment' || appt.dig(:provider, :id).present?
-          end
-          eps_after_facilities = extract_facility_identifiers(eps_after_appts)
-          removed_facilities = eps_before_facilities - eps_after_facilities
-
-          removed_msg = removed_facilities.any? ? ", removed #{removed_facilities}" : ''
-          Rails.logger.info("EPS Debug: Presentation filter kept #{eps_after_facilities}#{removed_msg}")
         end
 
         # log count of C&P appointments in the appointments list, per GH#78141
         log_cnp_appt_count(cnp_count) if cnp_count.positive?
-
-        # Log final EPS appointments
-        final_eps_appts = appointments.select do |appt|
-          appt[:type] == 'epsAppointment' || appt.dig(:provider, :id).present?
-        end
-        final_eps_facilities = extract_facility_identifiers(final_eps_appts)
-        Rails.logger.info("EPS Debug: Final response #{final_eps_facilities.any? ? final_eps_facilities : 'none'}")
 
         meta = pagination(pagination_params).merge(partial_errors(response, __method__))
         append_eps_failures(meta)
@@ -485,47 +464,15 @@ module VAOS
         existing_referral_ids = appointments.to_set { |a| a.dig(:referral, :referral_number) }
         date_and_time_for_referral_list = appointments.pluck(:start)
 
-        # Track which EPS appointments get rejected as duplicates
-        rejected_ids = []
         merged_data = appointments + normalized_new.reject do |a|
-          duplicate = existing_referral_ids.include?(a.dig(:referral, :referral_number)) &&
-                      date_and_time_for_referral_list.include?(a[:start])
-          rejected_ids << a[:id] if duplicate
-          duplicate
+          existing_referral_ids.include?(a.dig(:referral, :referral_number)) &&
+            date_and_time_for_referral_list.include?(a[:start])
         end
-
-        kept_eps_appts = normalized_new.reject { |appt| rejected_ids.include?(appt[:id]) }
-        kept_eps_facilities = extract_facility_identifiers(kept_eps_appts)
-        rejected_eps_appts = normalized_new.select { |appt| rejected_ids.include?(appt[:id]) }
-        rejected_facilities = extract_facility_identifiers(rejected_eps_appts)
-        duplicates_msg = rejected_facilities.any? ? ", removed duplicates #{rejected_facilities}" : ''
-        Rails.logger.info("EPS Debug: Merge kept #{kept_eps_facilities}#{duplicates_msg}")
 
         merged_data.sort_by { |appt| appt[:start] || '' }
       end
 
       memoize :get_facility_timezone_memoized
-
-      # Extract facility identifiers from appointments for privacy-safe logging
-      # Returns array of "facility_name (facility_id)" strings, or location_id if facility info unavailable
-      def extract_facility_identifiers(appointments)
-        appointments.map do |appt|
-          if appt.is_a?(Hash)
-            # For regular appointments with merged facility info
-            if appt.dig(:location, 'name') && appt.dig(:location, 'id')
-              "#{appt[:location]['name']} (#{appt[:location]['id']})"
-            elsif appt[:location_id]
-              "facility #{appt[:location_id]}"
-            else
-              'unknown facility'
-            end
-          else
-            # For EPS appointments or other objects
-            location_id = appt.try(:location_id) || appt.try(:[], :location_id)
-            location_id ? "facility #{location_id}" : 'unknown facility'
-          end
-        end
-      end
 
       # Fetches AVS metadata for all ENCOUNTERS after start_date up to today.
       # Only used when flipper va_online_scheduling_uhd_avs_metadata enabled.
@@ -1797,9 +1744,7 @@ module VAOS
         if eps_appts.blank?
           []
         else
-          kept_appts, removed_appts = separate_appointments_by_start_time(eps_appts)
-          log_appointment_separation(kept_appts, removed_appts)
-          kept_appts
+          eps_appts.select { |appt| appt.start.present? }
         end
       rescue Common::Exceptions::BackendServiceException, Common::Client::Errors::ClientError,
              Common::Exceptions::GatewayTimeout, Timeout::Error, Faraday::ConnectionFailed
@@ -1815,28 +1760,6 @@ module VAOS
 
       def eps_serializer
         @eps_serializer ||= VAOS::V2::EpsAppointment.new
-      end
-
-      def separate_appointments_by_start_time(appointments)
-        kept_appts = []
-        removed_appts = []
-
-        appointments.each do |appt|
-          if appt.start.present?
-            kept_appts << appt
-          else
-            removed_appts << appt
-          end
-        end
-
-        [kept_appts, removed_appts]
-      end
-
-      def log_appointment_separation(kept_appts, removed_appts)
-        removed_facilities = extract_facility_identifiers(removed_appts)
-        kept_facilities = extract_facility_identifiers(kept_appts)
-        removed_msg = removed_facilities.any? ? ", removed #{removed_facilities}" : ''
-        Rails.logger.info("EPS Debug: Kept #{kept_facilities}#{removed_msg}")
       end
 
       ##
