@@ -49,6 +49,15 @@ properties:
                 - preneed_burial
                 - user_contact_update
                 - user_demographics
+                - travel_pay_features
+                - facilities_info
+                - power_of_attorney
+                - decision_letters
+                - referrals
+                - debts
+                - medical_copays
+                - push_prefs
+                - veteran_status
               example: "claims"
             startTime:
               type: string

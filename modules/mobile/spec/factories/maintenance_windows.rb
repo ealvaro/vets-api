@@ -63,4 +63,49 @@ FactoryBot.define do
     created_at { '2021-05-22 12:01:15' }
     description { '' }
   end
+
+  factory :mobile_maintenance_vaos, class: '::MaintenanceWindow' do
+    pagerduty_id { 'PVAOS01' }
+    external_service { 'vaos' }
+    start_time { '2021-05-25 21:33:39' }
+    end_time { '2021-05-25 22:33:39' }
+    created_at { '2021-05-24 12:15:17' }
+    description { 'vaos is down' }
+  end
+
+  factory :mobile_maintenance_ccra, class: '::MaintenanceWindow' do
+    pagerduty_id { 'PCCRA01' }
+    external_service { 'ccra' }
+    start_time { '2021-05-25 21:33:39' }
+    end_time { '2021-05-25 22:33:39' }
+    created_at { '2021-05-24 12:15:17' }
+    description { 'ccra is down' }
+  end
+
+  factory :mobile_maintenance_dmc, class: '::MaintenanceWindow' do
+    pagerduty_id { 'PDMC001' }
+    external_service { 'dmc' }
+    start_time { '2021-05-25 21:33:39' }
+    end_time { '2021-05-25 22:33:39' }
+    created_at { '2021-05-24 12:15:17' }
+    description { 'dmc is down' }
+  end
+
+  factory :mobile_maintenance_vbs, class: '::MaintenanceWindow' do
+    pagerduty_id { 'PVBS001' }
+    external_service { 'vbs' }
+    start_time { '2021-05-25 21:33:39' }
+    end_time { '2021-05-25 22:33:39' }
+    created_at { '2021-05-24 12:15:17' }
+    description { 'vbs is down' }
+  end
+
+  factory :mobile_maintenance_vetext, class: '::MaintenanceWindow' do
+    pagerduty_id { 'PVETEXT1' }
+    external_service { 'vetext' }
+    start_time { '2021-05-25 21:33:39' }
+    end_time { '2021-05-25 22:33:39' }
+    created_at { '2021-05-24 12:15:17' }
+    description { 'vetext is down' }
+  end
 end

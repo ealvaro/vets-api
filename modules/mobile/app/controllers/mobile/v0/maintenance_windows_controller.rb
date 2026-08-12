@@ -19,11 +19,15 @@ module Mobile
         %i[mpi lighthouse_letters_generator],
         %i[mpi lighthouse_vshe],
         %i[vbms lighthouse_benefits_claims],
+        %i[vbms decision_letters], # decision_letters come from VBMS or LH Benefits Documents (flag-dependent)
         %i[arcgis facility_locator],
         %i[caseflow appeals],
         %i[vapro_military_info military_service_history],
         %i[lighthouse_benefits_claims claims],
+        %i[lighthouse_benefits_claims power_of_attorney], # BenefitsClaims::Service /power-of-attorney
+        %i[lighthouse_benefits_documents decision_letters],
         %i[lighthouse_vshe disability_rating],
+        %i[lighthouse_vshe veteran_status],
         %i[lighthouse_letters_generator letters_and_documents],
         %i[lighthouse_veterans_health immunizations],
         %i[lighthouse_veterans_health allergies],
@@ -35,10 +39,16 @@ module Mobile
         %i[mhv_sm secure_messaging],
         %i[mhv_meds rx_refill],
         %i[vaos appointments],
+        %i[vaos ccra], # CCRA is fronted by VAOS, so a VAOS outage cascades through ccra to referrals
+        %i[vaos facilities_info], # facilities_info: VAOS MobileFacilityService
         %i[vapro_personal_info user_demographics],
         %i[vapro_contact_info user_profile_update],
         %i[eoas preneed_burial],
-        %i[travel_pay travel_pay_features]
+        %i[travel_pay travel_pay_features],
+        %i[ccra referrals],
+        %i[dmc debts], # DebtManagementCenter::DebtsService
+        %i[vbs medical_copays], # MedicalCopays::VBS::Service (Veteran Billing System)
+        %i[vetext push_prefs] # VEText::Service push preferences
       ].freeze
 
       # When the efolder_use_lighthouse_benefits_documents_service flag is OFF, mobile's efolder

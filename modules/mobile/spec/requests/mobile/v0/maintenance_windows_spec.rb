@@ -10,6 +10,11 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
     Digest::UUID.uuid_v5(Mobile::V0::ServiceGraph::MAINTENANCE_WINDOW_NAMESPACE, service_name)
   end
 
+  def affected_service_names
+    get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' }
+    response.parsed_body['data'].pluck('attributes').pluck('service')
+  end
+
   describe 'GET /v0/maintenance_windows' do
     context 'when no maintenance windows are active' do
       before { get '/mobile/v0/maintenance_windows', headers: { 'X-Key-Inflection' => 'camel' } }
@@ -58,8 +63,8 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
       end
 
       it 'returns an array of the affected services' do
-        expect(response.parsed_body['data']).to eq(
-          [{
+        expect(response.parsed_body['data']).to contain_exactly(
+          {
             'id' => mw_uuid('claims'),
             'type' => 'maintenance_window',
             'attributes' => {
@@ -123,7 +128,31 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
               'startTime' => '2021-05-25T23:33:39.000Z',
               'endTime' => '2021-05-27T01:45:00.000Z'
             }
-          }]
+          }, {
+            'id' => mw_uuid('power_of_attorney'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'power_of_attorney',
+              'startTime' => '2021-05-25T21:33:39.000Z',
+              'endTime' => '2021-05-25T22:33:39.000Z'
+            }
+          }, {
+            'id' => mw_uuid('decision_letters'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'decision_letters',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-27T01:45:00.000Z'
+            }
+          }, {
+            'id' => mw_uuid('veteran_status'),
+            'type' => 'maintenance_window',
+            'attributes' => {
+              'service' => 'veteran_status',
+              'startTime' => '2021-05-25T23:33:39.000Z',
+              'endTime' => '2021-05-26T01:45:00.000Z'
+            }
+          }
         )
       end
     end
@@ -210,7 +239,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         lighthouse_latest_end_time = latest_lighthouse_starting.end_time.iso8601
 
         assert_schema_conform(200)
-        expect(attributes.pluck('service').uniq).to eq(%w[claims])
+        expect(attributes.pluck('service').uniq).to match_array(%w[claims power_of_attorney])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_earliest_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_earliest_end_time])
 
@@ -219,7 +248,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
 
         assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
-        expect(attributes.pluck('service').uniq).to eq(%w[claims])
+        expect(attributes.pluck('service').uniq).to match_array(%w[claims power_of_attorney])
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_middle_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_middle_end_time])
 
@@ -228,7 +257,7 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
 
         assert_schema_conform(200)
         attributes = response.parsed_body['data'].pluck('attributes')
-        expect(attributes.pluck('service').uniq).to eq(%w[claims])
+        expect(attributes.pluck('service').uniq).to match_array(%w[claims power_of_attorney])
 
         expect(attributes.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([lighthouse_latest_start_time])
         expect(attributes.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([lighthouse_latest_end_time])
@@ -289,6 +318,32 @@ RSpec.describe 'Mobile::V0::MaintenanceWindows', type: :request do
         expect(bgs_windows.pluck('service')).to eq(bgs_services)
         expect(bgs_windows.map { |w| Time.parse(w['startTime']).iso8601 }.uniq).to eq([bgs_latest_start_time])
         expect(bgs_windows.map { |w| Time.parse(w['endTime']).iso8601 }.uniq).to eq([bgs_latest_end_time])
+      end
+    end
+
+    context 'when a newly mapped upstream service is down' do
+      before { Timecop.freeze('2021-05-25T03:33:39Z') }
+      after { Timecop.return }
+
+      it 'cascades a VAOS outage to appointments, facilities_info, and referrals (via ccra)' do
+        create(:mobile_maintenance_vaos)
+        expect(affected_service_names).to include('appointments', 'facilities_info', 'referrals')
+      end
+
+      it 'cascades a CCRA outage to referrals' do
+        create(:mobile_maintenance_ccra)
+        expect(affected_service_names).to include('referrals')
+      end
+
+      {
+        mobile_maintenance_dmc: 'debts',
+        mobile_maintenance_vbs: 'medical_copays',
+        mobile_maintenance_vetext: 'push_prefs'
+      }.each do |factory, service|
+        it "surfaces #{service} when its upstream is down" do
+          create(factory)
+          expect(affected_service_names).to include(service)
+        end
       end
     end
   end
