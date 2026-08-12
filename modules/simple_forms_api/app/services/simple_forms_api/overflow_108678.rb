@@ -21,7 +21,7 @@ module SimpleFormsApi
       gen = PdfFill::ExtrasGeneratorV2.new(
         form_name: '10-8678',
         submit_date: nil,
-        start_page: 1,
+        start_page: 2,
         show_jumplinks: false,
         question_key: [
           { question_number: '7',

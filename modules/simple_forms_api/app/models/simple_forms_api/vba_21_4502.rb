@@ -6,6 +6,7 @@ module SimpleFormsApi
   class VBA214502 < BaseForm
     STATS_KEY = 'api.simple_forms_api.21_4502'
     FORM_NUMBER = '21-4502'
+    EMAIL_CUTOFF = 30
 
     include ::PdfFill::Forms::FormHelper
 
@@ -70,10 +71,22 @@ module SimpleFormsApi
       ActiveModel::Type::Boolean.new.cast(@data['veteran_will_operate_vehicle']) || false
     end
 
-    def overflow_pdf
-      return nil if [nil, ''].include?(@data['veteran_will_operate_vehicle'])
+    def email_overflow?
+      @data['email'].to_s.length > EMAIL_CUTOFF
+    end
 
-      Overflow4502.new(data, cutoff: 1).generate
+    def pdf_email
+      email_overflow? ? 'see additional page' : @data['email']
+    end
+
+    def overflow_pdf
+      overflow_data = {}
+      operating_no_data = [nil, ''].include?(@data['veteran_will_operate_vehicle'])
+      return nil if operating_no_data && !email_overflow?
+
+      overflow_data['email'] = @data['email'] if email_overflow?
+      overflow_data['veteran_will_operate_vehicle'] = @data['veteran_will_operate_vehicle'] unless operating_no_data
+      Overflow4502.new(overflow_data).generate
     end
 
     private
