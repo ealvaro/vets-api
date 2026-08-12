@@ -396,6 +396,30 @@ describe PdfFill::ExtrasGeneratorV2 do
         expect(pdf).to have_received(:stroke_horizontal_rule)
       end
     end
+
+    context 'when header_label is set' do
+      subject { described_class.new(form_name:, submit_date:, header_label: 'ADDITIONAL PAGE') }
+
+      it 'uses the custom header label' do
+        subject.set_header(pdf)
+        expect(pdf).to have_received(:markup).with("<b>ADDITIONAL PAGE</b> to VA Form #{form_name}",
+                                                   text: { align: :left, valign: :bottom, size: header_font_size })
+      end
+    end
+  end
+
+  describe '#placeholder_text' do
+    it 'defaults to "See attachment"' do
+      expect(subject.placeholder_text).to eq('See attachment')
+    end
+
+    context 'when placeholder_text option is set' do
+      subject { described_class.new(sections:, placeholder_text: 'See additional page') }
+
+      it 'uses the custom placeholder text' do
+        expect(subject.placeholder_text).to eq('See additional page')
+      end
+    end
   end
 
   describe '#format_timestamp' do

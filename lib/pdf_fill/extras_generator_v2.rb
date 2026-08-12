@@ -2,7 +2,7 @@
 
 module PdfFill
   class ExtrasGeneratorV2 < ExtrasGenerator
-    attr_reader :section_coordinates, :use_hexapdf
+    attr_reader :section_coordinates, :use_hexapdf, :placeholder_text, :header_label
 
     HEADER_FONT_SIZE = 14.5
     SUBHEADER_FONT_SIZE = 10.5
@@ -372,12 +372,14 @@ module PdfFill
       # (e.g. 21P-8416) set this true and apply their own footer on every page after generation.
       # Defaults to false so every other form's output is unchanged.
       @omit_footer            = options[:omit_footer] || false
+      # Opt-in overrides for the "attachment" wording used in the overflow placeholder text
+      # and page header. Forms that prefer "additional page" phrasing over "attachment" set
+      # these, e.g. { placeholder_text: 'See additional page', header_label: 'ADDITIONAL PAGE' }.
+      # Default to the original wording so every other form's output is unchanged.
+      @placeholder_text       = options[:placeholder_text] || 'See attachment'
+      @header_label           = options[:header_label] || 'ATTACHMENT'
       @questions              = {}
       super(options)
-    end
-
-    def placeholder_text
-      'See attachment'
     end
 
     def set_font(pdf)
@@ -662,7 +664,7 @@ module PdfFill
 
     def write_header_left(pdf, location, bound_width, bound_height)
       pdf.bounding_box(location, width: bound_width, height: bound_height) do
-        pdf.markup("<b>ATTACHMENT</b> to VA Form #{@form_name}",
+        pdf.markup("<b>#{header_label}</b> to VA Form #{@form_name}",
                    text: { align: :left, valign: :bottom, size: HEADER_FONT_SIZE })
       end
     end
