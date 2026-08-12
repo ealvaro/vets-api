@@ -2732,6 +2732,10 @@ features:
     actor_type: user
     description: Enables the ability to hide the My HealtheVet sign in button (Identity)
     enable_in_development: true
+  mhv_credential_sunset_enabled:
+    actor_type: user
+    description: Enables automatically redirecting users from routes that expose MHV sign-in (Identity)
+    enable_in_development: false
   portal_notice_interstitial_enabled:
     actor_type: user
     description: Enables the MHV portal notice interstitial page
