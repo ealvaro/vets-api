@@ -385,7 +385,7 @@ GEM
       bigdecimal
       rexml
     crass (1.0.7)
-    csv (3.3.5)
+    csv (3.3.6)
     danger (9.6.1)
       base64 (~> 0.2)
       claide (~> 1.0)
