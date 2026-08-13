@@ -6,6 +6,9 @@ mvi:
 sign_in:
   credential_attributes_digester:
     pepper: 5740e000be940493231f85324c413bd2
+  geolite2:
+    path: spec/fixtures/sign_in/GeoLite2-City-Test.mmdb
+
 
 webauthn:
   enabled: true

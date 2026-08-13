@@ -54,6 +54,12 @@ jobs:
           ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
           env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
 
+      - name: Fetch GeoLite2 database from S3
+        continue-on-error: true
+        run: |
+          mkdir -p geoip
+          aws s3 cp "s3://identity-geoip-prd/GeoLite2-City.mmdb" geoip/GeoLite2-City.mmdb
+
       - name: Set ECR repository
         run: echo "ECR_REPOSITORY=dsva/vets-api" >> $GITHUB_ENV
 

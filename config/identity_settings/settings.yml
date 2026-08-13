@@ -92,6 +92,8 @@ sign_in:
   cookies_secure: false
   credential_attributes_digester:
     pepper: ~
+  geolite2:
+    path: geoip/GeoLite2-City.mmdb
   oidc_issuer: http://localhost:3000/sign_in
   info_cookie_domain: localhost
   jwt_encode_key: spec/fixtures/sign_in/privatekey.pem

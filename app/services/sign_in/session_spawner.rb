@@ -124,6 +124,7 @@ module SignIn
                             client_id: session.client_id,
                             sign_in_ip: remote_ip,
                             user_agent:,
+                            location: LocationParser.parse(remote_ip),
                             browser: device[:browser],
                             device_description: device[:device_description])
     end

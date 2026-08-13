@@ -746,6 +746,11 @@ GEM
       net-smtp
     marcel (1.0.4)
     matrix (0.4.2)
+    maxmind-db (1.4.0)
+    maxmind-geoip2 (1.6.0)
+      connection_pool (>= 2.2, < 4.0)
+      http (>= 4.3, < 7.0)
+      maxmind-db (~> 1.4)
     memoist (0.16.2)
     method_source (1.1.0)
     mime-types (3.7.0)
@@ -1396,6 +1401,7 @@ DEPENDENCIES
   liquid
   lockbox
   mail
+  maxmind-geoip2
   meb_api!
   medical_expense_reports!
   memoist

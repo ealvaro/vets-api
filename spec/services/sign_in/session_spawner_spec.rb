@@ -319,6 +319,42 @@ RSpec.describe SignIn::SessionSpawner do
           expect(session_record.user_agent).to eq(user_agent)
         end
       end
+
+      context 'derived location' do
+        let(:remote_ip) { '8.8.8.8' }
+
+        before do
+          allow(IdentitySettings.sign_in.geolite2).to receive(:path)
+            .and_return(Rails.root.join('spec', 'fixtures', 'sign_in', 'GeoLite2-City-Test.mmdb').to_s)
+          SignIn::LocationParser.reader_instance = nil
+        end
+
+        after { SignIn::LocationParser.reader_instance = nil }
+
+        it 'derives and stores the location from the ip' do
+          container = session_spawner.perform
+          record = SignIn::SessionRecord.find_by!(handle: container.session.handle)
+          expect(record.location).to eq('Test City, Test Region')
+        end
+      end
+
+      context 'when a private ip is provided' do
+        let(:remote_ip) { '192.168.1.10' }
+
+        before do
+          allow(IdentitySettings.sign_in.geolite2).to receive(:path)
+            .and_return(Rails.root.join('spec', 'fixtures', 'sign_in', 'GeoLite2-City-Test.mmdb').to_s)
+          SignIn::LocationParser.reader_instance = nil
+        end
+
+        after { SignIn::LocationParser.reader_instance = nil }
+
+        it 'stores a nil location' do
+          session = subject.session
+          record = SignIn::SessionRecord.find_by!(handle: session.handle)
+          expect(record.location).to be_nil
+        end
+      end
     end
   end
 end
