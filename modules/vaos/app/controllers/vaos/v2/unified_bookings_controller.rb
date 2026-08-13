@@ -6,6 +6,7 @@ module VAOS
   module V2
     class UnifiedBookingsController < VAOS::BaseController
       before_action :authorize_with_facilities
+      before_action :tag_provider_type_span
 
       STATSD_KEY_PREFIX = 'api.vaos.unified_booking'
       include VAOS::FacilityConstants
@@ -302,6 +303,22 @@ module VAOS
       def provider_type_safe
         normalized = (@provider_type || params[:provider_type]).to_s.presence
         VALID_PROVIDER_TYPES.include?(normalized) ? normalized : 'unknown'
+      end
+
+      # Tags the request's root span with the provider type.
+      #
+      # Both actions on this controller serve VA direct scheduling and Community
+      # Care through the same routes, so +resource_name+ alone cannot separate
+      # them in APM. Without this tag, a VA-side error spike is indistinguishable
+      # from a Community Care one on
+      # +resource_name:vaos::v2::unifiedbookingscontroller_create+.
+      #
+      # Runs as a +before_action+ so it applies even when the action raises before
+      # emitting any StatsD metric. Uses {#provider_type_safe} rather than
+      # {#provider_type} so an invalid or missing +provider_type+ param tags as
+      # +unknown+ instead of raising inside the callback.
+      def tag_provider_type_span
+        Datadog::Tracing.active_trace&.set_tag('provider_type', provider_type_safe)
       end
     end
   end

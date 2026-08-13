@@ -535,4 +535,64 @@ RSpec.describe 'VAOS::V2::UnifiedBookings', :skip_mvi, type: :request do
       end
     end
   end
+
+  describe 'provider_type APM span tag' do
+    let(:headers) { { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } }
+    let(:trace) { double('Trace', set_tag: true) }
+
+    before { allow(Datadog::Tracing).to receive(:active_trace).and_return(trace) }
+
+    # Tagged in a before_action, so the tag lands even when the action goes on to
+    # fail. That is the case that matters: a 5XX-rate monitor scoped by
+    # provider_type is only useful if failing requests carry the tag.
+    it 'tags eps for a Community Care booking request' do
+      post('/vaos/v2/unified_bookings',
+           params: { provider_type: 'eps', slot_id: 'x' }.to_json,
+           headers:)
+
+      expect(trace).to have_received(:set_tag).with('provider_type', 'eps')
+    end
+
+    it 'tags va for a VA booking request' do
+      post('/vaos/v2/unified_bookings',
+           params: { provider_type: 'va', slot_id: 'x' }.to_json,
+           headers:)
+
+      expect(trace).to have_received(:set_tag).with('provider_type', 'va')
+    end
+
+    it 'tags unknown for an invalid provider_type' do
+      post('/vaos/v2/unified_bookings',
+           params: { provider_type: 'invalid', slot_id: 'x' }.to_json,
+           headers:)
+
+      expect(trace).to have_received(:set_tag).with('provider_type', 'unknown')
+    end
+
+    it 'tags unknown when provider_type is missing' do
+      post('/vaos/v2/unified_bookings',
+           params: { slot_id: 'x' }.to_json,
+           headers:)
+
+      expect(trace).to have_received(:set_tag).with('provider_type', 'unknown')
+    end
+
+    it 'tags the show action as well as create' do
+      get('/vaos/v2/unified_bookings/appt-1', params: { provider_type: 'eps' })
+
+      expect(trace).to have_received(:set_tag).with('provider_type', 'eps')
+    end
+
+    context 'when there is no active trace' do
+      let(:trace) { nil }
+
+      it 'does not raise' do
+        post('/vaos/v2/unified_bookings',
+             params: { provider_type: 'eps', slot_id: 'x' }.to_json,
+             headers:)
+
+        expect(response).not_to have_http_status(:internal_server_error)
+      end
+    end
+  end
 end
