@@ -25,24 +25,14 @@ class SavedClaim::EducationBenefits::VA10275 < SavedClaim::EducationBenefits
   private
 
   def send_10275_submission_email(email_template, email_params)
-    if Flipper.enabled?(:va_notify_v2_form10275_submission_email)
-      api_key_path = 'Settings.vanotify.services.va_gov.api_key'
-      VANotify::V2::QueueEmailJob.enqueue(
-        Settings.form_10275.submission_email,
-        email_template,
-        email_params,
-        api_key_path,
-        callback_metadata
-      )
-    else
-      VANotify::EmailJob.perform_async(
-        Settings.form_10275.submission_email,
-        email_template,
-        email_params,
-        Settings.vanotify.services.va_gov.api_key,
-        callback_metadata
-      )
-    end
+    api_key_path = 'Settings.vanotify.services.va_gov.api_key'
+    VANotify::V2::QueueEmailJob.enqueue(
+      Settings.form_10275.submission_email,
+      email_template,
+      email_params,
+      api_key_path,
+      callback_metadata
+    )
   end
 
   def callback_metadata
