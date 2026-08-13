@@ -352,6 +352,7 @@ app/models/saved_claim_group.rb @software/benefits-lifestage @software/dependent
 app/models/saved_claim.rb @software/va-platform-backend
 app/models/saved_claim/coe_claim.rb @software/va-core-veteran-experiences
 app/models/saved_claim/dependency_claim.rb @software/va-platform-backend
+app/models/saved_claim/disability_compensation @software/disability-benefits
 app/models/saved_claim/disability_compensation.rb @software/disability-benefits
 app/models/saved_claim/education_benefits.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_0803.rb @software/govcio-vfep-codereviewers

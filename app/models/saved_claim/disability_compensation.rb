@@ -13,34 +13,6 @@ class SavedClaim::DisabilityCompensation < SavedClaim
   # subclasses will overwrite this constant when using `add_form_and_validation`
   const_set('FORM', '21-526EZ')
 
-  def form_matches_schema
-    valid = super
-    return if valid.nil? # @see SavedClaim#form_is_string
-
-    # only log schema hardening events if the feature flag is enabled
-    # and there are no errors from the original validation
-    if Flipper.enabled?(:disability_526_schema_hardening_logging) && valid
-      # LOGGING ONLY
-      schema = VetsJsonSchema::SCHEMAS[self.class::FORM] # TODO: update to the hardened schema (#148891)
-
-      schema_errors = validate_schema(schema)
-      unless schema_errors.empty?
-        Rails.logger.error("#{self.class} HARDENED schema failed validation.",
-                           { errors: schema_errors, form_id:, guid: })
-      end
-
-      validation_errors = validate_form(schema)
-      unless validation_errors.empty?
-        Rails.logger.error("#{self.class} form did not pass HARDENED validation",
-                           { errors: validation_errors, form_id:, guid: })
-      end
-
-      # pass thru the original validation result
-    end
-
-    valid
-  end
-
   def self.from_hash(hash)
     saved_claim = new(form: hash['form526'].to_json)
     saved_claim.form_hash = hash
