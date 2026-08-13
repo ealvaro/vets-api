@@ -291,7 +291,7 @@ features:
   disability_526_new_bdd_sha_enforcement_workflow_enabled:
     actor_type: user
     description: If enabled, Form 21-526EZ will show new UI to encourage veterans to upload a Separation Health Assessment (SHA).
-    enable_in_development: false
+    enable_in_development: true
   disability_526_new_screener_question_flow:
     actor_type: user
     description: If enabled, Form 21-526EZ will use the new reordered introduction flow as well as the new persistence check to conditional skip the screener questions.
@@ -3687,6 +3687,7 @@ features:
   sidenav_526ez_enabled:
     actor_type: user
     description: If enabled, the 526EZ sidenav will be shown
+    enable_in_development: true
   simple_forms_upload_supporting_documents:
     actor_type: user
     description: >
