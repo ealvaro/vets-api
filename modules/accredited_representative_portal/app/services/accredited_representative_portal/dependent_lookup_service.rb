@@ -7,6 +7,7 @@ module AccreditedRepresentativePortal
     SSN_REGEX = /\A\d{9}\z/
     DATE_REGEX = /\A\d{4}-\d{2}-\d{2}\z/
     ICN_REGEX = /\A\d{10}V\d{6}\z/
+    STATSD_PREFIX = 'ar.services.dependent_lookup_service'
 
     def initialize(veteran:)
       raise ArgumentError, 'veteran must be a Hash' unless veteran.is_a?(Hash)
@@ -48,6 +49,16 @@ module AccreditedRepresentativePortal
       dependent_match_present?
     end
 
+    def log_dependent_relationship_state(dependent:)
+      mon = Monitoring.new
+
+      unless dependent_relationship_established?(dependent:)
+        mon.track_count("#{STATSD_PREFIX}.dependent_relationship_not_established")
+      end
+      mon.track_count("#{STATSD_PREFIX}.dependent_profile_not_found") if dependent_profile.blank?
+      mon.track_count("#{STATSD_PREFIX}.dependent_participant_id_not_found") if dependent_participant_id.blank?
+    end
+
     private
 
     def veteran_profile
@@ -59,8 +70,11 @@ module AccreditedRepresentativePortal
 
     # SSN is only available for the Veteran, not the non-Veteran claimant
     # Therefore, using ICN as a reliable replacement for SSN for the profile lookup
+    # This is written to only fetch once even if it receives no profile
     def dependent_profile
-      @dependent_profile ||= MPI::Service.new.find_profile_by_identifier(
+      return @dependent_profile if instance_variable_defined?(:@dependent_profile)
+
+      @dependent_profile = MPI::Service.new.find_profile_by_identifier(
         identifier: @dependent_icn,
         identifier_type: MPI::Constants::ICN
       )&.profile

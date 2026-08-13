@@ -15,6 +15,7 @@ module RepresentationManagement
         elsif orchestrate_response[:errors]&.any?
           render json: { errors: orchestrate_response[:errors] }, status: :unprocessable_entity
         else
+          log_dependent_state
           render json: RepresentationManagement::PowerOfAttorneyRequestSerializer.new(orchestrate_response[:request]),
                  status: :created
         end
@@ -71,6 +72,26 @@ module RepresentationManagement
             service_branch:,
             user: current_user
           ).call
+      end
+
+      def log_dependent_state
+        if form.dependent
+          AccreditedRepresentativePortal::DependentLookupService
+            .new(veteran: { first_name: form.veteran_first_name,
+                            last_name: form.veteran_last_name,
+                            ssn: form.veteran_social_security_number,
+                            birth_date: form.veteran_date_of_birth })
+            .log_dependent_relationship_state(dependent: {
+                                                first_name: form.claimant_first_name,
+                                                last_name: form.claimant_last_name,
+                                                icn: form.user.icn,
+                                                birth_date: form.claimant_date_of_birth
+                                              })
+        end
+      rescue => e
+        Rails.logger.warn(
+          '[RepresentationManagement::V0::PowerOfAttorneyRequestsController] Dependent state logging failed', e
+        )
       end
 
       def increment_statsd_metric

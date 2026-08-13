@@ -100,7 +100,9 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
               .and_return({ request: poa_request })
           end
 
-          it 'responds with a 201/created status' do
+          it 'responds with a 201/created status and does not log dependent state' do
+            expect_any_instance_of(AccreditedRepresentativePortal::DependentLookupService)
+              .not_to receive(:log_dependent_relationship_state)
             post(base_path, params:)
 
             expect(response).to have_http_status(:created)
@@ -122,7 +124,9 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
               params[:power_of_attorney_request][:veteran][:address][:zip_code_suffix] = nil
             end
 
-            it 'responds with a 201/created status' do
+            it 'responds with a 201/created status and does not log dependent state' do
+              expect_any_instance_of(AccreditedRepresentativePortal::DependentLookupService)
+                .not_to receive(:log_dependent_relationship_state)
               post(base_path, params:)
 
               expect(response).to have_http_status(:created)
@@ -153,7 +157,9 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
               }
             end
 
-            it 'responds with a 201/created status' do
+            it 'responds with a 201/created status and logs dependent state' do
+              expect_any_instance_of(AccreditedRepresentativePortal::DependentLookupService)
+                .to receive(:log_dependent_relationship_state).and_return(nil)
               post(base_path, params:)
 
               expect(response).to have_http_status(:created)

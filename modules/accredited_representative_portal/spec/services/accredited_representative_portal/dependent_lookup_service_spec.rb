@@ -172,7 +172,7 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     end
   end
 
-  describe '#dependent_relationship_established?' do
+  describe 'public methods' do
     let(:dependent) do
       {
         first_name: 'Milly',
@@ -186,7 +186,7 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     let(:dependent_mpi_profile) { build(:mpi_profile, participant_id: dependent_participant_id) }
 
     context 'when the dependent participant ID matches a dependent record' do
-      it 'returns true' do
+      before do
         allow(MPI::Service).to receive(:new).and_return(mpi_service)
         expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
           OpenStruct.new(profile: mpi_profile)
@@ -194,11 +194,20 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
           OpenStruct.new(profile: dependent_mpi_profile)
         )
+      end
 
+      it '#dependent_relationship_established? returns true' do
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
           response = dependent_lookup_service.dependent_relationship_established?(dependent:)
 
           expect(response).to be(true)
+        end
+      end
+
+      it '#log_dependent_relationship_state does not log any missing info to StatsD' do
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).not_to receive(:track_count)
+        VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
         end
       end
     end
@@ -206,7 +215,7 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     context 'when the dependent participant ID does not match any dependent records' do
       let(:dependent_participant_id) { '123456789' }
 
-      it 'returns false' do
+      before do
         allow(MPI::Service).to receive(:new).and_return(mpi_service)
         expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
           OpenStruct.new(profile: mpi_profile)
@@ -214,11 +223,25 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
           OpenStruct.new(profile: dependent_mpi_profile)
         )
+      end
 
+      it '#dependent_relationship_established? returns false' do
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
           response = dependent_lookup_service.dependent_relationship_established?(dependent:)
 
           expect(response).to be(false)
+        end
+      end
+
+      it "#log_dependent_relationship_state logs 'relationship not established' to StatsD" do
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_relationship_not_established')
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).not_to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_participant_id_not_found')
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).not_to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_profile_not_found')
+        VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
         end
       end
     end
@@ -229,9 +252,15 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         dependent[:icn] = ''
       end
 
-      it 'raises an ArgumentError' do
+      it '#dependent_relationship_established? raises an ArgumentError' do
         expect do
           dependent_lookup_service.dependent_relationship_established?(dependent:)
+        end.to raise_error(ArgumentError, 'Arguments cannot be blank')
+      end
+
+      it '#log_dependent_relationship_state raises an ArgumentError' do
+        expect do
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
         end.to raise_error(ArgumentError, 'Arguments cannot be blank')
       end
     end
@@ -239,9 +268,15 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     context 'when dependent birth_date does not follow YYYY-MM-DD format' do
       before { dependent[:birth_date] = '02-10-1988' }
 
-      it 'raises an ArgumentError' do
+      it '#dependent_relationship_established? raises an ArgumentError' do
         expect do
           dependent_lookup_service.dependent_relationship_established?(dependent:)
+        end.to raise_error(ArgumentError, 'Dependent birth_date must follow the YYYY-MM-DD format')
+      end
+
+      it '#log_dependent_relationship_state raises an ArgumentError' do
+        expect do
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
         end.to raise_error(ArgumentError, 'Dependent birth_date must follow the YYYY-MM-DD format')
       end
     end
@@ -249,14 +284,20 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     context 'when dependent icn does not follow the icn format' do
       before { dependent[:icn] = '12345' }
 
-      it 'raises an ArgumentError' do
+      it '#dependent_relationship_established? raises an ArgumentError' do
         expect do
           dependent_lookup_service.dependent_relationship_established?(dependent:)
         end.to raise_error(ArgumentError, 'Dependent icn does not match expected format')
       end
+
+      it '#log_dependent_relationship_state raises an ArgumentError' do
+        expect do
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
+        end.to raise_error(ArgumentError, 'Dependent icn does not match expected format')
+      end
     end
 
-    it 'assigns the instance variables' do
+    it '#dependent_relationship_established? assigns the instance variables' do
       allow(MPI::Service).to receive(:new).and_return(mpi_service)
       expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
         OpenStruct.new(profile: mpi_profile)
@@ -278,7 +319,7 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     end
 
     context 'when the dependent profile cannot be found' do
-      it 'successfully falls back to matching on first name, last name, and dob' do
+      before do
         allow(MPI::Service).to receive(:new).and_return(mpi_service)
         expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
           OpenStruct.new(profile: mpi_profile)
@@ -286,7 +327,9 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
           OpenStruct.new(profile: nil)
         )
+      end
 
+      it '#dependent_relationship_established? successfully falls back to matching on first name, last name, and dob' do
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
           response = dependent_lookup_service.dependent_relationship_established?(dependent:)
 
@@ -294,22 +337,28 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         end
       end
 
-      it 'returns false when there is no first name, last name, and dob match' do
-        dependent[:first_name] = 'No'
-        dependent[:last_name] = 'Match'
-
-        allow(MPI::Service).to receive(:new).and_return(mpi_service)
-        expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
-          OpenStruct.new(profile: mpi_profile)
-        )
-        expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
-          OpenStruct.new(profile: nil)
-        )
-
+      it "#log_dependent_relationship_state logs 'profile missing' and 'participant id missing' to StatsD" do
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_participant_id_not_found')
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_profile_not_found')
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
-          response = dependent_lookup_service.dependent_relationship_established?(dependent:)
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
+        end
+      end
 
-          expect(response).to be(false)
+      context 'when there is no first name, last name, and dob match' do
+        before do
+          dependent[:first_name] = 'No'
+          dependent[:last_name] = 'Match'
+        end
+
+        it '#dependent_relationship_established? returns false' do
+          VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
+            response = dependent_lookup_service.dependent_relationship_established?(dependent:)
+
+            expect(response).to be(false)
+          end
         end
       end
     end
@@ -317,7 +366,7 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
     context 'when a dependent participant ID is not returned in the profile response' do
       let(:mpi_profile_no_participant_id) { build(:mpi_profile, participant_id: nil) }
 
-      it 'successfully falls back to matching on first name, last name, and dob' do
+      before do
         allow(MPI::Service).to receive(:new).and_return(mpi_service)
         expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
           OpenStruct.new(profile: mpi_profile)
@@ -325,7 +374,9 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
           OpenStruct.new(profile: mpi_profile_no_participant_id)
         )
+      end
 
+      it '#dependent_relationship_established? successfully falls back to matching on first name, last name, and dob' do
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
           response = dependent_lookup_service.dependent_relationship_established?(dependent:)
 
@@ -333,22 +384,28 @@ RSpec.describe AccreditedRepresentativePortal::DependentLookupService do
         end
       end
 
-      it 'returns false when there is no first name, last name, and dob match' do
-        dependent[:first_name] = 'No'
-        dependent[:last_name] = 'Match'
-
-        allow(MPI::Service).to receive(:new).and_return(mpi_service)
-        expect(mpi_service).to receive(:find_profile_by_attributes).and_return(
-          OpenStruct.new(profile: mpi_profile)
-        )
-        expect(mpi_service).to receive(:find_profile_by_identifier).and_return(
-          OpenStruct.new(profile: mpi_profile_no_participant_id)
-        )
-
+      it "#log_dependent_relationship_state logs 'participant id missing' to StatsD" do
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_participant_id_not_found')
+        expect_any_instance_of(AccreditedRepresentativePortal::Monitoring).not_to receive(:track_count)
+          .with('ar.services.dependent_lookup_service.dependent_profile_not_found')
         VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
-          response = dependent_lookup_service.dependent_relationship_established?(dependent:)
+          dependent_lookup_service.log_dependent_relationship_state(dependent:)
+        end
+      end
 
-          expect(response).to be(false)
+      context 'when there is no first name, last name, and dob match' do
+        before do
+          dependent[:first_name] = 'No'
+          dependent[:last_name] = 'Match'
+        end
+
+        it '#dependent_relationship_established? returns false' do
+          VCR.use_cassette('bgs/claimant_web_service/dependents_valid') do
+            response = dependent_lookup_service.dependent_relationship_established?(dependent:)
+
+            expect(response).to be(false)
+          end
         end
       end
     end
