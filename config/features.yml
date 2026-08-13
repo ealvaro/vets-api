@@ -1022,6 +1022,10 @@ features:
   decision_review_nod_form_update_2026:
     actor_type: user
     description: Enables the 2026 NOD form update (VHA removal, new ASAP page). Stays OFF until Lighthouse confirms new PDF version.
+  decision_review_nod_file_input_update:
+    actor_type: user
+    description: Enables the redesigned Board Appeal (Notice of Disagreement) file uploader
+    enable_in_development: true
   dependency_verification_browser_monitoring_enabled:
     actor_type: user
     description: Enable Datadog RUM/LOG monitoring for the form 21-0538
