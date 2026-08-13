@@ -37,7 +37,7 @@ module VANotify
           StatsD.increment('api.vanotify.v2.send_email.success')
         rescue VANotify::Error => e
           StatsD.increment('api.vanotify.v2.send_email.failure')
-          handle_backend_exception(e)
+          handle_backend_exception(e, template_id, callback_options)
         rescue => e
           StatsD.increment('api.vanotify.v2.send_email.failure')
           raise e
@@ -88,11 +88,34 @@ module VANotify
         end
       end
 
-      def handle_backend_exception(e)
+      def handle_backend_exception(e, template_id, callback_options)
         if e.status_code == 400
-          Rails.logger.error(e)
+          tags = failure_tags(callback_options)
+          StatsD.increment('silent_failure', tags:) if tags.any?
+          Rails.logger.error('VANotify::V2::QueueEmailJob send_email failed with 400', {
+                               template_id:,
+                               error_message: e.message,
+                               tags:
+                             })
         else
           raise e
+        end
+      end
+
+      def failure_tags(callback_options)
+        # Sidekiq round-trips job args through JSON, so symbol keys arrive as strings here.
+        statsd_tags = callback_options.with_indifferent_access.dig(:callback_metadata, :statsd_tags)
+
+        # Callers pass statsd_tags as either a Hash (service: ..., function: ...) or an
+        # already-formatted Array of "key:value" strings -- same contract DefaultCallback
+        # enforces on the delivery-callback side.
+        case statsd_tags
+        when Hash
+          statsd_tags.map { |pair| pair.join(':') }
+        when Array
+          statsd_tags
+        else
+          []
         end
       end
 

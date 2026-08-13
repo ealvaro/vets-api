@@ -165,9 +165,76 @@ RSpec.describe VANotify::V2::QueueEmailJob, type: :job do
       error = VANotify::BadRequest.new(400, 'bad request')
       allow(VaNotify::Service).to receive(:new).and_return(va_notify_service)
       allow(va_notify_service).to receive(:send_email).and_raise(error)
-      expect_any_instance_of(described_class).to receive(:handle_backend_exception).with(error)
+      expect_any_instance_of(described_class).to receive(:handle_backend_exception)
+        .with(error, template_id, callback_options)
       expect(StatsD).to receive(:increment).with('api.vanotify.v2.send_email.failure')
       described_class.new.perform(template_id, key, api_key_path, callback_options)
+    end
+
+    it 'logs 400 failures with tags derived from callback_options, surviving the Sidekiq JSON round-trip' do
+      va_notify_service = instance_double(VaNotify::Service)
+      error = VANotify::BadRequest.new(400, 'bad request')
+      # Symbol keys here, same as every real caller passes -- Sidekiq serializes these to
+      # JSON and back before #perform ever sees them, so callback_options arrives with
+      # string keys in production. enqueue + inline! exercises that round-trip for real,
+      # instead of calling #perform directly with the original symbol-keyed hash.
+      tagged_callback_options = {
+        callback_metadata: {
+          statsd_tags: { service: 'profile-contact-info', function: 'contact_info_change' }
+        }
+      }
+      allow(VaNotify::Service).to receive(:new).and_return(va_notify_service)
+      allow(va_notify_service).to receive(:send_email).and_raise(error)
+      allow(StatsD).to receive(:increment)
+      expect(StatsD).to receive(:increment).with(
+        'silent_failure', tags: ['service:profile-contact-info', 'function:contact_info_change']
+      )
+      expect(Rails.logger).to receive(:error).with(
+        'VANotify::V2::QueueEmailJob send_email failed with 400',
+        hash_including(template_id:, tags: ['service:profile-contact-info', 'function:contact_info_change'])
+      )
+
+      Sidekiq::Testing.inline! do
+        described_class.enqueue(email, template_id, personalisation, api_key_path, tagged_callback_options)
+      end
+    end
+
+    it 'logs 400 failures when callback_options.statsd_tags is a pre-formatted Array' do
+      # e.g. Form1010cg::SubmissionJob::CALLBACK_METADATA, HealthCareApplication#send_failure_email --
+      # both pass statsd_tags as ["key:value", ...] instead of a Hash.
+      va_notify_service = instance_double(VaNotify::Service)
+      error = VANotify::BadRequest.new(400, 'bad request')
+      array_callback_options = {
+        callback_metadata: {
+          statsd_tags: ['service:caregiver-application', 'function:10-10CG async form submission']
+        }
+      }
+      allow(VaNotify::Service).to receive(:new).and_return(va_notify_service)
+      allow(va_notify_service).to receive(:send_email).and_raise(error)
+      allow(StatsD).to receive(:increment)
+      expect(StatsD).to receive(:increment).with(
+        'silent_failure', tags: ['service:caregiver-application', 'function:10-10CG async form submission']
+      )
+
+      Sidekiq::Testing.inline! do
+        described_class.enqueue(email, template_id, personalisation, api_key_path, array_callback_options)
+      end
+    end
+
+    it 'does not blow up when callback_options carries no statsd_tags' do
+      va_notify_service = instance_double(VaNotify::Service)
+      error = VANotify::BadRequest.new(400, 'bad request')
+      allow(VaNotify::Service).to receive(:new).and_return(va_notify_service)
+      allow(va_notify_service).to receive(:send_email).and_raise(error)
+      allow(StatsD).to receive(:increment)
+      expect(StatsD).not_to receive(:increment).with('silent_failure', anything)
+      expect(Rails.logger).to receive(:error).with(
+        'VANotify::V2::QueueEmailJob send_email failed with 400', hash_including(tags: [])
+      )
+
+      Sidekiq::Testing.inline! do
+        described_class.enqueue(email, template_id, personalisation, api_key_path, callback_options)
+      end
     end
 
     it 'raises and logs for VANotify::Error (5xx)' do
