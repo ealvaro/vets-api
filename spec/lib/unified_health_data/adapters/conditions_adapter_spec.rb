@@ -476,4 +476,148 @@ RSpec.describe UnifiedHealthData::Adapters::ConditionsAdapter, type: :service do
       adapter_with_user.parse([active_condition])
     end
   end
+
+  describe 'facility_timezone' do
+    let(:facility_service) { instance_double(UnifiedHealthData::FacilityService) }
+
+    before do
+      allow(UnifiedHealthData::FacilityService).to receive(:new).and_return(facility_service)
+      allow(facility_service).to receive(:get_facility_timezone).and_return(nil)
+    end
+
+    it 'passes through year-only dates without conversion' do
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-1',
+          'onsetDateTime' => '2002',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' }
+        }
+      }
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2002')
+      expect(result.facility_timezone).to be_nil
+    end
+
+    it 'passes through date-only dates without conversion' do
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-2',
+          'onsetDateTime' => '2025-11-25',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' }
+        }
+      }
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2025-11-25')
+      expect(result.facility_timezone).to be_nil
+    end
+
+    it 'converts full datetime to facility time when station is found' do
+      allow(facility_service).to receive(:get_facility_timezone)
+        .with('989').and_return('America/Denver')
+
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-3',
+          'onsetDateTime' => '2024-01-03T04:00:00Z',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' },
+          'contained' => [
+            {
+              'resourceType' => 'Location',
+              'id' => 'location-983',
+              'identifier' => [
+                { 'use' => 'usual',
+                  'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                  'value' => 'HospitalLocationTO.983' }
+              ]
+            }
+          ]
+        }
+      }
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2024-01-02T21:00:00-07:00')
+      expect(result.facility_timezone).to eq('America/Denver')
+    end
+
+    it 'returns original date when no contained resources exist' do
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-4',
+          'recordedDate' => '2025-12-10T17:39:48.000Z',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' }
+        }
+      }
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2025-12-10T17:39:48.000Z')
+      expect(result.facility_timezone).to be_nil
+    end
+
+    it 'returns original date when station number cannot be resolved' do
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-5',
+          'recordedDate' => '2025-12-10T02:03:54.000Z',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' },
+          'contained' => [
+            { 'resourceType' => 'Practitioner', 'id' => 'prac-1' }
+          ]
+        }
+      }
+
+      result = adapter.parse_single_condition(record)
+      expect(result.date).to eq('2025-12-10T02:03:54.000Z')
+      expect(result.facility_timezone).to be_nil
+    end
+
+    it 'attributes timezone conversion errors to the conditions resource' do
+      mr_log = instance_double(MedicalRecords::MedicalRecordsLog)
+      allow(MedicalRecords::MedicalRecordsLog).to receive(:new).and_return(mr_log)
+      allow(mr_log).to receive(:warn)
+      allow(facility_service).to receive(:get_facility_timezone)
+        .with('989').and_return('Invalid/Timezone')
+
+      record = {
+        'resource' => {
+          'resourceType' => 'Condition',
+          'id' => 'cond-6',
+          'onsetDateTime' => '2024-01-03T04:00:00Z',
+          'clinicalStatus' => { 'coding' => [{ 'code' => 'active' }] },
+          'code' => { 'text' => 'Test condition' },
+          'contained' => [
+            {
+              'resourceType' => 'Location',
+              'id' => 'location-983',
+              'identifier' => [
+                { 'use' => 'usual',
+                  'system' => 'urn:oid:2.16.840.1.113883.4.349.4.989',
+                  'value' => 'HospitalLocationTO.983' }
+              ]
+            }
+          ]
+        }
+      }
+
+      UnifiedHealthData::Adapters::ConditionsAdapter.new.parse_single_condition(record)
+
+      expect(mr_log).to have_received(:warn).with(
+        hash_including(
+          resource: MedicalRecords::MedicalRecordsLog::CONDITIONS,
+          action: 'timezone_conversion'
+        )
+      )
+    end
+  end
 end

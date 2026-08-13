@@ -42,7 +42,8 @@ RSpec.describe 'MyHealth::V2::ConditionsController', :skip_json_api_validation, 
           'date',
           'provider',
           'facility',
-          'comments'
+          'comments',
+          'facilityTimezone'
         )
 
         # There are 4 conditions in the cassette, but 1 is filtered out:
@@ -104,7 +105,8 @@ RSpec.describe 'MyHealth::V2::ConditionsController', :skip_json_api_validation, 
           'date',
           'provider',
           'facility',
-          'comments'
+          'comments',
+          'facilityTimezone'
         )
       end
     end
@@ -154,7 +156,8 @@ RSpec.describe 'MyHealth::V2::ConditionsController', :skip_json_api_validation, 
           'date',
           'provider',
           'facility',
-          'comments'
+          'comments',
+          'facilityTimezone'
         )
       end
 

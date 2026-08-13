@@ -3,11 +3,13 @@
 require 'medical_records/medical_records_log'
 require_relative '../models/condition'
 require_relative 'date_time_helpers'
+require_relative 'station_helpers'
 
 module UnifiedHealthData
   module Adapters
     class ConditionsAdapter
       include DateTimeHelpers
+      include StationHelpers
 
       def initialize(user: nil)
         @mr_log = MedicalRecords::MedicalRecordsLog.new(user:)
@@ -39,8 +41,7 @@ module UnifiedHealthData
         # Filter out conditions without active clinical status if filtering is enabled
         return nil if filter_by_status && !should_include_condition?(resource)
 
-        # Prefer recordedDate (date entered) to match V1 and allergies behavior
-        date_value = extract_condition_date(resource)
+        date_value, facility_tz = resolve_date_and_timezone(resource)
 
         UnifiedHealthData::Condition.new(
           id: resource['id'],
@@ -49,25 +50,53 @@ module UnifiedHealthData
           name: resource.dig('code', 'coding', 0, 'display') || resource.dig('code', 'text') || '',
           provider: extract_condition_provider(resource),
           facility: extract_condition_facility(resource),
-          comments: extract_condition_comments(resource)
+          comments: extract_condition_comments(resource),
+          facility_timezone: facility_tz
         )
       end
 
       private
 
-      # Extracts the date from a condition resource, falling back to onsetDateTime if
-      # recordedDate is missing (e.g. some VistA records). Prefers recordedDate (date
-      # entered) to match V1 and allergies behavior.
+      # Attribute timezone conversion errors to the conditions domain rather than
+      # the DateTimeHelpers default (LABS), so Datadog logs are labeled correctly.
+      def timezone_conversion_log_resource
+        MedicalRecords::MedicalRecordsLog::CONDITIONS
+      end
+
+      # Dual-path logging: structured mr_log when available, Rails.logger fallback otherwise.
+      # Required by DateTimeHelpers#log_timezone_conversion_error.
+      def log_adapter(level, structured_opts, fallback_message, fallback_opts = {})
+        if @mr_log
+          @mr_log.public_send(level, **structured_opts)
+        else
+          Rails.logger.public_send(level, fallback_message, fallback_opts.presence)
+        end
+      end
+
+      # Resolves the date and facility timezone for a condition.
+      # Year-only and date-only values are passed through without conversion,
+      # since converting them would shift the date incorrectly.
+      # Full datetime values are converted to facility local time when a station
+      # number can be extracted from the contained resources.
       #
       # @param resource [Hash] FHIR Condition resource
-      # @return [String, nil] The date value from recordedDate or onsetDateTime
-      def extract_condition_date(resource)
-        date_value = resource['recordedDate'].presence
-        if date_value.blank?
-          date_value = resource['onsetDateTime'].presence
-          StatsD.increment('unified_health_data.condition.replace_date_with_onset') if date_value.present?
+      # @return [Array(String, String)] [converted_date, facility_timezone] or [raw_date, nil]
+      def resolve_date_and_timezone(resource)
+        raw_date = resource['recordedDate'].presence
+        if raw_date.blank?
+          raw_date = resource['onsetDateTime'].presence
+          StatsD.increment('unified_health_data.condition.replace_date_with_onset') if raw_date.present?
         end
-        date_value
+        return [raw_date, nil] if raw_date.blank?
+
+        # Skip conversion for year-only (YYYY), year-month (YYYY-MM), or date-only (YYYY-MM-DD)
+        return [raw_date, nil] if raw_date.match?(/\A\d{4}(-\d{2}(-\d{2})?)?\z/)
+
+        contained = resource['contained']
+        station_number = extract_station_number(contained)
+        facility_timezone = facility_service.get_facility_timezone(station_number)
+        converted_date = convert_to_facility_time(raw_date, facility_timezone)
+        [converted_date, facility_timezone]
       end
 
       # Determines if a condition should be included based on its clinical status

@@ -95,11 +95,21 @@ module UnifiedHealthData
         nil
       end
 
+      # Log resource identifier used when attributing timezone conversion errors.
+      # Defaults to LABS for backward compatibility; including adapters should
+      # override this to attribute errors to their own domain (e.g., CONDITIONS).
+      #
+      # @api private
+      def timezone_conversion_log_resource
+        LABS
+      end
+
       # @api private
       def log_timezone_conversion_error(error, date_string, timezone)
         log_adapter(
           :warn,
-          { resource: LABS, action: 'timezone_conversion', error_message: error.message, date_string:, timezone: },
+          { resource: timezone_conversion_log_resource, action: 'timezone_conversion',
+            error_message: error.message, date_string:, timezone: },
           "Failed to convert time to facility timezone: #{error.message}",
           { service: 'unified_health_data', date_string:, timezone: }
         )

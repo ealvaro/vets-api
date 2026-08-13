@@ -7,7 +7,7 @@ module UnifiedHealthData
 
       set_id :id
       set_type :condition
-      attributes :id, :date, :name, :provider, :facility, :comments
+      attributes :id, :date, :name, :provider, :facility, :comments, :facility_timezone
     end
   end
 end
