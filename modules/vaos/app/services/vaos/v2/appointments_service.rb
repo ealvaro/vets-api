@@ -1530,7 +1530,8 @@ module VAOS
           service_category_text: appointment.dig(:service_category, 0, :text),
           service_type: appointment[:service_type],
           cerner: VAOS::AppointmentsHelper.cerner?(appointment),
-          description: appointment[:description]
+          description: appointment[:description],
+          type: appointment[:type]
         }.to_json
         Rails.logger.warn("VAOS appointment id #{appointment[:id]} type of care cannot be determined", context)
       end
