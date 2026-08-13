@@ -52,8 +52,7 @@ module DependentsBenefits::Sidekiq
     def submit_claims_to_service
       @proc_id = generate_proc_id
       if Flipper.enabled?(:enable_combined_form_bgs_processing) &&
-         parent_claim.submittable_686? &&
-         parent_claim.submittable_674?
+         child_claims.size > 1
 
         monitor.track_info_event('686C+674 combined claim submission started',
                                  action: 'combined.start',
@@ -81,10 +80,16 @@ module DependentsBenefits::Sidekiq
     #
     # @return [BGS::VnpVeteran data]
     def send_combined_bgs_data
+      ep_code = parent_claim.submittable_686? ? '130DPNEBNADJ' : '130SCHATTEBN'
+      ep_name = if parent_claim.submittable_686?
+                  '130 - Automated Dependency 686c'
+                else
+                  '130 - Automated School Attendance 674'
+                end
+
       # create veteran object in VNP tables
       user = generate_user_struct
-      veteran = ::BGS::VnpVeteran.new(proc_id:, payload: normalized_form_data, user:, claim_type: '130DPNEBNADJ',
-                                      claim_type_end_product: nil).create
+      veteran = ::BGS::VnpVeteran.new(proc_id:, payload: normalized_form_data, user:, claim_type: ep_code).create
 
       # send 686, 674 data
       child_claims.each do |claim|
@@ -94,7 +99,7 @@ module DependentsBenefits::Sidekiq
 
       # create benefit claim with correct end_product_code
       create_combined_benefit_claim(
-        veteran:, user:, ep_name: '130 - Automated Dependency 686c', ep_code: '130DPNEBNADJ'
+        veteran:, user:, ep_name:, ep_code:
       )
     end
 
