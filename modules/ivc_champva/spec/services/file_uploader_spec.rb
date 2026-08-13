@@ -172,7 +172,7 @@ describe IvcChampva::FileUploader do
 
       it 'combines PDFs and uploads as a single file' do
         expect(IvcChampva::PdfCombiner).to receive(:combine)
-          .with(combined_pdf_path, file_paths.compact, anything)
+          .with(combined_pdf_path, file_paths.compact)
           .and_return(combined_pdf_path)
 
         expect(uploader).to receive(:upload)
@@ -189,7 +189,7 @@ describe IvcChampva::FileUploader do
 
       it 'handles errors during PDF combination' do
         expect(IvcChampva::PdfCombiner).to receive(:combine)
-          .with(combined_pdf_path, file_paths.compact, anything)
+          .with(combined_pdf_path, file_paths.compact)
           .and_raise(StandardError.new('PDF combination failed'))
 
         expect(FileUtils).to receive(:rm_f).with(combined_pdf_path)
@@ -199,7 +199,7 @@ describe IvcChampva::FileUploader do
 
       it 'handles meta data upload failures' do
         expect(IvcChampva::PdfCombiner).to receive(:combine)
-          .with(combined_pdf_path, file_paths.compact, anything)
+          .with(combined_pdf_path, file_paths.compact)
           .and_return(combined_pdf_path)
 
         expect(uploader).to receive(:upload)
@@ -259,7 +259,7 @@ describe IvcChampva::FileUploader do
         allow(Flipper).to receive(:enabled?).with(:champva_require_all_s3_success, @current_user).and_return(true)
 
         expect(IvcChampva::PdfCombiner).to receive(:combine)
-          .with(combined_pdf_path, file_paths.compact, anything)
+          .with(combined_pdf_path, file_paths.compact)
           .and_return(combined_pdf_path)
 
         expect(uploader).to receive(:upload)

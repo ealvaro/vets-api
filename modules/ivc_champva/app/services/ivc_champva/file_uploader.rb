@@ -144,7 +144,7 @@ module IvcChampva
 
       begin
         Datadog::Tracing.trace('IVC Champva Forms - Combine All PDFs into a Single File') do
-          IvcChampva::PdfCombiner.combine(combined_pdf_path, @file_paths.compact, @current_user)
+          IvcChampva::PdfCombiner.combine(combined_pdf_path, @file_paths.compact)
         end
 
         [upload_combined_pdf(combined_pdf_path)]

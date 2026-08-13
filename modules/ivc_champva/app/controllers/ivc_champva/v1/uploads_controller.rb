@@ -423,11 +423,7 @@ module IvcChampva
 
           tmpf = Tempfile.new(['decrypted_form_attachment', '.pdf'])
 
-          tmpf = if Flipper.enabled?(:champva_use_hexapdf_to_unlock_pdfs, @current_user)
-                   unlock_with_hexapdf(file, file_password, tmpf)
-                 else
-                   unlock_with_pdftk(file, file_password, tmpf)
-                 end
+          tmpf = unlock_with_hexapdf(file, file_password, tmpf)
 
           file.tempfile.unlink
           file.tempfile = tmpf
@@ -436,60 +432,21 @@ module IvcChampva
         end
       end
 
-      ## Uses pdftk to unlock the provided PDF file with the given password
-      # @param [ActionDispatch::Http::UploadedFile] source_file The uploaded PDF file to unlock
-      # @param [String] file_password The password to unlock the PDF
-      # @param [Tempfile] destination_file A tempfile where the unlocked PDF will be saved
-      def unlock_with_pdftk(source_file, file_password, destination_file)
-        pdftk = PdfForms.new(Settings.binaries.pdftk)
-
-        has_pdf_err = false
-        begin
-          pdftk.call_pdftk(source_file.tempfile.path, 'input_pw', file_password, 'output', destination_file.path)
-        rescue PdfForms::PdftkError => e
-          file_regex = %r{/(?:\w+/)*[\w-]+\.pdf\b}
-          password_regex = /(input_pw).*?(output)/
-          sanitized_message = e.message.gsub(file_regex, '[FILTERED FILENAME]').gsub(password_regex, '\1 [FILTERED] \2')
-          Rails.logger.warn(sanitized_message)
-          has_pdf_err = true
-        end
-
-        # This helps prevent leaking exception context to DataDog when we raise this error
-        if has_pdf_err
-          raise Common::Exceptions::UnprocessableEntity.new(
-            detail: IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL,
-            source: 'IvcChampva::V1::UploadsController'
-          )
-        end
-
-        destination_file
-      end
-
       ## Uses hexapdf to unlock the provided PDF file with the given password
       # @param [ActionDispatch::Http::UploadedFile] source_file The uploaded PDF file to unlock
       # @param [String] file_password The password to unlock the PDF
       # @param [Tempfile] destination_file A tempfile where the unlocked PDF will be saved
       def unlock_with_hexapdf(source_file, file_password, destination_file)
-        has_pdf_err = false
-        begin
-          ::Common::PdfHelpers.unlock_pdf(source_file.tempfile.path, file_password, destination_file.path)
-        rescue Common::Exceptions::UnprocessableEntity => e
-          file_regex = %r{/(?:\w+/)*[\w-]+\.pdf\b}
-          password_regex = /(input_pw).*?(output)/
-          sanitized_message = e.message.gsub(file_regex, '[FILTERED FILENAME]').gsub(password_regex, '\1 [FILTERED] \2')
-          Rails.logger.warn(sanitized_message)
-          has_pdf_err = true
-        end
-
-        # This helps prevent leaking exception context to DataDog when we raise this error
-        if has_pdf_err
-          raise Common::Exceptions::UnprocessableEntity.new(
-            detail: IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL,
-            source: 'IvcChampva::V1::UploadsController'
-          )
-        end
-
+        ::Common::PdfHelpers.unlock_pdf(source_file.tempfile.path, file_password, destination_file.path)
         destination_file
+      rescue Common::Exceptions::UnprocessableEntity => e
+        raise e unless e.errors.first.detail == I18n.t('errors.messages.uploads.pdf.incorrect_password')
+
+        # Surface a clearer password-specific message rather than the generic "couldn't unlock" string
+        raise Common::Exceptions::UnprocessableEntity.new(
+          detail: IvcChampva::Constants::INCORRECT_PASSWORD_DETAIL,
+          source: 'IvcChampva::V1::UploadsController'
+        )
       end
 
       def submit_supporting_documents # rubocop:disable Metrics/MethodLength

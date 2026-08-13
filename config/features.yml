@@ -548,12 +548,6 @@ features:
   champva_send_ves_to_pega:
     actor_type: user
     description: Enables sending VES JSON to PEGA for form submissions
-  champva_use_hexapdf_to_unlock_pdfs:
-    actor_type: user
-    description: Enables the use of hexapdf instead of pdftk to unlock password-protected PDFs on form submission
-  champva_use_hexapdf_to_combine_pdfs:
-    actor_type: user
-    description: Enables the use of HexaPDF instead of CombinePDF to combine PDFs
   champva_auto_resize_on_upload:
     actor_type: user
     enable_in_development: true
@@ -573,9 +567,6 @@ features:
   champva_bypass_metadata_json_file_for_1010d:
     actor_type: user
     description: Enables logic to bypass uploading the metadata JSON file for form 10-10d submissions
-  champva_allow_pdf_optional_content:
-    actor_type: user
-    description: Enables loading optional content from PDFs when combining them
   champva_ignore_recent_missing_statuses:
     actor_type: user
     description: Enables ignoring the most recent form submissions in the MissingFormStatusJob
