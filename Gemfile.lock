@@ -1413,6 +1413,7 @@ DEPENDENCIES
   okcomputer
   olive_branch
   operating_hours
+  ostruct
   ox
   parallel
   parallel_tests

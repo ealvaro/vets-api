@@ -134,6 +134,7 @@ gem 'oj' # Amazon Linux `json` gem causes conflicts, but `multi_json` will prefe
 gem 'okcomputer'
 gem 'olive_branch'
 gem 'operating_hours'
+gem 'ostruct' # Explicit for Ruby 3.4+/3.5; currently required transitively by config and oj
 gem 'ox'
 gem 'parallel'
 gem 'pdf-forms'

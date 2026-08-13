@@ -2,6 +2,7 @@ inherit_from:
   - lib/rubocop/.rubocop_custom_cops.yml
   - .rubocop_explicit_enables.yml
   - .rubocop_todo.yml
+  - .rubocop_openstruct.yml
 
 plugins:
   - rubocop-rails
@@ -36,6 +37,9 @@ Migrations/IsolatedIndexMigration:
   Include:
     - db/migrate/*.rb
     - modules/**/db/migrate/*.rb
+
+Style/OpenStructUse:
+  Enabled: true
 
 AllCops:
   NewCops: disable
