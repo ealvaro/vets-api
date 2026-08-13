@@ -10,11 +10,14 @@ RSpec.describe MedicalCopays::FacilityAccounts::VBSBuilder do
   # Values mirror vets-api-mockdata vbs/index/default.yml
   def statement_hash(**overrides)
     {
+      'id' => '0100e6ef-4de8-48b1-a5f5-e50ac86698ab',
       'pSFacilityNum' => '757',
       'pSStatementDate' => '12112025',
       'pHNewBalance' => 105.24,
       'pHPrevBal' => 103.21,
       'pHTotCredits' => 0,
+      'accountNumber' => '757 0000 0001 97750 SMITH',
+      'details' => [],
       'station' => { 'facilitYDesc' => 'CHALMERS P WYLIE VA ACC (757)' }
     }.merge(overrides.transform_keys(&:to_s))
   end
@@ -162,6 +165,257 @@ RSpec.describe MedicalCopays::FacilityAccounts::VBSBuilder do
 
       it 'raises rather than reporting the user has no copays' do
         expect { accounts }.to raise_error(MedicalCopays::VBS::Service::ServiceError)
+      end
+    end
+  end
+
+  describe '#build_facility_account' do
+    # Mirrors the shape of a printed statement. Named individually so each row's expected
+    # classification is visible without working it out from the field values.
+
+    # Interest is charged per cycle rather than per event, so it carries no posted date.
+    # All 36 interest rows in the Stage payload are undated.
+    let(:interest_charge) do
+      {
+        'pDDatePosted' => nil,
+        'pDTransDescOutput' => 'INTEREST/ADM. CHARGE (Int:0.10 Adm:1.93 Other:0.00)',
+        'pDTransAmt' => 2.03,
+        'pDRefNo' => nil
+      }
+    end
+
+    let(:pharmacy_charge) do
+      {
+        'pDDatePosted' => '11202025',
+        'pDTransDescOutput' => 'COPAY RX#20981144E FILL DATE: 11/20/2025',
+        'pDTransAmt' => 8,
+        'pDRefNo' => '402-K30G0H8'
+      }
+    end
+
+    # Wraps under the charge above it, carrying that charge's drug and quantity.
+    let(:continuation_line) do
+      {
+        'pDDatePosted' => nil,
+        'pDTransDescOutput' => '&nbsp;&nbsp;&nbsp;DRUG:LISINOPRIL 10MG TAB  DAYS:30  QTY:30',
+        'pDTransAmt' => 0,
+        'pDRefNo' => nil
+      }
+    end
+
+    # Shares the pharmacy charge's bill number, since a payment settles a bill.
+    let(:payment) do
+      {
+        'pDDatePosted' => '11262025',
+        'pDTransDescOutput' => 'PAYMENT POSTED ON 11/26/2025',
+        'pDTransAmt' => -8,
+        'pDRefNo' => '402-K30G0H8'
+      }
+    end
+
+    let(:details_fixture) { [interest_charge, pharmacy_charge, continuation_line, payment] }
+
+    let(:statements) do
+      [
+        statement_hash(pSStatementDate: '11112025', pHNewBalance: 75.0),
+        statement_hash(pSStatementDate: '12112025', pHNewBalance: 105.24, details: details_fixture),
+        statement_hash(pSFacilityNum: '668', pHNewBalance: 46.0)
+      ]
+    end
+
+    before do
+      allow(vbs_service).to receive(:get_copays).and_return({ data: statements, status: 200 })
+      Timecop.freeze(Time.zone.local(2025, 12, 15))
+    end
+
+    after { Timecop.return }
+
+    it 'builds the requested facility from its latest statement' do
+      expect(builder.build_facility_account('757')).to have_attributes(
+        station_id: '757',
+        account_number: '757 0000 0001 97750 SMITH',
+        current_balance: 105.24,
+        statement_date: Date.new(2025, 12, 11),
+        due_date: Date.new(2026, 1, 5)
+      )
+    end
+
+    it 'returns nil when the requested facility is absent' do
+      expect(builder.build_facility_account('999')).to be_nil
+    end
+
+    describe 'transactions' do
+      subject(:transactions) { builder.build_facility_account('757').transactions }
+
+      # Ids are a position within the statement that carries the row, so they are prefixed
+      # with that statement's UUID rather than the station.
+      let(:statement_id) { '0100e6ef-4de8-48b1-a5f5-e50ac86698ab' }
+
+      it 'maps the latest statement details newest first, undated last' do
+        expect(transactions).to eq(
+          [
+            {
+              id: "#{statement_id}-3",
+              type: 'payment',
+              date: '2025-11-26',
+              description: 'PAYMENT POSTED ON 11/26/2025',
+              amount: 8.0,
+              billing_reference: '402-K30G0H8',
+              provider: nil,
+              medication: nil
+            },
+            {
+              id: "#{statement_id}-2",
+              type: 'charge',
+              date: '2025-11-20',
+              description: 'COPAY RX#20981144E FILL DATE: 11/20/2025',
+              amount: 8.0,
+              billing_reference: '402-K30G0H8',
+              provider: nil,
+              medication: nil
+            },
+            {
+              id: "#{statement_id}-1",
+              type: 'charge',
+              date: nil,
+              description: 'INTEREST/ADM. CHARGE (Int:0.10 Adm:1.93 Other:0.00)',
+              amount: 2.03,
+              billing_reference: nil,
+              provider: nil,
+              medication: nil
+            }
+          ]
+        )
+      end
+
+      it 'drops the indented lines that wrap under a printed charge' do
+        descriptions = transactions.map { |transaction| transaction[:description] }
+
+        expect(descriptions).to all(satisfy { |description| !description.start_with?('&nbsp;') })
+      end
+
+      it 'reads payments from the rendered description, since sign alone does not identify one' do
+        payments = transactions.select { |transaction| transaction[:type] == 'payment' }
+
+        expect(payments).to contain_exactly(
+          hash_including(description: 'PAYMENT POSTED ON 11/26/2025', amount: 8.0)
+        )
+      end
+
+      context 'when a charge was cancelled' do
+        let(:statements) do
+          [
+            statement_hash(
+              pSStatementDate: '12112025',
+              details: [
+                {
+                  'pDDatePosted' => '07092025',
+                  'pDTransDescOutput' => 'OUTPATIENT CARE VISIT DATE: 06/08/2025',
+                  'pDTransAmt' => 50,
+                  'pDRefNo' => '516-K00V8T8'
+                },
+                {
+                  'pDDatePosted' => '07092025',
+                  'pDTransDescOutput' => 'OUTPATIENT CARE',
+                  'pDTransAmt' => -50,
+                  'pDRefNo' => '516-K00V8T8'
+                }
+              ]
+            )
+          ]
+        end
+
+        it 'reports the reversing row as a credit for the amount it cancels' do
+          expect(transactions).to contain_exactly(
+            hash_including(
+              type: 'charge',
+              description: 'OUTPATIENT CARE VISIT DATE: 06/08/2025',
+              amount: 50.0
+            ),
+            hash_including(type: 'credit', description: 'OUTPATIENT CARE', amount: 50.0)
+          )
+        end
+      end
+
+      context 'when a row has an unparseable posted date' do
+        let(:statements) do
+          [
+            statement_hash(
+              pSStatementDate: '12112025',
+              details: [
+                {
+                  'pDDatePosted' => '99999999',
+                  'pDTransDescOutput' => 'OUTPATIENT CARE VISIT DATE: 06/08/2025',
+                  'pDTransAmt' => 50,
+                  'pDRefNo' => '516-K00V8T8'
+                }
+              ]
+            )
+          ]
+        end
+
+        it 'reports no date rather than raising' do
+          expect(transactions).to contain_exactly(
+            hash_including(type: 'charge', date: nil, amount: 50.0)
+          )
+        end
+      end
+
+      context 'when the statement has no details' do
+        let(:statements) { [statement_hash(pSStatementDate: '12112025', details: nil)] }
+
+        it 'returns no transactions rather than raising' do
+          expect(transactions).to eq([])
+        end
+      end
+
+      context 'when a negative row carries no bill number or posted date' do
+        let(:statements) do
+          [
+            statement_hash(
+              pSStatementDate: '12112025',
+              details: [
+                {
+                  'pDDatePosted' => nil,
+                  'pDTransDescOutput' => 'RX CO-PAYMENT/NSC VET',
+                  'pDTransAmt' => -5,
+                  'pDRefNo' => nil
+                }
+              ]
+            )
+          ]
+        end
+
+        it 'still reports it as a credit, since the ICD reads any negative that way' do
+          expect(transactions).to contain_exactly(
+            hash_including(type: 'credit', description: 'RX CO-PAYMENT/NSC VET', amount: 5.0)
+          )
+        end
+      end
+
+      context 'when one bill number spans several lines' do
+        let(:statements) do
+          [
+            statement_hash(
+              pSStatementDate: '12112025',
+              details: Array.new(3) do |index|
+                {
+                  'pDDatePosted' => "0#{index + 1}202025",
+                  'pDTransDescOutput' => "COPAY RX#10004#{index} FILL DATE: 0#{index + 1}/20/2025",
+                  'pDTransAmt' => 8,
+                  'pDRefNo' => '516-K10J56V'
+                }
+              end
+            )
+          ]
+        end
+
+        it 'still gives every transaction a unique id, since the bill number repeats' do
+          expect(transactions.map { |transaction| transaction[:billing_reference] }.uniq)
+            .to eq(['516-K10J56V'])
+          expect(transactions.map { |transaction| transaction[:id] })
+            .to contain_exactly("#{statement_id}-1", "#{statement_id}-2", "#{statement_id}-3")
+        end
       end
     end
   end
