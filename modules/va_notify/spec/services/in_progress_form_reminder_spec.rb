@@ -85,11 +85,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
                   'form_age' => ''
                 },
                 'Settings.vanotify.services.va_gov.api_key',
-                { callback_metadata: {
-                  form_number: '686C-674', notification_type: 'in_progress_reminder', statsd_tags: {
-                    'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
-                  }
-                } })
+                { callback_klass: 'VANotify::InProgressFormReminderCallback',
+                  callback_metadata: {
+                    form_number: '686C-674', notification_type: 'in_progress_reminder',
+                    in_progress_form_id: in_progress_form.id, attempt: 1, statsd_tags: {
+                      'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
+                    }
+                  } })
       end
 
       context 'with a 686+674 V2 form' do
@@ -112,11 +114,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
                     'form_age' => ''
                   },
                   'Settings.vanotify.services.va_gov.api_key',
-                  { callback_metadata: {
-                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
-                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
-                    }
-                  } })
+                  { callback_klass: 'VANotify::InProgressFormReminderCallback',
+                    callback_metadata: {
+                      form_number: '686C-674-V2', notification_type: 'in_progress_reminder',
+                      in_progress_form_id: in_progress_form.id, attempt: 1, statsd_tags: {
+                        'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                      }
+                    } })
         end
       end
 
@@ -140,11 +144,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
                     'form_age' => ''
                   },
                   'Settings.vanotify.services.va_gov.api_key',
-                  { callback_metadata: {
-                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
-                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
-                    }
-                  } })
+                  { callback_klass: 'VANotify::InProgressFormReminderCallback',
+                    callback_metadata: {
+                      form_number: '686C-674-V2', notification_type: 'in_progress_reminder',
+                      in_progress_form_id: in_progress_form.id, attempt: 1, statsd_tags: {
+                        'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                      }
+                    } })
         end
       end
 
@@ -168,11 +174,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
                     'form_age' => ''
                   },
                   'Settings.vanotify.services.va_gov.api_key',
-                  { callback_metadata: {
-                    form_number: '686C-674-V2', notification_type: 'in_progress_reminder', statsd_tags: {
-                      'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
-                    }
-                  } })
+                  { callback_klass: 'VANotify::InProgressFormReminderCallback',
+                    callback_metadata: {
+                      form_number: '686C-674-V2', notification_type: 'in_progress_reminder',
+                      in_progress_form_id: in_progress_form.id, attempt: 1, statsd_tags: {
+                        'function' => '686C-674-V2 in progress reminder', 'service' => 'va-notify'
+                      }
+                    } })
         end
       end
     end
@@ -336,13 +344,122 @@ describe VANotify::InProgressFormReminder, type: :worker do
             'formatted_form_data' => "\n^ FORM 686C-674\n^\n^__686c something__\n^\n^_Application expires on:_ #{form_1_date}\n\n\n^---\n\n^ FORM form_3_example_id\n^\n^__form_3 something__\n^\n^_Application expires on:_ #{form_3_date}\n\n\n^---\n\n^ FORM form_2_example_id\n^\n^__form_2 something__\n^\n^_Application expires on:_ #{form_2_date}\n\n"
           },
           'Settings.vanotify.services.va_gov.api_key',
-          { callback_metadata: {
-            form_number: 'multiple', notification_type: 'in_progress_reminder', statsd_tags: {
-              'function' => 'multiple in progress reminder', 'service' => 'va-notify'
-            }
-          } }
+          { callback_klass: 'VANotify::InProgressFormReminderCallback',
+            callback_metadata: {
+              form_number: 'multiple', notification_type: 'in_progress_reminder',
+              in_progress_form_id: in_progress_form_1.id, attempt: 1, statsd_tags: {
+                'function' => 'multiple in progress reminder', 'service' => 'va-notify'
+              }
+            } }
         )
         # rubocop:enable Layout/LineLength
+      end
+    end
+
+    # A retry re-runs perform against live data rather than replaying the original payload, so what
+    # it sends depends on what the veteran still has in progress at retry time — not on what they
+    # had when the first send failed.
+    describe 're-run as a retry' do
+      let!(:in_progress_form_1) do
+        Timecop.freeze(7.days.ago)
+        in_progress_form = create(
+          :in_progress_686c_form,
+          user_uuid: user.uuid,
+          user_account: create(:user_account)
+        )
+        Timecop.return
+        in_progress_form
+      end
+
+      let!(:in_progress_form_2) do
+        create_in_progress_form_days_ago(1, user_uuid: user.uuid, form_id: 'form_2_id')
+      end
+
+      let!(:in_progress_form_3) do
+        create_in_progress_form_days_ago(2, user_uuid: user.uuid, form_id: 'form_3_id')
+      end
+
+      before do
+        allow(VANotify::Veteran).to receive(:new)
+          .and_return(double('VANotify::Veteran', icn: 'icn', first_name: 'first_name', uuid: 'uuid'))
+        allow(VANotify::V2::QueueUserAccountJob).to receive(:enqueue)
+        stub_const('VANotify::FindInProgressForms::RELEVANT_FORMS', %w[686C-674 form_2_id form_3_id])
+        stub_const(
+          'VANotify::InProgressFormHelper::FRIENDLY_FORM_SUMMARY',
+          {
+            '686C-674' => '686c something',
+            'form_2_id' => 'form_2 something',
+            'form_3_id' => 'form_3 something'
+          }
+        )
+        stub_const(
+          'VANotify::InProgressFormHelper::FRIENDLY_FORM_ID',
+          {
+            '686C-674' => '686C-674',
+            'form_2_id' => 'form_2_example_id',
+            'form_3_id' => 'form_3_example_id'
+          }
+        )
+      end
+
+      it 'sends the multi-form reminder again when the other forms are still in progress' do
+        Sidekiq::Testing.inline! do
+          described_class.new.perform(in_progress_form_1.id, 2)
+        end
+
+        expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue).with(
+          in_progress_form_1.user_account_id,
+          'fake_template_id',
+          hash_including('formatted_form_data' => a_string_including('FORM form_2_example_id')),
+          'Settings.vanotify.services.va_gov.api_key',
+          { callback_klass: 'VANotify::InProgressFormReminderCallback',
+            callback_metadata: {
+              form_number: 'multiple', notification_type: 'in_progress_reminder',
+              in_progress_form_id: in_progress_form_1.id, attempt: 2, statsd_tags: {
+                'function' => 'multiple in progress reminder', 'service' => 'va-notify'
+              }
+            } }
+        )
+      end
+
+      it 'falls back to the single-form reminder when the other forms were submitted in between' do
+        in_progress_form_2.destroy!
+        in_progress_form_3.destroy!
+
+        Sidekiq::Testing.inline! do
+          described_class.new.perform(in_progress_form_1.id, 2)
+        end
+
+        expect(VANotify::V2::QueueUserAccountJob).to have_received(:enqueue).with(
+          in_progress_form_1.user_account_id,
+          'fake_template_id',
+          {
+            'first_name' => 'FIRST_NAME',
+            'date' => in_progress_form_1.expires_at.strftime('%B %d, %Y'),
+            'form_age' => VANotify::InProgressFormHelper.form_age(in_progress_form_1)
+          },
+          'Settings.vanotify.services.va_gov.api_key',
+          { callback_klass: 'VANotify::InProgressFormReminderCallback',
+            callback_metadata: {
+              form_number: '686C-674', notification_type: 'in_progress_reminder',
+              in_progress_form_id: in_progress_form_1.id, attempt: 2, statsd_tags: {
+                'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
+              }
+            } }
+        )
+      end
+
+      # The retry is anchored to one form id, so submitting that form drops the retry even though
+      # the veteran still has others in progress. Deliberate: the next scheduled sweep picks those
+      # up, and a dropped nudge costs less than a wrong one.
+      it 'sends nothing when the form it was anchored to was submitted in between' do
+        in_progress_form_1.destroy!
+
+        Sidekiq::Testing.inline! do
+          described_class.new.perform(in_progress_form_1.id, 2)
+        end
+
+        expect(VANotify::V2::QueueUserAccountJob).not_to have_received(:enqueue)
       end
     end
   end

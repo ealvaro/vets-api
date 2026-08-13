@@ -1725,6 +1725,10 @@ features:
     actor_type: user
     description: Enable/disable 526ez in progress form reminders (sent via VaNotify)
     enable_in_development: true
+  in_progress_form_reminder_retry:
+    actor_type: user
+    description: Enable/disable re-sending in progress form reminders that VaNotify marks retryable
+    enable_in_development: true
   identity_auth_sso_enabled:
     actor_type: user
     description: Enables auth sso container stashing

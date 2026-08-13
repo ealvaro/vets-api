@@ -49,11 +49,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
                   'form_age' => ''
                 },
                 'Settings.vanotify.services.va_gov.api_key',
-                { callback_metadata: {
-                  form_number: '686C-674', notification_type: 'in_progress_reminder', statsd_tags: {
-                    'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
-                  }
-                } })
+                { callback_klass: 'VANotify::InProgressFormReminderCallback',
+                  callback_metadata: {
+                    form_number: '686C-674', notification_type: 'in_progress_reminder',
+                    in_progress_form_id: in_progress_form_with_user_account_id.id, attempt: 1, statsd_tags: {
+                      'function' => '686C-674 in progress reminder', 'service' => 'va-notify'
+                    }
+                  } })
       end
     end
 
@@ -127,11 +129,13 @@ describe VANotify::InProgressFormReminder, type: :worker do
             'formatted_form_data' => "\n^ FORM 686C-674\n^\n^__686c something__\n^\n^_Application expires on:_ #{form_1_date}\n\n\n^---\n\n^ FORM form_3_example_id\n^\n^__form_3 something__\n^\n^_Application expires on:_ #{form_3_date}\n\n\n^---\n\n^ FORM form_2_example_id\n^\n^__form_2 something__\n^\n^_Application expires on:_ #{form_2_date}\n\n"
           },
           'Settings.vanotify.services.va_gov.api_key',
-          { callback_metadata: {
-            form_number: 'multiple', notification_type: 'in_progress_reminder', statsd_tags: {
-              'function' => 'multiple in progress reminder', 'service' => 'va-notify'
-            }
-          } }
+          { callback_klass: 'VANotify::InProgressFormReminderCallback',
+            callback_metadata: {
+              form_number: 'multiple', notification_type: 'in_progress_reminder',
+              in_progress_form_id: in_progress_form_1.id, attempt: 1, statsd_tags: {
+                'function' => 'multiple in progress reminder', 'service' => 'va-notify'
+              }
+            } }
         )
         # rubocop:enable Layout/LineLength
       end

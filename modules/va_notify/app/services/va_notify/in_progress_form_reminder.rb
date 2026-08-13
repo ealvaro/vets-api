@@ -8,10 +8,14 @@ module VANotify
     sidekiq_options retry: 14
 
     API_KEY_PATH = 'Settings.vanotify.services.va_gov.api_key'
+    CALLBACK_KLASS = 'VANotify::InProgressFormReminderCallback'
 
     class MissingICN < StandardError; end
 
-    def perform(form_id)
+    # attempt is bumped by InProgressFormReminderCallback when VA Notify reports the send as
+    # retryable; it caps how many times a single reminder is re-sent.
+    def perform(form_id, attempt = 1)
+      @attempt = attempt
       @in_progress_form = InProgressForm.find_by(id: form_id)
       return unless @in_progress_form
       return unless enabled?
@@ -39,27 +43,33 @@ module VANotify
     end
 
     def send_single(in_progress_form, template_id)
-      form_number = in_progress_form.form_id
-      statsd_tags = { 'service' => 'va-notify',
-                      'function' => "#{form_number} in progress reminder" }
       V2::QueueUserAccountJob.enqueue(in_progress_form.user_account_id,
                                       template_id,
                                       personalisation_details_single,
                                       API_KEY_PATH,
-                                      { callback_metadata: { notification_type: 'in_progress_reminder', form_number:,
-                                                             statsd_tags: } })
+                                      callback_options(in_progress_form, in_progress_form.form_id))
     end
 
     def send_multiple(in_progress_form, template_id)
-      form_number = 'multiple'
-      statsd_tags = { 'service' => 'va-notify',
-                      'function' => "#{form_number} in progress reminder" }
       V2::QueueUserAccountJob.enqueue(in_progress_form.user_account_id,
                                       template_id,
                                       personalisation_details_multiple,
                                       API_KEY_PATH,
-                                      { callback_metadata: { notification_type: 'in_progress_reminder', form_number:,
-                                                             statsd_tags: } })
+                                      callback_options(in_progress_form, 'multiple'))
+    end
+
+    # in_progress_form_id and attempt are what let the callback re-send a retryable failure —
+    # the form id is enough to re-derive everything, and re-running perform re-checks that the
+    # form still exists and is still eligible.
+    def callback_options(in_progress_form, form_number)
+      { callback_klass: CALLBACK_KLASS,
+        callback_metadata: {
+          notification_type: 'in_progress_reminder',
+          form_number:,
+          in_progress_form_id: in_progress_form.id,
+          attempt: @attempt,
+          statsd_tags: { 'service' => 'va-notify', 'function' => "#{form_number} in progress reminder" }
+        } }
     end
 
     def enabled?
