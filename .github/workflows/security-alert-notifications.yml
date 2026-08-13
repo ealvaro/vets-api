@@ -27,7 +27,7 @@ jobs:
           env_variable_name: SLACK_BOT_TOKEN
 
       - name: Check and notify security alerts
-        uses: software/vsp-github-actions/security-alert-slack-notify@e757949598396a97cdffd9a9dd0536846ffb104b # main
+        uses: software/vsp-github-actions/security-alert-slack-notify@b9b5656df8dec143b9ed64aa2497daa939a54e21 # main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           slack_bot_token: ${{ env.SLACK_BOT_TOKEN }}
