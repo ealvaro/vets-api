@@ -1389,6 +1389,10 @@ features:
       Toggles the SQL query of the representative search on appoint a representative forms.
       Enabled uses trigram for order, disabled uses Levenshtein distance
     enable_in_development: true
+  appoint_a_representative_enable_rep_initiated_poa:
+    actor_type: user
+    description: Enables POA form to be created by representatives on ARP
+    enable_in_development: true
   representative_status_enable_v2_features:
     actor_type: user
     description: Enables Representative Status widget 2.0 features for frontend and backend
