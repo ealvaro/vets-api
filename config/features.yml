@@ -2416,6 +2416,10 @@ features:
     actor_type: user
     description: Toggle for the new PDF form alignment update
     enable_in_development: true
+  piv_signin_enabled:
+    actor_type: user
+    description: Enable piv login rollout for accredited rep team.
+    enable_in_development: false
   pre_entry_covid19_screener:
     actor_type: user
     description: >
