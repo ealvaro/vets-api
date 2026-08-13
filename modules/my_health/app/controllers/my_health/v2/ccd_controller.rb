@@ -17,6 +17,8 @@ module MyHealth
       include MyHealth::V2::Concerns::ErrorHandler
       service_tag 'mhv-medical-records'
 
+      before_action :verify_ccd_ownership!, only: %i[status download]
+
       ##
       # Initiates generation of a CCD for the current user.
       #
@@ -25,6 +27,7 @@ module MyHealth
       #
       def generate
         ccd = service.initiate_ccd
+        remember_ccd_job_owner(ccd.job_id)
         http_status = ccd.http_status == 200 ? :ok : :accepted
         render json: UnifiedHealthData::Serializers::CcdSerializer.new(ccd).serializable_hash, status: http_status
       rescue Common::Exceptions::GatewayTimeout,
@@ -81,6 +84,65 @@ module MyHealth
       end
 
       private
+
+      # Numeric = correlated Task id (enumerable), checked against the user's own jobs list.
+      NUMERIC_TASK_ID = /\A\d+\z/
+      # Pre-correlation job id shape; ownership is established at generation time (see below).
+      UUID_FORMAT = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+      CCD_JOB_OWNER_CACHE_PREFIX = 'uhd:ccd_job_owner:'
+      CCD_JOB_OWNER_TTL = 1.hour
+
+      ##
+      # Rejects requests for a CCD job the current user does not own.
+      #
+      # Numeric task ids (enumerable) are verified against the user's own CCD jobs
+      # (scoped to +current_user.icn+ upstream). Pre-correlation UUID job ids are not yet in
+      # that list, so ownership is verified against the mapping recorded at generation time.
+      # Any other id shape is rejected.
+      #
+      # @return [void] renders 404 and halts the request when ownership fails
+      #
+      def verify_ccd_ownership!
+        job_id = params[:job_id]
+
+        if job_id&.match?(NUMERIC_TASK_ID)
+          owned_ids = owned_ccd_job_ids
+          return if performed? # get_ccd_jobs failed and already rendered an error
+          return if owned_ids.include?(job_id)
+        elsif job_id&.match?(UUID_FORMAT)
+          return if ccd_job_owner(job_id) == @current_user.icn
+        end
+
+        render_error('CCD Not Found', 'The requested CCD is not available', '404', 404, :not_found)
+      end
+
+      # @return [Array<String>] the current user's CCD job/task ids
+      def owned_ccd_job_ids
+        service.get_ccd_jobs.flat_map { |ccd| [ccd.job_id, ccd.task_id] }.compact.uniq
+      rescue Common::Exceptions::GatewayTimeout,
+             Common::Client::Errors::ClientError,
+             Common::Exceptions::BackendServiceException,
+             StandardError => e
+        handle_error(e, resource_name: 'CCD', api_type: 'SCDF')
+        []
+      end
+
+      # Records the pre-correlation UUID job id against the requesting user so ownership can be
+      # verified before the job appears in the ICN-scoped jobs list. Best-effort: a cache failure
+      # must not break generation.
+      def remember_ccd_job_owner(job_id)
+        return if job_id.blank?
+
+        Rails.cache.write("#{CCD_JOB_OWNER_CACHE_PREFIX}#{job_id}", @current_user.icn,
+                          expires_in: CCD_JOB_OWNER_TTL)
+      rescue => e
+        Rails.logger.warn("CCD job owner cache write failed: #{e.class}")
+      end
+
+      # @return [String, nil] the ICN that generated the given job id, if still cached
+      def ccd_job_owner(job_id)
+        Rails.cache.read("#{CCD_JOB_OWNER_CACHE_PREFIX}#{job_id}")
+      end
 
       ##
       # Resolves and validates a presigned S3 URL for the requested CCD format.
