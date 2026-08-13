@@ -107,11 +107,14 @@ module SignIn
     end
 
     def create_session_record(session)
+      device = DeviceParser.new(user_agent).perform
       SessionRecord.create!(handle: session.handle,
                             user_account: session.user_account,
                             client_id: session.client_id,
                             sign_in_ip: remote_ip,
-                            user_agent:)
+                            user_agent:,
+                            browser: device[:browser],
+                            device_description: device[:device_description])
     end
 
     def refresh_created_time

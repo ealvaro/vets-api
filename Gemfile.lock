@@ -1215,6 +1215,7 @@ GEM
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
     uri (1.1.1)
+    user_agent_parser (2.21.0)
     useragent (0.16.11)
     utf8-cleaner (2.0.1)
       activesupport
@@ -1494,6 +1495,7 @@ DEPENDENCIES
   travel_pay!
   ttfunk (~> 1.7.0)
   tzinfo-data
+  user_agent_parser
   utf8-cleaner
   va_notify!
   validations!

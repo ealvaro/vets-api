@@ -164,6 +164,31 @@ RSpec.describe SignIn::SessionSpawner do
         expect(session.hashed_device_secret).to eq(expected_hashed_device_secret)
       end
 
+      context 'derived device' do
+        let(:user_agent) do
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' \
+            '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        end
+
+        it 'derives and stores the browser and device description' do
+          session = subject.session
+          record = SignIn::SessionRecord.find_by!(handle: session.handle)
+          expect(record.browser).to eq('Chrome')
+          expect(record.device_description).to match(/Mac/)
+        end
+      end
+
+      context 'when the user agent is unrecognized' do
+        let(:user_agent) { 'not-a-real-ua-@@@' }
+
+        it 'stores the "Other" sentinel' do
+          session = subject.session
+          record = SignIn::SessionRecord.find_by!(handle: session.handle)
+          expect(record.browser).to eq('Other')
+          expect(record.device_description).to eq('Other')
+        end
+      end
+
       context 'and client is configured for a short token expiration' do
         let(:refresh_token_duration) { SignIn::Constants::RefreshToken::VALIDITY_LENGTH_SHORT_MINUTES }
 
