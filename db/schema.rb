@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -939,7 +939,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.index ["debt_identifiers"], name: "index_debt_transaction_logs_on_debt_identifiers", using: :gin
     t.index ["transaction_started_at"], name: "index_debt_transaction_logs_on_transaction_started_at"
     t.index ["transactionable_type", "transactionable_id"], name: "idx_on_transactionable_type_transactionable_id_52a8eee11c"
-    t.index ["transactionable_type", "transactionable_id"], name: "index_debt_transaction_logs_on_transactionable"
     t.index ["user_uuid", "transaction_type"], name: "index_debt_transaction_logs_on_user_uuid_and_transaction_type"
   end
 
@@ -2197,7 +2196,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000002) do
     t.datetime "updated_at", null: false
     t.uuid "user_account_id", null: false
     t.index ["user_account_id", "tooltip_name"], name: "index_tooltips_on_user_account_id_and_tooltip_name", unique: true
-    t.index ["user_account_id"], name: "index_tooltips_on_user_account_id"
   end
 
   create_table "user_acceptable_verified_credentials", force: :cascade do |t|
