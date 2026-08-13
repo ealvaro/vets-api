@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'forms/submission_statuses/pdf_urls'
-require 'faraday'
+require 'forms/submission_statuses/pdf_url_verifier'
 
 module V0
   module MyVA
@@ -19,15 +19,16 @@ module V0
         # This exception is raised if the fetch_url is not returned
         raise Common::Exceptions::RecordNotFound, request_params[:submission_guid] unless url.is_a?(String)
 
-        # Check to make sure the returned URL is found in S3
-        Faraday::Connection.new do |conn|
-          response = conn.get(url)
-          raise Common::Exceptions::RecordNotFound, request_params[:submission_guid] if response.status != 200
-        end
+        raise Common::Exceptions::RecordNotFound, request_params[:submission_guid] unless pdf_url_verifier.exists?(url)
+
         render json: { url: }
       end
 
       private
+
+      def pdf_url_verifier
+        @pdf_url_verifier ||= Forms::SubmissionStatuses::PdfUrlVerifier.new
+      end
 
       def request_params
         params.require(%i[form_id submission_guid])

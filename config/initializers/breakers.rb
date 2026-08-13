@@ -61,6 +61,7 @@ require 'disability_max_ratings/configuration'
 require 'form526_backup_submission/configuration'
 require 'form_intake/configuration'
 require 'forms/configuration'
+require 'forms/submission_statuses/pdf_url_verifier'
 require 'hca/enrollment_eligibility/configuration'
 require 'ibm/configuration'
 require 'kafka/schema_registry/configuration'
@@ -146,6 +147,7 @@ Rails.application.reloader.to_prepare do
     VEText::Configuration.instance.breakers_service,
     PagerDuty::Configuration.instance.breakers_service,
     ClaimsApi::LocalBGS.breakers_service,
+    Forms::SubmissionStatuses::PdfUrlVerifier.breakers_service,
     MebApi::DGI::Configuration.instance.breakers_service,
     MebApi::DGI::ContactInfo::Configuration.instance.breakers_service,
     MebApi::DGI::Eligibility::Configuration.instance.breakers_service,
