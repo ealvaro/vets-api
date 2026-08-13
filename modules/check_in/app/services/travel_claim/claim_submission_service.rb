@@ -26,6 +26,11 @@ module TravelClaim
     EXPENSE_ADD_ERROR = 'expense_add_error'
     CLAIM_SUBMIT_ERROR = 'claim_submit_error'
     VALIDATION_ERROR = 'validation_error'
+    # Temporary BTSSS station-number remaps for grandfathered stations that BTSSS
+    # cannot resolve by the LoROTA station ID (e.g. 612A4 → parent station 612).
+    BTSSS_STATION_NUMBER_OVERRIDES = {
+      '612A4' => '612'
+    }.freeze
     ERROR_METRICS = {
       APPOINTMENT_ERROR => {
         cie: CheckIn::Constants::CIE_STATSD_APPOINTMENT_ERROR,
@@ -337,7 +342,7 @@ module TravelClaim
         value = redis_client.station_number(uuid: @check_in_uuid)
         raise_validation_error('Station number not found in session', 'VA907') if value.blank?
 
-        value
+        apply_btsss_station_number_override(value)
       end
     end
 
@@ -354,6 +359,12 @@ module TravelClaim
 
         value
       end
+    end
+
+    def apply_btsss_station_number_override(value)
+      return value unless Flipper.enabled?(:check_in_experience_travel_claim_btsss_station_number_override)
+
+      BTSSS_STATION_NUMBER_OVERRIDES.fetch(value, value)
     end
 
     def appointment_request
@@ -387,8 +398,10 @@ module TravelClaim
       return @station_number if @station_number.present?
 
       value = redis_client.station_number(uuid: @check_in_uuid)
-      @station_number = value if value.present?
-      value
+      return if value.blank?
+
+      # Memoize the remapped value so later #station_number / metrics see the same ID.
+      @station_number = apply_btsss_station_number_override(value)
     rescue
       nil
     end

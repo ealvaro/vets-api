@@ -671,6 +671,13 @@ features:
     actor_type: user
     description: Enables using BTSSS v2 API endpoints instead of v3 for travel claim submission
     enable_in_development: false
+  check_in_experience_travel_claim_btsss_station_number_override:
+    actor_type: user
+    description: >
+      Temporary workaround for BTSSS v4 find-or-add failures on grandfathered stations
+      (e.g. 612A4). When enabled, sends a mapped station number that BTSSS can resolve
+      (e.g. 612A4 → 612) instead of the LoROTA station number.
+    enable_in_development: true
   claim_letters_access:
     actor_type: user
     description: Enables users to access the claim letters page

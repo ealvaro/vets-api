@@ -34,6 +34,9 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
     allow(Flipper).to receive(:enabled?).with(:check_in_experience_travel_claim_logging).and_return(true)
     # Enable travel reimbursement (includes notifications) for tests
     allow(Flipper).to receive(:enabled?).with(:check_in_experience_travel_reimbursement).and_return(true)
+    allow(Flipper).to receive(:enabled?)
+      .with(:check_in_experience_travel_claim_btsss_station_number_override)
+      .and_return(false)
     # Mock the notification job
     allow(CheckIn::TravelClaimNotificationJob).to receive(:perform_async)
   end
@@ -491,6 +494,42 @@ RSpec.describe TravelClaim::ClaimSubmissionService do
             expect(error.key).to eq('VA907')
             expect(error.response_values[:detail]).to include('Station number not found')
           end
+        end
+      end
+
+      context 'when BTSSS station number override flipper is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_travel_claim_btsss_station_number_override)
+            .and_return(true)
+        end
+
+        context 'when station number has a mapped override' do
+          let(:test_station_number) { '612A4' }
+
+          it 'returns the BTSSS-resolvable station number instead of the LoROTA station number' do
+            expect(service.send(:station_number)).to eq('612')
+          end
+        end
+
+        context 'when station number does not have a mapped override' do
+          it 'returns the LoROTA station number from Redis' do
+            expect(service.send(:station_number)).to eq(test_station_number)
+          end
+        end
+      end
+
+      context 'when BTSSS station number override flipper is disabled' do
+        let(:test_station_number) { '612A4' }
+
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:check_in_experience_travel_claim_btsss_station_number_override)
+            .and_return(false)
+        end
+
+        it 'returns the LoROTA station number from Redis' do
+          expect(service.send(:station_number)).to eq('612A4')
         end
       end
 
