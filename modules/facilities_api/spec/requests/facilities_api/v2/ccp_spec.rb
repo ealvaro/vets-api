@@ -166,7 +166,7 @@ RSpec.describe 'FacilitiesApi::V2::Ccp', team: :facilities, type: :request, vcr:
         end
       end
 
-      it 'returns a results from the provider_locator' do
+      it 'returns results from the facility_service_locator' do
         get('/facilities_api/v2/ccp', params:)
 
         bod = JSON.parse(response.body)
@@ -462,6 +462,73 @@ RSpec.describe 'FacilitiesApi::V2::Ccp', team: :facilities, type: :request, vcr:
           }
         ]
       )
+    end
+  end
+
+  describe 'kill switches' do
+    context 'when facility_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_disabled).and_return(true)
+      end
+
+      it 'returns 503' do
+        get '/facilities_api/v2/ccp/provider', params: { lat: 40.0, long: -74.0, specialties: ['213E00000X'] }
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+
+    context 'when facility_locator_ppms_provider_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_provider_locator_disabled)
+                                            .and_return(true)
+      end
+
+      it 'returns 503 for the #provider action' do
+        get '/facilities_api/v2/ccp/provider', params: { lat: 40.0, long: -74.0, specialties: ['213E00000X'] }
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)['errors'].first['detail'])
+          .to eq('PPMS ProviderLocator is temporarily unavailable')
+      end
+    end
+
+    context 'when facility_locator_ppms_facility_service_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_facility_service_locator_disabled)
+                                            .and_return(true)
+      end
+
+      it 'returns 503 for the #pharmacy action' do
+        get '/facilities_api/v2/ccp/pharmacy', params: { lat: 40.0, long: -74.0 }
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)['errors'].first['detail'])
+          .to eq('PPMS FacilityServiceLocator is temporarily unavailable')
+      end
+    end
+
+    context 'when facility_locator_ppms_specialties_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_specialties_disabled).and_return(true)
+      end
+
+      it 'returns 503 for the #specialties action' do
+        get '/facilities_api/v2/ccp/specialties'
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)['errors'].first['detail'])
+          .to eq('PPMS Specialties is temporarily unavailable')
+      end
+    end
+
+    context 'when facility_locator_ppms_pos_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_pos_locator_disabled).and_return(true)
+      end
+
+      it 'returns 503 for the #urgent_care action' do
+        get '/facilities_api/v2/ccp/urgent_care', params: { lat: 40.0, long: -74.0 }
+        expect(response).to have_http_status(:service_unavailable)
+        expect(JSON.parse(response.body)['errors'].first['detail'])
+          .to eq('PPMS PlaceOfServiceLocator is temporarily unavailable')
+      end
     end
   end
 

@@ -1280,13 +1280,31 @@ features:
   facilities_ppms_suppress_all:
     actor_type: user
     description: Hide all ppms search options
+  facility_locator_disabled:
+    actor_type: user
+    description: Kill switch that takes the entire Facility Locator API (both VA/Lighthouse and Community Care/PPMS lookups) offline, returning 503s. Used to shed load during an attack or upstream incident.
   facility_locator_mobile_map_update:
     actor_type: user
     description: Use new mobile map features for research
     enable_in_development: true
+  facility_locator_ppms_facility_service_locator_disabled:
+    actor_type: user
+    description: Kill switch that disables the PPMS FacilityServiceLocator lookup (community care provider/pharmacy search) used by Facility Locator, returning 503s. Used to shed load during an attack or upstream PPMS incident.
+  facility_locator_ppms_pos_locator_disabled:
+    actor_type: user
+    description: Kill switch that disables the PPMS PlaceOfServiceLocator lookup (community care urgent care/walk-in search) used by Facility Locator, returning 503s. Used to shed load during an attack or upstream PPMS incident.
+  facility_locator_ppms_provider_locator_disabled:
+    actor_type: user
+    description: Kill switch that disables the PPMS ProviderLocator lookup (community care provider search) used by Facility Locator, returning 503s. Used to shed load during an attack or upstream PPMS incident.
+  facility_locator_ppms_specialties_disabled:
+    actor_type: user
+    description: Kill switch that disables the PPMS specialties lookup (community care provider specialty/service-type list) used by Facility Locator, returning 503s. Used to shed load during an attack or upstream PPMS incident.
   facility_locator_predictive_location_search:
     actor_type: user
     description: Use predictive location search in the Facility Locator UI
+  facility_locator_va_disabled:
+    actor_type: user
+    description: Kill switch that disables the VA/Lighthouse facility search and show endpoints in Facility Locator, returning 503s. Used to shed load during an attack or upstream Lighthouse incident.
   facilities_use_fl_progressive_disclosure:
     actor_type: user
     description: Use progressive disclosure in the Facility Locator UI

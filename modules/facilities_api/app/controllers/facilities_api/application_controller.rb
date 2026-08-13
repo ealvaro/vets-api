@@ -4,6 +4,7 @@ module FacilitiesApi
   class ApplicationController < ::ApplicationController
     service_tag 'facility-locator'
     skip_before_action :authenticate
+    before_action :check_facility_locator_disabled
 
     PAGINATED_CLASSES = [
       WillPaginate::Collection,
@@ -11,6 +12,14 @@ module FacilitiesApi
     ].freeze
 
     private
+
+    def check_facility_locator_disabled
+      return unless Flipper.enabled?(:facility_locator_disabled)
+
+      render json: {
+        errors: [{ title: 'Service Unavailable', detail: 'Facility Locator is temporarily unavailable', code: '503' }]
+      }, status: :service_unavailable
+    end
 
     def render_json(serializer, page_params, obj, options = {})
       # Raise exception for empty arrays that would be paginated (e.g., empty PPMS results)

@@ -102,6 +102,7 @@ The following features require additional configuration, click for details.
 - [IDP (CAVE)](setup/idp.md)
 - [Local Network Access](setup/local_network_access.md)
 - [Mailers](setup/mailer.md)
+- [Maintenance Windows (PagerDuty)](setup/maintenance_windows.md)
 - [Master Person Index (MPI)](setup/mpi.md)
 - [My HealtheVet (MHV)](setup/mhv.md)
 - [Virtual Machine Access](setup/virtual_machine_access.md)

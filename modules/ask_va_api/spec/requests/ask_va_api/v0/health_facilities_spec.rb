@@ -90,6 +90,22 @@ RSpec.describe AskVAApi::V0::HealthFacilitiesController, team: :facilities, type
     allow(cache_data_instance).to receive(:fetch_and_cache_data).and_return(patsr_facilities)
   end
 
+  describe 'Facility Locator kill switch opt-out' do
+    # HealthFacilitiesController inherits FacilitiesApi::ApplicationController but skips
+    # :check_facility_locator_disabled, so an FL outage toggle must not take Ask VA offline.
+    context 'when facility_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_disabled).and_return(true)
+      end
+
+      it 'still serves the search instead of short-circuiting with a 503' do
+        post '/ask_va_api/v0/health_facilities', params: { lat: 33.298639, long: -111.789659, radius: 50 }
+        expect(response).not_to have_http_status(:service_unavailable)
+      end
+    end
+  end
+
   describe 'POST #search' do
     it 'returns 400 for invalid type parameter' do
       post '/ask_va_api/v0/health_facilities', params: { type: 'bogus' }

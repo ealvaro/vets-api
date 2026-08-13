@@ -56,4 +56,17 @@ RSpec.describe FacilitiesApi::ApplicationController, type: :controller do
       end
     end
   end
+
+  describe '#check_facility_locator_disabled' do
+    context 'when facility_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_disabled).and_return(true)
+      end
+
+      it 'returns 503 without running the action' do
+        get :test_populated_array
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+  end
 end

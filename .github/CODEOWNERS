@@ -2528,6 +2528,7 @@ spec/support/schemas/vaos @software/vfs-vaos
 spec/support/schemas/veteran_verification @software/vfs-authenticated-experience-backend
 spec/support/schemas/vre @software/govcio-vfep-codereviewers
 spec/support/serializer_spec_helper.rb @software/va-platform-backend
+spec/support/shared_contexts/facility_locator_kill_switches.rb @software/vfs-facilities-frontend
 spec/support/shared_contexts/uhd_security_endpoint.rb @software/vfs-mhv-integration
 spec/support/shared_examples_for_labs_and_tests.rb @software/vfs-mhv-integration
 spec/support/shared_examples_for_mhv.rb @software/octo-identity

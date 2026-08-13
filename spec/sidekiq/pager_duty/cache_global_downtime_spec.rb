@@ -38,6 +38,16 @@ RSpec.describe PagerDuty::CacheGlobalDowntime, type: %i[job aws_helpers] do
       end
     end
 
+    context 'with no global service configured' do
+      before { allow(Settings.maintenance).to receive(:services).and_return({ facility_locator_app: 'PT3IBV8' }) }
+
+      it 'does not query PagerDuty with an empty service id' do
+        expect(client_stub).not_to receive(:get_all)
+
+        subject.perform
+      end
+    end
+
     context 'with error response from client' do
       it 'bails on backend error' do
         expect(client_stub).to receive(:get_all).and_raise(Common::Exceptions::BackendServiceException)

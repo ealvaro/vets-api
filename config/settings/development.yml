@@ -906,26 +906,34 @@ maintenance:
   pagerduty_api_token: FAKE
   pagerduty_api_url: https://api.pagerduty.com
   service_query_prefix: 'External: '
+  # The `# was P...` IDs below are from the retired dsva PagerDuty instance; the
+  # dsva -> ecc migration (9f79ab32bb) updated test.yml, specs, and cassettes but
+  # not this file. They are nulled out rather than deleted so the old values stay
+  # recoverable. PagerDuty 400s the whole maintenance_windows query if any one
+  # service ID doesn't exist, so leave an entry as `~` rather than guessing.
+  # To use your service here or on a review instance, see
+  # docs/setup/maintenance_windows.md.
   services:
     1010ez: ~
     1010ezr: ~
     accredited_representative_portal: ~
-    appeals: P9S4RFU
-    arcgis: P45YBFA
+    appeals: ~ # was P9S4RFU
+    arcgis: ~ # was P45YBFA
     askva: ~
     avs: ~
-    bgs: P5Q2OCZ
-    carma: P6XLE0T
+    bgs: ~ # was P5Q2OCZ
+    carma: ~ # was P6XLE0T
     caseflow: ~
     cie: ~
-    coe: PSY4HU1
+    coe: ~ # was PSY4HU1
     community_care_ds: ~
     decision_reviews: ~
     dgi_claimants: ~
     disability_compensation_form: ~
     dmc: ~
-    es: PH7OPR4
-    evss: PZKWB6Y
+    es: ~ # was PH7OPR4
+    evss: ~ # was PZKWB6Y
+    facility_locator_app: PT3IBV8
     form1010d: ~
     form1010d_ext: ~
     form107959a: ~
@@ -935,9 +943,9 @@ maintenance:
     form21p601: ~
     form_upload_benefits_intake: ~
     gi_bill_data_service: ~
-    global: PLPSIB0
-    hcq: PWGA814
-    idme: PVWB4R8
+    global: ~ # was PLPSIB0
+    hcq: ~ # was PWGA814
+    idme: ~ # was PVWB4R8
     lighthouse_benefits_claims: ~
     lighthouse_benefits_documents: ~
     lighthouse_benefits_education: ~
@@ -947,22 +955,22 @@ maintenance:
     lighthouse_letters_generator: ~
     lighthouse_veterans_health: ~
     lighthouse_vshe: ~
-    logingov: P2SHMM9
-    mdot: PGT74RC
-    mhv: PP2ZZ2V
+    logingov: ~ # was P2SHMM9
+    mdot: ~ # was PGT74RC
+    mhv: ~ # was PP2ZZ2V
     mhv_meds: ~
     mhv_mr: ~
     mhv_platform: ~
     mhv_sm: ~
-    mvi: PCIPVGJ
+    mvi: ~ # was PCIPVGJ
     pcie: ~
-    pega: P3ZJCBK
+    pega: ~ # was P3ZJCBK
     sahsha: ~
-    search: PRG8HJI
+    search: ~ # was PRG8HJI
     ssoe: ~
     ssoe_oauth: ~
     tc: ~
-    tims: PUL8OQ4
+    tims: ~ # was PUL8OQ4
     travel_pay: ~
     travel_pay_warning: ~
     vaos: ~
@@ -974,9 +982,9 @@ maintenance:
     vapro_personal_info: ~
     vass: ~
     vbms: ~
-    vet360: PHVOGQ1
-    vetext_vaccine: P9PG8HG
-    vic: P7LW3MS
+    vet360: ~ # was PHVOGQ1
+    vetext_vaccine: ~ # was P9PG8HG
+    vic: ~ # was P7LW3MS
     vre: ~
     vre_ch31_eligibility: ~
     vre_ch31_tracker: ~

@@ -10,6 +10,11 @@ module PagerDuty
     sidekiq_options retry: 1, queue: 'critical'
 
     def perform
+      # MaintenanceClient#get_all's blank-guard inspects the globally configured
+      # service_ids, not the override passed here, so a missing global service would
+      # otherwise send an empty service_ids[] param and get a 400 from PagerDuty.
+      return if global_service_id.blank?
+
       client = PagerDuty::MaintenanceClient.new
       options = { 'service_ids' => [global_service_id] }
       maintenance_windows = client.get_all(options)

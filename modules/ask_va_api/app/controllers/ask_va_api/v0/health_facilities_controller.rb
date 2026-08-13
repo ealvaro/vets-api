@@ -5,6 +5,11 @@ require 'lighthouse/facilities/client'
 module AskVAApi
   module V0
     class HealthFacilitiesController < FacilitiesApi::ApplicationController
+      # Ask VA opts out of the Facility Locator kill switch. This controller inherits
+      # FacilitiesApi::ApplicationController, but facility_locator_disabled is meant to shed the
+      # Facility Locator product during an incident, not the Ask VA health-facilities search.
+      skip_before_action :check_facility_locator_disabled
+
       around_action :handle_exceptions
 
       def search

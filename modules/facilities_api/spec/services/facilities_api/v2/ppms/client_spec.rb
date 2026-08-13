@@ -275,6 +275,18 @@ RSpec.describe FacilitiesApi::V2::PPMS::Client, team: :facilities, vcr: vcr_opti
       }
     end
 
+    context 'when facility_locator_ppms_facility_service_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_facility_service_locator_disabled)
+                                            .and_return(true)
+      end
+
+      it 'raises ServiceUnavailable without calling PPMS' do
+        expect(client).not_to receive(:perform)
+        expect { client.facility_service_locator(params) }.to raise_error(Common::Exceptions::ServiceUnavailable)
+      end
+    end
+
     describe 'Require between 1 and 5 Specialties' do
       it 'accepts up to 5 specialties' do
         allow(fake_response).to receive(:body)
@@ -414,6 +426,18 @@ RSpec.describe FacilitiesApi::V2::PPMS::Client, team: :facilities, vcr: vcr_opti
   end
 
   describe '#provider_locator' do
+    context 'when facility_locator_ppms_provider_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_provider_locator_disabled)
+                                            .and_return(true)
+      end
+
+      it 'raises ServiceUnavailable without calling PPMS' do
+        expect(client).not_to receive(:perform)
+        expect { client.provider_locator(params) }.to raise_error(Common::Exceptions::ServiceUnavailable)
+      end
+    end
+
     describe 'Require between 1 and 5 Specialties' do
       let(:test_params) do
         {
@@ -453,6 +477,17 @@ RSpec.describe FacilitiesApi::V2::PPMS::Client, team: :facilities, vcr: vcr_opti
   end
 
   describe '#pos_locator' do
+    context 'when facility_locator_ppms_pos_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_pos_locator_disabled).and_return(true)
+      end
+
+      it 'raises ServiceUnavailable without calling PPMS' do
+        expect(client).not_to receive(:perform)
+        expect { client.pos_locator(params) }.to raise_error(Common::Exceptions::ServiceUnavailable)
+      end
+    end
+
     it 'finds places of service' do
       r = FacilitiesApi::V2::PPMS::Client.new.pos_locator(params)
       expect(r.length).to be 11
@@ -475,6 +510,17 @@ RSpec.describe FacilitiesApi::V2::PPMS::Client, team: :facilities, vcr: vcr_opti
   end
 
   describe '#specialties', vcr: vcr_options.merge(cassette_name: 'facilities/ppms/ppms_specialties') do
+    context 'when facility_locator_ppms_specialties_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_ppms_specialties_disabled).and_return(true)
+      end
+
+      it 'raises ServiceUnavailable without calling PPMS' do
+        expect(client).not_to receive(:perform)
+        expect { client.specialties }.to raise_error(Common::Exceptions::ServiceUnavailable)
+      end
+    end
+
     it 'returns some Specialties' do
       r = FacilitiesApi::V2::PPMS::Client.new.specialties
       expect(r.each_with_object(Hash.new(0)) do |specialty, count|

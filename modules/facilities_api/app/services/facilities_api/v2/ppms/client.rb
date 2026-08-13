@@ -23,6 +23,12 @@ module FacilitiesApi
         configuration FacilitiesApi::V2::PPMS::Configuration
 
         def facility_service_locator(params)
+          if Flipper.enabled?(:facility_locator_ppms_facility_service_locator_disabled)
+            raise Common::Exceptions::ServiceUnavailable.new(
+              detail: 'PPMS FacilityServiceLocator is temporarily unavailable'
+            )
+          end
+
           qparams = facility_service_locator_params(params)
           response = perform(:get, facility_service_locator_url, qparams)
 
@@ -33,6 +39,10 @@ module FacilitiesApi
 
         # https://dev.dws.ppms.va.gov/swagger/ui/index#!/GlobalFunctions/GlobalFunctions_ProviderLocator
         def provider_locator(params)
+          if Flipper.enabled?(:facility_locator_ppms_provider_locator_disabled)
+            raise Common::Exceptions::ServiceUnavailable.new(detail: 'PPMS ProviderLocator is temporarily unavailable')
+          end
+
           qparams = provider_locator_params(params)
           response = perform(:get, provider_locator_url, qparams)
 
@@ -42,6 +52,12 @@ module FacilitiesApi
         end
 
         def pos_locator(params)
+          if Flipper.enabled?(:facility_locator_ppms_pos_locator_disabled)
+            raise Common::Exceptions::ServiceUnavailable.new(
+              detail: 'PPMS PlaceOfServiceLocator is temporarily unavailable'
+            )
+          end
+
           qparams = pos_locator_params(params, '17,20')
 
           response = perform(:get, place_of_service_locator_url, qparams)
@@ -53,6 +69,10 @@ module FacilitiesApi
 
         # https://dev.dws.ppms.va.gov/swagger/ui/index#!/Specialties/Specialties_Get_0
         def specialties
+          if Flipper.enabled?(:facility_locator_ppms_specialties_disabled)
+            raise Common::Exceptions::ServiceUnavailable.new(detail: 'PPMS Specialties is temporarily unavailable')
+          end
+
           response = perform(:get, specialties_url, {})
 
           FacilitiesApi::V2::PPMS::Response.new(response).specialties

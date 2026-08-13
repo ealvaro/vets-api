@@ -4,6 +4,7 @@ module FacilitiesApi
   class V2::VAController < ApplicationController
     include FacilitiesApi::V2::FacilitiesErrorHandler
     skip_before_action :verify_authenticity_token
+    before_action :check_va_disabled
     before_action :validate_facility_id, only: :show
 
     # Facility ids are a 2-3 letter facility-type prefix (vha, vba, nca, vc),
@@ -25,6 +26,14 @@ module FacilitiesApi
     end
 
     private
+
+    def check_va_disabled
+      return unless Flipper.enabled?(:facility_locator_va_disabled)
+
+      render json: {
+        errors: [{ title: 'Service Unavailable', detail: 'VA facility search is temporarily unavailable', code: '503' }]
+      }, status: :service_unavailable
+    end
 
     def api
       FacilitiesApi::V2::Lighthouse::Client.new

@@ -6,6 +6,11 @@ module FacilitiesApi
       include Swagger::Blocks
       service_tag 'facility-locator'
 
+      # The Swagger/API documentation must stay available even when Facility Locator data
+      # endpoints are shed via the kill switch; the base controller gates all actions on
+      # :facility_locator_disabled, so opt this docs-only controller out.
+      skip_before_action :check_facility_locator_disabled
+
       swagger_root do
         key :swagger, '2.0'
         info do

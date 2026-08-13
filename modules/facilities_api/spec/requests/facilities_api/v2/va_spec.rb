@@ -75,6 +75,30 @@ vcr_options = {
 RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: vcr_options do
   subject(:parsed_body) { JSON.parse(response.body).with_indifferent_access }
 
+  describe 'kill switches' do
+    context 'when facility_locator_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_disabled).and_return(true)
+      end
+
+      it 'returns 503' do
+        post '/facilities_api/v2/va', params: { services: 'EyeCare' }
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+
+    context 'when facility_locator_va_disabled is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:facility_locator_va_disabled).and_return(true)
+      end
+
+      it 'returns 503' do
+        post '/facilities_api/v2/va', params: { services: 'EyeCare' }
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+  end
+
   describe 'POST #search' do
     it 'returns 400 for invalid type parameter' do
       post '/facilities_api/v2/va', params: { type: 'bogus' }

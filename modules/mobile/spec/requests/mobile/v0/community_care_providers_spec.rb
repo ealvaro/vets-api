@@ -3,7 +3,7 @@
 require_relative '../../../support/helpers/rails_helper'
 require_relative '../../../support/helpers/committee_helper'
 
-RSpec.describe 'Mobile::V0::CommunityCareProviders', type: :request do
+RSpec.describe 'Mobile::V0::CommunityCareProviders', :facility_locator_kill_switches, type: :request do
   include JsonSchemaMatchers
   include CommitteeHelper
 

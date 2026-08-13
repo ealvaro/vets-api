@@ -30,8 +30,12 @@ module PagerDuty
       Settings.maintenance.services&.to_hash&.invert || {}
     end
 
+    # Services with no configured PagerDuty ID come through as nil (e.g. every `~`
+    # entry in config/settings/development.yml, or an unset SSM param in a deployed
+    # env). Sending those as empty service_ids[] params makes PagerDuty reject the
+    # whole request with a 400, which breaks polling for the configured services too.
     def self.service_ids
-      Settings.maintenance.services&.to_hash&.values || []
+      Settings.maintenance.services&.to_hash&.values&.compact || []
     end
   end
 end

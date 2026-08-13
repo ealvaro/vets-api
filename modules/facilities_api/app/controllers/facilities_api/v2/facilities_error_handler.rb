@@ -69,7 +69,17 @@ module FacilitiesApi::V2::FacilitiesErrorHandler
     # JSON::ParserError messages embed fragments of the unparseable upstream response
     # (e.g. HTML error pages), so fall back to the title rather than echoing the raw
     # message to the client. The original exception is still captured by the monitor above.
-    detail = error.is_a?(JSON::ParserError) ? title : error.message
+    #
+    # Common::Exceptions carry a client-facing `detail` (e.g. the outage messages raised by
+    # the PPMS kill switches). #message on those only returns the i18n title, so read the
+    # custom detail off the serialized error instead, falling back to #message when absent.
+    detail = if error.is_a?(JSON::ParserError)
+               title
+             elsif error.is_a?(Common::Exceptions::BaseError)
+               error.errors.first&.detail.presence || error.message
+             else
+               error.message
+             end
 
     render json: { errors: [{ title:, detail:, code: }] }, status: real_status
   end
