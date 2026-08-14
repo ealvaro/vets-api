@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'cave/change_log'
+require 'idp'
 
 module Cave
   # Orchestrates the CAVE 21-4138 change log for a saved claim:

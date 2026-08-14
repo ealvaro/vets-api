@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# Idp lives in lib/, which is not autoloaded, so these constants must be required explicitly.
+require 'idp'
+require 'idp/json_diff'
+
 module V0
   class CaveController < ApplicationController
     service_tag 'cave'

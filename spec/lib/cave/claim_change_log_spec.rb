@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'cave/claim_change_log'
+require 'idp/client'
 
 RSpec.describe Cave::ClaimChangeLog do
   let(:submission) do

@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require Rails.root.join('lib', 'idp', 'mock_client')
+require 'idp'
+require 'idp/mock_client'
 
 RSpec.describe Idp::MockClient do
   subject(:client) { described_class.new }

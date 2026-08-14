@@ -6,15 +6,33 @@ require 'openssl'
 require 'resolv'
 require 'uri'
 
+# lib/ is on $LOAD_PATH but is NOT a Zeitwerk autoload root, so reopening `module Idp` below
+# would otherwise create an empty namespace. This file uses Idp::SCAN_STATUSES and raises
+# Idp::Error, so it must load the namespace itself rather than relying on load order.
+require 'idp'
+
 module Idp
   class Client
     DEFAULT_TIMEOUT = 15
+    CONNECT_RESOLVE_RETRY_SECONDS = 30
     ERROR_DETAIL_LOG_LIMIT = 500
+    SERVICE_NAME = 'IDP'
     STATSD_KEY = 'api.cave.idp_client'
     HMAC_HEADER_USER_ID = 'X-IDP-User-Id'
     HMAC_HEADER_TIMESTAMP = 'X-IDP-Timestamp'
     HMAC_HEADER_KEY_ID = 'X-IDP-Key-Id'
     HMAC_HEADER_SIGNATURE = 'X-IDP-Signature'
+
+    # Intentionally not a Common::Client::Configuration subclass: VPCE routing and HMAC
+    # signing do not fit that base. New HTTP clients should still use Configuration.
+    def self.breakers_service
+      Breakers::Service.new(
+        name: SERVICE_NAME,
+        request_matcher: proc do |breakers_service, _request_env, request_service_name|
+          request_service_name == breakers_service.name
+        end
+      )
+    end
 
     def initialize(base_url: nil, connect_url: nil, timeout: nil, hmac_key_id: nil, hmac_secret: nil)
       @base_url = base_url.presence ||
@@ -79,6 +97,7 @@ module Idp
 
     def connection
       @connection ||= Faraday.new(url: normalized_base_url) do |conn|
+        conn.use(:breakers, service_name: SERVICE_NAME)
         conn.request :json
         conn.response :json, content_type: /\bjson$/
         conn.response :raise_error
@@ -213,9 +232,23 @@ module Idp
 
     def connect_ipaddr
       return if connect_url.blank?
+      return @connect_ipaddr if @connect_ipaddr
 
-      @connect_ipaddr ||= resolve_connect_ipaddr ||
-                          raise(Idp::Error, 'IDP connect URL could not be resolved')
+      raise Idp::Error, 'IDP connect URL could not be resolved' if connect_resolve_cooldown?
+
+      resolved = resolve_connect_ipaddr
+      if resolved
+        @connect_ipaddr_failed_at = nil
+        @connect_ipaddr = resolved
+      else
+        @connect_ipaddr_failed_at = Time.current
+        raise Idp::Error, 'IDP connect URL could not be resolved'
+      end
+    end
+
+    def connect_resolve_cooldown?
+      @connect_ipaddr_failed_at.present? &&
+        @connect_ipaddr_failed_at > CONNECT_RESOLVE_RETRY_SECONDS.seconds.ago
     end
 
     def resolve_connect_ipaddr

@@ -47,9 +47,12 @@ module Idp
   # Developers who need the real service locally can set IDP_USE_LIVE=true.
   def self.client
     if use_live_client?
+      # Lazy-required (rather than at the top of this file) because idp/client.rb requires this
+      # file back for the namespace, and a top-level require here would be circular.
+      require 'idp/client' unless defined?(Client)
       Client.new
     else
-      require Rails.root.join('lib', 'idp', 'mock_client') unless defined?(MockClient)
+      require 'idp/mock_client' unless defined?(MockClient)
       MockClient.new
     end
   end

@@ -21,6 +21,7 @@ require 'evss/letters/service'
 require 'gi/configuration'
 require 'gibft/configuration'
 require 'hca/configuration'
+require 'idp/client'
 require 'lighthouse/benefits_education/configuration'
 require 'mdot/configuration'
 require 'mhv_ac/configuration'
@@ -110,6 +111,7 @@ Rails.application.reloader.to_prepare do
   #   - EVSS::DisabilityCompensationForm::Dvp::Configuration (inherits from parent config)
   #   - GI::LCPE::Configuration                          (inherits from parent config)
   services = [
+    Idp::Client.breakers_service,
     DebtManagementCenter::DebtsConfiguration.instance.breakers_service,
     Caseflow::Configuration.instance.breakers_service,
     DecisionReview::Configuration.instance.breakers_service,

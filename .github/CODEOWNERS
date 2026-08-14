@@ -534,8 +534,6 @@ app/services/form1010cg/ @software/health-apps-backend
 app/services/hca/overrides_parser.rb @software/health-apps-backend
 app/services/ivc_champva @software/health-apps-backend
 app/services/identity @software/octo-identity
-app/services/idp @software/bio-huntridge
-app/services/idp.rb @software/bio-huntridge
 app/services/login @software/octo-identity
 app/services/medical_copays @software/vsa-debt-resolution
 app/services/mhv/user_account @software/octo-identity
@@ -1078,7 +1076,8 @@ lib/http_method_not_allowed.rb @software/va-platform-backend
 lib/iam_ssoe_oauth @software/octo-identity
 lib/ibm @software/bio-huntridge
 lib/identity @software/octo-identity
-lib/idp/mock_client.rb @software/bio-huntridge
+lib/idp @software/bio-huntridge
+lib/idp.rb @software/bio-huntridge
 lib/json_marshal @software/vsa-healthcare-health-quest-1-backend
 lib/json_schema @software/va-platform-backend
 lib/kafka @software/ves-submission-traceability
@@ -1753,7 +1752,8 @@ spec/lib/hca @software/health-apps-backend
 spec/lib/iam_ssoe_oauth @software/octo-identity
 spec/lib/ibm @software/bio-huntridge
 spec/lib/identity @software/octo-identity
-spec/lib/idp/mock_client_spec.rb @software/bio-huntridge
+spec/lib/idp @software/bio-huntridge
+spec/lib/idp_spec.rb @software/bio-huntridge
 spec/lib/json_marshal @software/vsa-healthcare-health-quest-1-backend
 spec/lib/json_schema @software/va-platform-backend
 spec/lib/kafka @software/ves-submission-traceability
@@ -2223,8 +2223,6 @@ spec/services/form1010cg @software/health-apps-backend
 spec/services/hca/overrides_parser_spec.rb @software/health-apps-backend
 spec/services/ivc_champva @software/health-apps-backend
 spec/services/identity @software/octo-identity
-spec/services/idp @software/bio-huntridge
-spec/services/idp_spec.rb @software/bio-huntridge
 spec/services/login @software/octo-identity
 spec/services/medical_copays @software/vsa-debt-resolution
 spec/services/mhv/user_account @software/octo-identity

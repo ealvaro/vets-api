@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'idp/client'
 
 RSpec.describe 'CAVE API', type: :request do
   subject(:parsed_response) { JSON.parse(response.body) }

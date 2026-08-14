@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'idp/client'
 
 RSpec.describe Idp::Client do
   describe '#initialize' do
+    include ActiveSupport::Testing::TimeHelpers
+
     before do
       allow(Settings).to receive(:dig).and_call_original
     end
@@ -83,6 +86,40 @@ RSpec.describe Idp::Client do
         .to raise_error(Idp::Error, /IDP connect URL could not be resolved/)
     end
 
+    it 'does not retry DNS during the connect resolution cooldown' do
+      allow(Resolv).to receive(:getaddresses).with('vpce-idp.example.com').and_return([])
+
+      client = described_class.new(
+        base_url: 'https://logical-idp.example.com/stg/api/v1/doc',
+        connect_url: 'https://vpce-idp.example.com/stg/api/v1/doc'
+      )
+
+      expect { client.send(:connect_ipaddr) }
+        .to raise_error(Idp::Error, /IDP connect URL could not be resolved/)
+      expect { client.send(:connect_ipaddr) }
+        .to raise_error(Idp::Error, /IDP connect URL could not be resolved/)
+      expect(Resolv).to have_received(:getaddresses).once
+    end
+
+    it 'retries DNS after the connect resolution cooldown' do
+      allow(Resolv).to receive(:getaddresses).with('vpce-idp.example.com')
+                                             .and_return([], ['10.0.0.10'])
+
+      client = described_class.new(
+        base_url: 'https://logical-idp.example.com/stg/api/v1/doc',
+        connect_url: 'https://vpce-idp.example.com/stg/api/v1/doc'
+      )
+
+      expect { client.send(:connect_ipaddr) }
+        .to raise_error(Idp::Error, /IDP connect URL could not be resolved/)
+
+      travel_to(Time.zone.now + Idp::Client::CONNECT_RESOLVE_RETRY_SECONDS + 1) do
+        expect(client.send(:connect_ipaddr)).to eq('10.0.0.10')
+      end
+
+      expect(Resolv).to have_received(:getaddresses).twice
+    end
+
     it 'logs a warning when connect_url resolution raises SocketError' do
       allow(Resolv).to receive(:getaddresses).with('vpce-idp.example.com').and_raise(SocketError, 'lookup failed')
       allow(Rails.logger).to receive(:warn)
@@ -118,6 +155,36 @@ RSpec.describe Idp::Client do
       expect(http).to receive(:ipaddr=).with('10.0.0.10')
 
       client.send(:apply_connect_override, http)
+    end
+  end
+
+  describe '.breakers_service' do
+    it 'returns a Breakers::Service named IDP' do
+      service = described_class.breakers_service
+
+      expect(service).to be_a(Breakers::Service)
+      expect(service.name).to eq(Idp::Client::SERVICE_NAME)
+    end
+
+    it 'matches requests by the IDP service_name' do
+      service = described_class.breakers_service
+
+      expect(service.handles_request?(request_env: nil, service_name: 'IDP')).to be(true)
+      expect(service.handles_request?(request_env: nil, service_name: 'OTHER')).to be(false)
+    end
+  end
+
+  describe '#connection' do
+    subject(:connection) { described_class.new(base_url: 'https://idp.example.com').send(:connection) }
+
+    it 'includes breakers middleware first with the IDP service_name' do
+      expect(connection.builder.handlers.first).to eq(Breakers::UptimeMiddleware)
+      expect(connection.app).to be_a(Breakers::UptimeMiddleware)
+      expect(connection.app.service_name).to eq(Idp::Client::SERVICE_NAME)
+    end
+
+    it 'uses the net_http adapter' do
+      expect(connection.builder.adapter).to eq(Faraday::Adapter::NetHttp)
     end
   end
 
