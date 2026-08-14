@@ -1,0 +1,15 @@
+name: External Review Notify
+
+on:
+  pull_request_target:
+    types: [review_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    uses: software/va-pr-notify/.github/workflows/external-review-notify.yml@v1
+    secrets:
+      VA_PR_REVIEW_BOT_SLACK_TOKEN: ${{ secrets.VA_PR_REVIEW_BOT_SLACK_TOKEN }}
+      PR_NOTIFY_GH_READ_ORG_TOKEN: ${{ secrets.PR_NOTIFY_GH_READ_ORG_TOKEN }}
