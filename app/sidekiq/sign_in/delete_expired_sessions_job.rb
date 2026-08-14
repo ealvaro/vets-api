@@ -4,11 +4,14 @@ module SignIn
   class DeleteExpiredSessionsJob
     include Sidekiq::Job
 
+    BATCH_SIZE = 1_000
+
     def perform
-      sessions = expired_oauth_sessions
-      handles = sessions.pluck(:handle)
-      sessions.destroy_all
-      SessionRecord.sign_out(handles)
+      expired_oauth_sessions.in_batches(of: BATCH_SIZE) do |batch|
+        handles = batch.pluck(:handle)
+        batch.delete_all
+        SessionRecord.sign_out(handles)
+      end
     end
 
     private
