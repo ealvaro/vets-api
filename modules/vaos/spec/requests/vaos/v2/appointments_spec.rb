@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'unified_health_data/medical_records_service'
+require 'unified_health_data/avs_service'
 require 'unique_user_events'
 
 RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
@@ -1252,6 +1253,13 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
           )
         end
 
+        before do
+          # Ownership is recorded against the user's ICN when the ICN-scoped AVS metadata is generated.
+          allow(Rails.cache).to receive(:read).and_call_original
+          allow(Rails.cache).to receive(:read)
+            .with(a_string_starting_with('uhd:avs_doc_owner:')).and_return(current_user.icn)
+        end
+
         it 'has access and returns appointment with OH avs' do
           allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_avs_binary_data)
             .with(doc_id: 'doc0').and_return(avs_binary)
@@ -1283,6 +1291,24 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
           expect(doc2_attributes['docId']).to eq('doc2')
           expect(doc2_attributes['binary']).to be_nil
           expect(doc2_attributes['error']).to eq('Retrieved empty AVS binary')
+        end
+      end
+
+      context 'when a requested doc is not owned by the current user' do
+        it 'does not fetch the binary and returns it as unavailable' do
+          allow(Rails.cache).to receive(:read).and_call_original
+          allow(Rails.cache).to receive(:read)
+            .with('uhd:avs_doc_owner:other_user_doc').and_return('1999999999V999999')
+          expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_avs_binary_data)
+
+          get '/vaos/v2/appointments/avs_binaries/appt123?doc_ids=other_user_doc', headers: inflection_header
+
+          expect(response).to have_http_status(:ok)
+          data = JSON.parse(response.body)['data']
+          expect(data.length).to eq(1)
+          expect(data[0]['attributes']['docId']).to eq('other_user_doc')
+          expect(data[0]['attributes']['binary']).to be_nil
+          expect(data[0]['attributes']['error']).to eq('Retrieved empty AVS binary')
         end
       end
     end

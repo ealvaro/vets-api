@@ -3051,6 +3051,15 @@ describe VAOS::V2::AppointmentsService do
       )
     end
 
+    before do
+      # By default, treat every requested doc as owned by the current user so the
+      # existing behavior-focused examples exercise the fetch path. Ownership
+      # enforcement itself is covered in the dedicated context below.
+      allow(Rails.cache).to receive(:read).and_call_original
+      allow(Rails.cache).to receive(:read)
+        .with(a_string_starting_with('uhd:avs_doc_owner:')).and_return(user.icn)
+    end
+
     context 'invalid arguments' do
       it 'sets the error field when doc_id is nil' do
         result = subject.send(:fetch_avs_binaries, 'appt', [nil])
@@ -3139,6 +3148,82 @@ describe VAOS::V2::AppointmentsService do
                                  doc_id: 'doc3',
                                  error: 'Retrieved empty AVS binary'
                                }
+                             ])
+      end
+    end
+
+    context 'ownership enforcement' do
+      let(:owned_doc_ref) do
+        {
+          'id' => 'doc1',
+          'type' => { 'coding' => [{ 'code' => '96345-4' }] },
+          'content' => [{ 'attachment' => { 'contentType' => 'application/pdf' } }],
+          'meta' => { 'lastUpdated' => '2024-01-15T10:00:00Z' },
+          'context' => { 'encounter' => [{ 'reference' => 'Encounter/enc-1' }] }
+        }
+      end
+      let(:owned_encounter) do
+        { 'id' => 'enc-1', 'appointment' => [{ 'reference' => 'Appointment/appt-123' }] }
+      end
+
+      before do
+        # Enable the AVS metadata flippers so the ICN-scoped list fallback can run on a cache miss.
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_uhd_avs_metadata, user).and_return(true)
+        allow(Flipper).to receive(:enabled?)
+          .with(:va_online_scheduling_add_OH_avs, user).and_return(true)
+      end
+
+      it 'does not fetch a doc that is missing from the cache and the ICN-scoped list' do
+        allow(Rails.cache).to receive(:read)
+          .with('uhd:avs_doc_owner:doc1').and_return(nil)
+        allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+          .and_return([[], []])
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_avs_binary_data)
+
+        result = subject.send(:fetch_avs_binaries, 'appt', ['doc1'])
+
+        expect(result).to eq([{ doc_id: 'doc1', error: 'Retrieved empty AVS binary' }])
+      end
+
+      it 'does not fetch (or consult the ICN-scoped list) for a doc cached to a different user' do
+        allow(Rails.cache).to receive(:read)
+          .with('uhd:avs_doc_owner:doc1').and_return('1999999999V999999')
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_all_avs_metadata)
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_avs_binary_data)
+
+        result = subject.send(:fetch_avs_binaries, 'appt', ['doc1'])
+
+        expect(result).to eq([{ doc_id: 'doc1', error: 'Retrieved empty AVS binary' }])
+      end
+
+      it 'fetches a doc missing from the cache but present in the ICN-scoped list' do
+        allow(Rails.cache).to receive(:read)
+          .with('uhd:avs_doc_owner:doc1').and_return(nil)
+        allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+          .with(start_date: nil, end_date: nil).and_return([[owned_doc_ref], [owned_encounter]])
+        allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_avs_binary_data)
+          .with(doc_id: 'doc1').and_return(avs_pdf)
+
+        result = subject.send(:fetch_avs_binaries, 'appt', ['doc1'])
+
+        expect(result).to eq([{ doc_id: 'doc1', binary: 'binaryString' }])
+      end
+
+      it 'fetches only the docs the user owns when mixed with a non-owned doc' do
+        allow(Rails.cache).to receive(:read)
+          .with('uhd:avs_doc_owner:doc2').and_return('1999999999V999999')
+        allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_avs_binary_data)
+          .with(doc_id: 'doc1').and_return(avs_pdf)
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_avs_binary_data)
+          .with(doc_id: 'doc2')
+
+        result = subject.send(:fetch_avs_binaries, 'appt', %w[doc1 doc2])
+
+        expect(result).to eq([
+                               { doc_id: 'doc1', binary: 'binaryString' },
+                               { doc_id: 'doc2', error: 'Retrieved empty AVS binary' }
                              ])
       end
     end
@@ -3891,6 +3976,11 @@ describe VAOS::V2::AppointmentsService do
         result = subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
         expect(result).to eq({})
       end
+
+      it 'owned_avs_doc_ids returns an empty list without calling UHD service' do
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_all_avs_metadata)
+        expect(subject.send(:owned_avs_doc_ids)).to eq([])
+      end
     end
 
     context 'when va_online_scheduling_add_OH_avs flipper is disabled' do
@@ -3959,6 +4049,58 @@ describe VAOS::V2::AppointmentsService do
           expect(avs.id).to eq('doc-ref-1')
           expect(avs.appt_id).to eq('appt-123')
           expect(avs.loinc_codes).to include('96345-4')
+        end
+
+        it 'records doc ownership against the user ICN in the cache' do
+          allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+            .and_return([[document_reference], [encounter]])
+          allow(Rails.cache).to receive(:write_multi).and_call_original
+
+          subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+
+          expect(Rails.cache).to have_received(:write_multi)
+            .with({ 'uhd:avs_doc_owner:doc-ref-1' => user.icn }, expires_in: 1.hour)
+        end
+
+        it 'does not raise when the ownership cache write fails' do
+          allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+            .and_return([[document_reference], [encounter]])
+          allow(Rails.cache).to receive(:write_multi).and_raise(StandardError)
+          allow(Rails.logger).to receive(:warn)
+
+          expect do
+            subject.send(:fetch_all_avs_metadata, start_date_dt, [cerner_appt], include_avs: true)
+          end.not_to raise_error
+          expect(Rails.logger).to have_received(:warn).with(/AVS doc owner cache write failed/)
+        end
+      end
+
+      context 'when resolving owned AVS doc ids for the ownership fallback' do
+        it 'returns the ICN-scoped doc ids and warms the cache' do
+          allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+            .with(start_date: nil, end_date: nil).and_return([[document_reference], [encounter]])
+          allow(Rails.cache).to receive(:write_multi).and_call_original
+
+          ids = subject.send(:owned_avs_doc_ids)
+
+          expect(ids).to eq(['doc-ref-1'])
+          expect(Rails.cache).to have_received(:write_multi)
+            .with({ 'uhd:avs_doc_owner:doc-ref-1' => user.icn }, expires_in: 1.hour)
+        end
+
+        it 'memoizes the result so repeated checks make a single upstream call' do
+          expect_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+            .once.and_return([[document_reference], [encounter]])
+
+          2.times { subject.send(:owned_avs_doc_ids) }
+        end
+
+        it 'returns an empty list (and memoizes) when the upstream lookup fails' do
+          allow_any_instance_of(UnifiedHealthData::AvsService).to receive(:get_all_avs_metadata)
+            .and_raise(Common::Exceptions::BackendServiceException)
+          allow(Rails.logger).to receive(:error)
+
+          expect(subject.send(:owned_avs_doc_ids)).to eq([])
         end
       end
 

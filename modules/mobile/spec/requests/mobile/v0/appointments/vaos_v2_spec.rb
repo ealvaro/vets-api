@@ -937,6 +937,11 @@ RSpec.describe 'Mobile::V0::Appointments::VAOSV2', type: :request do
     before do
       allow_any_instance_of(VAOS::UserService).to receive(:session).and_return('stubbed_token')
       allow(Rails.logger).to receive(:info)
+      # AVS doc ownership is recorded (ICN-scoped) when metadata is generated and verified here.
+      # Rails.cache is a NullStore in tests, so grant ownership of the requested docs to this user.
+      allow(Rails.cache).to receive(:read).and_call_original
+      allow(Rails.cache).to receive(:read)
+        .with(a_string_starting_with('uhd:avs_doc_owner:')).and_return(user.icn)
     end
 
     context 'with appointment having AVS documents' do
@@ -978,6 +983,22 @@ RSpec.describe 'Mobile::V0::Appointments::VAOSV2', type: :request do
         expect(doc2_attributes['docId']).to eq('doc2')
         expect(doc2_attributes['binary']).to be_nil
         expect(doc2_attributes['error']).to eq('Retrieved empty AVS binary')
+      end
+    end
+
+    context 'when a requested doc is not owned by the current user' do
+      it 'does not fetch the binary and returns an empty result' do
+        allow(Rails.cache).to receive(:read)
+          .with('uhd:avs_doc_owner:doc0').and_return('9999999999V999999')
+        expect_any_instance_of(UnifiedHealthData::AvsService).not_to receive(:get_avs_binary_data)
+
+        get '/mobile/v0/appointments/avs_binaries/appt123?doc_ids=doc0', headers: sis_headers
+
+        expect(response).to have_http_status(:ok)
+        attributes = JSON.parse(response.body)['data'].first['attributes']
+        expect(attributes['docId']).to eq('doc0')
+        expect(attributes['binary']).to be_nil
+        expect(attributes['error']).to eq('Retrieved empty AVS binary')
       end
     end
   end

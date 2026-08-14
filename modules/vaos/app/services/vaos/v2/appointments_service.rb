@@ -16,6 +16,11 @@ module VAOS
       AVS_ERROR_MESSAGE = 'Error retrieving AVS info'
       AVS_BINARY_ERROR_MESSAGE = 'Error retrieving AVS binary'
       AVS_BINARY_EMPTY_MESSAGE = 'Retrieved empty AVS binary'
+      # Ownership of AVS document references is recorded against the authenticated user's ICN when the
+      # ICN-scoped metadata is generated, then verified before a binary is fetched by doc id (which is
+      # otherwise addressable without patient scoping upstream). Prevents cross-patient PHI disclosure.
+      AVS_DOC_OWNER_CACHE_PREFIX = 'uhd:avs_doc_owner:'
+      AVS_DOC_OWNER_TTL = 1.hour
       MANILA_PHILIPPINES_FACILITY_ID = '358'
       POST_APPOINTMENT_METRIC = 'api.vaos.post_appointment'
       CANCEL_APPOINTMENT_METRIC = 'api.vaos.cancel_appointment'
@@ -481,8 +486,7 @@ module VAOS
       # @return [Hash{String => Array<UnifiedHealthData::AfterVisitSummary>}]
       def fetch_all_avs_metadata(start_date, appointments = [], include_avs: false) # rubocop:disable Metrics/MethodLength
         return {} unless include_avs
-        return {} unless Flipper.enabled?(:va_online_scheduling_uhd_avs_metadata, user) &&
-                         Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user) &&
+        return {} unless avs_metadata_flippers_enabled? &&
                          appointments.any? { |appt| VAOS::AppointmentsHelper.cerner?(appt) }
         return {} if user.icn.nil? || !start_date.respond_to?(:to_date)
 
@@ -492,7 +496,9 @@ module VAOS
         return {} if start_date > end_date
 
         doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date:, end_date:)
-        clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
+        metadata = clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
+        remember_avs_doc_owners(metadata)
+        metadata
       rescue => e
         err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
         original_status = e.respond_to?(:original_status) ? e.original_status : nil
@@ -509,23 +515,7 @@ module VAOS
       def fetch_avs_binaries(appt_id, doc_ids)
         return nil if appt_id.nil? || doc_ids.nil? || doc_ids.empty?
 
-        responses = []
-
-        doc_ids.each do |doc_id|
-          response = get_avs_pdf_binary(doc_id)
-          if response.nil?
-            responses.push({ doc_id:, error: AVS_BINARY_EMPTY_MESSAGE })
-          else
-            responses.push({ doc_id:, binary: response.binary })
-          end
-        rescue => e
-          err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
-          error_log = "VAOS: Error retrieving AVS binary for appt #{appt_id} doc #{doc_id}:" \
-                      "#{e.class}, #{e.message} \n   #{err_stack}"
-          Rails.logger.error(error_log)
-          responses.push({ doc_id:, error: AVS_BINARY_ERROR_MESSAGE })
-        end
-        responses
+        doc_ids.map { |doc_id| fetch_single_avs_binary(appt_id, doc_id) }
       end
 
       private
@@ -1085,6 +1075,93 @@ module VAOS
         return nil if avs_resp.nil?
 
         avs_resp
+      end
+
+      # Resolves a single AVS binary response entry, enforcing ownership before any upstream fetch.
+      # Ownership is established when the ICN-scoped metadata is generated; a doc id the current user
+      # does not own is treated as unavailable (indistinguishable from an empty result) so the endpoint
+      # cannot be used to reach another patient's AVS PDF.
+      #
+      # @return [Hash] a response entry with either +:binary+ or +:error+
+      def fetch_single_avs_binary(appt_id, doc_id)
+        return { doc_id:, error: AVS_BINARY_EMPTY_MESSAGE } unless avs_doc_owned?(doc_id)
+
+        response = get_avs_pdf_binary(doc_id)
+        return { doc_id:, error: AVS_BINARY_EMPTY_MESSAGE } if response.nil?
+
+        { doc_id:, binary: response.binary }
+      rescue => e
+        err_stack = e.backtrace.reject { |line| line.include?('gems') }.compact.join("\n   ")
+        Rails.logger.error("VAOS: Error retrieving AVS binary for appt #{appt_id} doc #{doc_id}:" \
+                           "#{e.class}, #{e.message} \n   #{err_stack}")
+        { doc_id:, error: AVS_BINARY_ERROR_MESSAGE }
+      end
+
+      # Records each AVS document reference id against the authenticated user's ICN so ownership can be
+      # verified before the binary is fetched by doc id. The metadata passed in is already scoped to the
+      # user's ICN upstream, so every id here is legitimately owned by the current user. Best-effort: a
+      # cache failure must not break the metadata/appointments response.
+      #
+      # @param metadata_by_appt [Hash{String => Array<UnifiedHealthData::AfterVisitSummary>}]
+      # @return [void]
+      def remember_avs_doc_owners(metadata_by_appt)
+        return if user.icn.blank? || !metadata_by_appt.is_a?(Hash)
+
+        doc_ids = metadata_by_appt.values.flatten.filter_map(&:id).uniq
+        return if doc_ids.empty?
+
+        entries = doc_ids.index_with { user.icn }
+                         .transform_keys { |doc_id| "#{AVS_DOC_OWNER_CACHE_PREFIX}#{doc_id}" }
+        Rails.cache.write_multi(entries, expires_in: AVS_DOC_OWNER_TTL)
+      rescue => e
+        Rails.logger.warn("VAOS: AVS doc owner cache write failed: #{e.class}")
+      end
+
+      # @param doc_id [String] the AVS document reference id being requested
+      # @return [Boolean] true when the id is owned by the current user, verified via the ownership
+      #   cache first and, on a cache miss, the authoritative ICN-scoped document list
+      def avs_doc_owned?(doc_id)
+        return false if doc_id.blank? || user.icn.blank?
+
+        cached_owner = Rails.cache.read("#{AVS_DOC_OWNER_CACHE_PREFIX}#{doc_id}")
+        # A present cache entry is authoritative (a doc id maps to exactly one patient); only a miss
+        # (never recorded or expired) falls back to the ICN-scoped list, which also re-warms the cache.
+        return cached_owner == user.icn if cached_owner.present?
+
+        owned_avs_doc_ids.include?(doc_id)
+      end
+
+      # Authoritative, per-request set of AVS document reference ids owned by the current user,
+      # resolved from the ICN-scoped UHD metadata (full history). Used as a fallback when the
+      # ownership cache is cold or expired so a legitimate download does not fail. Memoized
+      # (including failures) so a multi-doc request makes at most one upstream call. Returns an
+      # empty list when AVS metadata is disabled or the lookup fails (fail closed).
+      #
+      # @return [Array<String>]
+      def owned_avs_doc_ids
+        return @owned_avs_doc_ids if defined?(@owned_avs_doc_ids)
+
+        @owned_avs_doc_ids =
+          if avs_metadata_flippers_enabled? && user.icn.present?
+            resolve_owned_avs_doc_ids
+          else
+            []
+          end
+      end
+
+      def resolve_owned_avs_doc_ids
+        doc_refs, encounters = unified_health_data_service.get_all_avs_metadata(start_date: nil, end_date: nil)
+        metadata = clinical_notes_adapter.build_avs_metadata_by_appointment(encounters, doc_refs)
+        remember_avs_doc_owners(metadata)
+        metadata.values.flatten.filter_map(&:id).uniq
+      rescue => e
+        Rails.logger.error("VAOS: Error resolving owned AVS doc ids for ownership check: #{e.class}")
+        []
+      end
+
+      def avs_metadata_flippers_enabled?
+        Flipper.enabled?(:va_online_scheduling_uhd_avs_metadata, user) &&
+          Flipper.enabled?(APPOINTMENTS_FETCH_OH_AVS, user)
       end
 
       # Fetches the After Visit Summary (AVS) link for an appointment and updates the `:avs_path` of the `appt`..
