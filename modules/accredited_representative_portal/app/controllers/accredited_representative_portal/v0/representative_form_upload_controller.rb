@@ -20,6 +20,10 @@ module AccreditedRepresentativePortal
       end
       before_action :authorize_poa_check, only: :check_poa_status
 
+      ATTEMPT_METRIC_SUPPORTING_DOCUMENTS = 'ar.claims.form_upload.supporting_documents.attempt'
+      SUCCESS_METRIC_SUPPORTING_DOCUMENTS = 'ar.claims.form_upload.supporting_documents.success'
+      ERROR_METRIC_SUPPORTING_DOCUMENTS   = 'ar.claims.form_upload.supporting_documents.error'
+
       # rubocop:disable Metrics/MethodLength
       def submit
         monitoring = ar_monitoring(with_organization: true)
@@ -77,11 +81,26 @@ module AccreditedRepresentativePortal
       end
 
       def upload_supporting_documents
-        ar_monitoring(with_organization: false).trace('ar.claims.form_upload.upload_supporting_documents') do |_span|
+        monitoring = ar_monitoring(
+          with_organization: false,
+          extra_tags: ["form_id:#{form_id}"]
+        )
+
+        monitoring.track_count(ATTEMPT_METRIC_SUPPORTING_DOCUMENTS)
+
+        monitoring.trace('ar.claims.form_upload.upload_supporting_documents') do |_span|
           handle_attachment_upload(
             ::PersistentAttachments::VAFormDocumentation,
             PersistentAttachmentSerializer
           )
+
+          monitoring.track_count(SUCCESS_METRIC_SUPPORTING_DOCUMENTS)
+        rescue => e
+          monitoring.track_count(
+            ERROR_METRIC_SUPPORTING_DOCUMENTS,
+            tags: ["reason:#{e.class.name.demodulize.underscore}"]
+          )
+          raise
         end
       end
 
@@ -233,7 +252,7 @@ module AccreditedRepresentativePortal
       end
       # rubocop:enable Metrics/MethodLength
 
-      def ar_monitoring(with_organization:)
+      def ar_monitoring(with_organization:, extra_tags: [])
         org_tag = ("org:#{organization}" if with_organization && organization.present?)
 
         AccreditedRepresentativePortal::Monitoring.new(
@@ -242,7 +261,8 @@ module AccreditedRepresentativePortal
             "controller:#{controller_name}",
             "action:#{action_name}",
             org_tag,
-            ('org_resolve:failed' if with_organization && org_tag.nil?)
+            ('org_resolve:failed' if with_organization && org_tag.nil?),
+            *extra_tags
           ].compact
         )
       end

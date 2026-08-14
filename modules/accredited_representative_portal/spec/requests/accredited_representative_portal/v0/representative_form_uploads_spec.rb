@@ -804,6 +804,80 @@ RSpec.describe AccreditedRepresentativePortal::V0::RepresentativeFormUploadContr
       end
     end
 
+    describe '#upload_supporting_documents metrics' do
+      let(:monitor_instance) do
+        AccreditedRepresentativePortal::Monitoring.new(
+          AccreditedRepresentativePortal::Monitoring::NAME,
+          default_tags: []
+        )
+      end
+
+      before do
+        allow(AccreditedRepresentativePortal::Monitoring)
+          .to receive(:new)
+          .and_return(monitor_instance)
+
+        allow(monitor_instance).to receive(:track_count)
+      end
+
+      context 'when upload succeeds' do
+        before do
+          clamscan = double(safe?: true)
+          allow(Common::VirusScan).to receive(:scan).and_return(clamscan)
+
+          allow_any_instance_of(BenefitsIntakeService::Service)
+            .to receive(:valid_document?)
+            .and_return(pdf_path)
+        end
+
+        it 'tracks attempt and success metrics' do
+          post(
+            '/accredited_representative_portal/v0/upload_supporting_documents',
+            params: {
+              form_id: form_number,
+              file: fixture_file_upload('doctors-note.gif')
+            }
+          )
+
+          expect(monitor_instance).to have_received(:track_count).with(
+            AccreditedRepresentativePortal::V0::RepresentativeFormUploadController::ATTEMPT_METRIC_SUPPORTING_DOCUMENTS
+          )
+
+          expect(monitor_instance).to have_received(:track_count).with(
+            AccreditedRepresentativePortal::V0::RepresentativeFormUploadController::SUCCESS_METRIC_SUPPORTING_DOCUMENTS
+          )
+        end
+      end
+
+      context 'when upload fails' do
+        before do
+          allow_any_instance_of(
+            AccreditedRepresentativePortal::V0::RepresentativeFormUploadController
+          ).to receive(:handle_attachment_upload)
+            .and_raise(StandardError.new('oops'))
+        end
+
+        it 'tracks attempt and error metrics' do
+          post(
+            '/accredited_representative_portal/v0/upload_supporting_documents',
+            params: {
+              form_id: form_number,
+              file: fixture_file_upload('doctors-note.gif')
+            }
+          )
+
+          expect(monitor_instance).to have_received(:track_count).with(
+            AccreditedRepresentativePortal::V0::RepresentativeFormUploadController::ATTEMPT_METRIC_SUPPORTING_DOCUMENTS
+          )
+
+          expect(monitor_instance).to have_received(:track_count).with(
+            AccreditedRepresentativePortal::V0::RepresentativeFormUploadController::ERROR_METRIC_SUPPORTING_DOCUMENTS,
+            tags: ['reason:standard_error']
+          )
+        end
+      end
+    end
+
     describe '#upload_bdd_sha_documents' do
       it 'renders the attachment as json' do
         clamscan = double(safe?: true)
