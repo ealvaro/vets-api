@@ -1545,6 +1545,85 @@ RSpec.describe 'IvcChampva::V1::Forms::Uploads', type: :request do
     end
   end
 
+  describe '#prioritize_selected_supporting_doc_applicant' do
+    let(:controller) { IvcChampva::V1::UploadsController.new }
+    let(:jason) do
+      { 'applicant_name' => { 'first' => 'Jason', 'last' => 'Voorhees' } }
+    end
+    let(:pin) do
+      { 'applicant_name' => { 'first' => 'Pin', 'middle' => 'T', 'last' => 'Head' } }
+    end
+
+    it 'makes the selected supporting-document applicant beneficiary zero' do
+      parsed_form_data = {
+        'applicants' => [jason, pin],
+        'supporting_docs' => [{ 'applicants' => ['Pin Head'] }]
+      }
+
+      controller.send(:prioritize_selected_supporting_doc_applicant, parsed_form_data)
+
+      expect(parsed_form_data['applicants']).to eq([pin, jason])
+
+      allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys).and_return(true)
+      metadata = IvcChampva::VHA1010d2027.new(parsed_form_data).metadata
+
+      expect(JSON.parse(metadata['beneficiary_0'])['beneficiary_name']['first']).to eq('Pin')
+      expect(JSON.parse(metadata['beneficiary_1'])['beneficiary_name']['first']).to eq('Jason')
+
+      parsed_form_data['supporting_docs'].first['applicants'] = ['Jason Voorhees']
+      controller.send(:prioritize_selected_supporting_doc_applicant, parsed_form_data)
+
+      expect(parsed_form_data['applicants']).to eq([jason, pin])
+    end
+
+    it 'hydrates from the original request when a newer supporting-document row has no request JSON' do
+      claim_uuid = SecureRandom.uuid
+      parsed_form_data = {
+        'claim_id' => claim_uuid,
+        'supporting_docs' => [{ 'applicants' => ['Pin Head'] }]
+      }
+      create(
+        :ivc_champva_form,
+        form_uuid: claim_uuid,
+        request_json: {
+          'applicants' => [jason, pin],
+          'veteran' => { 'full_name' => {} }
+        }.to_json,
+        email: 'sponsor@example.com',
+        first_name: 'Sponsor',
+        last_name: 'Person',
+        created_at: 2.days.ago
+      )
+      create(:ivc_champva_form, form_uuid: claim_uuid, request_json: nil, created_at: 1.day.ago)
+
+      controller.send(:hydrate_docs_only_resubmission_data, parsed_form_data)
+
+      expect(parsed_form_data['applicants']).to eq([pin, jason])
+    end
+
+    it 'fails instead of falling back to the first applicant when the selection does not match' do
+      parsed_form_data = {
+        'applicants' => [jason, pin],
+        'supporting_docs' => [{ 'applicants' => ['Freddy Krueger'] }]
+      }
+
+      expect do
+        controller.send(:prioritize_selected_supporting_doc_applicant, parsed_form_data)
+      end.to raise_error(ArgumentError, 'selected applicant could not be uniquely matched to the claim')
+    end
+
+    it 'preserves legacy behavior when no applicant was selected' do
+      parsed_form_data = {
+        'applicants' => [jason, pin],
+        'supporting_docs' => [{ 'applicants' => [] }]
+      }
+
+      controller.send(:prioritize_selected_supporting_doc_applicant, parsed_form_data)
+
+      expect(parsed_form_data['applicants']).to eq([jason, pin])
+    end
+  end
+
   describe '#build_json' do
     let(:controller) { IvcChampva::V1::UploadsController.new }
 

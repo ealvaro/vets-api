@@ -1322,7 +1322,7 @@ module IvcChampva
       end
 
       def hydrate_docs_only_resubmission_data(parsed_form_data)
-        source_form = IvcChampvaForm.where(form_uuid: parsed_form_data['claim_id'].to_s).order(updated_at: :desc).first
+        source_form = docs_only_source_form(parsed_form_data['claim_id'])
         raise ArgumentError, 'claim_id could not be resolved to an existing CHAMPVA form' if source_form.blank?
 
         source_payload = source_form_payload(source_form)
@@ -1330,6 +1330,12 @@ module IvcChampva
         hydrate_primary_contact_info(parsed_form_data, source_form)
         hydrate_veteran_info(parsed_form_data, source_form, source_payload)
         hydrate_applicants(parsed_form_data, source_form, source_payload)
+        prioritize_selected_supporting_doc_applicant(parsed_form_data)
+      end
+
+      def docs_only_source_form(claim_id)
+        records = IvcChampvaForm.where(form_uuid: claim_id.to_s)
+        records.where.not(request_json_ciphertext: nil).order(:created_at).first || records.order(:created_at).first
       end
 
       def hydrate_certification_fields(parsed_form_data, source_payload)
@@ -1429,6 +1435,46 @@ module IvcChampva
           candidate_last = candidate_name['last'].to_s.strip.downcase
           candidate_first == first && candidate_last == last
         end
+      end
+
+      def prioritize_selected_supporting_doc_applicant(parsed_form_data)
+        selected_names = selected_supporting_doc_applicant_names(parsed_form_data)
+        return if selected_names.empty?
+
+        matches = selected_applicant_matches(parsed_form_data, selected_names)
+        unless selected_names.one? && matches.one?
+          raise ArgumentError, 'selected applicant could not be uniquely matched to the claim'
+        end
+
+        parsed_form_data['applicants'] = prioritize_applicant(parsed_form_data['applicants'], matches.first)
+      end
+
+      def prioritize_applicant(applicants, selected_applicant)
+        remaining_applicants = Array(applicants).reject { |applicant| applicant.equal?(selected_applicant) }
+        [selected_applicant, *remaining_applicants]
+      end
+
+      def selected_supporting_doc_applicant_names(parsed_form_data)
+        Array(parsed_form_data['supporting_docs'])
+          .flat_map { |doc| Array(doc['applicants']) }
+          .compact_blank
+          .map { |name| normalize_applicant_name(name) }
+          .uniq
+      end
+
+      def selected_applicant_matches(parsed_form_data, selected_names)
+        Array(parsed_form_data['applicants']).select do |applicant|
+          selected_names.include?(normalize_applicant_name(applicant_display_name(applicant)))
+        end
+      end
+
+      def applicant_display_name(applicant)
+        name = applicant['applicant_name'] || applicant['applicantName'] || {}
+        [name['first'], name['last']].compact_blank.join(' ')
+      end
+
+      def normalize_applicant_name(name)
+        name.to_s.strip.downcase.gsub(/\s+/, ' ')
       end
 
       # rubocop:disable Metrics/MethodLength
