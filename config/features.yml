@@ -948,7 +948,8 @@ features:
     description: Enables the Notice of Disagreement status update batch job
   decision_review_nod_june2026_pdf_enabled:
     actor_type: user
-    description: Enables utilizing  June 2026 Notice of Disagreement pdf VA form
+    description: Globally allows the June 2026 Notice of Disagreement PDF VA form to be used. When enabled, the
+      submitted payload selects the form revision; when disabled, all submissions render the Feb 2025 form.
   decision_review_sc_status_updater_enabled:
     actor_type: user
     description: Enables the Supplemental Claim status update batch job

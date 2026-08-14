@@ -59,6 +59,57 @@ Rspec.describe 'AppealsApi::NoticeOfDisagreements::V0::NoticeOfDisagreements::Fo
       end
     end
 
+    describe 'PDF version selection' do
+      let(:scopes) { %w[system/NoticeOfDisagreements.write] }
+      let(:june2026_enabled) { true }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:decision_review_nod_june2026_pdf_enabled).and_return(june2026_enabled)
+      end
+
+      def post_revision(revision_fields)
+        body = default_data.deep_dup
+        attributes = body['data']['attributes']
+        attributes.delete('requestDecisionAsap')
+        attributes.delete('appealingVhaDenial')
+        attributes.merge!(revision_fields)
+
+        with_openid_auth(scopes) do |auth_header|
+          post(path, params: body.to_json, headers: headers.merge(auth_header))
+        end
+      end
+
+      # The published v0 schema has no `requestDecisionAsap`, so direct
+      # consumers stay on the Feb 2025 form until that contract is updated —
+      # rather than being switched by a flag they can't see.
+      it 'renders the Feb 2025 PDF for the documented v0 payload' do
+        expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+          .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+
+        post_revision('appealingVhaDenial' => true)
+      end
+
+      it 'renders the June 2026 PDF if a consumer sends requestDecisionAsap' do
+        expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+          .with(anything, 'AppealsApi::NoticeOfDisagreement', 'june2026')
+
+        post_revision('requestDecisionAsap' => false)
+      end
+
+      context 'when the June 2026 form is not enabled' do
+        let(:june2026_enabled) { false }
+
+        it 'renders the Feb 2025 PDF regardless of the payload' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+
+          post_revision('requestDecisionAsap' => true)
+        end
+      end
+    end
+
     describe 'responses' do
       let(:created_notice_of_disagreement) { AppealsApi::NoticeOfDisagreement.find(parsed_response.dig('data', 'id')) }
       let(:scopes) { %w[system/NoticeOfDisagreements.write] }

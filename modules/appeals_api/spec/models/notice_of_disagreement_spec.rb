@@ -299,6 +299,141 @@ describe AppealsApi::NoticeOfDisagreement, type: :model do
     it { expect(notice_of_disagreement.stamp_text).to eq 'Doe - 6789' }
   end
 
+  describe 'PDF form revision detection' do
+    # Builds a NOD carrying only the revision fields named, so each example
+    # describes a payload shape a submitter could actually send. (The shared v2
+    # fixtures deliberately carry both fields so the generator specs can render
+    # either template from one fixture.)
+    def nod_with(revision_fields)
+      form_data = fixture_as_json('decision_reviews/v2/valid_10182.json').deep_dup
+      attributes = form_data['data']['attributes']
+      attributes.delete('requestDecisionAsap')
+      attributes.delete('appealingVhaDenial')
+      attributes.merge!(revision_fields)
+      build(:notice_of_disagreement_v2, form_data:)
+    end
+
+    describe '#june2026_form?' do
+      it 'is true when requestDecisionAsap is present and true' do
+        expect(nod_with('requestDecisionAsap' => true)).to be_june2026_form
+      end
+
+      # The whole point of keying on presence: the VA.gov transformer sends
+      # this field even when the appellant declined the waiver.
+      it 'is true when requestDecisionAsap is present but false' do
+        expect(nod_with('requestDecisionAsap' => false)).to be_june2026_form
+      end
+
+      it 'is false when only appealingVhaDenial is present' do
+        expect(nod_with('appealingVhaDenial' => true)).not_to be_june2026_form
+      end
+
+      it 'is false when neither revision field is present' do
+        expect(nod_with({})).not_to be_june2026_form
+      end
+    end
+
+    describe '#feb2025_form?' do
+      it 'is true when only appealingVhaDenial is present' do
+        expect(nod_with('appealingVhaDenial' => true)).to be_feb2025_form
+      end
+
+      it 'is true when neither revision field is present' do
+        expect(nod_with({})).to be_feb2025_form
+      end
+
+      it 'is false when the payload also carries a newer revision field' do
+        expect(nod_with('requestDecisionAsap' => false, 'appealingVhaDenial' => true))
+          .not_to be_feb2025_form
+      end
+    end
+
+    describe '#pdf_version_from_form_data' do
+      it 'selects june2026 for a June 2026 payload' do
+        expect(nod_with('requestDecisionAsap' => false).pdf_version_from_form_data).to eq 'june2026'
+      end
+
+      it 'selects feb2025 for a Feb 2025 payload' do
+        expect(nod_with('appealingVhaDenial' => true).pdf_version_from_form_data).to eq 'feb2025'
+      end
+
+      it 'falls back to feb2025 when neither revision field is present' do
+        expect(nod_with({}).pdf_version_from_form_data).to eq 'feb2025'
+      end
+
+      it 'resolves a payload carrying both fields in favor of june2026' do
+        nod = nod_with('requestDecisionAsap' => false, 'appealingVhaDenial' => true)
+        expect(nod.pdf_version_from_form_data).to eq 'june2026'
+      end
+    end
+
+    describe '#ambiguous_form_revision?' do
+      it 'is true when the payload carries a field its revision removed' do
+        expect(nod_with('requestDecisionAsap' => false, 'appealingVhaDenial' => true))
+          .to be_ambiguous_form_revision
+      end
+
+      it 'is false when exactly one revision field is present' do
+        expect(nod_with('requestDecisionAsap' => false)).not_to be_ambiguous_form_revision
+        expect(nod_with('appealingVhaDenial' => true)).not_to be_ambiguous_form_revision
+      end
+
+      # Claiming no newer revision resolves to the baseline, which is an answer
+      # rather than a guess — every field is optional in the v0 and v2 schemas.
+      it 'is false when neither revision field is present' do
+        expect(nod_with({})).not_to be_ambiguous_form_revision
+      end
+
+      it 'is false when the form data is blank' do
+        expect(build(:notice_of_disagreement_v2, form_data: {})).not_to be_ambiguous_form_revision
+      end
+
+      # Revisions are usually cumulative: a new one keeps most existing fields
+      # rather than swapping them the way June 2026 swapped Feb 2025's. Matching
+      # more than one revision must stay normal, or the warning fires on every
+      # submission of the next revision and stops meaning anything.
+      it 'is false for a cumulative revision that keeps an older revision field' do
+        stub_const(
+          "#{described_class}::PDF_REVISIONS",
+          [
+            { version: 'march2027', added_fields: %w[newField], removed_fields: [] },
+            *described_class::PDF_REVISIONS
+          ]
+        )
+        nod = nod_with('newField' => true, 'requestDecisionAsap' => false)
+
+        expect(nod.pdf_version_from_form_data).to eq 'march2027'
+        expect(nod).not_to be_ambiguous_form_revision
+      end
+
+      it 'is true for a revision that removed a field the payload still carries' do
+        stub_const(
+          "#{described_class}::PDF_REVISIONS",
+          [
+            { version: 'march2027', added_fields: %w[newField], removed_fields: %w[requestDecisionAsap] },
+            *described_class::PDF_REVISIONS
+          ]
+        )
+        nod = nod_with('newField' => true, 'requestDecisionAsap' => false)
+
+        expect(nod.pdf_version_from_form_data).to eq 'march2027'
+        expect(nod).to be_ambiguous_form_revision
+      end
+    end
+
+    describe '#contradicted_form_fields' do
+      it 'names the removed fields the payload still carries' do
+        expect(nod_with('requestDecisionAsap' => false, 'appealingVhaDenial' => true).contradicted_form_fields)
+          .to eq %w[appealingVhaDenial]
+      end
+
+      it 'is empty when the payload matches its revision' do
+        expect(nod_with('requestDecisionAsap' => false).contradicted_form_fields).to be_empty
+        expect(nod_with('appealingVhaDenial' => true).contradicted_form_fields).to be_empty
+      end
+    end
+  end
+
   describe '#submit_evidence_to_central_mail!' do
     let(:notice_of_disagreement) { create(:notice_of_disagreement) }
     let(:evidence_submission1) { create(:evidence_submission, supportable: notice_of_disagreement) }

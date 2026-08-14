@@ -10,6 +10,7 @@ class AppealsApi::V2::DecisionReviews::NoticeOfDisagreementsController < Appeals
   include AppealsApi::CharacterUtilities
   include AppealsApi::PdfDownloads
   include AppealsApi::GatewayOriginCheck
+  include AppealsApi::NodPdfVersion
 
   skip_before_action :authenticate
   before_action :validate_icn_header, only: %i[index download]
@@ -42,7 +43,7 @@ class AppealsApi::V2::DecisionReviews::NoticeOfDisagreementsController < Appeals
     @notice_of_disagreement.save
 
     # Fill in the VA Nod pdf form and Submit to Central Mail for intake
-    pdf_version = Flipper.enabled?(:decision_review_nod_june2026_pdf_enabled) ? 'june2026' : 'feb2025'
+    pdf_version = nod_pdf_version(@notice_of_disagreement)
     AppealsApi::PdfSubmitJob.perform_async(@notice_of_disagreement.id, 'AppealsApi::NoticeOfDisagreement', pdf_version)
 
     render_notice_of_disagreement

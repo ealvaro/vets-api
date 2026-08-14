@@ -67,10 +67,69 @@ module AppealsApi
     has_many :evidence_submissions, as: :supportable, dependent: :destroy
     has_many :status_updates, as: :statusable, dependent: :destroy
 
+    JUNE2026_PDF_VERSION = 'june2026'
+    FEB2025_PDF_VERSION = 'feb2025'
+
+    # Each revision of VA Form 10182 renders from its own template, and a
+    # template only stamps its own fields, so the revision has to match the data
+    # that was actually collected — otherwise the appellant's answer is silently
+    # dropped from the PDF that reaches the Board.
+    #
+    # The baseline: what a payload resolves to when it claims no newer revision.
+    # It has no identifying field — being the baseline *is* the absence of one.
+    BASELINE_PDF_VERSION = FEB2025_PDF_VERSION
+
+    # Revisions newer than the baseline, newest first. Each declares
+    # `added_fields`, which identify it by presence rather than value (VA.gov
+    # sends `requestDecisionAsap` even when the appellant declined the waiver),
+    # and `removed_fields`, which that revision dropped — so a payload carrying
+    # one contradicts itself about which form was filled out.
+    #
+    # The newest revision with an added field present wins. Revisions are
+    # usually cumulative, keeping most existing fields, so matching more than one
+    # is normal and only a removed field signals a real conflict. Add new
+    # revisions to the top.
+    PDF_REVISIONS = [
+      {
+        version: JUNE2026_PDF_VERSION,
+        added_fields: %w[requestDecisionAsap].freeze,
+        removed_fields: %w[appealingVhaDenial].freeze
+      }
+    ].freeze
+
     def pdf_structure(pdf_version)
       Object.const_get(
         "AppealsApi::PdfConstruction::NoticeOfDisagreement::#{pdf_version.capitalize}::Structure"
       ).new(self)
+    end
+
+    def june2026_form?
+      pdf_version_from_form_data == JUNE2026_PDF_VERSION
+    end
+
+    def feb2025_form?
+      pdf_version_from_form_data == FEB2025_PDF_VERSION
+    end
+
+    def pdf_version_from_form_data
+      identified_pdf_revision&.fetch(:version) || BASELINE_PDF_VERSION
+    end
+
+    # Fields the resolved revision removed but the payload still carries. Names
+    # only — never values, which may be PII.
+    def contradicted_form_fields
+      return [] if identified_pdf_revision.nil?
+
+      identified_pdf_revision[:removed_fields].select { |field| form_attribute?(field) }
+    end
+
+    # True when the payload contradicts the revision it resolved to by carrying a
+    # field that revision removed. Neither the v0 nor the v2 schema sets
+    # `additionalProperties`, so a direct consumer can send both. It still
+    # resolves deterministically — newest match wins — but the resolution is a
+    # guess about a form the appellant already filled out.
+    def ambiguous_form_revision?
+      contradicted_form_fields.any?
     end
 
     # V2 Specific
@@ -301,6 +360,18 @@ module AppealsApi
 
     def data_attributes
       form_data&.dig('data', 'attributes')
+    end
+
+    # Newest revision whose added fields the payload carries, or nil if it
+    # carries none of them.
+    def identified_pdf_revision
+      PDF_REVISIONS.find do |revision|
+        revision[:added_fields].any? { |field| form_attribute?(field) }
+      end
+    end
+
+    def form_attribute?(field)
+      (data_attributes || {}).key?(field)
     end
 
     def veterans_local_time

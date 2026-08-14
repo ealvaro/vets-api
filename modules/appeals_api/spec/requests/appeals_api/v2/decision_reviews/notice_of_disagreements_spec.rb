@@ -100,6 +100,81 @@ Rspec.describe 'AppealsApi::V2::DecisionReviews::NoticeOfDisagreements', type: :
       end
     end
 
+    describe 'PDF version selection' do
+      let(:june2026_enabled) { true }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:decision_review_nod_june2026_pdf_enabled).and_return(june2026_enabled)
+        # Catch-alls so the constrained expectations below match only the log
+        # line under test, and unrelated logging doesn't fail the example.
+        allow(Rails.logger).to receive(:warn).and_call_original
+        allow(Rails.logger).to receive(:error).and_call_original
+      end
+
+      # Each body carries exactly one revision field, matching what the VA.gov
+      # submit transformer sends.
+      def post_revision(revision_fields)
+        data = JSON.parse(minimum_data)
+        attributes = data['data']['attributes']
+        attributes.delete('requestDecisionAsap')
+        attributes.delete('appealingVhaDenial')
+        attributes.merge!(revision_fields)
+        post(path, params: data.to_json, headers:)
+      end
+
+      context 'when the June 2026 form is enabled' do
+        it 'renders the June 2026 PDF for a June 2026 payload' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'june2026')
+
+          post_revision('requestDecisionAsap' => false)
+        end
+
+        it 'renders the Feb 2025 PDF for a Feb 2025 payload' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+
+          post_revision('appealingVhaDenial' => true)
+        end
+
+        it 'renders the Feb 2025 PDF when the payload claims no newer revision' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+
+          post_revision({})
+        end
+
+        it 'logs a warning when the payload carries a field its revision removed' do
+          expect(Rails.logger).to receive(:warn)
+            .with(/contradicts the 10182 form revision/, any_args)
+
+          post_revision('requestDecisionAsap' => false, 'appealingVhaDenial' => true)
+        end
+      end
+
+      context 'when the June 2026 form is not enabled' do
+        let(:june2026_enabled) { false }
+
+        it 'renders the Feb 2025 PDF for a Feb 2025 payload' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+
+          post_revision('appealingVhaDenial' => true)
+        end
+
+        it 'renders the Feb 2025 PDF for a June 2026 payload, and logs the dropped election' do
+          expect(AppealsApi::PdfSubmitJob).to receive(:perform_async)
+            .with(anything, 'AppealsApi::NoticeOfDisagreement', 'feb2025')
+          expect(Rails.logger).to receive(:error)
+            .with(/June 2026 payload rendered on the Feb 2025 form/, any_args)
+
+          post_revision('requestDecisionAsap' => true)
+        end
+      end
+    end
+
     context 'when a required headers is missing' do
       it 'returns an error' do
         post(path, params: minimum_data, headers: headers.except('X-VA-File-Number'))
