@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -861,6 +861,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000002) do
     t.datetime "updated_at", null: false
     t.string "va_claim_id", comment: "uuid returned from claims evidence api"
     t.index ["needs_kms_rotation"], name: "index_claims_evidence_api_submissions_on_needs_kms_rotation"
+    t.index ["saved_claim_id", "persistent_attachment_id", "form_id"], name: "idx_claims_evidence_submissions_on_claim_attachment_form"
   end
 
   create_table "client_configs", force: :cascade do |t|
@@ -1139,6 +1140,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000002) do
     t.uuid "user_account_id"
     t.string "va_notify_id", null: false
     t.index ["user_account_id"], name: "index_event_bus_gateway_notifications_on_user_account_id"
+    t.index ["va_notify_id"], name: "index_event_bus_gateway_notifications_on_va_notify_id"
   end
 
   create_table "event_bus_gateway_push_notifications", force: :cascade do |t|
@@ -1412,6 +1414,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000002) do
     t.jsonb "response"
     t.jsonb "response_ciphertext"
     t.datetime "updated_at", null: false
+    t.index ["benefits_intake_uuid"], name: "index_form_submission_attempts_on_benefits_intake_uuid"
     t.index ["form_submission_id"], name: "index_form_submission_attempts_on_form_submission_id"
     t.index ["needs_kms_rotation"], name: "index_form_submission_attempts_on_needs_kms_rotation"
   end
