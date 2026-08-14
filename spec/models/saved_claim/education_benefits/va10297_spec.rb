@@ -25,12 +25,17 @@ RSpec.describe SavedClaim::EducationBenefits::VA10297 do
 
     describe 'confirmation email for 10297' do
       context 'when the form22_10297_confirmation_email feature flag is disabled' do
+        before do
+          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+        end
+
         it 'does not send a confirmation email' do
           allow(Flipper).to receive(:enabled?).with(:form22_10297_confirmation_email).and_return(false)
 
           subject = create(:va10297_simple_form)
           subject.after_submit(user)
 
+          expect(VANotify::V2::QueueEmailJob).not_to have_received(:enqueue)
           expect(VANotify::EmailJob).not_to have_received(:perform_async)
         end
       end
@@ -46,61 +51,26 @@ RSpec.describe SavedClaim::EducationBenefits::VA10297 do
               .to receive(:enabled?)
               .with(:form10297_confirmation_email_with_silent_failure_processing)
               .and_return(false)
+            allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
           end
 
-          context 'when va_notify_v2_form10297_confirmation_email is disabled' do
-            before do
-              allow(Flipper)
-                .to receive(:enabled?)
-                .with(:va_notify_v2_form10297_confirmation_email)
-                .and_return(false)
-            end
+          it 'sends an email via V2 QueueEmailJob' do
+            subject = create(:va10297_simple_form)
+            confirmation_number = subject.education_benefits_claim.confirmation_number
 
-            it 'sends an email via V1 EmailJob' do
-              subject = create(:va10297_simple_form)
-              confirmation_number = subject.education_benefits_claim.confirmation_number
-
-              subject.after_submit(user)
-              expect(VANotify::EmailJob).to have_received(:perform_async).with(
-                'test@test.com',
-                'form10297_confirmation_email_template_id',
-                {
-                  'first_name' => 'TEST',
-                  'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-                  'confirmation_number' => confirmation_number,
-                  'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
-                }
-              )
-            end
-          end
-
-          context 'when va_notify_v2_form10297_confirmation_email is enabled' do
-            before do
-              allow(Flipper)
-                .to receive(:enabled?)
-                .with(:va_notify_v2_form10297_confirmation_email)
-                .and_return(true)
-              allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-            end
-
-            it 'sends an email via V2 QueueEmailJob' do
-              subject = create(:va10297_simple_form)
-              confirmation_number = subject.education_benefits_claim.confirmation_number
-
-              subject.after_submit(user)
-              expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
-                'test@test.com',
-                'form10297_confirmation_email_template_id',
-                {
-                  'first_name' => 'TEST',
-                  'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
-                  'confirmation_number' => confirmation_number,
-                  'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
-                },
-                'Settings.vanotify.services.va_gov.api_key'
-              )
-              expect(VANotify::EmailJob).not_to have_received(:perform_async)
-            end
+            subject.after_submit(user)
+            expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
+              'test@test.com',
+              'form10297_confirmation_email_template_id',
+              {
+                'first_name' => 'TEST',
+                'date_submitted' => Time.zone.today.strftime('%B %d, %Y'),
+                'confirmation_number' => confirmation_number,
+                'regional_office_address' => "P.O. Box 4616\nBuffalo, NY 14240-4616"
+              },
+              'Settings.vanotify.services.va_gov.api_key'
+            )
+            expect(VANotify::EmailJob).not_to have_received(:perform_async)
           end
         end
 
