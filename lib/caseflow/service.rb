@@ -110,6 +110,14 @@ module Caseflow
 
     def authorized_perform(method, path, params, additional_headers = nil, options = nil)
       perform(method, path, params, DEFAULT_HEADERS.merge(additional_headers || {}), options)
+    rescue Common::Exceptions::BackendServiceException => e
+      raise unless e.original_status.to_i == 404
+
+      remapped = e.class.new(
+        'CASEFLOWSTATUS404', e.response_values, e.original_status, e.original_body
+      )
+      remapped.set_backtrace(e.backtrace)
+      raise remapped
     end
 
     # Increments statsd metric and logs appeals that have one or more issues with null descriptions

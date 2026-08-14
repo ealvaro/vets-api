@@ -50,6 +50,57 @@ RSpec.describe Caseflow::Service do
   end
 
   describe '#get_appeals' do
+    context 'when Caseflow returns a 404' do
+      let(:user) { build(:user, :loa3, ssn: '120495723') }
+      let(:original_body) do
+        {
+          'errors' => [{
+            'status' => '404',
+            'title' => 'Veteran not found',
+            'detail' => 'A veteran with that SSN was not found in our systems.'
+          }]
+        }
+      end
+
+      it 'remaps an unmapped 404 BackendServiceException to CASEFLOWSTATUS404' do
+        response_values = {
+          status: 404,
+          detail: 'Veteran not found',
+          code: 'VA900',
+          source: original_body.dig('errors', 0, 'detail')
+        }
+        unmapped_error = Common::Exceptions::BackendServiceException.new(
+          'VA900',
+          response_values,
+          404,
+          original_body
+        )
+        unmapped_error.set_backtrace(%w[caseflow/service.rb:1 caseflow/service.rb:2])
+        allow_any_instance_of(described_class).to receive(:perform).and_raise(unmapped_error)
+
+        expect { subject.get_appeals(user) }
+          .to raise_error(Common::Exceptions::BackendServiceException) do |error|
+            expect(error.key).to eq('CASEFLOWSTATUS404')
+            expect(error.errors.first[:code]).to eq('CASEFLOWSTATUS404')
+            expect(error.errors.first[:status].to_i).to eq(404)
+            expect(error.original_status).to eq(404)
+            expect(error.backtrace).to eq(unmapped_error.backtrace)
+          end
+      end
+
+      it 'raises CASEFLOWSTATUS404 when the not_found cassette is used',
+         run_at: 'Wed, 08 Jan 2018 14:44:00 GMT' do
+        VCR.use_cassette('caseflow/not_found', { match_requests_on: %i[method uri] }) do
+          expect { subject.get_appeals(user) }
+            .to raise_error(Common::Exceptions::BackendServiceException) do |error|
+              expect(error.key).to eq('CASEFLOWSTATUS404')
+              expect(error.errors.first[:code]).to eq('CASEFLOWSTATUS404')
+              expect(error.errors.first[:status].to_i).to eq(404)
+            end
+        end
+      end
+    end
+
     context 'when one or more appeals have null issue descriptions' do
       before do
         allow(StatsD).to receive(:increment)
