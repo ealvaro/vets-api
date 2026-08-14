@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_173705) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -2656,9 +2656,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_000003) do
   add_foreign_key "oauth_sessions", "user_verifications"
   add_foreign_key "organization_representatives", "veteran_organizations", column: "organization_poa", primary_key: "poa"
   add_foreign_key "organization_representatives", "veteran_representatives", column: "representative_id", primary_key: "representative_id"
-  add_foreign_key "saved_claim_groups", "saved_claims", column: "parent_claim_id", validate: false
-  add_foreign_key "saved_claim_groups", "saved_claims", validate: false
-  add_foreign_key "schema_contract_validations", "user_accounts", validate: false
+  add_foreign_key "saved_claim_groups", "saved_claims"
+  add_foreign_key "saved_claim_groups", "saved_claims", column: "parent_claim_id"
+  add_foreign_key "schema_contract_validations", "user_accounts"
   add_foreign_key "sign_in_session_records", "user_accounts"
   add_foreign_key "terms_of_use_agreements", "user_accounts"
   add_foreign_key "test_user_dashboard_tud_account_availability_logs", "user_accounts"
@@ -2669,7 +2669,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_000003) do
   add_foreign_key "user_actions", "user_verifications", column: "acting_user_verification_id"
   add_foreign_key "user_actions", "user_verifications", column: "subject_user_verification_id"
   add_foreign_key "user_credential_emails", "user_verifications"
-  add_foreign_key "user_verifications", "sign_in_webauthn_credentials", column: "webauthn_credential_id", validate: false
+  add_foreign_key "user_verifications", "sign_in_webauthn_credentials", column: "webauthn_credential_id"
   add_foreign_key "user_verifications", "user_accounts"
   add_foreign_key "va_notify_in_progress_reminders_sent", "user_accounts"
   add_foreign_key "veteran_device_records", "devices"
