@@ -61,6 +61,26 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       expect(closed_alert['title']).to be_present
       expect(closed_alert['description']).to be_present
     end
+
+    it 'title prompts the veteran that a decision was made' do
+      expect(closed_alert['title']).to eq('We made a decision on your application on')
+    end
+
+    it 'title ends with "on" so the FE can append the formatted date' do
+      expect(closed_alert['title']).to end_with('on')
+    end
+
+    it 'description directs veteran to read for the decision outcome' do
+      expect(closed_alert['description']).to eq('Keep reading for our application decision.')
+    end
+
+    it 'does not contain old letter-based description copy (regression guard)' do
+      expect(closed_alert['description']).not_to include('decision letter')
+    end
+
+    it 'includes title and description keys so FE rendering is predictable' do
+      expect(closed_alert.keys).to include('title', 'description')
+    end
   end
 
   describe 'nextSteps section' do
@@ -73,6 +93,18 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
         expect(item['boldText']).to be_present
         expect(item['text']).to be_present
       end
+    end
+
+    it 'items with a linkUrl use a valid relative or absolute URL format' do
+      next_steps['items'].select { |item| item['linkUrl'].present? }.each do |item|
+        expect(item['linkUrl']).to match(%r{\A(https?://|/)})
+        expect(item['linkText']).to be_present
+      end
+    end
+
+    it 'includes an item directing veterans who disagree to request a decision review' do
+      texts = next_steps['items'].map { |i| "#{i['boldText']} #{i['text']}" }.join(' ')
+      expect(texts).to include('disagree')
     end
   end
 
