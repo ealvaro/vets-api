@@ -2,6 +2,7 @@
 
 module ErrorHandling
   extend ActiveSupport::Concern
+  include TravelPay::Monitorable
 
   KNOWN_BTSSS_STATUSES = [400, 401, 403, 404, 409, 413, 422, 429, 500, 502, 503, 504].freeze
 
@@ -30,7 +31,7 @@ module ErrorHandling
   def log_exception(original, exception)
     level = exception.is_a?(Common::Exceptions::BackendServiceException) ? :error : :warn
 
-    Rails.logger.public_send(
+    monitor.log(
       level,
       "#{human_readable_message}: #{original.class} - #{original.message}",
       code: exception.respond_to?(:key) ? exception.key : nil,
@@ -81,7 +82,8 @@ module ErrorHandling
     parsed = body.is_a?(String) ? JSON.parse(body) : body
     parsed&.dig('correlationId')
   rescue JSON::ParserError => e
-    Rails.logger.warn(
+    monitor.log(
+      :warn,
       'Failed to parse BTSSS response body for correlation ID',
       error: e.message
     )

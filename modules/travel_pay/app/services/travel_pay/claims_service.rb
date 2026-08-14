@@ -4,6 +4,7 @@ module TravelPay
   class ClaimsService
     include ExpenseNormalizer
     include IdValidation
+    include Monitorable
 
     def initialize(auth_manager, user)
       @auth_manager = auth_manager
@@ -46,7 +47,7 @@ module TravelPay
       start_time = Time.current
       all_claims = loop_and_paginate_claims(loop_params, auth_session)
       elapsed_time = Time.current - start_time
-      Rails.logger.info(message: "Looped through #{all_claims[:data].size} claims in #{elapsed_time} seconds.")
+      monitor.log(:info, "Looped through #{all_claims[:data].size} claims in #{elapsed_time} seconds.")
 
       all_claims
     end
@@ -141,7 +142,7 @@ module TravelPay
         claims
       end
     rescue Date::Error => e
-      Rails.logger.warn(message: "#{e}. Not filtering claims by date (given: #{date_string}).")
+      monitor.log(:warn, "#{e}. Not filtering claims by date (given: #{date_string}).")
       claims
     end
 
@@ -164,10 +165,7 @@ module TravelPay
       documents_response = documents_client.get_document_ids(auth_session, claim_id)
       documents_response.body['data'] || []
     rescue => e
-      Rails.logger.error(message:
-      "#{e}. Could not retrieve document summary for requested claim.")
-      # Because we're appending documents to the claim details we need to rescue and return the details,
-      # even if we don't get documents
+      monitor.log(:error, "#{e}. Could not retrieve document summary for requested claim.")
       []
     end
 
@@ -186,7 +184,7 @@ module TravelPay
       begin
         document_data = documents_service.download_document(claim_id, document_id)
       rescue => e
-        Rails.logger.error("Error downloading document for decision reason: #{e.message}")
+        monitor.log(:error, "Error downloading document for decision reason: #{e.message}")
         return nil
       end
 
@@ -195,7 +193,7 @@ module TravelPay
       # Try to get denial reasons first, then partial payment reasons
       doc_reader.denial_reasons || doc_reader.partial_payment_reasons
     rescue => e
-      Rails.logger.error("Error extracting decision reason: #{e.message}")
+      monitor.log(:error, "Error extracting decision reason: #{e.message}")
       nil
     end
 
@@ -240,12 +238,13 @@ module TravelPay
 
     def rescue_pagination_errors(e, claims)
       if claims[:data].empty?
-        Rails.logger.error(message: "#{e}. Could not retrieve claims by date range.")
+        monitor.track_request(:error, "#{e}. Could not retrieve claims by date range.",
+                              'travel_pay.claims.pagination_error')
         raise
       else
         claims => { data:, total_record_count:, page_number: }
-        Rails.logger.error(message:
-        "#{e}. Retrieved #{data.size} of #{total_record_count} claims, ending on page #{page_number}.")
+        monitor.log(:error,
+                    "#{e}. Retrieved #{data.size} of #{total_record_count} claims, ending on page #{page_number}.")
         build_claims_response({ **claims, status: 206 })
       end
     end

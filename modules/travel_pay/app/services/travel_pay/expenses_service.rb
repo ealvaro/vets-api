@@ -6,6 +6,7 @@ require 'base64'
 module TravelPay
   class ExpensesService
     include ExpenseNormalizer
+    include Monitorable
 
     def initialize(auth_manager)
       @auth_manager = auth_manager
@@ -33,7 +34,7 @@ module TravelPay
       # Validate required params
       raise ArgumentError, 'You must provide a claim ID to create an expense.' unless params['claim_id']
 
-      Rails.logger.info("Creating expense of type: #{params['expense_type']}")
+      monitor.log(:info, "Creating expense of type: #{params['expense_type']}")
       # Build the request body for the API
       request_body = build_expense_request_body(params)
       request_body = heic_converter.convert_if_heic(request_body)
@@ -41,7 +42,8 @@ module TravelPay
       response = client.add_expense(auth_session, params['expense_type'], request_body)
       response.body['data']
     rescue Faraday::Error => e
-      Rails.logger.error("Failed to create expense via API: #{e.message}")
+      monitor.track_request(:error, "Failed to create expense via API: #{e.message}",
+                            'travel_pay.expenses.create.api_error')
       TravelPay::ServiceError.raise_mapped_error(e)
     end
 
@@ -53,7 +55,7 @@ module TravelPay
       raise ArgumentError, 'You must provide an expense type to get an expense.' if expense_type.blank?
       raise ArgumentError, 'You must provide an expense ID to get an expense.' if expense_id.blank?
 
-      Rails.logger.info("Getting expense of type: #{expense_type} with ID: #{expense_id}")
+      monitor.log(:info, "Getting expense of type: #{expense_type} with ID: #{expense_id}")
 
       response = client.get_expense(auth_session, expense_type, expense_id)
       expense = response.body['data']
@@ -61,7 +63,8 @@ module TravelPay
       # Normalize expense type
       normalize_expense(expense)
     rescue Faraday::Error => e
-      Rails.logger.error("Failed to get expense via API: #{e.message}")
+      monitor.track_request(:error, "Failed to get expense via API: #{e.message}",
+                            'travel_pay.expenses.get.api_error')
       TravelPay::ServiceError.raise_mapped_error(e)
     end
 
@@ -72,7 +75,7 @@ module TravelPay
       raise ArgumentError, 'You must provide at least one field to update an expense.' if params.blank?
 
       auth_session = @auth_manager.authorize
-      Rails.logger.info("Updating expense of type: #{expense_type}")
+      monitor.log(:info, "Updating expense of type: #{expense_type}")
 
       # Build the request body for the API
       request_body = build_expense_request_body(params)
@@ -88,7 +91,7 @@ module TravelPay
       raise ArgumentError, 'You must provide an expense type to create an expense.' if expense_type.blank?
 
       auth_session = @auth_manager.authorize
-      Rails.logger.info("Deleting expense of type: #{expense_type}")
+      monitor.log(:info, "Deleting expense of type: #{expense_type}")
 
       response = client.delete_expense(auth_session, expense_id, expense_type)
       response.body['data']

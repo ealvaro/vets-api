@@ -49,7 +49,10 @@ RSpec.describe TravelPay::DocReader do
 
     context 'when heading is not found' do
       it 'returns nil and logs error when heading not found' do
-        expect(Rails.logger).to receive(:error).with("DocReader: Heading not found for 'Denial Reason(s)'")
+        expect(Rails.logger).to receive(:error).with(
+          "DocReader: Heading not found for 'Denial Reason(s)'",
+          hash_including(service: 'travel-pay')
+        )
         result = missing_heading_letter_reader.denial_reasons
         expect(result).to be_nil
       end

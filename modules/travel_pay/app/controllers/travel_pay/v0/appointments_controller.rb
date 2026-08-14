@@ -9,17 +9,29 @@ module TravelPay
       before_action :check_feature_flag
 
       def index
-        Rails.logger.info(message: 'Travel Pay appointment search START')
+        monitor.log(:info, 'Travel Pay appointment search START')
         appointments = appointments_service.search_appointments(search_params)
-        Rails.logger.info(message: 'Travel Pay appointment search END')
+        monitor.log(:info, 'Travel Pay appointment search END')
+        monitor.track_request(:info, 'Appointments index success', 'travel_pay.appointments.index',
+                              tags: ['result:success'])
         render json: { data: appointments }, status: :ok
+      rescue => e
+        monitor.track_request(:warn, 'Appointments index failure', 'travel_pay.appointments.index',
+                              error: e.message, tags: ['result:failure'])
+        raise
       end
 
       def create
-        Rails.logger.info(message: 'Travel Pay appointment create START')
+        monitor.log(:info, 'Travel Pay appointment create START')
         appointment = appointments_service.create_appointment(create_params)
-        Rails.logger.info(message: 'Travel Pay appointment create END')
+        monitor.log(:info, 'Travel Pay appointment create END')
+        monitor.track_request(:info, 'Appointments create success', 'travel_pay.appointments.create',
+                              tags: ['result:success'])
         render json: { data: appointment }, status: :created
+      rescue => e
+        monitor.track_request(:warn, 'Appointments create failure', 'travel_pay.appointments.create',
+                              error: e.message, tags: ['result:failure'])
+        raise
       end
 
       private

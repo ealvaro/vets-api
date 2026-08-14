@@ -104,7 +104,7 @@ describe TravelPay::TokenClient do
 
       expect(Rails.logger).to receive(:error).with(
         a_string_including('BTSSS token request failed with status 403'),
-        hash_including(response_status: 403)
+        hash_including(service: 'travel-pay')
       )
 
       # rubocop:disable Style/MultilineBlockChain

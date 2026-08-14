@@ -90,7 +90,7 @@ RSpec.describe ErrorHandling do
 
         expect(Rails.logger).to receive(:warn).with(
           'Failed to parse BTSSS response body for correlation ID',
-          error: instance_of(String)
+          hash_including(service: 'travel-pay')
         )
 
         expect(instance.send(:extract_correlation_id, error)).to be_nil

@@ -499,7 +499,7 @@ describe TravelPay::ClaimsService do
                                                         })
 
       expect(Rails.logger).to have_received(:info).with(
-        message: /Looped through 3 claims in/i
+        a_string_matching(/Looped through 3 claims in/i), hash_including(service: 'travel-pay')
       )
       expect(claims_by_date[:data].pluck('id')).to match_array(expected_ids)
       expect(claims_by_date[:data].count).to equal(claims_by_date[:metadata]['totalRecordCount'])
@@ -532,7 +532,7 @@ describe TravelPay::ClaimsService do
       expect(claims_by_date[:metadata]['status']).to equal(200)
       expect(claims_by_date[:metadata]['pageNumber']).to equal(1)
       expect(Rails.logger).to have_received(:info).with(
-        message: /Looped through 3 claims in/i
+        a_string_matching(/Looped through 3 claims in/i), hash_including(service: 'travel-pay')
       )
     end
 
@@ -548,7 +548,7 @@ describe TravelPay::ClaimsService do
 
       expect(claims_by_date[:data].count).to equal(claims_by_date[:metadata]['totalRecordCount'])
       expect(Rails.logger).to have_received(:info).with(
-        message: /Looped through 1 claims in/i
+        a_string_matching(/Looped through 1 claims in/i), hash_including(service: 'travel-pay')
       )
     end
 
@@ -579,7 +579,7 @@ describe TravelPay::ClaimsService do
       expect(claims_by_date[:data].count).to equal(0)
       expect(claims_by_date[:metadata]['totalRecordCount']).to equal(0)
       expect(Rails.logger).to have_received(:info).with(
-        message: /Looped through 0 claims in/i
+        a_string_matching(/Looped through 0 claims in/i), hash_including(service: 'travel-pay')
       )
     end
 
@@ -612,7 +612,7 @@ describe TravelPay::ClaimsService do
                                          })
       end.to raise_error(Common::Exceptions::BackendServiceException)
       expect(Rails.logger).to have_received(:error).with(
-        message: /Could not retrieve claim/i
+        a_string_matching(/Could not retrieve claim/i), hash_including(service: 'travel-pay')
       )
     end
 
@@ -652,10 +652,10 @@ describe TravelPay::ClaimsService do
                                                           'page_size' => 1
                                                         })
       expect(Rails.logger).to have_received(:error).with(
-        message: /Retrieved 1 of 3 claims/i
+        a_string_matching(/Retrieved 1 of 3 claims/i), hash_including(service: 'travel-pay')
       )
       expect(Rails.logger).to have_received(:info).with(
-        message: /Looped through 1 claims in/i
+        a_string_matching(/Looped through 1 claims in/i), hash_including(service: 'travel-pay')
       )
       expect(claims_by_date[:data].count).to equal(1)
       expect(claims_by_date[:metadata]['totalRecordCount']).to equal(3)

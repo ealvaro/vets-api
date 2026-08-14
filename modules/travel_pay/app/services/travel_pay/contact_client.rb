@@ -47,7 +47,7 @@ module TravelPay
 
     def correlation_id
       cid = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id: cid)
+      monitor.log(:info, 'Correlation ID', correlation_id: cid)
       cid
     end
   end

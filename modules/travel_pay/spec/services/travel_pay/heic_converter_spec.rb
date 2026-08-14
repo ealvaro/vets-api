@@ -130,7 +130,8 @@ RSpec.describe TravelPay::HeicConverter do
 
         it 'raises UnprocessableEntity and logs the error on decode failure' do
           expect(Rails.logger).to receive(:error)
-            .with(/HEIC conversion failed: ArgumentError - invalid base64/)
+            .with(a_string_matching(/HEIC conversion failed: ArgumentError - invalid base64/),
+                  hash_including(service: 'travel-pay'))
 
           expect { converter.convert_if_heic(params) }
             .to raise_error(Common::Exceptions::UnprocessableEntity)
@@ -158,7 +159,8 @@ RSpec.describe TravelPay::HeicConverter do
 
         it 'raises UnprocessableEntity and logs the error with class and message' do
           expect(Rails.logger).to receive(:error)
-            .with('HEIC conversion failed: StandardError - boom!')
+            .with('HEIC conversion failed: StandardError - boom!',
+                  hash_including(service: 'travel-pay'))
 
           expect { converter.convert_if_heic(params) }
             .to raise_error(Common::Exceptions::UnprocessableEntity)
@@ -244,7 +246,10 @@ RSpec.describe TravelPay::HeicConverter do
       end
 
       it 'logs the conversion' do
-        expect(Rails.logger).to receive(:info).with('Converting HEIC document upload to JPG')
+        expect(Rails.logger).to receive(:info).with(
+          'Converting HEIC document upload to JPG',
+          hash_including(service: 'travel-pay')
+        )
 
         converter.convert_file_to_jpg(uploaded_file) { |_| nil }
       end
@@ -291,7 +296,8 @@ RSpec.describe TravelPay::HeicConverter do
 
       it 'raises UnprocessableEntity and logs the error' do
         expect(Rails.logger).to receive(:error)
-          .with('HEIC conversion failed: StandardError - conversion error')
+          .with('HEIC conversion failed: StandardError - conversion error',
+                hash_including(service: 'travel-pay'))
 
         expect { converter.convert_file_to_jpg(uploaded_file) { |_| nil } }
           .to raise_error(Common::Exceptions::UnprocessableEntity)

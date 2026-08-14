@@ -7,6 +7,7 @@ RSpec.describe ClaimHelper do
   let(:dummy_class) do
     Class.new do
       include ClaimHelper
+      include TravelPay::Monitorable
       attr_accessor :claims_service
     end
   end

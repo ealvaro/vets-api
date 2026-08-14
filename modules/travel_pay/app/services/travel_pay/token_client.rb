@@ -49,7 +49,7 @@ module TravelPay
 
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
 
       log_to_statsd('token', 'btsss') do
         response = connection(server_url: btsss_url).post('api/v2/Auth/access-token') do |req|
@@ -68,9 +68,12 @@ module TravelPay
       # Reraise as 502 Bad Gateway to ensure proper monitoring/alerting
       status = e.original_status.to_i
       if status >= 400 && status < 500
-        Rails.logger.error(
+        monitor.track_request(
+          :error,
           "BTSSS token request failed with status #{status}",
-          { response_status: status, correlation_id: }
+          'travel_pay.token.btsss.auth_error',
+          tags: ["response_status:#{status}"],
+          correlation_id:
         )
         raise Common::Exceptions::BadGateway.new(
           errors: [{ title: 'Bad Gateway', detail: 'BTSSS authentication service error', status: 502 }]

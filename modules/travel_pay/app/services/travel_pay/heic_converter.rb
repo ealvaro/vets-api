@@ -8,6 +8,8 @@ module TravelPay
   # Converts HEIC/HEIF images to JPG format.
   #
   class HeicConverter
+    include Monitorable
+
     # @param user [User] the current user for feature flag checks
     def initialize(user)
       @user = user
@@ -23,13 +25,13 @@ module TravelPay
       return params unless receipt.present? && heic_image?(receipt['contentType'])
 
       unless Flipper.enabled?(:travel_pay_enable_heic_conversion, @user)
-        Rails.logger.warn('Unsupported HEIC/HEIF receipt rejected')
+        monitor.log(:warn, 'Unsupported HEIC/HEIF receipt rejected')
         raise Common::Exceptions::UnprocessableEntity.new(
           detail: 'HEIC/HEIF images are not currently supported. Please convert to JPG or PNG before uploading.'
         )
       end
 
-      Rails.logger.info('Converting HEIC receipt to JPG')
+      monitor.log(:info, 'Converting HEIC receipt to JPG')
 
       converted_receipt = convert_heic_to_jpg(receipt)
       params.merge('expenseReceipt' => converted_receipt)
@@ -37,7 +39,7 @@ module TravelPay
       raise
     rescue => e
       error_message = "HEIC conversion failed: #{e.class} - #{e.message}"
-      Rails.logger.error(error_message)
+      monitor.track_request(:error, error_message, 'travel_pay.heic_converter.receipt_conversion_failed')
       raise Common::Exceptions::UnprocessableEntity.new(detail: error_message)
     end
 
@@ -49,7 +51,7 @@ module TravelPay
     # @yield [ActionDispatch::Http::UploadedFile] the converted JPG file
     # @raise [Common::Exceptions::UnprocessableEntity] if conversion fails
     def convert_file_to_jpg(uploaded_file)
-      Rails.logger.info('Converting HEIC document upload to JPG')
+      monitor.log(:info, 'Converting HEIC document upload to JPG')
 
       jpg_binary = convert_image_to_jpg(uploaded_file.read)
 
@@ -69,7 +71,7 @@ module TravelPay
       raise
     rescue => e
       error_message = "HEIC conversion failed: #{e.class} - #{e.message}"
-      Rails.logger.error(error_message)
+      monitor.track_request(:error, error_message, 'travel_pay.heic_converter.file_conversion_failed')
       raise Common::Exceptions::UnprocessableEntity.new(detail: error_message)
     end
 
@@ -99,7 +101,7 @@ module TravelPay
         'length' => jpg_binary.bytesize.to_s,
         'fileName' => receipt['fileName']&.sub(/\.hei[cf]$/i, '.jpg')
       ).tap do
-        Rails.logger.info("Successfully converted HEIC to JPG (size: #{jpg_binary.bytesize} bytes)")
+        monitor.log(:info, "Successfully converted HEIC to JPG (size: #{jpg_binary.bytesize} bytes)")
       end
     end
 

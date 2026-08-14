@@ -18,7 +18,7 @@ module TravelPay
 
         # TODO: add validation to verify there is a document associated to a given expense
         # TODO: possibly add validation to verify the claim id is valid
-        Rails.logger.info(message: 'Submit complex claim')
+        monitor.log(:info, 'Submit complex claim')
         submitted_claim = claims_service.submit_claim(claim_id)
 
         increment_submit_statsd('success')
@@ -53,7 +53,7 @@ module TravelPay
 
         if appt_id.present?
           validate_uuid_exists!(appt_id, 'Appointment')
-          Rails.logger.info('ComplexClaimsController#create: appt_id provided, skipping find_or_create_appt_id!')
+          monitor.log(:info, 'ComplexClaimsController#create: appt_id provided, skipping find_or_create_appt_id!')
           return appt_id
         end
 
@@ -91,10 +91,6 @@ module TravelPay
 
       def allowed_claim_keys
         appointments_v4_enabled? ? base_required_fields + v4_additional_fields : base_required_fields
-      end
-
-      def monitor
-        @monitor ||= TravelPay::Monitor.new
       end
 
       def validated_claim_params!
@@ -135,17 +131,6 @@ module TravelPay
         raise Common::Exceptions::BadRequest.new(
           detail: "Missing required params: #{missing.join(', ')}"
         )
-      end
-
-      def render_bad_request(e)
-        # Extract the first detail from errors array, fallback to generic
-        error_detail = if e.respond_to?(:errors) && e.errors.any?
-                         e.errors.first[:detail] || 'Bad request'
-                       else
-                         'Bad request'
-                       end
-
-        render json: { errors: [{ detail: error_detail }] }, status: :bad_request
       end
 
       def validate_datetime_format!(datetime_str)

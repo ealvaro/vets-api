@@ -21,7 +21,7 @@ module TravelPay
     #
     def get_related_facilities(facility_id, params = {})
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
 
       log_to_statsd('facilities', 'get_related') do

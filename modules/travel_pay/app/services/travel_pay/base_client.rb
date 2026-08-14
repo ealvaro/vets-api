@@ -7,6 +7,8 @@ require 'travel_pay/monitor'
 
 module TravelPay
   class BaseClient
+    include Monitorable
+
     def claim_headers
       if Settings.vsp_environment == 'production'
         {
@@ -72,10 +74,6 @@ module TravelPay
     # when calling the external Travel Pay API
     def log_to_statsd(service, tag_value, &)
       monitor.track_response_time(service, tag_value, &)
-    end
-
-    def monitor
-      @monitor ||= TravelPay::Monitor.new
     end
   end
 end

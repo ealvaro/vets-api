@@ -26,8 +26,8 @@ module TravelPay
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
 
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
-      Rails.logger.info(message: "Adding #{expense_type} expense to endpoint: #{endpoint}")
+      monitor.log(:info, 'Correlation ID', correlation_id:)
+      monitor.log(:info, "Adding #{expense_type} expense to endpoint: #{endpoint}")
 
       log_to_statsd('expense', "add_#{expense_type}") do
         connection(server_url: btsss_url).post(endpoint) do |req|
@@ -56,8 +56,8 @@ module TravelPay
       endpoint_template = expense_endpoint_for_type(expense_type, :get)
       endpoint = format(endpoint_template, expense_id:)
 
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
-      Rails.logger.info(message: "Getting #{expense_type} expense from endpoint: #{endpoint}")
+      monitor.log(:info, 'Correlation ID', correlation_id:)
+      monitor.log(:info, "Getting #{expense_type} expense from endpoint: #{endpoint}")
 
       log_to_statsd('expense', "get_#{expense_type}") do
         connection(server_url: btsss_url).get(endpoint) do |req|
@@ -92,7 +92,7 @@ module TravelPay
     def add_mileage_expense(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       log_to_statsd('expense', 'add_mileage') do
         connection(server_url: btsss_url).post('api/v2/expenses/mileage') do |req|
           req.headers['Authorization'] = "Bearer #{auth_session.veis_token}"
@@ -126,8 +126,8 @@ module TravelPay
       correlation_id = SecureRandom.uuid
       endpoint = format(endpoint_template, expense_id:)
 
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
-      Rails.logger.info(message: "Deleting #{expense_type} expense to endpoint: #{endpoint}")
+      monitor.log(:info, 'Correlation ID', correlation_id:)
+      monitor.log(:info, "Deleting #{expense_type} expense to endpoint: #{endpoint}")
 
       log_to_statsd('expense', "delete_#{expense_type}") do
         connection(server_url: btsss_url).delete(endpoint) do |req|
@@ -157,8 +157,8 @@ module TravelPay
       correlation_id = SecureRandom.uuid
       endpoint = format(endpoint_template, expense_id:)
 
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
-      Rails.logger.info(message: "Updating #{expense_type} expense to endpoint: #{endpoint}")
+      monitor.log(:info, 'Correlation ID', correlation_id:)
+      monitor.log(:info, "Updating #{expense_type} expense to endpoint: #{endpoint}")
 
       log_to_statsd('expense', "update_#{expense_type}") do
         connection(server_url: btsss_url).patch(endpoint) do |req|

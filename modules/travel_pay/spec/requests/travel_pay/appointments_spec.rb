@@ -244,13 +244,14 @@ RSpec.describe TravelPay::V0::AppointmentsController, type: :request do
 
       it 'returns 503 and logs the error' do
         allow(Rails.logger).to receive(:error)
-        expect(Rails.logger).to receive(:error)
-          .with(message: 'Travel Pay user-created appointments endpoint unavailable per feature toggle')
 
         post '/travel_pay/v0/appointments',
              params: create_params,
              headers: { 'Authorization' => 'Bearer vagov_token' }
 
+        expect(Rails.logger).to have_received(:error)
+          .with(a_string_matching(/Travel Pay user-created appointments endpoint unavailable/),
+                hash_including(service: 'travel-pay'))
         expect(response).to have_http_status(:service_unavailable)
       end
     end

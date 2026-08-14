@@ -14,7 +14,7 @@ module TravelPay
     def get_claims(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
 
       log_to_statsd('claims', 'get_all') do
@@ -41,7 +41,7 @@ module TravelPay
     def get_claim_by_id(auth_session, claim_id)
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       log_to_statsd('claims', 'get_by_id') do
         connection(server_url: btsss_url).get("api/v2/claims/#{claim_id}") do |req|
           headers = req.headers
@@ -70,7 +70,7 @@ module TravelPay
     def get_claims_by_date(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
       log_to_statsd('claims', 'get_by_date') do
         connection(server_url: btsss_url)
@@ -99,7 +99,7 @@ module TravelPay
     def create_claim(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       log_to_statsd('claims', 'create') do
         connection(server_url: btsss_url).post('api/v2/claims') do |req|
           headers = req.headers
@@ -129,7 +129,7 @@ module TravelPay
     def submit_claim(auth_session, claim_id)
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       log_to_statsd('claims', 'submit') do
         connection(server_url: btsss_url).patch("api/v2/claims/#{claim_id}/submit") do |req|
           headers = req.headers

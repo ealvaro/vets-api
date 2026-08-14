@@ -23,10 +23,36 @@ module TravelPay
       tags
       correlation_id
       duration
+      appointment_date_time
+      facility_station_number
+      expense_type
+      expense_id
+      claim_id
+      request_id
+      error
+      code
+      status
     ].freeze
 
     def initialize
       super('travel-pay', allowlist: ALLOWLIST)
+    end
+
+    ##
+    # Logs a message through the monitor's filtering pipeline without
+    # emitting a StatsD metric. Use for informational/trace logging
+    # that doesn't warrant a counter (e.g. correlation IDs, operation progress).
+    #
+    # @param level [Symbol] the log level (:info, :warn, :error, :debug)
+    # @param message [String] the message to log
+    # @param context [Hash] additional context (filtered through allowlist)
+    #
+    def log(level, message, **context)
+      function, file, line = parse_caller(context.delete(:call_location))
+      filtered_context = scrub(filter_params(context, allowlist:), safe_keys: @safe_keys)
+
+      payload = { service:, function:, file:, line:, context: filtered_context }
+      Rails.logger.public_send(level, message.to_s, **payload)
     end
 
     ##

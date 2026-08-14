@@ -5,6 +5,8 @@ require 'zip'
 
 module TravelPay
   class DocReader
+    include Monitorable
+
     def initialize(buffer)
       @buffer = buffer
       @doc = read_docx(@buffer)
@@ -24,7 +26,7 @@ module TravelPay
       heading = find_heading(heading_text)
 
       unless heading
-        Rails.logger.error("DocReader: Heading not found for '#{heading_text}'")
+        monitor.log(:error, "DocReader: Heading not found for '#{heading_text}'")
         return
       end
 

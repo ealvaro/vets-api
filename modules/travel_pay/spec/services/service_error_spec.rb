@@ -41,9 +41,8 @@ describe TravelPay::ServiceError do
 
     it 'returns expected response' do
       expect(Rails.logger).to receive(:error).with(
-        message: 'raise_mapped_error received nil response_body. ' \
-                 "status: #{error.response_status}, " \
-                 "returning 500. message: #{error.message}"
+        a_string_matching(/raise_mapped_error received nil response_body/),
+        hash_including(service: 'travel-pay')
       )
 
       expect { TravelPay::ServiceError.raise_mapped_error(error) }.to raise_error(

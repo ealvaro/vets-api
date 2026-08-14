@@ -15,8 +15,8 @@ module TravelPay
       before_action :check_feature_flag
 
       def show
-        Rails.logger.info(message: 'Travel Pay expense retrieval START')
-        Rails.logger.info(message: <<~LOG_MESSAGE.strip)
+        monitor.log(:info, 'Travel Pay expense retrieval START')
+        monitor.log(:info, <<~LOG_MESSAGE.strip)
           Getting expense of type '#{params[:expense_type]}'
           with ID #{params[:expense_id].slice(0, 8)}
           for claim #{params[:claim_id].slice(0, 8)}
@@ -24,20 +24,24 @@ module TravelPay
 
         expense = expense_service.get_expense(params[:expense_type], params[:expense_id])
 
-        Rails.logger.info(message: 'Travel Pay expense retrieval END')
-
+        monitor.log(:info, 'Travel Pay expense retrieval END')
+        monitor.track_request(:info, 'Expense show success', 'travel_pay.expenses.show',
+                              tags: ["expense_type:#{params[:expense_type]}", 'result:success'])
         render json: expense, status: :ok
+      rescue => e
+        monitor.track_request(:warn, 'Expense show failure', 'travel_pay.expenses.show',
+                              error: e.message, tags: ["expense_type:#{params[:expense_type]}", 'result:failure'])
+        raise
       end
 
       def create
-        Rails.logger.info(message: 'Travel Pay expense submission START')
-        Rails.logger.info(
-          message: "Creating expense of type '#{params[:expense_type]}' for claim #{params[:claim_id].slice(0, 8)}"
-        )
+        monitor.log(:info, 'Travel Pay expense submission START')
+        monitor.log(:info,
+                    "Creating expense of type '#{params[:expense_type]}' for claim #{params[:claim_id].slice(0, 8)}")
         expense = create_and_validate_expense
         created_expense = expense_service.create_expense(expense_params_for_service(expense))
 
-        Rails.logger.info(message: 'Travel Pay expense submission END')
+        monitor.log(:info, 'Travel Pay expense submission END')
         increment_expense_statsd(params[:expense_type], 'success')
 
         render json: created_expense, status: :created
@@ -49,25 +53,33 @@ module TravelPay
       def update
         expense_type = params[:expense_type]
         expense_id = params[:expense_id]
-        Rails.logger.info(
-          message: "Updating expense of type '#{expense_type}' with expense id #{expense_id&.first(8)}"
-        )
+        monitor.log(:info, "Updating expense of type '#{expense_type}' with expense id #{expense_id&.first(8)}")
         expense = create_and_validate_expense
         response_data = expense_service.update_expense(expense_id, expense_type, expense_params_for_service(expense))
 
+        monitor.track_request(:info, 'Expense update success', 'travel_pay.expenses.update',
+                              tags: ["expense_type:#{expense_type}", 'result:success'])
         render json: { id: response_data['id'] }, status: :ok
+      rescue => e
+        monitor.track_request(:warn, 'Expense update failure', 'travel_pay.expenses.update',
+                              error: e.message, tags: ["expense_type:#{params[:expense_type]}", 'result:failure'])
+        raise
       end
 
       def destroy
         expense_type = params[:expense_type]
         expense_id = params[:expense_id]
 
-        Rails.logger.info(
-          message: "Deleting expense of type '#{expense_type}' with expense id #{expense_id&.first(8)}"
-        )
+        monitor.log(:info, "Deleting expense of type '#{expense_type}' with expense id #{expense_id&.first(8)}")
         response_data = expense_service.delete_expense(expense_id:, expense_type:)
 
+        monitor.track_request(:info, 'Expense destroy success', 'travel_pay.expenses.destroy',
+                              tags: ["expense_type:#{expense_type}", 'result:success'])
         render json: { id: response_data['id'] }, status: :ok
+      rescue => e
+        monitor.track_request(:warn, 'Expense destroy failure', 'travel_pay.expenses.destroy',
+                              error: e.message, tags: ["expense_type:#{params[:expense_type]}", 'result:failure'])
+        raise
       end
 
       private
@@ -81,8 +93,9 @@ module TravelPay
       end
 
       def increment_expense_statsd(expense_type, result)
-        StatsD.increment('travel_pay.expenses.create',
-                         tags: ["expense_type:#{expense_type}", "result:#{result}"])
+        level = result == 'success' ? :info : :warn
+        monitor.track_request(level, "Expense create #{result}", 'travel_pay.expenses.create',
+                              tags: ["expense_type:#{expense_type}", "result:#{result}"])
       end
 
       def check_feature_flag
@@ -98,7 +111,8 @@ module TravelPay
 
         return expense if expense.valid?
 
-        Rails.logger.error(message: "Expense validation failed: #{expense.errors.full_messages}")
+        monitor.track_request(:error, "Expense validation failed: #{expense.errors.full_messages}",
+                              'travel_pay.expenses.validation_failed')
         raise Common::Exceptions::UnprocessableEntity, detail: expense.errors.full_messages.join(', ')
       end
 

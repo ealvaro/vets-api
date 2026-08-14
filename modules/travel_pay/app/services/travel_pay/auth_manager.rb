@@ -2,6 +2,8 @@
 
 module TravelPay
   class AuthManager
+    include Monitorable
+
     def initialize(client_number, current_user)
       @user = current_user
       @client = TravelPay::TokenClient.new(client_number)
@@ -13,13 +15,13 @@ module TravelPay
     def authorize
       cached = TravelPayStore.find(@user.user_account_uuid)
       if cached
-        Rails.logger.info('BTSSS tokens retrieved from cache',
-                          { request_id: RequestStore.store['request_id'] })
+        monitor.log(:info, 'BTSSS tokens retrieved from cache',
+                    request_id: RequestStore.store['request_id'])
         TravelPay::AuthSession.new(veis_token: cached.veis_token, btsss_token: cached.btsss_token,
                                    contact_id: cached.contact_id)
       else
-        Rails.logger.info('BTSSS tokens not cached, requesting new tokens',
-                          { request_id: RequestStore.store['request_id'] })
+        monitor.log(:info, 'BTSSS tokens not cached, requesting new tokens',
+                    request_id: RequestStore.store['request_id'])
 
         request_new_tokens
       end
@@ -34,8 +36,8 @@ module TravelPay
       auth_session = @client.authorized_user_session(@user)
       if auth_session.btsss_token
         save_tokens!(@user.user_account_uuid, auth_session)
-        Rails.logger.info('BTSSS tokens saved to cache',
-                          { request_id: RequestStore.store['request_id'] })
+        monitor.log(:info, 'BTSSS tokens saved to cache',
+                    request_id: RequestStore.store['request_id'])
         auth_session
       end
     end

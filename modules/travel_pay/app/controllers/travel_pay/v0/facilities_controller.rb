@@ -14,12 +14,20 @@ module TravelPay
 
         if home_facility_id.blank?
           contact_id_prefix = auth_session.contact_id.to_s.first(8)
-          Rails.logger.warn("TravelPay: contact #{contact_id_prefix}... has no home facility assigned")
+          monitor.log(:warn, "Contact #{contact_id_prefix}... has no home facility assigned")
+          monitor.track_request(:warn, 'Facilities index no home facility', 'travel_pay.facilities.index',
+                                tags: ['result:not_found'])
           return render json: { error: 'No home facility found for this user' }, status: :not_found
         end
 
         facilities_response = facilities_client.get_related_facilities(home_facility_id, permitted_params)
+        monitor.track_request(:info, 'Facilities index success', 'travel_pay.facilities.index',
+                              tags: ['result:success'])
         render json: facilities_response.body, status: facilities_response.status
+      rescue => e
+        monitor.track_request(:warn, 'Facilities index failure', 'travel_pay.facilities.index',
+                              error: e.message, tags: ['result:failure'])
+        raise
       end
 
       private

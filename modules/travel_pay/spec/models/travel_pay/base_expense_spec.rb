@@ -391,7 +391,10 @@ RSpec.describe TravelPay::BaseExpense, type: :model do
 
     describe '#find_claim_by_id' do
       it 'logs a debug message and returns nil (safe default)' do
-        expect(Rails.logger).to receive(:debug)
+        expect(Rails.logger).to receive(:debug).with(
+          a_string_matching(/BaseExpense: Looking for claim with ID test-id/),
+          hash_including(service: 'travel-pay')
+        )
         result = subject.send(:find_claim_by_id, 'test-id')
         expect(result).to be_nil
       end

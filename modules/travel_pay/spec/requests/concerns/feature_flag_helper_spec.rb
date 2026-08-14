@@ -7,6 +7,7 @@ RSpec.describe FeatureFlagHelper do
   let(:dummy_class) do
     Class.new do
       include FeatureFlagHelper
+      include TravelPay::Monitorable
       attr_accessor :current_user
     end
   end

@@ -2,6 +2,8 @@
 
 module TravelPay
   class SmocService
+    include Monitorable
+
     def initialize(auth_manager, user, client)
       @auth_manager = auth_manager
       @user = user
@@ -28,14 +30,14 @@ module TravelPay
     #
     #
     def submit_mileage_expense(params) # rubocop:disable Metrics/MethodLength
-      Rails.logger.info(message: "[#{@client}] SMOC transaction START")
+      monitor.log(:info, "[#{@client}] SMOC transaction START")
       claim = get_claim_id(params)
 
-      Rails.logger.info(message: "[#{@client}] SMOC transaction: Add expense to claim #{claim['claimId'].slice(0, 8)}")
+      monitor.log(:info, "[#{@client}] SMOC transaction: Add expense to claim #{claim['claimId'].slice(0, 8)}")
       expense = expenses_service.add_expense({ 'claim_id' => claim['claimId'],
                                                'appt_date' => params['appointment_date_time'] })
 
-      Rails.logger.info(message: "[#{@client}] SMOC transaction: Submit claim #{claim['claimId'].slice(0, 8)}")
+      monitor.log(:info, "[#{@client}] SMOC transaction: Submit claim #{claim['claimId'].slice(0, 8)}")
       submitted_claim = claims_service.submit_claim(claim['claimId'])
       submitted_claim['status'] = 'Claim submitted'
 
@@ -46,13 +48,15 @@ module TravelPay
       raise Common::Exceptions::BadRequest, detail: e.message
     rescue => e
       if claim.nil? ## error occurred on claim creation step
-        Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to create claim")
+        monitor.track_request(:error, "[#{@client}] SMOC transaction: Failed to create claim",
+                              'travel_pay.claims.smoc.create_claim_failed')
         increment_statsd('failure')
         raise Common::Exceptions::BackendServiceException.new(
           'BTSSS-API_500', { status: 500, detail: 'Failed to create claim' }, 500
         )
       elsif expense.nil? && claim['claimId'].present? ## error occurred on expense step, but claim was created
-        Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to add expense, #{e}")
+        monitor.track_request(:error, "[#{@client}] SMOC transaction: Failed to add expense, #{e}",
+                              'travel_pay.claims.smoc.add_expense_failed')
         increment_statsd('incomplete')
         {
           'claimId' => claim['claimId'],
@@ -60,9 +64,9 @@ module TravelPay
         }
       else
         expense['expenseId'].present? ## error occurred on submit step, but claim was created and expense was added
-        Rails.logger.error(message: "[#{@client}] SMOC transaction: Failed to submit claim #{claim['claimId'].slice(
-          0, 8
-        )}")
+        monitor.track_request(:error,
+                              "[#{@client}] SMOC transaction: Failed to submit claim #{claim['claimId'].slice(0, 8)}",
+                              'travel_pay.claims.smoc.submit_claim_failed')
         increment_statsd('saved')
         {
           'claimId' => claim['claimId'],
@@ -75,12 +79,12 @@ module TravelPay
 
     def get_appt_or_raise(params)
       appt_not_found_msg = "No appointment found for #{params['appointment_date_time']}"
-      Rails.logger.info(message:
-                        "[#{@client}] SMOC transaction: Get appt by date time: #{params['appointment_date_time']}")
+      monitor.log(:info,
+                  "[#{@client}] SMOC transaction: Get appt by date time: #{params['appointment_date_time']}")
       appt = appts_service.find_or_create_appointment(params)
 
       if appt[:data].nil?
-        Rails.logger.error(message: appt_not_found_msg)
+        monitor.track_request(:error, appt_not_found_msg, 'travel_pay.claims.smoc.appointment_not_found')
         raise Common::Exceptions::ResourceNotFound, detail: appt_not_found_msg
       end
 
@@ -89,7 +93,7 @@ module TravelPay
 
     def get_claim_id(params)
       appt_id = get_appt_or_raise(params)
-      Rails.logger.info(message: "[#{@client}] SMOC transaction: Create claim")
+      monitor.log(:info, "[#{@client}] SMOC transaction: Create claim")
       claims_service.create_new_claim({ 'btsss_appt_id' => appt_id })
     end
 
@@ -109,10 +113,6 @@ module TravelPay
       level = result == 'success' ? :info : :warn
       monitor.track_request(level, "SMOC submit #{result}", 'travel_pay.claims.smoc.submit',
                             tags: ["result:#{result}"])
-    end
-
-    def monitor
-      @monitor ||= TravelPay::Monitor.new
     end
   end
 end

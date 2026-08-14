@@ -21,7 +21,7 @@ module TravelPay
     def get_all_appointments(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       query_path = if params.empty?
                      'api/v2/appointments'
                    else
@@ -58,7 +58,7 @@ module TravelPay
     def search_appointments(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
 
       log_to_statsd('appointments', 'search') do
@@ -87,7 +87,7 @@ module TravelPay
     def create_appointment(auth_session, params = {})
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
 
       log_to_statsd('appointments', 'create') do
@@ -119,7 +119,7 @@ module TravelPay
     def find_or_create(auth_session, params, use_v4_api: false)
       btsss_url = Settings.travel_pay.base_url
       correlation_id = SecureRandom.uuid
-      Rails.logger.info(message: 'Correlation ID', correlation_id:)
+      monitor.log(:info, 'Correlation ID', correlation_id:)
       url_params = params.transform_keys { |k| k.to_s.camelize(:lower) }
 
       # Choose API version based on feature flag

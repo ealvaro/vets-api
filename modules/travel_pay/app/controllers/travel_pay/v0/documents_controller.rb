@@ -12,12 +12,18 @@ module TravelPay
       def show
         document_data = service.download_document(params[:claim_id], params[:id])
 
+        monitor.track_request(:info, 'Documents show success', 'travel_pay.documents.show',
+                              tags: ['result:success'])
         send_data(
           document_data[:body],
           type: document_data[:type],
           disposition: document_data[:disposition],
           filename: document_data[:filename]
         )
+      rescue => e
+        monitor.track_request(:warn, 'Documents show failure', 'travel_pay.documents.show',
+                              error: e.message, tags: ['result:failure'])
+        raise
       end
 
       def create
@@ -27,9 +33,7 @@ module TravelPay
         validate_uuid_exists!(claim_id, 'Claim')
         validate_document_exists!(document)
 
-        Rails.logger.info(
-          message: "Creating attachment for claim #{claim_id.slice(0, 8)}"
-        )
+        monitor.log(:info, "Creating attachment for claim #{claim_id.slice(0, 8)}")
         response_data = service.upload_document(claim_id, document)
         increment_create_statsd(document, 'success')
         render json: { documentId: response_data['documentId'] }, status: :created
@@ -47,7 +51,13 @@ module TravelPay
         # TODO: do we need to verify that the document id is an actual id that exists?
 
         response_data = service.delete_document(claim_id, document_id)
+        monitor.track_request(:info, 'Documents destroy success', 'travel_pay.documents.destroy',
+                              tags: ['result:success'])
         render json: { documentId: response_data['documentId'] }, status: :ok
+      rescue => e
+        monitor.track_request(:warn, 'Documents destroy failure', 'travel_pay.documents.destroy',
+                              error: e.message, tags: ['result:failure'])
+        raise
       end
 
       private
@@ -65,10 +75,6 @@ module TravelPay
         level = result == 'success' ? :info : :warn
         monitor.track_request(level, "Document create #{result}", 'travel_pay.documents.create',
                               tags: ["document_type:#{document_type}", "result:#{result}"])
-      end
-
-      def monitor
-        @monitor ||= TravelPay::Monitor.new
       end
 
       def auth_manager

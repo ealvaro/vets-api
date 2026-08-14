@@ -2,6 +2,8 @@
 
 module TravelPay
   class AppointmentsService
+    include Monitorable
+
     def initialize(auth_manager)
       @auth_manager = auth_manager
     end
@@ -55,7 +57,7 @@ module TravelPay
     #
     def find_or_create_appointment(params = {})
       if params['appointment_date_time'].nil?
-        Rails.logger.error(message: 'Invalid appointment time provided (appointment time cannot be nil).')
+        monitor.log(:error, 'Invalid appointment time provided (appointment time cannot be nil).')
         raise ArgumentError, message: 'Invalid appointment time provided (appointment time cannot be nil).'
       elsif params['appointment_date_time'].present?
         # Ensure the date is valid
@@ -74,7 +76,7 @@ module TravelPay
         }
       end
     rescue ArgumentError => e
-      Rails.logger.error(message: "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']}).")
+      monitor.log(:error, "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']}).")
       raise ArgumentError, "#{e} Invalid appointment time provided (given: #{params['appointment_date_time']})."
     end
 
@@ -114,9 +116,9 @@ module TravelPay
       missing = required.select { |key| params[key].blank? }
       return if missing.empty?
 
-      Rails.logger.error(message: "Missing required params for find-or-add appointments (given: #{missing.map do |k|
+      monitor.track_request(:error, "Missing required params for find-or-add appointments (given: #{missing.map do |k|
         "#{k}=#{params[k].inspect}"
-      end.join(', ')}).")
+      end.join(', ')}).", 'travel_pay.appointments.find_or_create.missing_params')
       raise Common::Exceptions::BadRequest.new(
         detail: "Missing required params: #{missing.join(', ')}"
       )
@@ -139,20 +141,20 @@ module TravelPay
       }
 
       if appointments.blank?
-        Rails.logger.warn(log_params.merge(message: 'No appointments returned from find-or-add'))
+        monitor.log(:warn, 'No appointments returned from find-or-add', **log_params)
       elsif appointments.length > 1
-        Rails.logger.info(log_params.merge(message: 'Multiple appointments returned from find-or-add',
-                                           count: appointments.length))
+        monitor.log(:info, "Multiple appointments returned from find-or-add (count: #{appointments.length})",
+                    **log_params)
         if non_cancelled.nil?
-          Rails.logger.warn(log_params.merge(message: 'All appointments returned from find-or-add are cancelled',
-                                             count: appointments.length))
+          monitor.log(:warn, "All appointments returned from find-or-add are cancelled (count: #{appointments.length})",
+                      **log_params)
         end
       end
     end
 
     def find_by_date_time(date_string, appointments)
       if date_string.nil?
-        Rails.logger.error(message: 'Invalid appointment time provided (appointment time cannot be nil).')
+        monitor.log(:error, 'Invalid appointment time provided (appointment time cannot be nil).')
         raise ArgumentError, message: 'Invalid appointment time provided (appointment time cannot be nil).'
       elsif date_string.present?
         parsed_date_time = DateUtils.strip_timezone(date_string)
@@ -160,13 +162,13 @@ module TravelPay
           begin
             parsed_appt_time = DateUtils.strip_timezone(appt['appointmentDateTime'])
           rescue TravelPay::InvalidComparableError => e
-            Rails.logger.warn("#{e} Appointment Datetime was nil")
+            monitor.log(:warn, "#{e} Appointment Datetime was nil")
           end
           !appt['appointmentDateTime'].nil? && parsed_date_time.eql?(parsed_appt_time)
         end
       end
     rescue ArgumentError => e
-      Rails.logger.error(message: "#{e} Invalid appointment time provided (given: #{date_string}).")
+      monitor.log(:error, "#{e} Invalid appointment time provided (given: #{date_string}).")
       raise ArgumentError, "#{e} Invalid appointment time provided (given: #{date_string})."
     end
 

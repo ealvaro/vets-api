@@ -2,6 +2,8 @@
 
 module TravelPay
   class DocumentsService
+    include Monitorable
+
     def initialize(auth_manager)
       @auth_manager = auth_manager
     end
@@ -102,7 +104,7 @@ module TravelPay
       return if allowed_extensions.include?(extension)
 
       message = "Invalid document type: .#{extension}. Allowed types are: #{allowed_extensions.join(', ')}"
-      Rails.logger.error(message)
+      monitor.track_request(:error, message, 'travel_pay.documents.invalid_extension')
       raise Common::Exceptions::BadRequest.new(detail: message)
     end
 
@@ -114,7 +116,7 @@ module TravelPay
 
       if file_size > max_size_in_bytes
         message = "Uploaded document size (#{file_size} bytes) exceeds the 5 MB limit."
-        Rails.logger.error(message)
+        monitor.track_request(:error, message, 'travel_pay.documents.size_exceeded')
         raise Common::Exceptions::BadRequest.new(detail: message)
       end
     end

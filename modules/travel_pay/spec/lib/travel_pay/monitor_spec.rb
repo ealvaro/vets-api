@@ -26,6 +26,35 @@ RSpec.describe TravelPay::Monitor do
     end
   end
 
+  describe '#log' do
+    it 'populates function, file, and line from the caller when call_location is not passed' do
+      allow(Rails.logger).to receive(:info)
+
+      monitor.log(:info, 'hello')
+
+      expect(Rails.logger).to have_received(:info).with(
+        'hello',
+        hash_including(
+          service: 'travel-pay',
+          function: kind_of(String),
+          file: kind_of(String),
+          line: kind_of(Integer)
+        )
+      )
+    end
+
+    it 'filters context through the allowlist' do
+      allow(Rails.logger).to receive(:warn)
+
+      monitor.log(:warn, 'filtered', claim_id: 'C123', secret: 'nope')
+
+      expect(Rails.logger).to have_received(:warn).with(
+        'filtered',
+        hash_including(context: hash_including(claim_id: 'C123', secret: '[FILTERED]'))
+      )
+    end
+  end
+
   describe '#track_response_time' do
     it 'measures elapsed time via StatsD.measure and returns the block result' do
       allow(StatsD).to receive(:measure)

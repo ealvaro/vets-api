@@ -223,7 +223,7 @@ describe TravelPay::SmocService do
       actual_claim_response = smoc_service.submit_mileage_expense(@params)
 
       expect(Rails.logger).to have_received(:info).with(
-        message: '[VAGOV] SMOC transaction START'
+        '[VAGOV] SMOC transaction START', any_args
       )
       expect(actual_claim_response).to eq({ 'claimId' => '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                                             'status' => 'Claim submitted' })
@@ -235,7 +235,7 @@ describe TravelPay::SmocService do
       actual_claim_response = smoc_service.submit_mileage_expense(@params)
 
       expect(Rails.logger).to have_received(:info).with(
-        message: '[VAHB] SMOC transaction START'
+        '[VAHB] SMOC transaction START', any_args
       )
       expect(actual_claim_response).to eq({ 'claimId' => '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                                             'status' => 'Claim submitted' })
@@ -247,7 +247,7 @@ describe TravelPay::SmocService do
       actual_claim_response = smoc_service.submit_mileage_expense(@params)
 
       expect(Rails.logger).to have_received(:info).with(
-        message: '[any client] SMOC transaction START'
+        '[any client] SMOC transaction START', any_args
       )
       expect(actual_claim_response).to eq({ 'claimId' => '3fa85f64-5717-4562-b3fc-2c963f66afa6',
                                             'status' => 'Claim submitted' })

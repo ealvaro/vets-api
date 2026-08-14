@@ -2,6 +2,8 @@
 
 module TravelPay
   class ClaimAssociationService
+    include Monitorable
+
     def initialize(user, client)
       @user = user
       @client = client
@@ -114,24 +116,24 @@ module TravelPay
 
     def rescue_errors(e) # rubocop:disable Metrics/MethodLength
       if e.is_a?(ArgumentError) || e.is_a?(InvalidComparableError)
-        Rails.logger.error(message: e.message.to_s)
+        monitor.log(:error, e.message.to_s)
         {
           'status' => 400,
           'message' => e.message.to_s,
           'success' => false
         }
       elsif e.is_a?(Common::Exceptions::BackendServiceException)
-        Rails.logger.error(message: "#{e}, #{e.original_body}")
+        monitor.log(:error, "#{e}, #{e.original_body}")
         {
           'status' => e.original_status,
           'message' => e.original_body['message'],
           'success' => false
         }
       else
-        Rails.logger.error(message: "An unknown error occured: #{e}")
+        monitor.log(:error, "An unknown error occurred: #{e}")
         {
           'status' => 520, # Unknown error code
-          'message' => "An unknown error occured: #{e}",
+          'message' => "An unknown error occurred: #{e}",
           'success' => false
         }
       end
@@ -149,11 +151,11 @@ module TravelPay
             matching_claim = find_matching_claim(claims, appt[:local_start_time])
             appt['travelPayClaim']['claim'] = matching_claim if matching_claim.present?
           else
-            Rails.logger.warn(message: "Invalid local_start_time given: #{appt[:local_start_time]}")
+            monitor.log(:warn, "Invalid local_start_time given: #{appt[:local_start_time]}")
             build_invalid_appt_date_response(appt)
           end
         rescue InvalidComparableError => e
-          Rails.logger.warn(message: "Cannot compare start times. #{e.message}")
+          monitor.log(:warn, "Cannot compare start times. #{e.message}")
         end
 
         acc.push(appt)

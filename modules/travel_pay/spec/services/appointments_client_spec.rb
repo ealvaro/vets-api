@@ -90,7 +90,7 @@ describe TravelPay::AppointmentsClient do
 
   context '/appointments' do
     expected_log_prefix = 'travel_pay.appointments.response_time'
-    expected_log_tag = ['travel_pay:get_all', 'status:success']
+    expected_log_tag = ['travel_pay:get_all']
 
     it 'returns a response only with appointments with no claims' do
       @stubs.get('/api/v2/appointments?excludeWithClaims=true') do
@@ -112,7 +112,7 @@ describe TravelPay::AppointmentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: expected_log_tag)
+              tags: expected_log_tag.dup.push('status:success'))
       expect(actual_appt_ids).to eq(expected_ids)
     end
 
@@ -136,14 +136,14 @@ describe TravelPay::AppointmentsClient do
       expect(StatsD).to have_received(:measure)
         .with(expected_log_prefix,
               kind_of(Numeric),
-              tags: expected_log_tag)
+              tags: expected_log_tag.dup.push('status:success'))
       expect(actual_appt_ids).to eq(expected_ids)
     end
   end
 
   context '/appointments/search' do
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:search', 'status:success'] }
+    let(:expected_log_tag) { ['travel_pay:search'] }
 
     it 'returns appointments from the search endpoint' do
       @stubs.get('api/v3/appointments/search') do
@@ -159,7 +159,7 @@ describe TravelPay::AppointmentsClient do
       actual_ids = response.body['data'].pluck('id')
 
       expect(StatsD).to have_received(:measure)
-        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag)
+        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag.dup.push('status:success'))
       expect(actual_ids).to eq(%w[uuid1 uuid2 uuid3])
     end
 
@@ -221,7 +221,7 @@ describe TravelPay::AppointmentsClient do
     end
 
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:find_or_create', 'status:success'] }
+    let(:expected_log_tag) { ['travel_pay:find_or_create'] }
 
     context 'when use_v4_api is false' do
       it 'calls the v2 API endpoint' do
@@ -242,7 +242,7 @@ describe TravelPay::AppointmentsClient do
         expect(StatsD).to have_received(:measure)
           .with(expected_log_prefix,
                 kind_of(Numeric),
-                tags: expected_log_tag)
+                tags: expected_log_tag.dup.push('status:success'))
       end
     end
 
@@ -265,7 +265,7 @@ describe TravelPay::AppointmentsClient do
         expect(StatsD).to have_received(:measure)
           .with(expected_log_prefix,
                 kind_of(Numeric),
-                tags: expected_log_tag)
+                tags: expected_log_tag.dup.push('status:success'))
       end
     end
 
@@ -288,14 +288,14 @@ describe TravelPay::AppointmentsClient do
         expect(StatsD).to have_received(:measure)
           .with(expected_log_prefix,
                 kind_of(Numeric),
-                tags: expected_log_tag)
+                tags: expected_log_tag.dup.push('status:success'))
       end
     end
   end
 
   context '/appointments (create)' do
     let(:expected_log_prefix) { 'travel_pay.appointments.response_time' }
-    let(:expected_log_tag) { ['travel_pay:create', 'status:success'] }
+    let(:expected_log_tag) { ['travel_pay:create'] }
     let(:appointment_id) { '3fa85f64-5717-4562-b3fc-2c963f66afa6' }
     let(:create_params) do
       {
@@ -321,7 +321,7 @@ describe TravelPay::AppointmentsClient do
 
       expect(response.body['data']['appointmentId']).to eq(appointment_id)
       expect(StatsD).to have_received(:measure)
-        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag)
+        .with(expected_log_prefix, kind_of(Numeric), tags: expected_log_tag.dup.push('status:success'))
     end
 
     it 'camelizes snake_case params before sending to the API' do

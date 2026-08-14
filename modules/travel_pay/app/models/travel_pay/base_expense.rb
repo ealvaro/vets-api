@@ -7,6 +7,7 @@ module TravelPay
     include ActiveModel::Model
     include ActiveModel::Attributes
     include ActiveModel::Validations
+    include Monitorable
 
     attribute :purchase_date, :datetime
     attribute :description, :string
@@ -118,7 +119,7 @@ module TravelPay
       # TODO: Implementation depends on which Claim model is being used
       # This could be integrated with existing travel pay claim services
       # For now, returning nil as a safe default
-      Rails.logger.debug { "BaseExpense: Looking for claim with ID #{id}" }
+      monitor.log(:debug, "BaseExpense: Looking for claim with ID #{id}")
       nil
     end
 

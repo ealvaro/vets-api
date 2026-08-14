@@ -7,6 +7,7 @@ RSpec.describe AppointmentHelper do
   let(:dummy_class) do
     Class.new do
       include AppointmentHelper
+      include TravelPay::Monitorable
       attr_accessor :appts_service
     end
   end
