@@ -1263,7 +1263,7 @@ modules/burials @software/benefits-lifestage
 modules/check_in @software/patient-check-in
 modules/claims_api @software/lighthouse-dash
 modules/claims_api/config/schemas/v2/526.json @software/disability-benefits
-modules/claims_evidence_api @software/benefits-lifestage @software/claims-evidence-api
+modules/claims_evidence_api @software/benefits-lifestage
 modules/debts_api @software/vsa-debt-resolution
 modules/decision_reviews @software/benefits-decision-reviews-be
 modules/dependents_benefits @software/benefits-lifestage
