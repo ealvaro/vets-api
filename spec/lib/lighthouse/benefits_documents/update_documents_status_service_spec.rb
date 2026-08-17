@@ -115,8 +115,8 @@ RSpec.describe BenefitsDocuments::UpdateDocumentsStatusService do
         described_class.call(pending_evidence_submission_batch, lighthouse_status_response)
 
         expect(Rails.logger).to have_received(:error).with(
-          'BenefitsDocuments::UpdateDocumentsStatusService failed to update EvidenceSubmission for request_id',
-          { request_id: unmatched_request_id, error_class: 'ActiveRecord::RecordNotFound', error: an_instance_of(String) }
+          'BenefitsDocuments::UpdateDocumentsStatusService could not find EvidenceSubmission for request_id',
+          { request_id: unmatched_request_id }
         )
         expect(StatsD).to have_received(:increment).with(
           'worker.lighthouse.cst_document_uploads.evidence_submission_update_error'
