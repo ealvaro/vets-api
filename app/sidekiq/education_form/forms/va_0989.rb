@@ -10,7 +10,7 @@ module EducationForm::Forms
     end
 
     def benefit_type
-      '33'
+      'CH33'
     end
 
     def applicant_name
