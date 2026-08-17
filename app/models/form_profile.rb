@@ -152,6 +152,34 @@ class FormProfile
     vff_simple_forms: ['20-10206']
   }.freeze
 
+  RESTRICTED_FORMS = %w[
+    10-8678
+    20-10206
+    20-10207
+    21-0845
+    21-0972
+    21-10210
+    21-4142
+    21-4140
+    21-4142a
+    21-4502
+    21-8940V1
+    21P-0847
+    21P-527EZ
+    21P-530EZ
+    21P-534EZ
+    21P-0969
+    21P-535
+    21-2680
+    21-0779
+    21-4192
+    21P-530a
+    21-4138
+    21P-0537
+    21P-601
+    21P-8416
+  ].freeze
+
   FORM_ID_TO_CLASS = {
     '0873' => ::FormProfiles::VA0873,
     '10-10EZR' => ::FormProfiles::VA1010ezr,

@@ -1055,6 +1055,7 @@ lib/form526_backup_submission/utilities @software/disability-benefits
 lib/form526_backup_submission/utilities/convert_to_pdf.rb @software/disability-benefits
 lib/formatters @software/octo-identity
 lib/forms/client.rb @software/va-platform-backend
+lib/forms/scripts/add_new_form.rb @software/vfs-authenticated-experience-backend
 lib/forms/submission_statuses @software/vfs-authenticated-experience-backend
 lib/generators @software/va-platform-backend
 lib/gi/client.rb @software/govcio-vfep-codereviewers

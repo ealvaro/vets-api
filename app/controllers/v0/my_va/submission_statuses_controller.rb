@@ -34,9 +34,7 @@ module V0
       end
 
       def restricted_benefits_intake_forms
-        %w[10-8678 20-10206 20-10207 21-0845 21-0972 21-10210 21-4142 21-4140 21-4142a 21-4502 21-8940V1
-           21P-0847 21P-527EZ 21P-530EZ 21P-534EZ 21P-0969 21P-535 21-2680 21-0779 21-4192 21P-530a 21-4138
-           21P-0537 21P-601 21P-8416] + uploadable_forms
+        FormProfile::RESTRICTED_FORMS + uploadable_forms
       end
 
       def decision_reviews_forms_if_enabled

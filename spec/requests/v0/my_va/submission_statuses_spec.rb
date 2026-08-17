@@ -226,4 +226,39 @@ RSpec.describe 'V0::MyVA::SubmissionStatuses', feature: :form_submission,
       expect(results).to be_empty
     end
   end
+
+  describe 'new form integration tests' do
+    before do
+      benefits_intake_uuid = SecureRandom.uuid
+      lighthouse_intake_statuses = [
+        [{
+          'id' => benefits_intake_uuid,
+          'attributes' => {
+            'status' => 'pending',
+            'updated_at' => 1.day.ago,
+            'detail' => 'Processing burial claim',
+            'guid' => benefits_intake_uuid,
+            'message' => 'Form received and processing'
+          }
+        }],
+        nil
+      ]
+      allow_any_instance_of(benefits_intake_gateway)
+        .to receive(:intake_statuses).and_return(lighthouse_intake_statuses)
+    end
+
+    describe 'form 10-8678' do
+      let!(:form) { create(:form_submission, user_account_id: account_id, form_type: '10-8678') }
+
+      it 'returns lighthouse submission statuses' do
+        get '/v0/my_va/submission_statuses'
+
+        expect(response).to have_http_status(:ok)
+        results = JSON.parse(response.body)['data']
+        expect(results.size).to eq 1
+        expect(results.first['attributes']['form_type']).to eq('10-8678')
+      end
+    end
+    # ADD NEW FORM INTEGRATION TESTS HERE. DO NOT REMOVE THIS COMMENT
+  end
 end
