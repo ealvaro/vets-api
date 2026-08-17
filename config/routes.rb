@@ -211,8 +211,6 @@ Rails.application.routes.draw do
 
     resources :dependents_benefits, only: %i[create index]
 
-    resources :dependents_verifications, only: %i[create index]
-
     resources :benefits_claims, only: %i[index show] do
       post :submit5103, on: :member
       post 'benefits_documents', to: 'benefits_documents#create'

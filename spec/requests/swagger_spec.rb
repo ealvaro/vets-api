@@ -2629,30 +2629,6 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
       end
     end
 
-    describe 'dependents verifications' do
-      it 'supports getting diary information' do
-        expect(subject).to validate(:get, '/v0/dependents_verifications', 401)
-        VCR.use_cassette('bgs/diaries/read') do
-          expect(subject).to validate(:get, '/v0/dependents_verifications', 200, headers)
-        end
-      end
-
-      it 'supports updating diaries' do
-        expect(subject).to validate(
-          :post,
-          '/v0/dependents_verifications',
-          200,
-          headers.merge(
-            '_data' => {
-              'dependency_verification_claim' => {
-                'form' => { 'update_diaries' => 'true' }
-              }
-            }
-          )
-        )
-      end
-    end
-
     describe 'education career counseling claims' do
       it 'supports adding a career counseling claim' do
         expect(subject).to validate(

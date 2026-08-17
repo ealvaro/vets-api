@@ -77,7 +77,6 @@ app/controllers/v0/datadog_action_controller.rb @software/va-platform-backend
 app/controllers/v0/debt_letters_controller.rb @software/vsa-debt-resolution
 app/controllers/v0/debts_controller.rb @software/vsa-debt-resolution
 app/controllers/v0/dependents_applications_controller.rb @software/vfs-authenticated-experience-backend
-app/controllers/v0/dependents_verifications_controller.rb @software/benefits-lifestage
 app/controllers/v0/disability_compensation_forms_controller.rb @software/disability-benefits
 app/controllers/v0/disability_compensation_in_progress_forms_controller.rb @software/disability-benefits
 app/controllers/v0/documents_controller.rb @software/benefits-management-tools-be
@@ -456,7 +455,6 @@ app/serializers/contact_information_serializer.rb @software/vfs-authenticated-ex
 app/serializers/contact_serializer.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 app/serializers/decision_review_evidence_attachment_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/dependents_serializer.rb @software/vfs-authenticated-experience-backend
-app/serializers/dependents_verifications_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/direct_deposits_serializer.rb @software/disability-benefits
 app/serializers/disability_contention_serializer.rb @software/disability-benefits
 app/serializers/education_benefits_claim_serializer.rb @software/govcio-vfep-codereviewers
@@ -648,7 +646,6 @@ app/swagger/swagger/requests/datadog_action.rb @software/va-platform-backend
 app/swagger/swagger/requests/debt_letters.rb @software/vsa-debt-resolution
 app/swagger/swagger/requests/debts.rb @software/vsa-debt-resolution
 app/swagger/swagger/requests/dependents_applications.rb @software/vfs-authenticated-experience-backend
-app/swagger/swagger/requests/dependents_verifications.rb @software/vfs-authenticated-experience-backend
 app/swagger/swagger/requests/digital_disputes.rb @software/vsa-debt-resolution
 app/swagger/swagger/requests/disability_compensation_form.rb @software/disability-benefits
 app/swagger/swagger/requests/disability_compensation_in_progress_forms.rb @software/disability-benefits
@@ -699,7 +696,6 @@ app/swagger/swagger/schemas/async_transaction/vet360.rb @software/vfs-authentica
 app/swagger/swagger/schemas/benefits_claims.rb @software/benefits-management-tools-be
 app/swagger/swagger/schemas/connected_applications.rb @software/lighthouse-pivot
 app/swagger/swagger/schemas/contacts.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
-app/swagger/swagger/schemas/dependents_verifications.rb @software/benefits-lifestage
 app/swagger/swagger/schemas/dependents.rb @software/benefits-lifestage
 app/swagger/swagger/schemas/financial_status_reports.rb @software/vsa-debt-resolution
 app/swagger/swagger/schemas/form526/ @software/disability-benefits
@@ -1388,7 +1384,6 @@ spec/controllers/v0/concerns/multi_provider_support_spec.rb @software/benefits-m
 spec/controllers/v0/datadog_action_controller_spec.rb @software/va-platform-backend
 spec/controllers/v0/debt_letters_controller_spec.rb @software/vsa-debt-resolution
 spec/controllers/v0/dependents_applications_controller_spec.rb @software/vfs-authenticated-experience-backend
-spec/controllers/v0/dependents_verifications_controller_spec.rb @software/benefits-lifestage
 spec/controllers/v0/disability_compensation_forms_controller @software/disability-benefits
 spec/controllers/v0/disability_compensation_forms_controller_spec.rb @software/disability-benefits
 spec/controllers/v0/documents_controller_spec.rb @software/benefits-management-tools-be
@@ -1459,7 +1454,6 @@ spec/factories/dependency_claim_no_vet_information.rb @software/benefits-lifesta
 spec/factories/dependency_claim.rb @software/benefits-lifestage
 spec/factories/dependency_verification_claim.rb @software/benefits-lifestage
 spec/factories/dependents_application.rb @software/vfs-authenticated-experience-backend
-spec/factories/dependents_verifications.rb @software/vfs-authenticated-experience-backend
 spec/factories/deprecated_user_accounts.rb @software/octo-identity
 spec/factories/direct_deposits.rb @software/disability-benefits
 spec/factories/disability_compensation_intent_to_files.rb @software/disability-benefits
@@ -2165,7 +2159,6 @@ spec/serializers/contact_information_serializer_spec.rb @software/vfs-authentica
 spec/serializers/contact_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 spec/serializers/decision_review_evidence_attachment_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/dependents_serializer_spec.rb @software/vfs-authenticated-experience-backend
-spec/serializers/dependents_verifications_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/direct_deposits_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/disability_contention_serializer_spec.rb @software/disability-benefits
 spec/serializers/education_benefits_claim_serializer_spec.rb @software/govcio-vfep-codereviewers
