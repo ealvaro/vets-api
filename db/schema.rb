@@ -1477,6 +1477,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_185750) do
     t.string "state", default: "pending", null: false
     t.string "timestamp"
     t.datetime "updated_at", null: false
+    t.uuid "user_account_id"
+    t.index ["user_account_id"], name: "index_health_care_applications_on_user_account_id"
   end
 
   create_table "health_facilities", force: :cascade do |t|
