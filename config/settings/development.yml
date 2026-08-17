@@ -612,6 +612,8 @@ gclaws:
     icn:
       url: http://localhost:5000/api/v2/accreditations/icn
     origin: fake_origin
+    representative_contacts:
+      url: http://localhost:5000/api/v2/accreditations/RepresentativeContacts
     representatives:
       url: http://localhost:5000/api/v2/accreditations/representatives
     veteran_service_organizations:

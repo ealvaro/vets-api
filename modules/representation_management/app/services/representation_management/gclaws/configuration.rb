@@ -31,10 +31,14 @@ module RepresentationManagement
         'agents' => Settings.gclaws.accreditation.agents.url,
         'attorneys' => Settings.gclaws.accreditation.attorneys.url,
         'representatives' => Settings.gclaws.accreditation.representatives.url,
+        'representative_contacts' => Settings.gclaws.accreditation.representative_contacts.url,
         'veteran_service_organizations' => Settings.gclaws.accreditation.veteran_service_organizations.url
       }.freeze
 
-      def initialize(type:, page:, page_size:)
+      OPEN_TIMEOUT = 10
+      READ_TIMEOUT = 30
+
+      def initialize(type:, page: nil, page_size: nil)
         @type = type
         @page = page
         @page_size = page_size
@@ -43,7 +47,19 @@ module RepresentationManagement
       def connection
         Faraday.new(url:, params:, headers:) do |conn|
           conn.request :json
-          conn.response :json, content_type: /\bjson$/
+          conn.response :json, content_type: /\bjson\b/
+          conn.adapter Faraday.default_adapter
+        end
+      end
+
+      # Builds a Faraday connection for POST requests (no query params).
+      # Reuses the shared URL_MAPPING and headers so auth/URL logic stays in one place.
+      def post_connection
+        Faraday.new(url:, headers:) do |conn|
+          conn.options.open_timeout = OPEN_TIMEOUT
+          conn.options.timeout = READ_TIMEOUT
+          conn.request :json
+          conn.response :json, content_type: /\bjson\b/
           conn.adapter Faraday.default_adapter
         end
       end

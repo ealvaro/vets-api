@@ -613,6 +613,8 @@ gclaws:
     icn:
       url: <%= ENV['gclaws__accreditation__icn__url'] %>
     origin: <%= ENV['gclaws__accreditation__origin'] %>
+    representative_contacts:
+      url: <%= ENV['gclaws__accreditation__representative_contacts__url'] %>
     representatives:
       url: <%= ENV['gclaws__accreditation__representatives__url'] %>
     veteran_service_organizations:

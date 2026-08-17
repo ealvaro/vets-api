@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# This client is responsible for retrieving accreditation data from the GCLAWS API.
+# This client is responsible for interacting with the GCLAWS Accreditation API.
+# Supports retrieving accredited entity data (GET) and pushing representative contact updates (POST).
 
 module RepresentationManagement
   module GCLAWS
@@ -8,6 +9,35 @@ module RepresentationManagement
       ALLOWED_TYPES = %w[agents attorneys representatives veteran_service_organizations].freeze
       DEFAULT_PAGE = 1
       DEFAULT_PAGE_SIZE = 1000
+
+      # Shape-appropriate extra fields for standardized error responses, so callers
+      # receive the same body shape on failure as on success.
+      GET_ERROR_BODY = { 'items' => [], 'totalRecords' => 0 }.freeze
+      POST_ERROR_BODY = { 'updated' => 0, 'rejected' => [] }.freeze
+
+      # Maps Faraday exception classes to the log label, HTTP status, and message for each path.
+      # Faraday::Error is the catch-all fallback for any error not explicitly mapped.
+      GET_ERROR_SPECS = {
+        Faraday::UnauthorizedError => { type: 'unauthorized', status: :unauthorized,
+                                        message: 'GCLAWS Accreditation unauthorized' },
+        Faraday::ConnectionFailed => { type: 'connection_failed', status: :service_unavailable,
+                                       message: 'GCLAWS Accreditation unavailable' },
+        Faraday::TimeoutError => { type: 'timeout', status: :request_timeout,
+                                   message: 'GCLAWS Accreditation request timed out' },
+        Faraday::Error => { type: 'error', status: :bad_gateway,
+                            message: 'GCLAWS Accreditation request failed' }
+      }.freeze
+
+      POST_ERROR_SPECS = {
+        Faraday::UnauthorizedError => { type: 'unauthorized', status: :unauthorized,
+                                        message: 'GCLAWS RepresentativeContacts unauthorized' },
+        Faraday::ConnectionFailed => { type: 'connection_failed', status: :service_unavailable,
+                                       message: 'GCLAWS RepresentativeContacts unavailable' },
+        Faraday::TimeoutError => { type: 'timeout', status: :request_timeout,
+                                   message: 'GCLAWS RepresentativeContacts request timed out' },
+        Faraday::Error => { type: 'error', status: :bad_gateway,
+                            message: 'GCLAWS RepresentativeContacts request failed' }
+      }.freeze
 
       # Retrieves accredited entities from the GCLAWS API with error handling
       #
@@ -37,39 +67,45 @@ module RepresentationManagement
       #     page_size: 50
       #   )
       #
-      # @raise [Faraday::UnauthorizedError] Handled internally, returns 401 error response
-      # @raise [Faraday::ConnectionFailed] Handled internally, returns 503 error response
-      # @raise [Faraday::TimeoutError] Handled internally, returns 408 error response
+      # Any Faraday error (including auth, connection, timeout, and parse failures from the
+      # :json response middleware) is handled internally and returned as a standardized response.
       def self.get_accredited_entities(type:, page: DEFAULT_PAGE, page_size: DEFAULT_PAGE_SIZE)
         return {} unless ALLOWED_TYPES.include?(type)
 
-        configuration = GCLAWS::Configuration.new(type:, page:, page_size:)
-
-        configuration.connection.get
-      rescue Faraday::UnauthorizedError => e
-        handle_api_error_and_respond('unauthorized', type, e, :unauthorized, 'GCLAWS Accreditation unauthorized')
-      rescue Faraday::ConnectionFailed => e
-        handle_api_error_and_respond('connection_failed', type, e, :service_unavailable,
-                                     'GCLAWS Accreditation unavailable')
-      rescue Faraday::TimeoutError => e
-        handle_api_error_and_respond('timeout', type, e, :request_timeout,
-                                     'GCLAWS Accreditation request timed out')
+        GCLAWS::Configuration.new(type:, page:, page_size:).connection.get
+      rescue Faraday::Error => e
+        respond_to_faraday_error(e, type, GET_ERROR_SPECS, GET_ERROR_BODY)
       end
 
-      # Handles API errors with logging, Slack notifications, and builds error response
+      # Posts an array of representative contact updates to the GCLAWS RepresentativeContacts endpoint.
       #
-      # @param error_type [String] The type of error (unauthorized, connection_failed, timeout)
-      # @param entity_type [String] The entity type being requested
-      # @param exception [Exception] The original exception
-      # @param status [Symbol] The HTTP status symbol for the response
-      # @param error_message [String] The error message for the response
-      # @return [Faraday::Response] A standardized error response
-      def self.handle_api_error_and_respond(error_type, entity_type, exception, status, error_message)
-        # Log and notify about the error
-        handle_api_error(error_type, entity_type, exception)
+      # @param contacts [Array<Hash>] Array of contact hashes matching the RepresentativeContactPostDto schema.
+      # @return [Faraday::Response] The API response containing 'updated' count and 'rejected' array.
+      #   On error, returns a standardized response whose body includes 'updated' and 'rejected'
+      #   so callers see a consistent shape. Callers should still gate on status == 200 before
+      #   trusting the values.
+      def self.post_representative_contacts(contacts:)
+        return build_error_response(:bad_request, 'No contacts provided', POST_ERROR_BODY) if contacts.blank?
 
-        # Build and return the error response
-        build_error_response(status, error_message)
+        GCLAWS::Configuration.new(type: 'representative_contacts').post_connection.post do |req|
+          req.body = contacts
+        end
+      rescue Faraday::Error => e
+        respond_to_faraday_error(e, 'representative_contacts', POST_ERROR_SPECS, POST_ERROR_BODY)
+      end
+
+      # Logs and builds a standardized error response for a Faraday error, using the
+      # per-path spec table. Falls back to the Faraday::Error spec for unmapped subclasses.
+      #
+      # @param exception [Faraday::Error] The raised error
+      # @param entity_type [String] The entity type being requested
+      # @param specs [Hash] The GET or POST error spec table
+      # @param body_extra [Hash] Shape-appropriate extra body fields (GET vs POST)
+      # @return [Faraday::Response] A standardized error response
+      def self.respond_to_faraday_error(exception, entity_type, specs, body_extra)
+        spec = specs[exception.class] || specs[Faraday::Error]
+        handle_api_error(spec[:type], entity_type, exception)
+        build_error_response(spec[:status], spec[:message], body_extra)
       end
 
       # Handles API errors with logging and Slack notifications for critical issues
@@ -124,11 +160,13 @@ module RepresentationManagement
       #
       # @param status [Symbol] The HTTP status symbol
       # @param error_message [String] The error message
+      # @param body_extra [Hash] Shape-appropriate extra body fields (e.g. GET pagination
+      #   fields or POST updated/rejected fields) so the error body matches the success shape
       # @return [Faraday::Response] A mock response object
-      def self.build_error_response(status, error_message)
+      def self.build_error_response(status, error_message, body_extra = {})
         Faraday::Response.new(
           status:,
-          body: { 'errors' => error_message, 'items' => [], 'totalRecords' => 0 }
+          body: { 'errors' => error_message }.merge(body_extra)
         )
       end
 
