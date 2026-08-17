@@ -37,10 +37,20 @@ module BenefitsDocuments
     # find the given PENDING evidence submission record. Then we call BenefitsDocuments::UploadStatusUpdater
     # to update the PENDING evidence submission record accordingly.
     def update_documents_status
+      submissions_by_request_id = @pending_evidence_submission_batch.index_by { |s| s.request_id.to_s }
+
       @lighthouse_status_response.dig('data', 'statuses').each do |status_response|
-        pending_evidence_submission = @pending_evidence_submission_batch.find_by!(
-          request_id: status_response['requestId']
-        )
+        pending_evidence_submission = submissions_by_request_id[status_response['requestId'].to_s]
+
+        unless pending_evidence_submission
+          Rails.logger.error(
+            'BenefitsDocuments::UpdateDocumentsStatusService could not find EvidenceSubmission for request_id',
+            { request_id: status_response['requestId'] }
+          )
+          StatsD.increment('worker.lighthouse.cst_document_uploads.evidence_submission_update_error')
+          next
+        end
+
         BenefitsDocuments::UploadStatusUpdater.call(status_response, pending_evidence_submission)
       rescue => e
         Rails.logger.error(
