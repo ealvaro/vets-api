@@ -26,7 +26,8 @@ module RepresentationManagement
                                   {
                                     query_string: @query_string,
                                     threshold: WORD_SIMILARITY_THRESHOLD,
-                                    max_results: MAXIMUM_RESULT_COUNT
+                                    max_results: MAXIMUM_RESULT_COUNT,
+                                    representative_type: AccreditedIndividual::INDIVIDUAL_TYPE_VSO_REPRESENTATIVE
                                   }
                                 ])
       )
@@ -55,6 +56,15 @@ module RepresentationManagement
           WHERE
             word_similarity(:query_string, full_name) >= :threshold
             AND location IS NOT NULL
+            AND (
+              individual_type != :representative_type
+              OR EXISTS (
+                SELECT 1
+                FROM accreditations
+                WHERE accreditations.accredited_individual_id = accredited_individuals.id
+                  AND accreditations.deactivated_at IS NULL
+              )
+            )
 
           UNION ALL
 

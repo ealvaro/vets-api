@@ -167,7 +167,7 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122', type: :request 
           .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
         accredited_organization = create(:accredited_organization)
         accredited_individual = create(:accredited_individual)
-        params[:pdf_generator2122][:representative][:organization_id] = accredited_organization.id
+        params[:pdf_generator2122][:representative][:organization_id] = accredited_organization.poa_code
         params[:pdf_generator2122][:representative][:id] = accredited_individual.id
         post(base_path, params:)
       end

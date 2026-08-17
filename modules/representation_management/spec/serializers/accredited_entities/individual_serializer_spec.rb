@@ -107,6 +107,19 @@ describe RepresentationManagement::AccreditedEntities::IndividualSerializer, typ
     expect(attributes['accredited_organizations']).not_to be_nil
   end
 
+  it 'excludes organizations whose accreditation has been deactivated (membership removed)' do
+    individual = create(:accredited_individual, :with_organizations, org_count: 2)
+    deactivated_accreditation = individual.accreditations.first
+    deactivated_poa_code = deactivated_accreditation.accredited_organization.poa_code
+    deactivated_accreditation.deactivate!
+
+    nested = described_class.new(individual).serializable_hash[:data][:attributes][:accredited_organizations]
+    organizations = nested.serializable_hash[:data]
+
+    expect(organizations.size).to eq(1)
+    expect(organizations.map { |org| org[:id] }).not_to include(deactivated_poa_code)
+  end
+
   it 'includes all three individual types' do
     representative = create(:accredited_individual, full_name: 'Bob Representative')
     attorney = create(:accredited_individual, :attorney, full_name: 'Bob Attorney')

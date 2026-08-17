@@ -48,7 +48,7 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
     context 'when organization is found in AccreditedOrganization' do
       it 'returns the AccreditedOrganization' do
         accredited_organization = create(:accredited_organization, name: 'Accredited Org Name')
-        form = described_class.new(organization_id: accredited_organization.id)
+        form = described_class.new(organization_id: accredited_organization.poa_code)
 
         expect(form.organization).to eq(accredited_organization)
       end
@@ -249,7 +249,7 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
         create(:accredited_organization, poa_code: 'XYZ', can_accept_digital_poa_requests: true)
       end
       let(:accredited_individual) { create(:accredited_individual, registration_number: '67890') }
-      let(:organization_id) { accredited_organization.id }
+      let(:organization_id) { accredited_organization.poa_code }
 
       before do
         allow(Flipper).to receive(:enabled?).and_call_original

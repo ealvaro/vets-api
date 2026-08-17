@@ -3,15 +3,25 @@
 require 'rails_helper'
 
 RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
-  let!(:individual1) { create(:accredited_individual, :with_location, first_name: 'Bob', last_name: 'Law') }
-  let!(:individual2) { create(:accredited_individual, :with_location, first_name: 'Bob', last_name: 'Smith') }
+  let!(:individual1) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Law')
+  end
+  let!(:individual2) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Smith')
+  end
   let!(:individual3) { create(:accredited_individual, :with_location, :attorney, first_name: 'aaaabc', last_name: '') }
   let!(:individual4) do
     create(:accredited_individual, :with_location, :claims_agent, first_name: 'aaaab', last_name: '')
   end
-  let!(:individual5) { create(:accredited_individual, :with_location, first_name: 'aaaabcde', last_name: '') }
-  let!(:individual6) { create(:accredited_individual, :with_location, first_name: 'aaaa', last_name: '') }
-  let!(:individual7) { create(:accredited_individual, :with_location, first_name: 'aaaabcd', last_name: '') }
+  let!(:individual5) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaabcde', last_name: '')
+  end
+  let!(:individual6) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaa', last_name: '')
+  end
+  let!(:individual7) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaabcd', last_name: '')
+  end
 
   let!(:organization1) { create(:accredited_organization, name: 'Bob Law Firm') }
   let!(:organization2) { create(:accredited_organization, name: 'Bob Smith Firm') }
@@ -78,7 +88,8 @@ RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
     end
 
     it 'returns at most 10 results' do
-      create_list(:accredited_individual, 20, :with_location, first_name: 'Bob', last_name: '')
+      create_list(:accredited_individual, 20, :with_location, :with_active_accreditation, first_name: 'Bob',
+                                                                                          last_name: '')
 
       results = described_class.new('Bob').results
 
@@ -103,6 +114,45 @@ RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
       results = described_class.new('aaaab').results
 
       expect(results.size).to be < 9
+    end
+
+    context 'when a representative has no active accreditations' do
+      let!(:inactive_rep) do
+        create(:accredited_individual, :with_location, individual_type: 'representative',
+                                                       first_name: 'Zed', last_name: 'Zephyr')
+      end
+
+      it 'excludes representatives with no accreditations at all' do
+        results = described_class.new('Zed Zephyr').results
+
+        expect(results.map(&:id)).not_to include(inactive_rep.id)
+      end
+
+      it 'excludes representatives whose only accreditation is deactivated' do
+        create(:accreditation, accredited_individual: inactive_rep, deactivated_at: Time.current)
+
+        results = described_class.new('Zed Zephyr').results
+
+        expect(results.map(&:id)).not_to include(inactive_rep.id)
+      end
+
+      it 'includes a representative once an accreditation is active' do
+        create(:accreditation, accredited_individual: inactive_rep)
+
+        results = described_class.new('Zed Zephyr').results
+
+        expect(results.map(&:id)).to include(inactive_rep.id)
+      end
+
+      it 'still includes attorneys and claims agents without accreditations' do
+        attorney = create(:accredited_individual, :with_location, :attorney, first_name: 'Zed', last_name: 'Attorney')
+        claims_agent = create(:accredited_individual, :with_location, :claims_agent, first_name: 'Zed',
+                                                                                     last_name: 'Agent')
+
+        results = described_class.new('Zed').results
+
+        expect(results.map(&:id)).to include(attorney.id, claims_agent.id)
+      end
     end
 
     context 'when the most recent ingestion log is the trexler file (legacy) dataset' do

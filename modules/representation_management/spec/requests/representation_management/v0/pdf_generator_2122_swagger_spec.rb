@@ -8,7 +8,7 @@ RSpec.describe 'PDF Generator 21-22', openapi_spec: 'modules/representation_mana
                                       type: :request do
   before do
     create(:accredited_organization,
-           id: SwaggerSharedComponents::V0.representative[:organization_id],
+           poa_code: SwaggerSharedComponents::V0.representative[:organization_id],
            name: 'Veterans Organization')
     create(:accredited_individual,
            id: SwaggerSharedComponents::V0.representative[:id])

@@ -43,7 +43,7 @@ RSpec.describe RepresentationManagement::Form2122Data, type: :model do
     context 'when organization is found in AccreditedOrganization' do
       it 'returns the AccreditedOrganization' do
         accredited_organization = create(:accredited_organization, name: 'Accredited Org Name')
-        form_2122_data = described_class.new(organization_id: accredited_organization.id)
+        form_2122_data = described_class.new(organization_id: accredited_organization.poa_code)
 
         expect(form_2122_data.organization).to eq(accredited_organization)
       end

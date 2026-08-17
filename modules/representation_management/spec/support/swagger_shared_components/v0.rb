@@ -83,7 +83,7 @@ module SwaggerSharedComponents
     def self.representative
       {
         id: '8c3b3b53-02a1-4dbd-bd23-2b556f5ef635',
-        organization_id: '6f76b9c2-2a37-4cd7-8a6c-93a0b3a73943'
+        organization_id: 'A12'
       }
     end
 
@@ -232,8 +232,8 @@ module SwaggerSharedComponents
           },
           organization_id: {
             type: :string,
-            example: '6f76b9c2-2a37-4cd7-8a6c-93a0b3a73943',
-            description: 'This is an AccreditedOrganization#id or a Veteran::Service::Organization#poa'
+            example: 'A12',
+            description: 'This is an AccreditedOrganization#poa_code or a Veteran::Service::Organization#poa'
           }
         }
       }

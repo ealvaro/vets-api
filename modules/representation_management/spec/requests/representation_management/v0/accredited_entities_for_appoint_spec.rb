@@ -4,8 +4,12 @@ require 'rails_helper'
 
 RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', type: :request do
   let(:path) { '/representation_management/v0/accredited_entities_for_appoint' }
-  let!(:bob_law) { create(:accredited_individual, :with_location, first_name: 'Bob', last_name: 'Law') }
-  let!(:bob_smith) { create(:accredited_individual, :with_location, first_name: 'Bob', last_name: 'Smith') }
+  let!(:bob_law) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Law')
+  end
+  let!(:bob_smith) do
+    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Smith')
+  end
   let!(:bob_law_firm) { create(:accredited_organization, :with_location, name: 'Bob Law Firm') }
   let!(:bob_smith_firm) { create(:accredited_organization, :with_location, name: 'Bob Smith Firm') }
 
@@ -83,6 +87,23 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', typ
       organization = entry['data']['attributes']['accredited_organizations']['data'].first
 
       expect(organization['attributes']['can_accept_digital_poa_requests']).to be(false)
+    end
+
+    it 'excludes an organization whose accreditation has been deactivated (membership removed)' do
+      individual = create(:accredited_individual, :with_organizations, :with_location,
+                          first_name: 'Bob', last_name: 'Jones', org_count: 2)
+      deactivated_accreditation = individual.accreditations.first
+      deactivated_poa_code = deactivated_accreditation.accredited_organization.poa_code
+      deactivated_accreditation.deactivate!
+
+      get path, params: { query: 'Bob' }
+
+      parsed_response = JSON.parse(response.body)
+      entry = parsed_response.find { |e| e['data']['attributes']['full_name'] == 'Bob Jones' }
+      organizations = entry['data']['attributes']['accredited_organizations']['data']
+
+      expect(organizations.size).to eq(1)
+      expect(organizations.map { |org| org['id'] }).not_to include(deactivated_poa_code)
     end
 
     it 'includes reps_can_accept_any_request on a top-level organization result' do

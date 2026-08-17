@@ -319,7 +319,7 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
     context 'when the appoint migration flag is enabled (AccreditedX submission)' do
       let(:accredited_organization) { create(:accredited_organization, can_accept_digital_poa_requests: true) }
       let(:accredited_individual) { create(:accredited_individual) }
-      let(:submission_organization_id) { accredited_organization.id }
+      let(:submission_organization_id) { accredited_organization.poa_code }
       let(:submission_representative_id) { accredited_individual.id }
       let(:poa_request) do
         OpenStruct.new(id: 'efd18b43-4421-4539-941a-7397fadfe5dc',

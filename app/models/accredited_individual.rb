@@ -27,6 +27,12 @@ class AccreditedIndividual < ApplicationRecord
 
   has_many :accreditations, dependent: :destroy
   has_many :accredited_organizations, through: :accreditations
+  # Active-only membership: excludes accreditations soft-deleted by the daily sync (rep<->org pairs
+  # no longer present in the OGC source). Mirrors the legacy poa_codes behavior, where a removed
+  # membership drops the organization from results entirely rather than lingering for mail/print.
+  has_many :active_accreditations, -> { active }, class_name: 'Accreditation', dependent: nil,
+                                                  inverse_of: :accredited_individual
+  has_many :active_accredited_organizations, through: :active_accreditations, source: :accredited_organization
 
   validates :ogc_id, :registration_number, :individual_type, presence: true
   validates :poa_code, length: { is: 3 }, allow_blank: true
