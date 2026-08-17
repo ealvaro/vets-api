@@ -173,6 +173,16 @@ describe UnifiedHealthData::Adapters::VistaPrescriptionAdapter do
 
         expect(result.disp_status).to eq('Active: Refill in Process')
       end
+
+      # disp_status is a pure passthrough, so these statuses must survive verbatim (no
+      # per-value transformation). Notably capital-H "Active: On Hold" stays capital
+      # (contrast the lowercase OH bug) and "NewOrder" survives for pending meds.
+      ['Transferred', 'Active: Submitted', 'Active: On Hold', 'Active: Parked', 'NewOrder'].each do |status|
+        it "passes a #{status.inspect} dispStatus straight through" do
+          result = subject.parse(base_vista_medication.merge('dispStatus' => status))
+          expect(result.disp_status).to eq(status)
+        end
+      end
     end
 
     context 'without disp_status field' do

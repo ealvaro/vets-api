@@ -355,6 +355,27 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_status).to eq('discontinued')
         expect(result.disp_status).to eq('Discontinued')
       end
+
+      # Characterization: today FHIR 'draft' collapses to Unknown via
+      # draft->pending->DISP_UNKNOWN. Pin the bug so the fix visibly flips this example.
+      it 'currently maps draft status to Unknown disp_status (BUG characterization)' do
+        allow(Settings.mhv.uhd).to receive(:medication_filtered_statuses).and_return('none')
+        resource = base_fhir_resource.merge('status' => 'draft')
+        result = described_class.new.parse(resource)
+        expect(result.refill_status).to eq('pending')
+        expect(result.disp_status).to eq('Unknown') # <-- WRONG; documents the chain-break
+      end
+
+      # INTENDED behavior — currently FAILS until the source fix lands. Marked pending so CI
+      # stays green while the intent is recorded; remove `pending:` when the fix is applied.
+      it 'maps draft status to Pending disp_status',
+         pending: 'BUG: draft->pending->DISP_UNKNOWN; fix map_refill_status_to_disp_status' do
+        allow(Settings.mhv.uhd).to receive(:medication_filtered_statuses).and_return('none')
+        resource = base_fhir_resource.merge('status' => 'draft')
+        result = described_class.new.parse(resource)
+        expect(result.refill_status).to eq('pending')
+        expect(result.disp_status).to eq('Pending')
+      end
     end
 
     context 'with disp_status mapping' do
@@ -377,6 +398,57 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       it 'maps in-progress dispense to "Active: Refill in Process" disp_status' do
         result = subject.parse(fhir_resource(status: 'active', refills: 3, dispense_status: 'in-progress'))
         expect(result.disp_status).to eq('Active: Refill in Process')
+      end
+
+      # The !is_non_va guard: a Non-VA med past expiration must NOT flip to Expired.
+      it 'keeps a past-expiration Non-VA med as "Active: Non-VA" (does not expire)' do
+        result = subject.parse(fhir_resource(status: 'active', refills: 0, expiration: 1.day.ago, source: 'NV'))
+        expect(result.refill_status).to eq('active')
+        expect(result.disp_status).to eq('Active: Non-VA')
+      end
+    end
+
+    # Unknown sink + warn on unmapped upstream values.
+    context 'with unknown / unmapped statuses' do
+      before { allow(Settings.mhv.uhd).to receive(:medication_filtered_statuses).and_return('none') }
+
+      it 'maps FHIR status "unknown" to Unknown disp_status without warning' do
+        expect(Rails.logger).not_to receive(:warn).with(/Unexpected MedicationRequest status/)
+        result = described_class.new.parse(base_fhir_resource.merge('status' => 'unknown'))
+        expect(result.refill_status).to eq('unknown')
+        expect(result.disp_status).to eq('Unknown')
+      end
+
+      it 'warns and defaults to Unknown for a bogus MedicationRequest status' do
+        expect(Rails.logger).to receive(:warn).with(/Unexpected MedicationRequest status: bogus-status/)
+        result = described_class.new.parse(base_fhir_resource.merge('status' => 'bogus-status'))
+        expect(result.refill_status).to eq('unknown')
+        expect(result.disp_status).to eq('Unknown')
+      end
+
+      it 'warns from map_refill_status_to_disp_status for an unmapped refill_status' do
+        adapter = described_class.new
+        expect(Rails.logger).to receive(:warn)
+          .with(/Unexpected refill_status for disp_status mapping: surprise/)
+        expect(adapter.send(:map_refill_status_to_disp_status, 'surprise', 'VA')).to eq('Unknown')
+      end
+    end
+
+    # The cancelled/entered-in-error -> Discontinued arm is DEAD under prod
+    # defaults (dropped at parse). It is only reachable when status filtering is disabled.
+    context 'cancelled/entered-in-error discontinue branch (dead under defaults)' do
+      it 'drops cancelled/entered-in-error before mapping under prod defaults (no Discontinued emitted)' do
+        expect(subject.parse(base_fhir_resource.merge('status' => 'cancelled'))).to be_nil
+        expect(subject.parse(base_fhir_resource.merge('status' => 'entered-in-error'))).to be_nil
+      end
+
+      it 'only reaches STATUS_DISCONTINUED for cancelled/entered-in-error when filtering is disabled' do
+        allow(Settings.mhv.uhd).to receive(:medication_filtered_statuses).and_return('none')
+        %w[cancelled entered-in-error].each do |st|
+          result = described_class.new.parse(base_fhir_resource.merge('status' => st))
+          expect(result.refill_status).to eq('discontinued')
+          expect(result.disp_status).to eq('Discontinued')
+        end
       end
     end
 
@@ -499,6 +571,83 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
 
         expect(result.refill_status).to eq('submitted')
         expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+      end
+    end
+
+    # Order-intent (refill) most-recent-wins. Mirrors the renewal
+    # 'selects the most recent renewal Task when multiple exist' test, but for intent='order',
+    # which is the path veterans actually hit on refill. Guards the date-compare bug class:
+    # an older order-Task from history must not flip the current refill status.
+    context 'with multiple order-intent refill Tasks (most-recent-wins)' do
+      around do |example|
+        travel_to(Time.zone.parse('2025-06-26T00:00:00Z')) { example.run }
+      end
+
+      let(:fresh_date) { '2025-06-25T00:00:00.000Z' } # 1 day ago  (inside 3-day window)
+      let(:older_in_window_date) { '2025-06-24T00:00:00.000Z' } # 2 days ago (inside window)
+      let(:stale_date) { '2025-06-16T00:00:00.000Z' } # 10 days ago (outside window)
+
+      it 'selects the most recent order-Task by date when two in-window Tasks exist' do
+        # Both Tasks are inside the staleness window, so only max_by ordering can pick the winner.
+        resource = fhir_resource_with_task(task_date: older_in_window_date)
+        resource['contained'] << fhir_task('requested', 'order', fresh_date, '12345')
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.disp_status).to eq('Active: Submitted')
+        expect(result.refill_submit_date).to eq(fresh_date)
+      end
+
+      it 'ignores a stale historical order-Task and pins the fresh one (no date flip)' do
+        # stale (10d, outside window) + fresh (1d, inside window). If max_by wrongly picked the
+        # stale Task the med would fall back to plain Active with no submit date.
+        resource = fhir_resource_with_task(task_date: stale_date)
+        resource['contained'] << fhir_task('requested', 'order', fresh_date, '12345')
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.disp_status).to eq('Active: Submitted')
+        expect(result.refill_submit_date).to eq(fresh_date)
+      end
+
+      # Ambient-history immunity: a stale order-Task (20d) plus a completed
+      # dispense must yield the SAME output as a plain active med with no Task, in BOTH flag states.
+      [true, false].each do |flag_on|
+        it "ignores an ambient stale order-Task and matches the no-Task baseline (flag=#{flag_on})" do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(flag_on)
+
+          stale = '2025-06-06T00:00:00.000Z' # 20 days ago, well outside the 3-day window
+          resource = fhir_resource_with_task(
+            task_date: stale,
+            dispenses: [{ status: 'completed',
+                          when_prepared: '2025-06-05T00:00:00.000Z',
+                          when_handed_over: '2025-06-05T00:00:00.000Z' }]
+          )
+
+          result = subject.parse(resource)
+
+          # Identical to the no-Task active baseline:
+          expect(result.refill_status).to eq('active')
+          expect(result.disp_status).to eq('Active')
+          expect(result.refill_submit_date).to be_nil
+        end
+      end
+
+      # Cross-reference contamination guard for intent='order'. A fresh order-Task
+      # pointing at a DIFFERENT MedicationRequest must not pin THIS Rx as Submitted.
+      it 'ignores a fresh order-Task whose focus.reference points at a different MedicationRequest' do
+        resource = fhir_resource_with_task(task_date: '2025-06-25T00:00:00.000Z')
+        resource['contained'].first['focus']['reference'] = 'MedicationRequest/99999'
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('active')
+        expect(result.disp_status).to eq('Active')
+        expect(result.refill_submit_date).to be_nil
       end
     end
 

@@ -6,6 +6,8 @@ require 'unified_health_data/adapters/prescriptions_adapter'
 require 'unified_health_data/facility_service'
 
 describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
+  include ActiveSupport::Testing::TimeHelpers
+
   subject { described_class.new(user) }
 
   let(:user) { build(:user, :loa3, icn: '1000123456V123456') }
@@ -368,6 +370,54 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
                 excluded_count: 0
               )
             )
+          end
+        end
+
+        # Boundary + discontinued side of prescription_not_current?.
+        # Time is frozen at noon UTC so that Date.parse (which truncates the noon-UTC-normalized
+        # expiration to midnight) compares deterministically against `180.days.ago`.
+        context 'boundary and discontinued side of the 180-day rule' do
+          around do |example|
+            travel_to(Time.zone.parse('2025-06-26T12:00:00Z')) { example.run }
+          end
+
+          def vista_med(refill_status:, days_ago:)
+            vista_medication_data.merge(
+              'refillStatus' => refill_status,
+              'expirationDate' => days_ago.days.ago.strftime('%a, %d %b %Y %H:%M:%S %Z')
+            )
+          end
+
+          def response_for(med)
+            { 'vista' => { 'medicationList' => { 'medication' => [med] } },
+              'oracle-health' => { 'entry' => [] } }
+          end
+
+          before { allow(Rails.logger).to receive(:info) }
+
+          it 'excludes a DISCONTINUED med older than 180 days' do
+            prescriptions = subject.parse(response_for(vista_med(refill_status: 'discontinued', days_ago: 200)),
+                                          current_only: true)[:prescriptions]
+            expect(prescriptions).to be_empty
+          end
+
+          it 'keeps a DISCONTINUED med comfortably inside the 180-day window' do
+            prescriptions = subject.parse(response_for(vista_med(refill_status: 'discontinued', days_ago: 100)),
+                                          current_only: true)[:prescriptions]
+            expect(prescriptions.size).to eq(1)
+          end
+
+          it 'excludes a discontinued med whose expiration date equals the 180-day mark (comparator is strict <)' do
+            # The noon-UTC expiration truncates to midnight, which is < 180.days.ago (frozen at noon).
+            prescriptions = subject.parse(response_for(vista_med(refill_status: 'discontinued', days_ago: 180)),
+                                          current_only: true)[:prescriptions]
+            expect(prescriptions).to be_empty
+          end
+
+          it 'keeps a discontinued med one day inside the 180-day mark' do
+            prescriptions = subject.parse(response_for(vista_med(refill_status: 'discontinued', days_ago: 179)),
+                                          current_only: true)[:prescriptions]
+            expect(prescriptions.size).to eq(1)
           end
         end
       end
