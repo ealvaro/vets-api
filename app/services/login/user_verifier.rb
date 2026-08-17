@@ -20,6 +20,7 @@ module Login
       @credential_attributes_digest = credential_attributes_digest
       @deprecated_log = nil
       @user_account_mismatch_log = nil
+      @verified_at = icn.present? ? Time.zone.now : nil
     end
 
     def perform
@@ -38,7 +39,10 @@ module Login
                 :deprecated_log,
                 :user_account_mismatch_log,
                 :new_user_log,
-                :credential_attributes_digest
+                :credential_attributes_digest,
+                :newly_verified_user_log,
+                :new_user_account_log,
+                :verified_at
 
     MHV_TYPE = :mhv_uuid
     IDME_TYPE = :idme_uuid
@@ -99,25 +103,26 @@ module Login
 
     def deprecate_unverified_user_account
       deprecated_user_account = user_verification.user_account
-      DeprecatedUserAccount.create!(user_account: deprecated_user_account,
-                                    user_verification:)
-      user_verification.update(user_account: existing_user_account, verified_at: Time.zone.now)
+      DeprecatedUserAccount.create!(user_account: deprecated_user_account, user_verification:)
+      user_verification.update(user_account: existing_user_account, verified_at:)
       set_deprecated_log(deprecated_user_account.id, user_verification.id, existing_user_account.id)
     end
 
     def update_newly_verified_user
       user_verification_account = user_verification.user_account
-      user_verification.update(verified_at: Time.zone.now)
+      user_verification.update(verified_at:)
       user_verification_account.update(icn:)
+      @newly_verified_user_log = '[Login::UserVerifier] Existing UserVerification has been verified, ' \
+                                 "type=#{login_type}, identifier=#{identifier}, broker=#{auth_broker}, " \
+                                 "verified_at=#{verified_at}"
     end
 
     def create_user_verification
       set_new_user_log
-      verified_at = icn ? Time.zone.now : nil
       credential_attributes_digest = nil unless icn
 
       UserVerification.create!(type => identifier,
-                               user_account: existing_user_account || UserAccount.new(icn:),
+                               user_account: existing_user_account || new_user_account,
                                backing_idme_uuid:,
                                verified_at:,
                                locked:,
@@ -138,18 +143,29 @@ module Login
 
     def set_new_user_log
       @new_user_log = '[Login::UserVerifier] New VA.gov user, ' \
-                      "type=#{login_type}, broker=#{auth_broker}, identifier=#{identifier}, locked=#{locked}"
+                      "type=#{login_type}, broker=#{auth_broker}, " \
+                      "identifier=#{identifier}, locked=#{locked}, verified_at=#{verified_at}"
+    end
+
+    def new_user_account
+      @new_user_account_log = '[Login::UserVerifier] New UserAccount created, ' \
+                              "type=#{login_type}, broker=#{auth_broker}"
+      UserAccount.new(icn:)
     end
 
     def post_transaction_message_logs
       Rails.logger.info(deprecated_log) if deprecated_log
       Rails.logger.info(user_account_mismatch_log) if user_account_mismatch_log
+      Rails.logger.info(newly_verified_user_log) if newly_verified_user_log
       Rails.logger.info(new_user_log, { icn:, safe_keys: [:icn] }) if new_user_log
+      Rails.logger.info(new_user_account_log, { icn:, safe_keys: [:icn] }) if new_user_account_log
     end
 
     def set_deprecated_log(deprecated_user_account_id, user_verification_id, user_account_id)
       @deprecated_log = "[Login::UserVerifier] Deprecating UserAccount id=#{deprecated_user_account_id}, " \
-                        "Updating UserVerification id=#{user_verification_id} with UserAccount id=#{user_account_id}"
+                        "Updating UserVerification id=#{user_verification_id} " \
+                        "with UserAccount id=#{user_account_id}, " \
+                        "type=#{login_type}, broker=#{auth_broker}, verified_at=#{verified_at}"
     end
 
     # ID.me uuid has historically been a primary identifier, even for non-ID.me credentials.

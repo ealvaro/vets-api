@@ -80,9 +80,11 @@ RSpec.describe Login::UserVerifier do
     shared_examples 'user_verification with defined credential identifier' do
       context 'and current user is verified, with an ICN value' do
         let(:icn) { 'some-icn' }
+        let(:expected_verified_at_time) { Time.zone.now }
         let(:expected_log) do
           '[Login::UserVerifier] New VA.gov user, ' \
-            "type=#{login_type}, broker=#{auth_broker}, identifier=#{authn_identifier}, locked=#{locked}"
+            "type=#{login_type}, broker=#{auth_broker}, " \
+            "identifier=#{authn_identifier}, locked=#{locked}, verified_at=#{expected_verified_at_time}"
         end
 
         context 'and user_verification for user credential already exists' do
@@ -172,12 +174,13 @@ RSpec.describe Login::UserVerifier do
               context 'and the current user_verification is not verified' do
                 let(:user_account) { UserAccount.new(icn: nil) }
                 let(:verified_at) { nil }
+                let(:expected_verified_at_time) { Time.zone.now }
                 let(:expected_log_message) do
                   "[Login::UserVerifier] Deprecating UserAccount id=#{user_account.id}, " \
                     "Updating UserVerification id=#{user_verification.id} with " \
-                    "UserAccount id=#{other_user_account.id}"
+                    "UserAccount id=#{other_user_account.id}, " \
+                    "type=#{login_type}, broker=#{auth_broker}, verified_at=#{expected_verified_at_time}"
                 end
-                let(:expected_verified_at_time) { Time.zone.now }
 
                 before do
                   UserVerification.create!(authn_identifier_type => 'some-other-authn-identifier',
@@ -255,6 +258,11 @@ RSpec.describe Login::UserVerifier do
           context 'and user_account with the current user ICN does not exist' do
             let(:user_account) { UserAccount.new(icn: nil) }
             let(:expected_verified_at_time) { Time.zone.now }
+            let(:expected_newly_verified_log) do
+              '[Login::UserVerifier] Existing UserVerification has been verified, ' \
+                "type=#{login_type}, identifier=#{authn_identifier}, broker=#{auth_broker}, " \
+                "verified_at=#{expected_verified_at_time}"
+            end
 
             it 'updates the associated user_account with the current user ICN' do
               expect do
@@ -270,6 +278,11 @@ RSpec.describe Login::UserVerifier do
               end.to change(user_verification, :verified_at).from(verified_at).to(expected_verified_at_time)
             end
 
+            it 'writes a newly verified log to rails logger' do
+              expect(Rails.logger).to receive(:info).with(expected_newly_verified_log)
+              subject
+            end
+
             it 'returns the existing user_verification' do
               expect(subject).to eq(user_verification)
             end
@@ -277,14 +290,15 @@ RSpec.describe Login::UserVerifier do
         end
 
         context 'and user_verification for user credential does not already exist' do
-          let(:expected_verified_at_time) { Time.zone.now }
-          let(:expected_log) do
+          let(:expected_new_user_log) do
             '[Login::UserVerifier] New VA.gov user, ' \
-              "type=#{login_type}, broker=#{auth_broker}, identifier=#{authn_identifier}, locked=#{locked}"
+              "type=#{login_type}, broker=#{auth_broker}, " \
+              "identifier=#{authn_identifier}, locked=#{locked}, verified_at=#{expected_verified_at_time}"
           end
 
           it 'makes a new user log to rails logger' do
-            expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
+            allow(Rails.logger).to receive(:info)
+            expect(Rails.logger).to receive(:info).with(expected_new_user_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
@@ -299,6 +313,11 @@ RSpec.describe Login::UserVerifier do
           end
 
           context 'and user_account matching icn does not already exist' do
+            let(:expected_new_user_account_log) do
+              '[Login::UserVerifier] New UserAccount created, ' \
+                "type=#{login_type}, broker=#{auth_broker}"
+            end
+
             it 'sets the current user ICN on the user_account record' do
               subject
               account_icn = UserVerification.where(authn_identifier_type => authn_identifier).first.user_account.icn
@@ -314,6 +333,12 @@ RSpec.describe Login::UserVerifier do
             it 'returns created user_verification' do
               expect(subject).to eq(UserVerification.last)
             end
+
+            it 'makes a new user account log to rails logger' do
+              allow(Rails.logger).to receive(:info)
+              expect(Rails.logger).to receive(:info).with(expected_new_user_account_log, { icn:, safe_keys: [:icn] })
+              subject
+            end
           end
 
           context 'and user_account matching icn already exists' do
@@ -328,7 +353,7 @@ RSpec.describe Login::UserVerifier do
                 let(:locked) { true }
 
                 it 'creates a locked UserVerification object and logs the event' do
-                  expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
+                  expect(Rails.logger).to receive(:info).with(expected_new_user_log, { icn:, safe_keys: [:icn] })
                   expect(subject.locked).to be(true)
                 end
               end
@@ -359,9 +384,9 @@ RSpec.describe Login::UserVerifier do
 
       context 'and current user is not verified, without an ICN value' do
         let(:icn) { nil }
-        let(:expected_log) do
+        let(:expected_new_user_log) do
           '[Login::UserVerifier] New VA.gov user, ' \
-            "type=#{login_type}, broker=#{auth_broker}, identifier=#{authn_identifier}, locked=#{locked}"
+            "type=#{login_type}, broker=#{auth_broker}, identifier=#{authn_identifier}, locked=#{locked}, verified_at="
         end
 
         context 'and user_verification for user credential already exists' do
@@ -372,7 +397,7 @@ RSpec.describe Login::UserVerifier do
           end
 
           it 'does not make new user log to rails logger' do
-            expect(Rails.logger).not_to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
+            expect(Rails.logger).not_to receive(:info).with(expected_new_user_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
@@ -410,8 +435,20 @@ RSpec.describe Login::UserVerifier do
         end
 
         context 'and user_verification for user credential does not already exist' do
+          let(:expected_new_user_account_log) do
+            '[Login::UserVerifier] New UserAccount created, ' \
+              "type=#{login_type}, broker=#{auth_broker}"
+          end
+
           it 'makes a new user log to rails logger' do
-            expect(Rails.logger).to receive(:info).with(expected_log, { icn:, safe_keys: [:icn] })
+            allow(Rails.logger).to receive(:info)
+            expect(Rails.logger).to receive(:info).with(expected_new_user_log, { icn:, safe_keys: [:icn] })
+            subject
+          end
+
+          it 'makes a new user account log to rails logger' do
+            allow(Rails.logger).to receive(:info)
+            expect(Rails.logger).to receive(:info).with(expected_new_user_account_log, { icn:, safe_keys: [:icn] })
             subject
           end
 
