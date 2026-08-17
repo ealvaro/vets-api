@@ -298,8 +298,6 @@ module ClaimsApi
           if service.is_a?(ClaimsApi::FesService::Base)
             service.validate(auto_claim,
                              get_fes_data(auto_claim))
-          elsif service.is_a?(ClaimsApi::EVSSService::Base)
-            service.validate(auto_claim, auto_claim.to_internal)
           else
             service.validate_form526(auto_claim.to_internal)
           end
@@ -307,7 +305,6 @@ module ClaimsApi
 
         def build_validation_service
           return ClaimsApi::FesService::Base.new if fes_enabled?
-          return ClaimsApi::EVSSService::Base.new if Flipper.enabled?(:claims_status_v1_lh_auto_establish_claim_enabled)
           return EVSS::DisabilityCompensationForm::Service.new(auth_headers) if Flipper.enabled?(:form526_legacy)
 
           EVSS::DisabilityCompensationForm::Dvp::Service.new(auth_headers)

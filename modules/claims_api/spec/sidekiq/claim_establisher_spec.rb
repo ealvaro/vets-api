@@ -8,7 +8,6 @@ RSpec.describe ClaimsApi::ClaimEstablisher, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    allow(Flipper).to receive(:enabled?).with(:claims_status_v1_lh_auto_establish_claim_enabled).and_return true
     stub_claims_api_auth_token
   end
 
@@ -55,24 +54,31 @@ RSpec.describe ClaimsApi::ClaimEstablisher, type: :job do
     end
 
     it 'sets a status of established on successful call' do
-      VCR.use_cassette('claims_api/evss/submit') do
-        subject.new.perform(claim.id)
-        claim.reload
-        expect(claim.evss_id).not_to be_nil
-        expect(claim.status).to eq(ClaimsApi::AutoEstablishedClaim::ESTABLISHED)
-      end
-    end
-
-    it 'clears original data upon success' do
-      evss_service_stub = instance_double(ClaimsApi::EVSSService::Base)
-      allow(ClaimsApi::EVSSService::Base).to receive(:new) { evss_service_stub }
-      allow(evss_service_stub).to receive(:submit) { OpenStruct.new(claimId: 1337) }
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
+      allow(evss_service_stub).to receive(:submit_form526).and_return(OpenStruct.new(claim_id: 1337))
 
       subject.new.perform(claim.id)
       claim.reload
+
+      expect(claim.evss_id).to eq(1337)
+      expect(claim.status).to eq(ClaimsApi::AutoEstablishedClaim::ESTABLISHED)
+    end
+
+    it 'does not preserve original form data upon success' do
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
+      allow(evss_service_stub).to receive(:submit_form526).and_return(OpenStruct.new(claim_id: 1337))
+
+      original_form_data = claim.form_data.deep_dup
+
+      subject.new.perform(claim.id)
+      claim.reload
+
       expect(claim.evss_id).to eq(1337)
       expect(claim.status).to eq(ClaimsApi::AutoEstablishedClaim::ESTABLISHED)
       expect(claim.form_data).to eq({})
+      expect(claim.form_data).not_to eq(original_form_data)
     end
   end
 
@@ -82,28 +88,30 @@ RSpec.describe ClaimsApi::ClaimEstablisher, type: :job do
     end
 
     it 'sets the status of the claim to an error if it raises an Common::Exceptions::BackendServiceException error' do
-      evss_service_stub = instance_double(ClaimsApi::EVSSService::Base)
-      allow(ClaimsApi::EVSSService::Base).to receive(:new) { evss_service_stub }
-      allow(evss_service_stub).to receive(:submit).and_raise(Common::Exceptions::BackendServiceException.new(
-                                                               errors
-                                                             ))
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
+      allow(evss_service_stub).to receive(:submit_form526).and_raise(Common::Exceptions::BackendServiceException.new(
+                                                                       errors
+                                                                     ))
+
       subject.new.perform(claim.id)
       claim.reload
+
       expect(claim.evss_id).to be_nil
       expect(claim.evss_response).to eq(errors)
       expect(claim.status).to eq(ClaimsApi::AutoEstablishedClaim::ERRORED)
     end
 
     it 'preserves the original form data throughout the job' do
-      orig_form_data = claim_with_treatments.form_data
-      evss_service_stub = instance_double(ClaimsApi::EVSSService::Base)
-      allow(ClaimsApi::EVSSService::Base).to receive(:new) { evss_service_stub }
+      orig_form_data = claim_with_treatments.form_data.deep_dup
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
 
       expect(claim_with_treatments.form_data['treatments']).to eq(orig_form_data['treatments'])
 
-      allow(evss_service_stub).to receive(:submit).and_raise(Common::Exceptions::BackendServiceException.new(
-                                                               errors
-                                                             ))
+      allow(evss_service_stub).to receive(:submit_form526).and_raise(Common::Exceptions::BackendServiceException.new(
+                                                                       errors
+                                                                     ))
       subject.new.perform(claim_with_treatments.id)
       claim_with_treatments.reload
 
@@ -111,9 +119,9 @@ RSpec.describe ClaimsApi::ClaimEstablisher, type: :job do
     end
 
     it 'rescues a Lighthouse::BackendServiceException and does not raise an error' do
-      evss_service_stub = instance_double(ClaimsApi::EVSSService::Base)
-      allow(ClaimsApi::EVSSService::Base).to receive(:new) { evss_service_stub }
-      allow(evss_service_stub).to receive(:submit).and_raise(
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
+      allow(evss_service_stub).to receive(:submit_form526).and_raise(
         ClaimsApi::Common::Exceptions::Lighthouse::BackendServiceException.new(errors)
       )
 
@@ -123,9 +131,9 @@ RSpec.describe ClaimsApi::ClaimEstablisher, type: :job do
 
   describe 'Expectation Failed Errors' do
     before do
-      evss_service_stub = instance_double(ClaimsApi::EVSSService::Base)
-      allow(ClaimsApi::EVSSService::Base).to receive(:new) { evss_service_stub }
-      allow(evss_service_stub).to receive(:submit).and_raise(error)
+      evss_service_stub = instance_double(EVSS::DisabilityCompensationForm::Service)
+      allow_any_instance_of(described_class).to receive(:service).and_return(evss_service_stub)
+      allow(evss_service_stub).to receive(:submit_form526).and_raise(error)
     end
 
     context 'when the error is a BackendServiceException and the message text includes 417' do

@@ -916,9 +916,6 @@ features:
     actor: user
     description: Enable/disable the running of the hourly slack alert for errored submissions
     enable_in_development: false
-  claims_status_v1_lh_auto_establish_claim_enabled:
-    actor_type: user
-    description: With feature flag enabled, v1 /526 should use Lighthouse Form526 docker container
   cst_send_evidence_submission_failure_emails:
     actor_type: user
     description: >

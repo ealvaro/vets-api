@@ -8,7 +8,6 @@ RSpec.describe ClaimsApi::CustomError, type: :job do
 
   before do
     Sidekiq::Job.clear_all
-    allow(Flipper).to receive(:enabled?).with(:claims_status_v1_lh_auto_establish_claim_enabled).and_return true
     stub_claims_api_auth_token
   end
 

@@ -1716,12 +1716,17 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
       context 'form 526 validation endpoint' do
         let(:path) { '/services/claims/v1/forms/526/validate' }
 
-        context 'flipper sends to evss' do
+        context 'flipper sends to evss legacy service' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_enable_FES).and_return(false)
+            allow(Flipper).to receive(:enabled?).with(:form526_legacy).and_return(true)
+          end
+
           it 'returns a successful response when valid' do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/brd/countries') do
                 VCR.use_cassette('claims_api/bgs/claims/claims') do
-                  VCR.use_cassette('claims_api/v1/disability_comp/validate') do
+                  VCR.use_cassette('claims_api/evss/disability_compensation_form/form_526_valid_validation') do
                     post path, params: data, headers: headers.merge(auth_header)
                     parsed = JSON.parse(response.body)
 
@@ -1737,11 +1742,14 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             mock_acg(scopes) do |auth_header|
               VCR.use_cassette('claims_api/brd/countries') do
                 VCR.use_cassette('claims_api/bgs/claims/claims') do
-                  VCR.use_cassette('claims_api/v1/disability_comp/invalid') do
+                  VCR.use_cassette('claims_api/evss/disability_compensation_form/form_526_invalid_validation') do
                     post path, params: data, headers: headers.merge(auth_header)
                     parsed = JSON.parse(response.body)
 
-                    expect(parsed['errors'][0]['title']).to eq('Backend Service Exception')
+                    expect(parsed['errors']).to be_present
+                    expect(parsed['errors'][0]['source']).to eq(
+                      'form526.serviceInformation.servicePeriods[1].serviceBranch.isInvalidValue'
+                    )
                   end
                 end
               end
