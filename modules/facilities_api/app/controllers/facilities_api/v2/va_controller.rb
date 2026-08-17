@@ -3,7 +3,6 @@
 module FacilitiesApi
   class V2::VAController < ApplicationController
     include FacilitiesApi::V2::FacilitiesErrorHandler
-    skip_before_action :verify_authenticity_token
     before_action :check_va_disabled
     before_action :validate_facility_id, only: :show
 

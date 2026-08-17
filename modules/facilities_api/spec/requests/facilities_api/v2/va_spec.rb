@@ -663,4 +663,42 @@ RSpec.describe 'FacilitiesApi::V2::Va', team: :facilities, type: :request, vcr: 
       end
     end
   end
+
+  describe 'CSRF protection' do
+    # allow_forgery_protection is false in the test environment, so we explicitly
+    # enable it here to exercise the real production CSRF behavior for these endpoints.
+    before do
+      allow(ActionController::Base).to receive(:allow_forgery_protection).and_return(true)
+      # A GET through the app sets the token via the base ApplicationController's
+      # set_csrf_header after_action. apidocs is a static endpoint with no upstream call.
+      get '/facilities_api/v2/apidocs'
+      @token = response.headers['X-CSRF-Token']
+      expect(@token).to be_present
+    end
+
+    context 'POST #search' do
+      it 'is rejected without a CSRF token' do
+        post '/facilities_api/v2/va', params: { services: 'EyeCare' }
+
+        expect(response).to have_http_status(:forbidden)
+        expect(response.body).to match(/Invalid Authenticity Token/)
+      end
+
+      it 'succeeds with a valid CSRF token' do
+        post '/facilities_api/v2/va',
+             params: { services: 'EyeCare' },
+             headers: { 'X-CSRF-Token' => @token }
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'GET #show' do
+      it 'is not subject to CSRF validation' do
+        get '/facilities_api/v2/va/vha_648A4'
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end
