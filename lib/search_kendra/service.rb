@@ -36,7 +36,7 @@ module SearchKendra
     def results
       with_monitoring do
         query_result = config.client.query(query_params).data
-        response = SearchKendra::ResponseAdapter.new(query_result, page_number)
+        response = SearchKendra::ResponseAdapter.new(query_result, redacted_query, page_number)
         Search::ResultsResponse.from(response)
       end
     rescue => e

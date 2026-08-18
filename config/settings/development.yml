@@ -1426,6 +1426,7 @@ search_gsa:
 search_kendra:
   index_id: index_id
   region: region
+  url: https://kendra.us-gov-west-1.amazonaws.com/
 secret_key_base: c1a13acb916e6ebf1d2a93a3924586520508b609e80e048364902cd36ab602c9ec6ddcb47ac66e7903dbc77ae876df5564658a4f786b50497440b0c7dc029361
 sharepoint:
   mobile_survey_storage:

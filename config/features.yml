@@ -3478,6 +3478,10 @@ features:
     actor_type: cookie_id
     description: Swaps the Search Service's for one with an updated api.gsa.gov address
     enable_in_development: true
+  search_use_kendra:
+    actor_type: cookie_id
+    description: If enabled, search queries are routed to Amazon Kendra.
+    enable_in_development: false
   show_yellow_ribbon_table:
     actor_type: cookie_id
     description: Used to show yellow ribbon table in Comparison Tool

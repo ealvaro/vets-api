@@ -3,6 +3,7 @@
 require 'search/pii_redactor'
 require 'search/service'
 require 'search_gsa/service'
+require 'search_kendra/service'
 
 module V0
   class SearchController < ApplicationController
@@ -13,7 +14,7 @@ module V0
     skip_before_action :authenticate
     before_action :short_circuit_known_bots, only: :index
 
-    # Returns a page of search results from the Search.gov API, based on the passed query and page.
+    # Returns a page of search results, based on the passed query and page.
     #
     # Pagination schema follows precedent from other controllers that return pagination.
     # For example, the app/controllers/v0/prescriptions_controller.rb.
@@ -30,8 +31,8 @@ module V0
 
     # Returns an empty 204 response for requests coming from known crawlers/bots
     # (matched against a Parameter Store-configurable regex) so they never reach the
-    # upstream Search.gov API. This protects the shared, rate-limited Search.gov
-    # allowance from being exhausted by automated traffic. Gated behind a Flipper
+    # upstream search service. This protects the shared, rate-limited allowance
+    # from being exhausted by automated traffic. Gated behind a Flipper
     # flag so it can be toggled without a deploy.
     #
     def short_circuit_known_bots
@@ -111,8 +112,8 @@ module V0
     # with the actual upstream request: an omitted page, `page=0`, and `page=1`
     # all resolve to offset 0, and very high pages that clamp to the max offset
     # share one entry. The backend discriminator prevents an entry cached under
-    # one Search.gov backend from being served after the :search_use_v2_gsa flag
-    # flips (both backends run concurrently during a cookie-based rollout).
+    # one search backend from being served after a backend flag flips
+    # (multiple backends run concurrently during a cookie-based rollout).
     #
     # @return [String]
     def results_cache_key
@@ -147,7 +148,9 @@ module V0
     end
 
     def search_service
-      @search_service ||= if v2_gsa_backend?
+      @search_service ||= if kendra_backend?
+                            SearchKendra::Service.new(query, page)
+                          elsif v2_gsa_backend?
                             SearchGsa::Service.new(query, page)
                           else
                             Search::Service.new(query, page)
@@ -161,7 +164,10 @@ module V0
     #
     # @return [String]
     def search_backend
-      v2_gsa_backend? ? 'gsa' : 'default'
+      return 'kendra' if kendra_backend?
+      return 'gsa' if v2_gsa_backend?
+
+      'default'
     end
 
     # Memoized decision for which upstream Search.gov backend to use. Single
@@ -172,6 +178,15 @@ module V0
       return @v2_gsa_backend if defined?(@v2_gsa_backend)
 
       @v2_gsa_backend = Flipper.enabled?(:search_use_v2_gsa)
+    end
+
+    # Memoized decision for whether to use Kendra as search backend.
+    #
+    # @return [Boolean]
+    def kendra_backend?
+      return @kendra_backend if defined?(@kendra_backend)
+
+      @kendra_backend = Flipper.enabled?(:search_use_kendra)
     end
 
     # Returns a sanitized, permitted version of the passed query params.

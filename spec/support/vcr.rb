@@ -22,6 +22,7 @@ VCR.configure do |c|
   c.filter_sensitive_data('<FARADAY_VERSION>') { Faraday::Connection::USER_AGENT }
   c.filter_sensitive_data('<DISABILITY_MAX_RATINGS_URI>') { Settings.disability_max_ratings_api.url }
   c.filter_sensitive_data('<GIDS_URL>') { Settings.gids.url }
+  c.filter_sensitive_data('<KENDRA_URL>') { Settings.search_kendra.url }
   c.filter_sensitive_data('<LIGHTHOUSE_API_KEY>') { Settings.decision_review.api_key }
   c.filter_sensitive_data('<LIGHTHOUSE_API_KEY>') { Settings.lighthouse.facilities.api_key }
   c.filter_sensitive_data('<LIGHTHOUSE_BENEFITS_DISCOVERY_HOST>') { Settings.lighthouse.benefits_discovery.host }

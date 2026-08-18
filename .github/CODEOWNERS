@@ -1419,6 +1419,7 @@ spec/controllers/v0/profile @software/vfs-authenticated-experience-backend
 spec/controllers/v0/profile/contacts_controller_spec.rb @software/vfs-authenticated-experience-backend @software/vfs-mhv-integration
 spec/controllers/v0/profile/payment_history_controller_spec.rb @software/benefits-management-tools-be @software/vsa-debt-resolution
 spec/controllers/v0/rated_disabilities_controller_spec.rb @software/benefits-management-tools-be
+spec/controllers/v0/search_controller_spec.rb @software/ws3-intelligent-search
 spec/controllers/v0/sign_in @software/octo-identity
 spec/controllers/v0/sign_in_controller @software/octo-identity
 spec/controllers/v0/terms_of_use_agreements_controller_spec.rb @software/octo-identity

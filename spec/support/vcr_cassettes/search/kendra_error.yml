@@ -1,0 +1,52 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: <KENDRA_URL>
+    body:
+      encoding: UTF-8
+      string: '{"IndexId":"d1f6fae9-b3e5-43ef-8993-a52fd9a9f247","QueryText":"benefits","PageSize":10,"PageNumber":1}'
+    headers:
+      Accept-Encoding:
+      - ''
+      Amz-Sdk-Invocation-Id:
+      - c8b9e6a2-6c78-4bdb-ae79-88916a5996a2
+      Content-Type:
+      - application/x-amz-json-1.1
+      X-Amz-Target:
+      - AWSKendraFrontendService.Query
+      Host:
+      - kendra.us-gov-west-1.amazonaws.com
+      X-Amz-Date:
+      - 20260811T184252Z
+      X-Amz-Content-Sha256:
+      - 07337f4a23f42ff5c69bfdc4aaaba51ef9c6074f1d0d33048307ffd6ab7b067e
+      Authorization: Bearer <TOKEN>
+      User-Agent:
+      - aws-sdk-ruby3/3.254.1 ua/2.1 api/kendra#1.117.0 os/linux md/x86_64 lang/ruby#3.4.10
+        md/3.4.10 m/Z,b,D,e
+      Content-Length:
+      - '102'
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 400
+      message: Bad Request
+    headers:
+      X-Amzn-Requestid:
+      - 9ce2774c-3dd2-4c01-a4d7-9b482f2bfe43
+      Content-Type:
+      - application/x-amz-json-1.1
+      Content-Length:
+      - '107'
+      Date:
+      - Tue, 11 Aug 2026 18:42:52 GMT
+      Connection:
+      - close
+    body:
+      encoding: UTF-8
+      string: '{"__type":"UnrecognizedClientException","message":"The security token
+        included in the request is invalid."}'
+  recorded_at: Tue, 11 Aug 2026 18:42:52 GMT
+recorded_with: VCR 6.4.0

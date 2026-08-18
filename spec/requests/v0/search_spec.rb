@@ -12,6 +12,7 @@ Rspec.describe 'V0::Search', type: :request do
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:search_use_kendra).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:search_results_cache).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:search_skip_known_bots).and_return(false)
   end
@@ -207,6 +208,45 @@ Rspec.describe 'V0::Search', type: :request do
         pagination = body.dig('meta', 'pagination')
         expect(pagination['total_entries']).to eq(0)
         expect(pagination['current_page']).to eq(0)
+      end
+    end
+
+    context 'when Kendra is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:search_use_kendra).and_return(true)
+        Aws.config.update(
+          credentials: Aws::Credentials.new('test-access-key', 'test-secret-key')
+        )
+      end
+
+      it 'matches the search schema' do
+        VCR.use_cassette('search/kendra_success') do
+          get '/v0/search', params: { query: 'benefits' }
+
+          expect(response).to have_http_status(:ok)
+          expect(response).to match_response_schema('search')
+        end
+      end
+
+      it 'passes the requested page to Kendra' do
+        VCR.use_cassette('search/kendra_page_2') do
+          get '/v0/search', params: {
+            query: 'benefits',
+            page: 2
+          }
+
+          expect(response).to have_http_status(:ok)
+          expect(response).to match_response_schema('search')
+        end
+      end
+
+      it 'handles Kendra errors', :aggregate_failures do
+        VCR.use_cassette('search/kendra_error') do
+          get '/v0/search', params: { query: 'benefits' }
+
+          expect(response).to have_http_status(:bad_request)
+          expect(response).to match_response_schema('errors')
+        end
       end
     end
   end
