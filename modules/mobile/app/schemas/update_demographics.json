@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "required": ["data"],
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attributes", "id"],
+      "properties": {
+        "id": { "type": ["integer", "string"] },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "patientDfn",
+            "demographicsNeedsUpdate",
+            "nextOfKinNeedsUpdate",
+            "emergencyContactNeedsUpdate"
+          ],
+          "properties": {
+            "id": { "type": ["integer", "string"] },
+            "patientDfn": { "type": ["integer", "string"] },
+            "demographicsNeedsUpdate": { "type": "boolean" },
+            "demographicsConfirmedAt": { "type": ["string", "null"] },
+            "nextOfKinNeedsUpdate": { "type": "boolean" },
+            "nextOfKinConfirmedAt": { "type": ["string", "null"] },
+            "emergencyContactNeedsUpdate": { "type": "boolean" },
+            "emergencyContactConfirmedAt": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

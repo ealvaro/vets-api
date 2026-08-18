@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "required": ["data", "id", "type"],
+  "additionalProperties": false,
+  "definitions": {
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "street1": { "type": ["string", "null"] },
+        "street2": { "type": ["string", "null"] },
+        "street3": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "county": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] },
+        "zip": { "type": ["string", "null"] },
+        "zip4": { "type": ["string", "null"] },
+        "country": { "type": ["string", "null"] }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["needsConfirmation"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "relationship": { "type": ["string", "null"] },
+        "phone": { "type": ["string", "null"] },
+        "workPhone": { "type": ["string", "null"] },
+        "address": { "$ref": "#/definitions/address" },
+        "needsConfirmation": { "type": "boolean" }
+      }
+    }
+  },
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "insuranceVerificationNeeded",
+        "needsConfirmation",
+        "mailingAddress",
+        "residentialAddress",
+        "homePhone",
+        "officePhone",
+        "cellPhone",
+        "email",
+        "emergencyContact",
+        "nextOfKin"
+      ],
+      "properties": {
+        "insuranceVerificationNeeded": { "type": "boolean" },
+        "needsConfirmation": { "type": "boolean" },
+        "mailingAddress": { "$ref": "#/definitions/address" },
+        "residentialAddress": { "$ref": "#/definitions/address" },
+        "homePhone": { "type": ["string", "null"] },
+        "officePhone": { "type": ["string", "null"] },
+        "cellPhone": { "type": ["string", "null"] },
+        "email": { "type": ["string", "null"] },
+        "emergencyContact": { "$ref": "#/definitions/contact" },
+        "nextOfKin": { "$ref": "#/definitions/contact" }
+      }
+    }
+  }
+}

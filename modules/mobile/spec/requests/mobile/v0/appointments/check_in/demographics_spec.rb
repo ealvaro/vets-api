@@ -116,6 +116,48 @@ RSpec.describe 'Mobile::V0::Appointments::CheckIn::Demographics', type: :request
                                      'status' => '502' }] })
       end
     end
+
+    context 'when in the staging environment' do
+      let(:user_account) { create(:user_account) }
+
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'initiates schema contract validation' do
+        user.user_account_uuid = user_account.id
+        user.save!
+
+        VCR.use_cassette('chip/token/token_200') do
+          VCR.use_cassette('chip/authenticated_demographics/get_demographics_200',
+                           erb: { patient_dfn:, station_no: location_id }) do
+            get '/mobile/v0/appointments/check-in/demographics', headers: sis_headers,
+                                                                 params: { 'location_id' => location_id }
+          end
+        end
+
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last.status).to eq('success')
+      end
+    end
+
+    context 'when in production' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+      end
+
+      it 'skips schema validation and does not create a record' do
+        VCR.use_cassette('chip/token/token_200') do
+          VCR.use_cassette('chip/authenticated_demographics/get_demographics_200',
+                           erb: { patient_dfn:, station_no: location_id }) do
+            get '/mobile/v0/appointments/check-in/demographics', headers: sis_headers,
+                                                                 params: { 'location_id' => location_id }
+          end
+        end
+        expect(response).to be_successful
+        expect(SchemaContract::Validation.count).to eq(0)
+      end
+    end
   end
 
   describe 'PATCH /mobile/v0/appointments/check-in/demographics' do
@@ -171,6 +213,55 @@ RSpec.describe 'Mobile::V0::Appointments::CheckIn::Demographics', type: :request
                   'status' => '500' }
               ] }
         )
+      end
+    end
+
+    context 'when in the staging environment' do
+      let(:user_account) { create(:user_account) }
+
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'initiates schema contract validation' do
+        user.user_account_uuid = user_account.id
+        user.save!
+
+        VCR.use_cassette('chip/token/token_200') do
+          VCR.use_cassette('chip/authenticated_demographics/update_demographics_200') do
+            patch '/mobile/v0/appointments/check-in/demographics',
+                  headers: sis_headers,
+                  params: { 'location_id' => '418',
+                            'demographic_confirmations' => { 'contact_needs_update' => false,
+                                                             'emergency_contact_needs_update' => true,
+                                                             'next_of_kin_needs_update' => false } }
+          end
+        end
+
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last.status).to eq('success')
+      end
+    end
+
+    context 'when in production' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+      end
+
+      it 'skips schema validation and does not create a record' do
+        VCR.use_cassette('chip/token/token_200') do
+          VCR.use_cassette('chip/authenticated_demographics/update_demographics_200') do
+            patch '/mobile/v0/appointments/check-in/demographics',
+                  headers: sis_headers,
+                  params: { 'location_id' => '418',
+                            'demographic_confirmations' => { 'contact_needs_update' => false,
+                                                             'emergency_contact_needs_update' => true,
+                                                             'next_of_kin_needs_update' => false } }
+          end
+        end
+
+        expect(response).to be_successful
+        expect(SchemaContract::Validation.count).to eq(0)
       end
     end
   end

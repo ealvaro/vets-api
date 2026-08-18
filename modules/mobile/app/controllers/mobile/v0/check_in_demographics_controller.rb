@@ -10,6 +10,7 @@ module Mobile
         rescue Chip::ServiceException
           raise Common::Exceptions::BackendServiceException, 'MOBL_502_upstream_error'
         end
+        validate_response_schema(response, 'get_demographics')
         demographics = Mobile::V0::Adapters::CheckInDemographics.new.parse(response, @current_user.uuid)
 
         render json: Mobile::V0::CheckInDemographicsSerializer.new(demographics)
@@ -18,12 +19,17 @@ module Mobile
       def update
         response = chip_service.update_demographics(patient_dfn:, station_no: params[:location_id],
                                                     demographic_confirmations:)
+        validate_response_schema(response, 'update_demographics')
         parsed_response = Mobile::V0::Adapters::CheckInUpdateDemographics.new.parse(response)
 
         render json: Mobile::V0::CheckInUpdateDemographicsSerializer.new(parsed_response)
       end
 
       private
+
+      def validate_response_schema(response, contract_name)
+        SchemaContract::ValidationInitiator.call(user: @current_user, response:, contract_name:)
+      end
 
       def demographic_confirmations
         dc = params[:demographic_confirmations]
