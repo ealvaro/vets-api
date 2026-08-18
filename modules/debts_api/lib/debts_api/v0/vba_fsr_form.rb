@@ -14,6 +14,7 @@ module DebtsApi
       @original_data = params[:form]
       @user = params[:user]
       @all_debts = params[:all_debts].nil? ? [] : params[:all_debts]
+      @zero_income_seen = params[:zero_income_seen]
       @debts = get_vba_debts
       @is_combined = @debts.length < @all_debts.length && @all_debts.length.positive?
       @form_data = build_vba_form
@@ -59,6 +60,9 @@ module DebtsApi
     def build_vba_form
       form = @original_data.deep_dup
       form.delete(DEBTS_KEY)
+      # DMC only by design. A copay-only FSR builds no VBA form, so the notice is
+      # dropped for those; wire VhaFsrForm if VHA ever needs it too.
+      append_comment(form, ZERO_INCOME_COMMENT) if @zero_income_seen
       if @debts.present?
         add_additional_comments(form, @debts)
         aggregate_fsr_reasons(form, @debts)

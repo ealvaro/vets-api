@@ -4,6 +4,36 @@ require 'rails_helper'
 require 'debts_api/v0/fsr_form_builder'
 require 'debts_api/v0/vha_fsr_form'
 RSpec.describe DebtsApi::V0::VbaFsrForm, type: :service do
+  describe 'zero income notice' do
+    let(:combined_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/combined_fsr_form') }
+    let(:user) { build(:user, :loa3) }
+    let(:builder) { DebtsApi::V0::FsrFormBuilder.new(form_data, '123', user) }
+
+    context 'when zeroIncomeSeen is set' do
+      let(:form_data) { combined_form_data.merge(DebtsApi::V0::FsrFormBuilder::ZERO_INCOME_KEY => true) }
+
+      it 'appends the notice to the DMC form only' do
+        expect(builder.vba_form.form_data['additionalData']['additionalComments'])
+          .to include(DebtsApi::V0::FsrForm::ZERO_INCOME_COMMENT)
+        expect(builder.vha_forms.first.form_data['additionalData']['additionalComments'])
+          .not_to include(DebtsApi::V0::FsrForm::ZERO_INCOME_COMMENT)
+      end
+
+      it 'does not send the flag itself to DMC' do
+        expect(builder.vba_form.form_data).not_to have_key('zeroIncomeSeen')
+      end
+    end
+
+    context 'when zeroIncomeSeen is absent' do
+      let(:form_data) { combined_form_data }
+
+      it 'leaves additionalComments alone' do
+        expect(builder.vba_form.form_data['additionalData']['additionalComments'])
+          .not_to include(DebtsApi::V0::FsrForm::ZERO_INCOME_COMMENT)
+      end
+    end
+  end
+
   describe '#persist_form_submission' do
     let(:combined_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/combined_fsr_form') }
     let(:vba_form_data) { get_fixture_absolute('modules/debts_api/spec/fixtures/fsr_forms/vba_fsr_form') }

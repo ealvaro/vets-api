@@ -11,6 +11,7 @@ module DebtsApi
     DATE_TIMEZONE = 'Central Time (US & Canada)'
     DEBTS_KEY = 'selectedDebtsAndCopays'
     STREAMLINED_KEY = 'streamlined'
+    ZERO_INCOME_KEY = 'zeroIncomeSeen'
 
     attr_reader :original_form, :sanitized_form,
                 :all_debts, :vba_debts, :vha_copays, :user_form,
@@ -51,6 +52,7 @@ module DebtsApi
 
     def sanitize(form)
       add_personal_identification(form)
+      @zero_income_seen = form.delete(ZERO_INCOME_KEY).present?
       form.reject! { |k, _v| k == 'streamlined' }
       form
     end
@@ -107,7 +109,8 @@ module DebtsApi
       params = {
         form: @sanitized_form,
         user: @user,
-        all_debts: @all_debts
+        all_debts: @all_debts,
+        zero_income_seen: @zero_income_seen
       }
       form = DebtsApi::V0::VbaFsrForm.new(params)
       form.form_data.nil? ? nil : form

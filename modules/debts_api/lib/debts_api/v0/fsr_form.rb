@@ -19,6 +19,9 @@ module DebtsApi
     WAIVER = 'waiver'
     COMPROMISE = 'compromise'
 
+    ZERO_INCOME_COMMENT =
+      'Veteran selected to continue after being alerted that they entered 0$ income with Employment Details.'
+
     HARDSHIP_SUSPENSION_DESCRIPTION =
       'Hardship Suspension Request Information: I am experiencing temporary financial hardship ' \
       'and I estimate my financial situation to improve'
@@ -32,12 +35,15 @@ module DebtsApi
     }.freeze
 
     def add_additional_comments(form, debts)
-      resolution_text = get_resolution_option_text(debts)
-      return if resolution_text.blank?
+      append_comment(form, get_resolution_option_text(debts))
+    end
+
+    def append_comment(form, text)
+      return if text.blank?
 
       existing = form['additionalData']['additionalComments']
       form['additionalData']['additionalComments'] =
-        [existing, resolution_text].compact_blank.join(' ')
+        [existing, text].compact_blank.join(' ')
     end
 
     def extract_resolution_options(debts)

@@ -14,10 +14,12 @@ module DebtsApi
 
       # Legacy entrypoint. Expects a form already in submit-ready shape — no BE-side
       # transforms run. New resolution options are wired on `transform_and_submit`
-      # only; this endpoint was not extended for hardship-suspension. To add hardship
-      # support here, add :hardship_timeframe and :hardship_timeframe_acknowledgement
-      # to the `fsr_form` strong-params permit; downstream (`FsrFormBuilder`, schema
-      # validation, comment composition) is already shared with `transform_and_submit`.
+      # only; this endpoint was not extended for hardship-suspension or the zero-income
+      # notice. To add hardship support here, add :hardship_timeframe and
+      # :hardship_timeframe_acknowledgement to the `fsr_form` strong-params permit; for
+      # zero income, permit :zero_income_seen at the form root (this endpoint's form is
+      # already submit-ready, so there is no employment-record rollup to do). Downstream
+      # (`FsrFormBuilder`, schema validation, comment composition) is already shared.
       def create
         render json: service.submit_financial_status_report(fsr_form)
       end
@@ -265,6 +267,7 @@ module DebtsApi
                     {
                       employment_records: [
                         :type, :from, :to, :is_current, :employer_name, :gross_monthly_income,
+                        :zero_income_seen,
                         { deductions: %i[name amount] }
                       ]
                     }
@@ -398,7 +401,7 @@ module DebtsApi
       def full_transform_service
         StatsD.increment("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.full_transform.run")
         Rails.logger.info(full_transform_logging('info'))
-        DebtsApi::V0::FsrFormTransform::FullTransformService.new(full_transform_form)
+        DebtsApi::V0::FsrFormTransform::FullTransformService.new(full_transform_form, current_user)
       rescue => e
         StatsD.increment("#{DebtsApi::V0::Form5655Submission::STATS_KEY}.full_transform.error")
         Rails.logger.error(full_transform_logging('error'))

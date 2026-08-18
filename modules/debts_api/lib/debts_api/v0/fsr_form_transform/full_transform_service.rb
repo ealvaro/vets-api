@@ -17,7 +17,8 @@ module DebtsApi
       class FullTransformService
         include ::FsrFormTransform::Utils
 
-        def initialize(form)
+        def initialize(form, user = nil)
+          @user = user
           @assets = AssetCalculator.new(form).transform_assets
           @income = IncomeCalculator.new(form).get_transformed_income
           @expenses = ExpenseCalculator.build(form).transform_expenses
@@ -32,6 +33,7 @@ module DebtsApi
           @selected_debts_and_copays = re_camel(re_dollar_cent(form['selected_debts_and_copays'],
                                                                %w[p_h_account_number pHAccountNumber]))
           @streamlined = StreamlinedCalculator.new(form).get_streamlined_data
+          @zero_income_seen = zero_income_seen?(form)
         end
 
         def transform
@@ -49,11 +51,48 @@ module DebtsApi
             'personalIdentification' => @personal_identification,
             'applicantCertifications' => certification,
             'selectedDebtsAndCopays' => @selected_debts_and_copays,
-            'streamlined' => @streamlined
+            'streamlined' => @streamlined,
+            'zeroIncomeSeen' => @zero_income_seen
           }
         end
 
         private
+
+        def zero_income_seen?(form)
+          alerted, not_alerted = veteran_employment_records(form).partition { |record| record['zero_income_seen'] }
+          zero_with_alert, income_with_alert = alerted.partition { |record| record['gross_monthly_income'].to_f.zero? }
+          zero_no_alert = not_alerted.count { |record| record['gross_monthly_income'].to_f.zero? }
+
+          report_zero_income(zero_with_alert.size, income_with_alert.size, zero_no_alert)
+
+          zero_with_alert.any?
+        end
+
+        def veteran_employment_records(form)
+          records = form.dig('personal_data', 'employment_history', 'veteran', 'employment_records') || []
+          # Prior jobs carry no gross_monthly_income at all, which would read as $0.
+          # A *current* job with a blank figure still counts, on purpose — no_alert
+          # tracks any missing income reaching DMC, not only a typed zero.
+          records.select { |record| record['is_current'] }
+        rescue TypeError
+          # An array where a hash belongs, which #dig cannot walk. Strong params
+          # filters the other malformed shapes; this one it lets through.
+          []
+        end
+
+        def report_zero_income(zero_with_alert, income_with_alert, zero_no_alert)
+          return if zero_with_alert.zero? && income_with_alert.zero? && zero_no_alert.zero?
+
+          stats_key = DebtsApi::V0::Form5655Submission::STATS_KEY
+          StatsD.increment("#{stats_key}.zero_income.confirmed") if zero_with_alert.positive?
+          StatsD.increment("#{stats_key}.zero_income.discrepancy") if income_with_alert.positive?
+          StatsD.increment("#{stats_key}.zero_income.no_alert") if zero_no_alert.positive?
+          Rails.logger.info(
+            'FsrFormTransform::FullTransformService zero income: ' \
+            "#{zero_with_alert} zero with alert, #{income_with_alert} income with alert, " \
+            "#{zero_no_alert} zero without alert - UUID #{@user&.uuid}"
+          )
+        end
 
         def report_form_types
           tracking_label = "full_transform.#{@streamlined['value'] ? 'has' : 'no'}_streamlined_data"
