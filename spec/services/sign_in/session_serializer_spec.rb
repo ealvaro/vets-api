@@ -19,7 +19,7 @@ RSpec.describe SignIn::SessionSerializer do
       let(:current_session_handle) { oauth_session.handle }
       let!(:session_record) do
         create(:session_record, handle: current_session_handle, user_account:, client_id:,
-                                browser: 'Chrome', device_description: 'Mac')
+                                csp_type: 'idme', browser: 'Chrome', device_description: 'Mac')
       end
       let(:session_records) { SignIn::SessionRecord.where(user_account:) }
       let(:status) { 'current' }
@@ -28,6 +28,7 @@ RSpec.describe SignIn::SessionSerializer do
         {
           handle: session_record.handle,
           client_id: session_record.client_id,
+          csp_type: 'idme',
           browser: 'Chrome',
           device_description: 'Mac',
           location: session_record.location,

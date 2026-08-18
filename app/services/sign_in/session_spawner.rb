@@ -122,6 +122,7 @@ module SignIn
       SessionRecord.create!(handle: session.handle,
                             user_account: session.user_account,
                             client_id: session.client_id,
+                            csp_type: user_verification.credential_type,
                             sign_in_ip: remote_ip,
                             user_agent:,
                             location: LocationParser.parse(remote_ip),

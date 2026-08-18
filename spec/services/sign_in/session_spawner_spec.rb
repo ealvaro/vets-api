@@ -299,6 +299,17 @@ RSpec.describe SignIn::SessionSpawner do
         expect(session_record.handle).to eq(session.handle)
         expect(session_record.user_account).to eq(session.user_account)
         expect(session_record.client_id).to eq(session.client_id)
+        expect(session_record.csp_type).to eq(user_verification.credential_type)
+      end
+
+      context 'when the originating session used a different credential type' do
+        let(:user_verification) { create(:mhv_user_verification) }
+
+        it 'stores the credential type from the originating session' do
+          session = subject.session
+          record = SignIn::SessionRecord.find_by!(handle: session.handle)
+          expect(record.csp_type).to eq('mhv')
+        end
       end
 
       it 'creates a session record with the expected fields matching the request attributes' do

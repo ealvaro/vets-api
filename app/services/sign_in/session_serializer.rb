@@ -22,6 +22,7 @@ module SignIn
         {
           handle: session_record.handle,
           client_id: session_record.client_id,
+          csp_type: session_record.csp_type,
           browser: session_record.browser,
           device_description: session_record.device_description,
           location: session_record.location,

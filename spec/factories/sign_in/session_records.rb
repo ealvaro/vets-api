@@ -10,6 +10,8 @@ FactoryBot.define do
     last_activity_at { Time.zone.now }
     signed_out_at { nil }
     device_description { nil }
+    csp_type { nil }
+    browser { nil }
     location { nil }
     created_at { Time.zone.now }
   end

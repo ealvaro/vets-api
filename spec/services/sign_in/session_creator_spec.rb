@@ -175,6 +175,20 @@ RSpec.describe SignIn::SessionCreator do
             expect(session_record.handle).to eq(session.handle)
             expect(session_record.user_account).to eq(session.user_account)
             expect(session_record.client_id).to eq(session.client_id)
+            expect(session_record.csp_type).to eq(validated_credential.user_verification.credential_type)
+          end
+
+          context 'when the credential is a different type' do
+            let(:validated_credential) do
+              create(:validated_credential, client_config:, device_sso:, user_verification:)
+            end
+            let(:user_verification) { create(:mhv_user_verification) }
+
+            it 'stores the credential type from the user verification' do
+              session = subject.session
+              record = SignIn::SessionRecord.find_by!(handle: session.handle)
+              expect(record.csp_type).to eq('mhv')
+            end
           end
 
           it 'creates a session record with the expected fields matching the request attributes' do
