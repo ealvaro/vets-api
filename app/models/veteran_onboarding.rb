@@ -36,7 +36,7 @@ class VeteranOnboarding < ApplicationRecord
       verified_at = user.user_verification&.verified_at
       return if verified_at.blank? || verified_at < cutoff_time
 
-      record = create!(user_account:, display_onboarding_flow: true)
+      record = create_or_find_by!(user_account:, display_onboarding_flow: true)
       StatsD.increment('veteran_onboarding.record_created')
       record
     rescue => e

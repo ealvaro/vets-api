@@ -106,6 +106,40 @@ RSpec.describe VeteranOnboarding, type: :model do
         end
       end
 
+      context 'when a concurrent request creates the record first (race condition)' do
+        before do
+          user.user_verification.update(verified_at: Time.zone.now)
+        end
+
+        it 'returns the winning record instead of raising or returning nil' do
+          winning_record = nil
+
+          # Simulates two requests both passing the `user_account&.veteran_onboarding`
+          # check before either has committed an insert. The first caller's
+          # create_or_find_by! wins; this call's create_or_find_by! detects the
+          # unique constraint conflict and returns the winning record instead
+          # of raising PG::UniqueViolation.
+          allow(described_class).to receive(:create_or_find_by!).and_wrap_original do |_method, **kwargs|
+            winning_record ||= create(:veteran_onboarding, **kwargs)
+          end
+
+          expect do
+            record = described_class.find_or_create_for_user(user)
+            expect(record).to eq(winning_record)
+          end.to change(VeteranOnboarding, :count).from(0).to(1)
+        end
+
+        it 'does not log an error' do
+          allow(described_class).to receive(:create_or_find_by!).and_wrap_original do |_method, **kwargs|
+            create(:veteran_onboarding, **kwargs)
+          end
+
+          expect(Rails.logger).not_to receive(:error).with(/Error creating record for account/)
+
+          described_class.find_or_create_for_user(user)
+        end
+      end
+
       context 'when cutoff is not a valid number' do
         before do
           user.user_verification.update(verified_at: 20.minutes.ago)
