@@ -88,6 +88,19 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(ves_client).to have_received(:get_icns_for_transaction).once
     end
 
+    it 'continues to re-query VES for an applicant that is not yet eligible' do
+      ineligible_summary = ee_summary_response.deep_dup
+      ineligible_summary['vfmpProgramsInfo']['relationships'].first['champvaEligibilities'].first['status'] =
+        'Ineligible'
+      allow(ves_client).to receive(:get_ee_summary).and_return(ineligible_summary)
+
+      described_class.new(transaction_uuid).call
+      second_result = described_class.new(transaction_uuid).call
+
+      expect(second_result[:eligibility_updated_count]).to eq(2)
+      expect(ves_client).to have_received(:get_ee_summary).exactly(4).times
+    end
+
     it 'handles duplicate ICNs with different person types without violating uniqueness' do
       allow(ves_client).to receive(:get_icns_for_transaction).with(transaction_uuid).and_return(
         [
@@ -244,17 +257,143 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(existing.eligibility_status).to eq('STALE')
     end
 
-    it 'skips VES eligibility calls once every applicant is already resolved' do
+    describe 'letter persistence' do
+      let(:mail_correspondence) do
+        {
+          'letterTemplate' => { 'name' => 'CHAMPVA Acceptance Letter', 'formNumber' => 'CCL-A43a.ENC' },
+          'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+          'mailStatusDate' => mail_status_date
+        }
+      end
+      let(:ee_summary_response) do
+        { 'vfmpProgramsInfo' => { 'relationships' => [] }, 'mailCorrespondences' => [mail_correspondence] }
+      end
+
+      context 'when the letter was mailed after the application was submitted' do
+        let(:mail_status_date) { 1.day.from_now.iso8601 }
+
+        it 'persists a new letter for each applicant' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:letters_created_count]).to eq(2)
+          expect(IvcChampvaLetter.count).to eq(2)
+
+          letter = IvcChampvaLetter.first
+          expect(letter.letter_name).to eq('CHAMPVA Acceptance Letter')
+          expect(letter.form_number).to eq('CCL-A43a.ENC')
+          expect(letter.mail_status).to eq('SENT_TO_PRINT_VENDOR')
+          expect(letter.mail_status_date).to be_within(1.second).of(Time.zone.parse(mail_status_date))
+        end
+
+        it 'does not persist a duplicate letter on a subsequent call' do
+          described_class.new(transaction_uuid).call
+
+          expect { described_class.new(transaction_uuid).call }
+            .not_to(change(IvcChampvaLetter, :count).from(2))
+        end
+      end
+
+      context 'when the letter was mailed before the application was submitted' do
+        let(:mail_status_date) { 10.days.ago.iso8601 }
+
+        it 'does not persist a letter' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:letters_created_count]).to eq(0)
+          expect(IvcChampvaLetter.count).to eq(0)
+        end
+      end
+
+      context 'when VES omits the letter template form number' do
+        let(:mail_status_date) { 1.day.from_now.iso8601 }
+        let(:mail_correspondence) do
+          {
+            'letterTemplate' => { 'name' => 'CHAMPVA Acceptance Letter' },
+            'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+            'mailStatusDate' => mail_status_date
+          }
+        end
+
+        it 'does not persist a letter or raise' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:letters_created_count]).to eq(0)
+          expect(IvcChampvaLetter.count).to eq(0)
+        end
+      end
+
+      context 'when VES has not returned any letter history yet' do
+        let(:ee_summary_response) { { 'vfmpProgramsInfo' => { 'relationships' => [] } } }
+
+        it 'does not persist any letters or raise' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:status]).to eq('success')
+          expect(result[:letters_created_count]).to eq(0)
+          expect(IvcChampvaLetter.count).to eq(0)
+        end
+      end
+
+      context 'when VES returns multiple status updates for the same letter' do
+        let(:mail_status_date) { 2.days.from_now.iso8601 }
+        let(:ee_summary_response) do
+          {
+            'vfmpProgramsInfo' => { 'relationships' => [] },
+            'mailCorrespondences' => [
+              mail_correspondence.merge(
+                'mailStatus' => 'SENT_TO_PRINT_VENDOR', 'mailStatusDate' => 2.days.from_now.iso8601
+              ),
+              mail_correspondence.merge('mailStatus' => 'DELIVERED', 'mailStatusDate' => 3.days.from_now.iso8601)
+            ]
+          }
+        end
+
+        it 'persists each status update as a separate letter record' do
+          described_class.new(transaction_uuid).call
+
+          applicant = IvcChampvaApplicant.where(transaction_uuid:).first
+          statuses = applicant.ivc_champva_letters.order(:mail_status_date).pluck(:mail_status)
+          expect(statuses).to eq(%w[SENT_TO_PRINT_VENDOR DELIVERED])
+        end
+      end
+
+      context 'when a new letter arrives after the applicant is already confirmed eligible' do
+        let(:eligible_summary) do
+          {
+            'vfmpProgramsInfo' => {
+              'relationships' => [
+                { 'champvaEligibilities' => [{ 'status' => 'Eligible-Active', 'reason' => 'Auto-enrolled' }] }
+              ]
+            }
+          }
+        end
+        let(:mail_status_date) { 1.day.from_now.iso8601 }
+
+        it 'still persists the new letter on a later call' do
+          allow(ves_client).to receive(:get_ee_summary).and_return(eligible_summary)
+          described_class.new(transaction_uuid).call
+          expect(IvcChampvaApplicant.where(transaction_uuid:)).to all(be_eligible)
+
+          allow(ves_client).to receive(:get_ee_summary).and_return(ee_summary_response)
+          second_result = described_class.new(transaction_uuid).call
+
+          expect(second_result[:letters_created_count]).to eq(2)
+          expect(IvcChampvaLetter.count).to eq(2)
+        end
+      end
+    end
+
+    it 'stops persisting eligibility once an applicant is already eligible, but keeps checking for new letters' do
       described_class.new(transaction_uuid).call
       expect(ves_client).to have_received(:get_ee_summary).twice
 
       second_result = described_class.new(transaction_uuid).call
 
       expect(second_result[:eligibility_updated_count]).to eq(0)
-      expect(ves_client).to have_received(:get_ee_summary).twice
+      expect(ves_client).to have_received(:get_ee_summary).exactly(4).times
     end
 
-    it 're-queries VES on a subsequent run while an applicant remains unresolved' do
+    it 're-queries VES on a subsequent run while an applicant remains ineligible or pending' do
       allow(ves_client).to receive(:get_ee_summary)
         .with(icn: '0000001200603250V008079000000')
         .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'processing')
@@ -265,7 +404,11 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       described_class.new(transaction_uuid).call
       second_result = described_class.new(transaction_uuid).call
 
-      expect(second_result[:eligibility_updated_count]).to eq(1)
+      # Applicant '251' resolved to Eligible on the first run, so its eligibility is no
+      # longer re-persisted on the second. Applicant '250' raises a pending error on every
+      # call and never resolves, so it never persists eligibility data either — hence
+      # eligibility_updated_count is 0 on the second run.
+      expect(second_result[:eligibility_updated_count]).to eq(0)
       expect(ves_client).to have_received(:get_ee_summary).with(icn: '0000001200603250V008079000000').twice
     end
   end

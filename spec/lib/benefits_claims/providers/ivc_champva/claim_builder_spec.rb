@@ -274,6 +274,41 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(true)
       end
 
+      it 'includes each applicant\'s letters, oldest first' do
+        applicant = IvcChampvaApplicant.create!(
+          transaction_uuid:,
+          applicant_icn: '1013836784V369083',
+          person_type: 'BENEFICIARY'
+        )
+        applicant.ivc_champva_letters.create!(
+          form_number: 'NEW-001', letter_name: 'Newer Notice', mail_status: 'SENT',
+          mail_status_date: Time.zone.parse('2026-07-20T00:00:00Z')
+        )
+        applicant.ivc_champva_letters.create!(
+          form_number: 'CCL-A43a.ENC', letter_name: 'Acceptance Letter', mail_status: 'SENT_TO_PRINT_VENDOR',
+          mail_status_date: Time.zone.parse('2026-01-09T22:55:57Z')
+        )
+
+        applicants, = described_class.champva_eligibility_summary(representative, user)
+
+        expect(applicants.first['letters']).to eq(
+          [
+            {
+              'formNumber' => 'CCL-A43a.ENC',
+              'letterName' => 'Acceptance Letter',
+              'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+              'mailStatusDate' => '2026-01-09T22:55:57Z'
+            },
+            {
+              'formNumber' => 'NEW-001',
+              'letterName' => 'Newer Notice',
+              'mailStatus' => 'SENT',
+              'mailStatusDate' => '2026-07-20T00:00:00Z'
+            }
+          ]
+        )
+      end
+
       it 'includes personType and documentsRequested on each applicant, plus the sponsor' do
         IvcChampvaApplicant.create!(
           transaction_uuid:,
@@ -329,7 +364,8 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
                                     'within 10 business days.',
           'vesEligibilityReasonLink' => nil,
           'documentsRequested' => false,
-          'vesStatusUpdatedDate' => nil
+          'vesStatusUpdatedDate' => nil,
+          'letters' => []
         )
       end
 

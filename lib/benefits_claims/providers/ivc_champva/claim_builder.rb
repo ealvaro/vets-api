@@ -164,14 +164,27 @@ module BenefitsClaims
             applicant_eligibility_hash(applicant).merge(
               'personType' => applicant.person_type,
               'documentsRequested' => applicant.documents_requested,
-              'vesStatusUpdatedDate' => format_date(applicant.ves_status_updated_date)
+              'vesStatusUpdatedDate' => format_date(applicant.ves_status_updated_date),
+              'letters' => letters_for(applicant)
             )
+          end
+        end
+
+        # @return [Array<Hash>] this applicant's mail-correspondence letters, oldest first
+        def self.letters_for(applicant)
+          applicant.ivc_champva_letters.sort_by(&:mail_status_date).map do |letter|
+            {
+              'formNumber' => letter.form_number,
+              'letterName' => letter.letter_name,
+              'mailStatus' => letter.mail_status,
+              'mailStatusDate' => format_datetime(letter.mail_status_date)
+            }
           end
         end
 
         # @return [Array<IvcChampvaApplicant>]
         def self.applicants_for(transaction_uuid)
-          IvcChampvaApplicant.where(transaction_uuid:).order(:created_at).to_a
+          IvcChampvaApplicant.where(transaction_uuid:).order(:created_at).includes(:ivc_champva_letters).to_a
         end
 
         # Common applicant fields merged into build_applicant_data's output.

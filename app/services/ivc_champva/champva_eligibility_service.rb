@@ -13,13 +13,16 @@ module IvcChampva
   #         the first/last name on the applicant record. Applicants that already
   #         have a name are skipped.
   #
-  # Step 3: For each applicant, call the VES EE Summary service
-  #         (CSTChampvaEligibility) and persist the applicant's CHAMPVA
-  #         status/reason and the sponsor's ICN and status/reason. This step runs
-  #         on every call because eligibility status and reasons can change over
-  #         time; the controller's rate limit guards against excessive requests.
+  # Step 3: For each applicant, call the VES EE Summary service (CSTChampvaEligibility)
+  #         to sync mail-correspondence letter history, since VES may mail new
+  #         correspondence even after an applicant is confirmed eligible. CHAMPVA
+  #         status/reason and the sponsor's ICN and status/reason are only persisted
+  #         for applicants not yet marked eligible, since their status and reason can
+  #         change over time; the controller's rate limit guards against excessive
+  #         requests.
   class ChampvaEligibilityService
     UNKNOWN_PEGA_STATUS = 'processed - eligibility determination unknown'
+
     DOCUMENTS_REQUESTED_STATUSES_PATH =
       Rails.root.join('config', 'benefits_claims', 'ves_documents_requested_statuses.json').freeze
 
@@ -47,6 +50,7 @@ module IvcChampva
       @ves_client = IvcChampva::VesApi::Client.new
       @created_count = 0
       @existing_count = 0
+      @letters_created_count = 0
       @cached = false
     end
 
@@ -54,7 +58,8 @@ module IvcChampva
     # Step 1 (ICN lookup), Step 2 (MPI name backfill), Step 3 (EE Summary eligibility).
     #
     # @return [Hash] result with :status, :persons, :created_count, :existing_count,
-    #   :names_updated_count, :eligibility_updated_count, and :cached keys
+    #   :names_updated_count, :eligibility_updated_count, :letters_created_count, and
+    #   :cached keys
     #   :status — 'success' | 'pending' | 'error'
     #   :persons — Array of { icn:, person_uuid:, person_type: } hashes
     #   :cached — true when applicant records already existed and VES was not re-queried
@@ -83,6 +88,7 @@ module IvcChampva
         existing_count: @existing_count,
         names_updated_count:,
         eligibility_updated_count:,
+        letters_created_count: @letters_created_count,
         pega_status:,
         cached: @cached
       }
@@ -243,45 +249,124 @@ module IvcChampva
       end
     end
 
-    # For each applicant, calls the VES EE Summary service and persists the
-    # applicant's CHAMPVA status/reason and the sponsor's ICN and status/reason.
-    # Skipped entirely once every applicant for the transaction is already
-    # eligibility_resolved, since VES has nothing further to tell us. While any
-    # applicant remains unresolved, all applicants are re-queried on every call
-    # because eligibility status and reasons can change over time. A pending or
-    # errored lookup for one applicant leaves that record unchanged without
-    # aborting the others.
+    # For every applicant, calls the VES EE Summary service to sync mail-correspondence
+    # letter history (VES may mail new correspondence even after an applicant is
+    # confirmed eligible, so this always runs). CHAMPVA status/reason and the sponsor's
+    # ICN and status/reason are only persisted for applicants not yet confirmed
+    # eligible; applicants with any other status (including ineligible) are re-queried
+    # on every call because their status and reason can change over time. A pending or
+    # errored lookup for one applicant leaves that record unchanged without aborting
+    # the others.
     #
     # @param applicants [Array<IvcChampvaApplicant>]
     # @return [Integer] number of applicant records updated with eligibility data
     def resolve_eligibility(applicants)
-      return 0 if IvcChampvaApplicant.all_resolved_for?(@transaction_uuid)
-
-      applicants.count do |applicant|
-        persist_eligibility(applicant)
-      end
+      applicants.count { |applicant| sync_applicant_eligibility(applicant) }
     end
 
-    # Fetches EE Summary eligibility for a single applicant and persists it, then
-    # records the transaction's sponsor (once) from the same EE Summary payload.
-    # A pending or errored lookup is logged and skipped without raising.
+    # Fetches EE Summary data for a single applicant, syncs its letter history, and
+    # persists eligibility/sponsor data unless the applicant is already confirmed
+    # eligible. A pending or errored lookup is logged and skipped without raising.
     #
     # @param applicant [IvcChampvaApplicant]
     # @return [Boolean] true when eligibility data was persisted
-    def persist_eligibility(applicant)
+    def sync_applicant_eligibility(applicant)
       data = @ves_client.get_ee_summary(icn: applicant.applicant_icn)
-      eligibility = extract_champva_eligibility(data)
-      return false if eligibility.blank?
+      persist_letters(applicant, data)
+      return false if applicant.eligible?
 
-      applicant.update!(eligibility_attributes(eligibility))
-      persist_sponsor(eligibility)
-      true
+      persist_eligibility(applicant, data)
     rescue IvcChampva::VesApi::VesApplicationPendingError => e
       log_ves_error('EE summary pending', e, level: :info)
       false
     rescue IvcChampva::VesApi::VesApiError => e
       log_ves_error('EE summary error', e)
       false
+    end
+
+    # Persists CHAMPVA eligibility data for a single applicant, then records the
+    # transaction's sponsor (once) from the same EE Summary payload.
+    #
+    # @param applicant [IvcChampvaApplicant]
+    # @param data [Hash] the EE Summary response for this applicant
+    # @return [Boolean] true when eligibility data was persisted
+    def persist_eligibility(applicant, data)
+      eligibility = extract_champva_eligibility(data)
+      return false if eligibility.blank?
+
+      applicant.update!(eligibility_attributes(eligibility))
+      persist_sponsor(eligibility)
+      true
+    end
+
+    # Persists any new VES mail-correspondence letters for this applicant. VES may
+    # not have letter history yet on the initial request, so a missing/empty
+    # array is a no-op.
+    #
+    # @param applicant [IvcChampvaApplicant]
+    # @param data [Hash] the EE Summary response for this applicant
+    # @return [void]
+    def persist_letters(applicant, data)
+      Array(data['mailCorrespondences']).each do |correspondence|
+        persist_letter(applicant, correspondence)
+      end
+    end
+
+    # Persists a single VES mail-correspondence entry as a new letter record, unless
+    # it predates the application's submission, is missing a form number, or a
+    # matching letter (same applicant, form number, and mail status date) already
+    # exists. Holds a Postgres advisory lock keyed on that same tuple so two
+    # concurrent runs can't both pass the existence check and insert duplicates; the
+    # unique index and NOT NULL constraint backing that tuple are a second line of
+    # defense against the same race.
+    #
+    # @param applicant [IvcChampvaApplicant]
+    # @param correspondence [Hash]
+    # @return [void]
+    def persist_letter(applicant, correspondence)
+      mail_status_date = parsed_mail_status_date(correspondence['mailStatusDate'])
+      return if mail_status_date.blank? || application_submitted_at.blank?
+      return if mail_status_date <= application_submitted_at
+
+      template = correspondence['letterTemplate'] || {}
+      form_number = template['formNumber']
+      return if form_number.blank?
+
+      lock_key = "ivc_champva_letter-#{applicant.id}-#{form_number}-#{mail_status_date.to_i}"
+
+      IvcChampvaLetter.with_advisory_lock(lock_key) do
+        next if applicant.ivc_champva_letters.exists?(form_number:, mail_status_date:)
+
+        applicant.ivc_champva_letters.create!(
+          letter_name: template['name'],
+          form_number:,
+          mail_status: correspondence['mailStatus'],
+          mail_status_date:
+        )
+        @letters_created_count += 1
+      end
+    rescue ActiveRecord::RecordNotUnique
+      # Already persisted by this same call or a concurrent run.
+    end
+
+    # @param mail_status_date [String, nil]
+    # @return [ActiveSupport::TimeWithZone, nil]
+    def parsed_mail_status_date(mail_status_date)
+      return nil if mail_status_date.blank?
+
+      Time.zone.parse(mail_status_date)
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    # Earliest CHAMPVA form creation time for this transaction, used as a proxy
+    # for the application's submission date (no explicit submitted_at exists).
+    #
+    # @return [ActiveSupport::TimeWithZone, nil]
+    def application_submitted_at
+      return @application_submitted_at if defined?(@application_submitted_at)
+
+      @application_submitted_at = IvcChampvaForm.where(transaction_uuid: @transaction_uuid).minimum(:created_at)
     end
 
     # Persists the sponsor record for this transaction from the EE Summary sponsor

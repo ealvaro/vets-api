@@ -308,6 +308,7 @@ app/models/in_progress_form.rb @software/vfs-authenticated-experience-backend
 app/models/intent_to_file_queue_exhaustion.rb @software/benefits-lifestage
 app/models/ivc_champva_applicant.rb @software/health-apps-backend
 app/models/ivc_champva_form.rb @software/health-apps-backend
+app/models/ivc_champva_letter.rb @software/health-apps-backend
 app/models/ivc_champva_sponsor.rb @software/health-apps-backend
 app/models/lcpe_redis.rb @software/govcio-vfep-codereviewers
 app/models/lighthouse @software/benefits-lifestage
