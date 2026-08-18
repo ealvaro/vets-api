@@ -5,6 +5,7 @@ module VAOS
     module Unified
       class ProviderSearchService # rubocop:disable Metrics/ClassLength
         include VAOS::CommunityCareConstants
+        include DriveTimeSupport
 
         STATSD_KEY_PREFIX = 'api.vaos.unified_provider_search'
         # Hardcoded fallback when Settings.vaos.unified_scheduling.default_radius_miles
@@ -123,12 +124,21 @@ module VAOS
             user_address:, referral:, radius:
           )
 
+          # Started before the next-available enrichments so the EPS drive-times call
+          # overlaps them; both futures are joined after so only excess latency
+          # beyond the enrichments hits the request.
+          eps_drive_time_future = start_eps_drive_time_enrichment(eps_providers, user_address)
+
           StatsD.measure("#{STATSD_KEY_PREFIX}.va_next_available_enrichment.duration") do
             enrich_va_next_available!(va_providers)
           end
           StatsD.measure("#{STATSD_KEY_PREFIX}.eps_next_available_enrichment.duration") do
             enrich_eps_next_available!(eps_providers, referral)
           end
+
+          # VA drive times are not populated in this PR (separate ticket); this no-ops to nil.
+          apply_va_drive_times!(va_providers, nil)
+          apply_eps_drive_times!(eps_providers, eps_drive_time_future)
 
           [va_providers, eps_providers]
         end

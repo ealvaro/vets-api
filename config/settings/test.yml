@@ -2043,6 +2043,7 @@ vaos:
     # +Settings.vaos.unified_scheduling.allowed_parent_stations+ to a list directly.
     allowed_parent_stations: ~
     default_radius_miles: 25
+    drive_time_timeout_seconds: 8
     # ProviderRanker tuning; mirrors config/settings.yml (see comments there).
     ranking:
       eps:

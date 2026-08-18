@@ -2033,6 +2033,11 @@ vaos:
     # production. See VAOS::V2::Unified::ParentStationFilter.
     allowed_parent_stations: <%= ENV['vaos__unified_scheduling__allowed_parent_stations'] %>
     default_radius_miles: <%= ENV['vaos__unified_scheduling__default_radius_miles'] || 25 %>
+    # Max seconds the provider search will wait on the batched EPS /drive-times future before
+    # failing open (drive times left blank). Bounds the extra latency drive-time enrichment can
+    # add to a request. Tunable via AWS Parameter Store without a deploy. See
+    # VAOS::V2::Unified::ProviderSearchService::DriveTimeSupport.
+    drive_time_timeout_seconds: <%= ENV['vaos__unified_scheduling__drive_time_timeout_seconds'] || 8 %>
     # Weights + normalization caps for VAOS::V2::Unified::ProviderRanker. VA and EPS providers are
     # ranked separately, so each care type has its own tunable block. Weights are relative (they need
     # not sum to 1; the ranker renormalizes over whichever signals a provider actually has). caps are

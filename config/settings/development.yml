@@ -2052,6 +2052,7 @@ vaos:
     # comma-delimited list (e.g. "983,442") if you want to mimic the prod scope.
     allowed_parent_stations: ~
     default_radius_miles: 25
+    drive_time_timeout_seconds: 8
     # ProviderRanker tuning; mirrors config/settings.yml (see comments there).
     ranking:
       eps:

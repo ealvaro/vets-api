@@ -92,7 +92,14 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       allow(eligibility_service).to receive(:check_eligibility).and_return({ direct_eligible: true })
 
       allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility])
-      allow(eps_provider_service).to receive(:search_by_location).and_return([eps_provider_hash])
+      # +get_drive_times+ gets a benign default so blocks that reset Flipper via
+      # +and_call_original+ (which reverts the drive-time flag to its test-env-on
+      # default) don't hit an unstubbed message. The dedicated drive-time describe
+      # block overrides it with real data / a raise.
+      allow(eps_provider_service).to receive_messages(
+        search_by_location: [eps_provider_hash],
+        get_drive_times: OpenStruct.new(destinations: {})
+      )
       # Default the next-available enrichment to a no-op so the bulk of the
       # structural tests don't have to stub VPG. Tests under the "next available
       # date enrichment" describe block stub this explicitly with real data.
@@ -117,6 +124,11 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
       # post-MVP describe block overrides this to true.
       allow(Flipper).to receive(:enabled?)
         .with(:va_online_scheduling_cc_direct_scheduling_v2_post_mvp, user).and_return(false)
+      # Default the drive-time enrichment OFF so the structural tests don't spawn the
+      # EPS /drive-times future. The dedicated drive-time describe block overrides
+      # this to true. (Flags default ON in the test env, so this must be explicit.)
+      allow(Flipper).to receive(:enabled?)
+        .with(:va_online_scheduling_unified_drive_time, user).and_return(false)
     end
 
     it 'returns a combined list of VA clinics and EPS providers' do
@@ -694,6 +706,85 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         # The phone-only provider must never reach the slot fetch (which would raise and
         # inflate the eps_next_available_slot.failure metric).
         expect(eps_provider_service).not_to have_received(:get_provider_slots).with('phone-only-1', anything)
+      end
+    end
+
+    describe 'drive-time enrichment (va_online_scheduling_unified_drive_time)' do
+      # The service digs symbol snake_case keys off the get_drive_times OpenStruct
+      # (:d0, :drive_time_in_seconds_without_traffic), mirroring the EPS Faraday
+      # middleware that symbolizes + snake_cases response keys. Build the stub the
+      # same way so the test exercises the real key path. The single destination is
+      # keyed "d0" because there's one unique EPS coordinate in the default fixture.
+      def drive_times_response(seconds)
+        OpenStruct.new(destinations: { d0: { drive_time_in_seconds_without_traffic: seconds } })
+      end
+
+      context 'when the flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_drive_time, user).and_return(true)
+          allow(eps_provider_service).to receive(:get_drive_times).and_return(drive_times_response(420))
+        end
+
+        it 'populates drive_time_in_seconds on EPS providers from the batched EPS call' do
+          results = service.search(referral:)
+          eps = results.find { |p| p.provider_type == 'eps' }
+
+          expect(eps.drive_time_in_seconds).to eq(420)
+        end
+
+        it 'leaves VA providers with a nil drive time (deferred to a separate ticket)' do
+          results = service.search(referral:)
+          va = results.find { |p| p.provider_type == 'va' }
+
+          expect(va.drive_time_in_seconds).to be_nil
+        end
+
+        it 'calls EPS drive-times once with the batched destinations and user origin' do
+          service.search(referral:)
+
+          expect(eps_provider_service).to have_received(:get_drive_times).once.with(
+            destinations: { 'd0' => { latitude: 28.08061, longitude: -80.60322 } },
+            origin: { latitude: 28.08, longitude: -80.60 }
+          )
+        end
+
+        it 'coerces stringified seconds to an integer' do
+          allow(eps_provider_service).to receive(:get_drive_times).and_return(drive_times_response('420'))
+
+          results = service.search(referral:)
+          eps = results.find { |p| p.provider_type == 'eps' }
+
+          expect(eps.drive_time_in_seconds).to eq(420)
+        end
+
+        it 'fails open when the EPS drive-times call raises (providers still returned, drive time nil)' do
+          allow(eps_provider_service).to receive(:get_drive_times).and_raise(StandardError.new('boom'))
+          allow(Rails.logger).to receive(:warn)
+
+          results = service.search(referral:)
+          eps = results.find { |p| p.provider_type == 'eps' }
+
+          expect(results.map(&:provider_type)).to include('va', 'eps')
+          expect(eps.drive_time_in_seconds).to be_nil
+          expect(Rails.logger).to have_received(:warn)
+            .with(/drive-time enrichment failed/, hash_including(source: 'eps'))
+        end
+      end
+
+      context 'when the flag is disabled (default)' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:va_online_scheduling_unified_drive_time, user).and_return(false)
+          allow(eps_provider_service).to receive(:get_drive_times)
+        end
+
+        it 'never calls EPS drive-times and leaves all providers with a nil drive time' do
+          results = service.search(referral:)
+
+          expect(eps_provider_service).not_to have_received(:get_drive_times)
+          expect(results.map(&:drive_time_in_seconds)).to all(be_nil)
+        end
       end
     end
 

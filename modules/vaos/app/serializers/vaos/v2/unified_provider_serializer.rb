@@ -27,6 +27,7 @@ module VAOS
             nextAvailableDate: provider.next_available_date,
             sortOrder: index
           }.merge(type_specific_attributes(provider))
+                  .merge(drive_time_attributes(provider))
 
           attrs[:onlineScheduling] = provider.online_scheduling? if include_online_scheduling
           attrs.merge!(ranked_attributes(provider)) if ranked
@@ -65,6 +66,21 @@ module VAOS
         else
           {}
         end
+      end
+
+      def drive_time_attributes(provider)
+        seconds = provider.drive_time_in_seconds
+        return {} unless seconds&.positive?
+
+        { driveTimeInSeconds: seconds, driveTime: format_drive_time(seconds) }
+      end
+
+      def format_drive_time(seconds)
+        minutes = [(seconds / 60.0).round, 1].max
+        return "#{minutes} minute drive" if minutes < 60
+
+        hours, remainder = minutes.divmod(60)
+        remainder.zero? ? "#{hours} hour drive" : "#{hours} hour and #{remainder} minute drive"
       end
 
       def referral_provider?(provider, referral_npi)

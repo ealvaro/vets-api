@@ -173,5 +173,44 @@ RSpec.describe VAOS::V2::UnifiedProviderSerializer do
         expect(result[:attributes][:nextAvailableDate]).to be_nil
       end
     end
+
+    context 'driveTime' do
+      it 'emits driveTime and driveTimeInSeconds when populated on an EPS provider' do
+        eps_provider.drive_time_in_seconds = 420
+        result = serializer.serialize([eps_provider]).first
+
+        expect(result[:attributes][:driveTimeInSeconds]).to eq(420)
+        expect(result[:attributes][:driveTime]).to eq('7 minute drive')
+      end
+
+      it 'omits both keys (proper nil) for VA providers, which are not enriched in this phase' do
+        result = serializer.serialize([va_provider]).first
+
+        expect(result[:attributes]).not_to have_key(:driveTime)
+        expect(result[:attributes]).not_to have_key(:driveTimeInSeconds)
+      end
+
+      it 'omits both keys for an EPS provider without drive-time enrichment' do
+        result = serializer.serialize([eps_provider]).first
+
+        expect(result[:attributes]).not_to have_key(:driveTime)
+        expect(result[:attributes]).not_to have_key(:driveTimeInSeconds)
+      end
+
+      it 'formats the drive time across minute/hour boundaries' do
+        {
+          30 => '1 minute drive', # sub-minute floors to 1
+          59 => '1 minute drive',
+          420 => '7 minute drive',
+          3600 => '1 hour drive',
+          3660 => '1 hour and 1 minute drive'
+        }.each do |seconds, expected|
+          eps_provider.drive_time_in_seconds = seconds
+          result = serializer.serialize([eps_provider]).first
+
+          expect(result[:attributes][:driveTime]).to eq(expected)
+        end
+      end
+    end
   end
 end

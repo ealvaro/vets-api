@@ -6,6 +6,7 @@ module VAOS
       class BaseProvider
         attr_accessor :id, :name, :facility_name, :address, :phone, :latitude, :longitude,
                       :provider_type, :distance_from_user, :next_available_date,
+                      :drive_time_in_seconds,
                       # Populated by {Unified::ProviderRanker}. +match_score+ (0-100) and
                       # +rationale+ drive ranked provider search; +recommended+ marks the group's
                       # best-scoring provider (which may not sit first -- the referral's matched

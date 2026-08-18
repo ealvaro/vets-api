@@ -3032,6 +3032,18 @@ features:
       provider marked recommended -- the referral's matched provider stays pinned first in the
       EPS group regardless of score) instead of the legacy flat, distance-sorted array.
       Requires the coordinated frontend change to consume the grouped shape.
+  va_online_scheduling_unified_drive_time:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      Owned by VAOS. When enabled, unified provider search
+      (GET /vaos/v2/providers) enriches providers with drive time from the
+      veteran's residential address: VA facilities via one Lighthouse /nearby
+      call (PSSG drive-time bands, ceiling shown as "20 minute drive"), CC
+      providers via one batched EPS POST /drive-times call ("7 minute drive").
+      Surfaced as driveTime and driveTimeInSeconds. Each source fails open
+      independently; an upstream failure leaves that source's fields absent.
+      Kill switch for measuring/limiting the added upstream latency.
   va_online_scheduling_unified_eps_next_available:
     actor_type: user
     enable_in_development: false
