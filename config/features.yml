@@ -448,6 +448,10 @@ features:
     actor_type: user
     description: Enables multiple file input (V3) upload pattern in the 10-10EZR form.
     enable_in_development: false
+  hca_upload_image_conversion_fix:
+    description: Enables alternative image conversion of png and heic/heif files to jpg to fix S3 Errors::NotFound for HCA uploads.
+  poa_upload_image_conversion_fix:
+    description: Enables alternative image conversion of heic/heif files to jpg to fix S3 Errors::NotFound for POA uploads.
   cerner_override_653:
     actor_type: user
     description: This will show the Cerner facility 653 as `isCerner`.

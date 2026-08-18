@@ -48,10 +48,23 @@ module Form1010cg
     def normalize_heic_to_jpg
       return unless heic?(file)
 
-      converted_file = MiniMagick::Image.new(file.file)
-      converted_file.format('jpg')
+      if Flipper.enabled?(:poa_upload_image_conversion_fix)
+        Rails.logger.info(
+          '[POA_CONVERT_ATTACHMENT] start',
+          store_dir: @store_dir,
+          ext: File.extname(file.file),
+          content_type: file.content_type
+        )
+        manipulate! do |image|
+          image.format('jpg')
+          image
+        end
+      else
+        converted_file = MiniMagick::Image.new(file.file)
+        converted_file.format('jpg')
 
-      file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
+        file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
+      end
     end
 
     def heic?(file)

@@ -55,10 +55,16 @@ class HCAAttachmentUploader < CarrierWave::Uploader::Base
       ext: File.extname(file.file),
       content_type: file.content_type
     )
-    converted_file = MiniMagick::Image.new(file.file)
-    converted_file.format('jpg')
-
-    file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
+    if Flipper.enabled?(:hca_upload_image_conversion_fix)
+      manipulate! do |image|
+        image.format('jpg')
+        image
+      end
+    else
+      converted_file = MiniMagick::Image.new(file.file)
+      converted_file.format('jpg')
+      file.content_type = 'image/jpeg' if file.respond_to?(:content_type=)
+    end
   end
 
   def png_or_heic?(file)
