@@ -22,6 +22,12 @@ module Eps
         # Check for error field in successful responses using reusable helper
         check_for_eps_error!(result, response, 'get_appointment')
 
+        # EPS authenticates with a shared service token, so the appointment's
+        # patientId is the only veteran scoping available. The by-id endpoint
+        # does not filter by it, so reject appointments that do not belong to
+        # the current user to prevent IDOR access.
+        verify_appointment_ownership!(result)
+
         result
       end
     rescue Eps::ServiceException => e
@@ -260,6 +266,36 @@ module Eps
     # @return [Eps::RedisClient] RedisClient instance
     def redis_client
       @redis_client ||= Eps::RedisClient.new
+    end
+
+    ##
+    # Verifies the returned appointment belongs to the current user.
+    #
+    # EPS scopes appointments only by +patientId+ (the veteran ICN) and the
+    # by-id endpoint does not filter by it, so an appointment id belonging to
+    # another veteran would otherwise be returned. Raising the same VAOS_404
+    # EPS error as a genuine miss keeps the response indistinguishable from a
+    # genuinely missing appointment.
+    #
+    # @param appointment [OpenStruct] The parsed EPS appointment
+    # @raise [Eps::ServiceException] VAOS_404 if the appointment is not owned by the user
+    # @return [void]
+    def verify_appointment_ownership!(appointment)
+      # EPS responses are snake_cased by the Faraday middleware (patient_id);
+      # fall back to camelCase defensively in case that ever changes.
+      appointment_patient_id = appointment.try(:patient_id) || appointment.try(:patientId)
+      return if appointment_patient_id.present? && appointment_patient_id == patient_id
+
+      Rails.logger.warn(
+        "#{CC_APPOINTMENTS}: EPS appointment ownership mismatch",
+        {
+          method: 'get_appointment',
+          controller: controller_name,
+          station_number:,
+          eps_trace_id:
+        }
+      )
+      raise_eps_error('not-found', nil)
     end
 
     ##

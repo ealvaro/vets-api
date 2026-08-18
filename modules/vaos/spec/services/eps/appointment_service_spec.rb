@@ -59,6 +59,69 @@ describe Eps::AppointmentService do
       end
     end
 
+    context 'when the appointment belongs to another user' do
+      let(:other_user_response) do
+        double('Response', status: 200, body: { 'id' => appointment_id,
+                                                'state' => 'submitted',
+                                                'patient_id' => 'someone-elses-icn' },
+                           response_headers:)
+      end
+
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(other_user_response)
+        RequestStore.store['eps_trace_id'] = 'test-trace-id-123'
+      end
+
+      it 'raises a VAOS_404 EPS error and does not return the appointment' do
+        expect { service.get_appointment(appointment_id:) }
+          .to raise_error(Eps::ServiceException) { |error| expect(error.key).to eq('VAOS_404') }
+      end
+
+      it 'logs the ownership mismatch without PII' do
+        expect(Rails.logger).to receive(:warn).with(
+          'Community Care Appointments: EPS appointment ownership mismatch',
+          hash_including(method: 'get_appointment', eps_trace_id: 'test-trace-id-123')
+        )
+
+        expect { service.get_appointment(appointment_id:) }
+          .to raise_error(Eps::ServiceException)
+      end
+    end
+
+    context 'when the appointment is owned by the current user (snake_cased response)' do
+      let(:snake_case_response) do
+        double('Response', status: 200, body: { 'id' => appointment_id,
+                                                'state' => 'submitted',
+                                                'patient_id' => icn },
+                           response_headers:)
+      end
+
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(snake_case_response)
+      end
+
+      it 'returns the appointment' do
+        response = service.get_appointment(appointment_id:)
+        expect(response.id).to eq(appointment_id)
+      end
+    end
+
+    context 'when the appointment response is missing patientId' do
+      let(:missing_patient_response) do
+        double('Response', status: 200, body: { 'id' => appointment_id, 'state' => 'submitted' },
+                           response_headers:)
+      end
+
+      before do
+        allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(missing_patient_response)
+      end
+
+      it 'raises a VAOS_404 EPS error' do
+        expect { service.get_appointment(appointment_id:) }
+          .to raise_error(Eps::ServiceException) { |error| expect(error.key).to eq('VAOS_404') }
+      end
+    end
+
     context 'when the endpoint fails to return appointments' do
       let(:failed_appt_response) do
         double('Response', status: 500, body: 'Unknown service exception',

@@ -1113,21 +1113,27 @@ RSpec.describe 'VAOS::V2::Appointments', :skip_mvi, type: :request do
           end
         end
 
-        it 'returns an eps appointment' do
-          VCR.use_cassette('vaos/eps/token/token_200', match_requests_on: %i[method path]) do
-            VCR.use_cassette('vaos/eps/get_appointment/booked_200', match_requests_on: %i[method path]) do
-              get '/vaos/v2/appointments/qdm61cJ5?_include=eps', headers: inflection_header
+        context 'when the appointment is an eps appointment' do
+          # EPS enforces appointment ownership by comparing the response patientId to
+          # the current user's ICN, so the user's ICN must match the cassette's patientId.
+          let(:current_user) { build(:user, :jac, icn: 'care-nav-patient-casey') }
 
-              expect(response).to have_http_status(:success)
-              body = JSON.parse(response.body)
+          it 'returns an eps appointment' do
+            VCR.use_cassette('vaos/eps/token/token_200', match_requests_on: %i[method path]) do
+              VCR.use_cassette('vaos/eps/get_appointment/booked_200', match_requests_on: %i[method path]) do
+                get '/vaos/v2/appointments/qdm61cJ5?_include=eps', headers: inflection_header
 
-              expect(body).to include('data')
-              expect(body['data']).to include('id', 'type', 'attributes')
-              expect(body['data']['attributes']).to include(
-                'id', 'state', 'patientId', 'referral',
-                'providerServiceId', 'networkId', 'slotIds',
-                'appointmentDetails'
-              )
+                expect(response).to have_http_status(:success)
+                body = JSON.parse(response.body)
+
+                expect(body).to include('data')
+                expect(body['data']).to include('id', 'type', 'attributes')
+                expect(body['data']['attributes']).to include(
+                  'id', 'state', 'patientId', 'referral',
+                  'providerServiceId', 'networkId', 'slotIds',
+                  'appointmentDetails'
+                )
+              end
             end
           end
         end
