@@ -126,7 +126,8 @@ MyHealth::Engine.routes.draw do
         put ':reply_id/replydraft/:draft_id', on: :collection, action: :update_reply_draft, as: :update_reply
       end
 
-      get '/pact/:station', to: 'pact#show', defaults: { format: :json }
+      get '/pact', to: 'pact#show', defaults: { format: :json }
+      get '/pact/:station', to: 'pact#show_station', defaults: { format: :json }
 
       resource :preferences, only: %i[show update], controller: 'messaging_preferences' do
         post 'recipients', action: :update_triage_team_preferences

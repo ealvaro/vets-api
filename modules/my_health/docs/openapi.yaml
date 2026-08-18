@@ -1748,6 +1748,30 @@ paths:
                 $ref: ./schemas/Errors.yml
           description: Not authorized for access to secure messages
       summary: /v1/messaging/threads/{id}/move
+  /v1/messaging/pact:
+    get:
+      description: Get all PACT (Patient Aligned Care Team) assignments for the current user across all stations
+      operationId: list_pact
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/PactAssignments.yml
+          description: OK
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/Errors.yml
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: ./schemas/Errors.yml
+          description: Not authorized for access to secure messages
+      summary: /v1/messaging/pact
   /v1/messaging/pact/{station}:
     get:
       description: Get PACT (Patient Aligned Care Team) assignments for a given user and station
@@ -1778,6 +1802,20 @@ paths:
               schema:
                 $ref: ./schemas/Errors.yml
           description: Not authorized for access to secure messages
+        "404":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {}
+                  errors:
+                    type: object
+                  metadata:
+                    type: object
+          description: Invalid station number provided
       summary: /v1/messaging/pact/{station}
   /v1/messaging/preferences/recipients:
     post:

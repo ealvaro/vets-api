@@ -18,9 +18,16 @@ describe 'sm client' do
       end
     end
 
+    it 'gets all pact teams', :vcr do
+      VCR.use_cassette 'sm_client/pact/gets_all_pacts' do
+        pact = client.get_pact
+        expect(pact[:data]).not_to be_empty
+      end
+    end
+
     it 'gets a pact team for a matching station', :vcr do
       VCR.use_cassette 'sm_client/pact/gets_a_pact' do
-        pact = client.get_pact(123)
+        pact = client.get_pact_for_station(123)
 
         expect(pact[:data]).not_to be_empty
         expect(pact[:data].map { |team| team[:station_number] }.uniq).to eq([123])
@@ -30,7 +37,7 @@ describe 'sm client' do
 
     it 'returns an empty collection when no pact team matches the station' do
       VCR.use_cassette 'sm_client/pact/gets_a_pact' do
-        pact = client.get_pact(999)
+        pact = client.get_pact_for_station(999)
 
         expect(pact[:data]).to be_empty
       end

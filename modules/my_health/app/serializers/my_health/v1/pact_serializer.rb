@@ -6,7 +6,7 @@ module MyHealth
       include JSONAPI::Serializer
 
       set_type :pact_teams
-      set_id { '' }
+      set_id { |object| object[:provider_ien] }
 
       attribute :station_number do |object|
         object[:station_number]
