@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_220136) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1927,6 +1927,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_000003) do
     t.uuid "user_account_id"
     t.index ["created_at", "type"], name: "index_saved_claims_on_created_at_and_type"
     t.index ["delete_date"], name: "index_saved_claims_on_delete_date"
+    t.index ["form_id"], name: "index_saved_claims_on_form_id"
     t.index ["guid"], name: "index_saved_claims_on_guid", unique: true
     t.index ["id", "type"], name: "index_saved_claims_on_id_and_type"
     t.index ["id"], name: "index_partial_saved_claims_on_id_metadata_like_error", where: "(metadata ~~ '%error%'::text)"
