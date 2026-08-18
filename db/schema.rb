@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_185750) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_17_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1604,12 +1604,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_185750) do
 
   create_table "ivc_champva_letters", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "form_number"
+    t.string "form_number", null: false
     t.bigint "ivc_champva_applicant_id", null: false
     t.string "letter_name"
     t.string "mail_status"
     t.datetime "mail_status_date"
     t.datetime "updated_at", null: false
+    t.index ["ivc_champva_applicant_id", "form_number", "mail_status_date"], name: "index_ivc_champva_letters_on_applicant_form_and_status_date", unique: true
     t.index ["ivc_champva_applicant_id"], name: "index_ivc_champva_letters_on_ivc_champva_applicant_id"
   end
 
