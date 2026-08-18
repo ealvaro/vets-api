@@ -124,7 +124,8 @@ RUN gem install bundler:${BUNDLER_VERSION} --no-document
 
 COPY --from=modules /tmp/modules modules/
 COPY Gemfile Gemfile.lock ./
-RUN bundle install \
+RUN bundle config set --local without ci_analysis \
+  && bundle install \
   && rm -rf /usr/local/bundle/cache/*.gem \
   && find /usr/local/bundle/gems/ -name "*.c" -delete \
   && find /usr/local/bundle/gems/ -name "*.o" -delete \

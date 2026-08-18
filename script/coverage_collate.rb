@@ -10,6 +10,13 @@
 require 'simplecov'
 require_relative '../spec/simplecov_helper'
 
+UNDERCOVER_AVAILABLE = begin
+  require 'undercover/simplecov_formatter'
+  true
+rescue LoadError
+  false
+end
+
 module CoverageCollate
   # Resultsets contain absolute paths from Docker test containers (/app/...).
   # Rewrite them to match the current workspace so SimpleCov can find source files
@@ -31,11 +38,15 @@ module CoverageCollate
 
     warn "Collating #{files.size} coverage result sets..."
 
+    # :nocov: — block only executes against real shard data in CI, not unit-testable
     SimpleCov.collate(files) do
       SimpleCovHelper.add_filters(self)
       SimpleCovHelper.add_modules(self)
-      formatter SimpleCov::Formatter::HTMLFormatter
+      formatters = [SimpleCov::Formatter::HTMLFormatter]
+      formatters << SimpleCov::Formatter::Undercover if UNDERCOVER_AVAILABLE
+      formatter SimpleCov::Formatter::MultiFormatter.new(formatters)
     end
+    # :nocov:
 
     warn 'Coverage collation complete.'
   end

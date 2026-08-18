@@ -786,6 +786,49 @@ jobs:
         if: needs.tests.result == 'success'
         run: bundle exec ruby script/coverage_collate.rb
 
+      - name: Fetch PR base for undercover diff
+        if: needs.tests.result == 'success' && github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+
+      - name: Run undercover
+        if: needs.tests.result == 'success' && github.event_name == 'pull_request'
+        id: undercover
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          bundle exec undercover \
+            --compare "${{ github.event.pull_request.base.sha }}" \
+            2>&1 | tee /tmp/undercover-output.txt
+
+      - name: Sticky undercover comment on PR
+        if: needs.tests.result == 'success' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: va.ghe.com
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: https://va.ghe.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- sticky-pr-comment: undercover -->'
+          output=$(cat /tmp/undercover-output.txt)
+          existing_id=$(gh api --paginate "repos/$REPO/issues/$PR/comments" \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id // empty")
+
+          if [ "${{ steps.undercover.outcome }}" = "failure" ]; then
+            body=$(printf '%s\n## :warning: Undercover: Untested code in diff\n\nThe following methods/blocks changed in this PR have no test coverage:\n\n```\n%s\n```\n\n_This check is advisory — it does not block merge._\n[View run](%s) · [How to resolve or request an exemption](https://depo-platform-documentation.scrollhelp.site/developer-docs/undercover-per-pr-changed-line-coverage-checks)\n' "$MARKER" "$output" "$RUN_URL")
+          else
+            body=''
+          fi
+
+          if [ -z "$body" ]; then
+            [ -n "$existing_id" ] && gh api -X DELETE "repos/$REPO/issues/comments/$existing_id" || true
+          elif [ -n "$existing_id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing_id" -f body="$body"
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$body"
+          fi
+
       - name: Upload Combined Coverage HTML
         if: needs.tests.result == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

@@ -219,6 +219,10 @@ group :test do
   gem 'vcr'
 end
 
+group :ci_analysis do
+  gem 'undercover', require: false
+end
+
 group :development, :test do
   gem 'awesome_print' # Pretty print your Ruby objects in full color and with proper indentation
   gem 'brakeman'
