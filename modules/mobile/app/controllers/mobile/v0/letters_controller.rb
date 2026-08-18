@@ -51,8 +51,7 @@ module Mobile
           Mobile::V0::Letter.new(letter_type: letter[:letterType], name: apply_name_override(letter),
                                  description: letter[:description])
         end
-        response.append(get_coe_letter_type).compact! if Flipper.enabled?(:mobile_coe_letter_use_lgy_service,
-                                                                          @current_user) && coe_app_version?
+        response.append(get_coe_letter_type).compact! if include_coe_letter?
 
         displayable_letters = response.select { |letter| letter.displayable?(@current_user) }
 
@@ -105,6 +104,12 @@ module Mobile
         end
 
         ordered + (letters - ordered)
+      end
+
+      def include_coe_letter?
+        Flipper.enabled?(:mobile_coe_letter_use_lgy_service, @current_user) &&
+          coe_app_version? &&
+          policy(:coe).access?
       end
 
       def get_coe_letter_type

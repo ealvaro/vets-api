@@ -441,6 +441,22 @@ Send electronic inquiries through the Internet at https://www.va.gov/contact-us.
           allow(Flipper).to receive(:enabled?).with(:cst_letters_content_updates, instance_of(User)).and_return(false)
         end
 
+        context 'with a user who fails CoePolicy (no EDIPI)' do
+          before { allow_any_instance_of(User).to receive(:edipi).and_return(nil) }
+
+          it 'skips the COE letter and never calls the LGY service' do
+            expect(Mobile::V0::Lgy::Service).not_to receive(:new)
+
+            VCR.use_cassette('mobile/lighthouse_letters/letters_200', match_requests_on: %i[method uri]) do
+              get '/mobile/v0/letters', headers: sis_headers({ 'App-Version' => '2.59.0' })
+            end
+
+            expect(response).to have_http_status(:ok)
+            letter_types = JSON.parse(response.body).dig('data', 'attributes', 'letters').pluck('letterType')
+            expect(letter_types).not_to include('certificate_of_eligibility_home_loan')
+          end
+        end
+
         context 'with an app version that supports COE letters' do
           context 'with a user that has an available COE letter' do
             it 'includes the COE letter if available' do
