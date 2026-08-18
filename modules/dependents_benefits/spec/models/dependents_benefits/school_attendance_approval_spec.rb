@@ -31,4 +31,36 @@ RSpec.describe DependentsBenefits::SchoolAttendanceApproval do
       expect(claim.business_line).to eq('CMP')
     end
   end
+
+  describe 'overflow tracking' do
+    let(:user) { create(:evss_user) }
+    let(:parent_claim) { create(:dependents_claim) }
+
+    before do
+      allow(StatsD).to receive(:increment)
+      allow_any_instance_of(DependentsBenefits::SchoolAttendanceApproval).to receive(
+        :pdf_overflow_tracking
+      ).and_call_original
+      user_data = DependentsBenefits::UserData.new(user, parent_claim.parsed_form)
+
+      SavedClaimGroup.new(claim_group_guid: parent_claim.guid,
+                          parent_claim_id: parent_claim.id,
+                          saved_claim_id: parent_claim.id,
+                          user_data: user_data.get_user_json).save!
+    end
+
+    it 'calls StatsD' do
+      expect(StatsD).to receive(:increment).with('saved_claim.pdf.overflow',
+                                                 tags: ['form_id:21-674', 'doctype:142']).once
+      expect(Common::FileHelpers).to receive(:delete_file_if_exists).with('tmp/pdfs/mock_form_final.pdf')
+
+      form_data = parent_claim.parsed_form
+      student_data = form_data.dig('dependents_application', 'student_information').first
+
+      expect do
+        DependentsBenefits::Generators::Claim674Generator.new(form_data, parent_claim.id,
+                                                              student_data).generate
+      end.to change(DependentsBenefits::SchoolAttendanceApproval, :count).by(1)
+    end
+  end
 end

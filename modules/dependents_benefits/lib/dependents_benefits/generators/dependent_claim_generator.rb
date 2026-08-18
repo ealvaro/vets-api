@@ -24,9 +24,11 @@ module DependentsBenefits
       #
       def generate
         extracted_data = extract_form_data
-        claim = create_claim(extracted_data)
-        create_claim_group_item(claim)
-        claim
+        ActiveRecord::Base.transaction do
+          claim = create_claim(extracted_data)
+          create_claim_group_item(claim)
+          claim
+        end
       end
 
       private
@@ -53,6 +55,13 @@ module DependentsBenefits
       #
       def create_claim(extracted_data)
         claim = claim_class.new(form: extracted_data.to_json)
+
+        # make sure user data is present as it's needed in after_create hook
+        parent_claim_group = SavedClaimGroup.by_saved_claim_id(parent_id).first!
+        user_data = parent_claim_group&.user_data
+        if user_data.present?
+          claim.add_veteran_info(user_data.is_a?(String) ? JSON.parse(user_data) : user_data)
+        end
 
         claim.save!
         claim

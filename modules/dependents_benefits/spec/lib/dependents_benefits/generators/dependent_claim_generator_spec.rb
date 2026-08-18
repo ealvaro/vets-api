@@ -52,10 +52,13 @@ RSpec.describe DependentsBenefits::Generators::DependentClaimGenerator, type: :m
     describe '#create_claim' do
       let(:extracted_data) { { 'extracted' => 'data' } }
       let(:mock_claim) { instance_double(DependentsBenefits::PrimaryDependencyClaim, id: 456) }
+      let(:mock_group) { instance_double(SavedClaimGroup, user_data: '{}', claim_group_guid: 'abc123') }
 
       before do
         allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(mock_claim)
+        allow(SavedClaimGroup).to receive(:by_saved_claim_id).and_return(OpenStruct.new(first!: mock_group))
         allow(mock_claim).to receive(:validate!)
+        allow(mock_claim).to receive(:add_veteran_info)
         allow(mock_claim).to receive(:save!)
       end
 
