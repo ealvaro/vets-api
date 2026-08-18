@@ -56,7 +56,7 @@ RSpec.describe DependentsBenefits::Generators::DependentClaimGenerator, type: :m
 
       before do
         allow(DependentsBenefits::PrimaryDependencyClaim).to receive(:new).and_return(mock_claim)
-        allow(SavedClaimGroup).to receive(:by_saved_claim_id).and_return(OpenStruct.new(first!: mock_group))
+        allow(SavedClaimGroup).to receive(:by_saved_claim_id).and_return(double(first!: mock_group))
         allow(mock_claim).to receive(:validate!)
         allow(mock_claim).to receive(:add_veteran_info)
         allow(mock_claim).to receive(:save!)

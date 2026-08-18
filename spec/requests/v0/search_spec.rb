@@ -12,7 +12,7 @@ Rspec.describe 'V0::Search', type: :request do
   before do
     allow(Flipper).to receive(:enabled?).and_call_original
     allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:search_use_kendra).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:search_use_kendra, nil).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:search_results_cache).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:search_skip_known_bots).and_return(false)
   end
@@ -213,39 +213,67 @@ Rspec.describe 'V0::Search', type: :request do
 
     context 'when Kendra is enabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:search_use_kendra).and_return(true)
-        Aws.config.update(
-          credentials: Aws::Credentials.new('test-access-key', 'test-secret-key')
-        )
+        allow(Flipper).to receive(:enabled?).with(:search_use_kendra, anything).and_return(true)
+        Aws.config.update(credentials: Aws::Credentials.new('test-access-key', 'test-secret-key'))
       end
 
-      it 'matches the search schema' do
-        VCR.use_cassette('search/kendra_success') do
-          get '/v0/search', params: { query: 'benefits' }
+      context 'when not signed in' do
+        it 'checks Flipper without current user' do
+          VCR.use_cassette('search/kendra_success') do
+            get '/v0/search', params: { query: 'benefits' }
 
-          expect(response).to have_http_status(:ok)
-          expect(response).to match_response_schema('search')
+            expect(Flipper).to have_received(:enabled?).with(:search_use_kendra, nil)
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        it 'matches the search schema' do
+          VCR.use_cassette('search/kendra_success') do
+            get '/v0/search', params: { query: 'benefits' }
+
+            expect(response).to have_http_status(:ok)
+            expect(response).to match_response_schema('search')
+          end
+        end
+
+        it 'passes the requested page to Kendra' do
+          VCR.use_cassette('search/kendra_page_2') do
+            get '/v0/search', params: {
+              query: 'benefits',
+              page: 2
+            }
+
+            expect(response).to have_http_status(:ok)
+            expect(response).to match_response_schema('search')
+          end
+        end
+
+        it 'handles Kendra errors', :aggregate_failures do
+          VCR.use_cassette('search/kendra_error') do
+            get '/v0/search', params: { query: 'benefits' }
+
+            expect(response).to have_http_status(:bad_request)
+            expect(response).to match_response_schema('errors')
+          end
         end
       end
 
-      it 'passes the requested page to Kendra' do
-        VCR.use_cassette('search/kendra_page_2') do
-          get '/v0/search', params: {
-            query: 'benefits',
-            page: 2
-          }
+      context 'when signed in' do
+        let(:user) { build(:user) }
 
-          expect(response).to have_http_status(:ok)
-          expect(response).to match_response_schema('search')
-        end
-      end
+        before { sign_in_as(user) }
 
-      it 'handles Kendra errors', :aggregate_failures do
-        VCR.use_cassette('search/kendra_error') do
-          get '/v0/search', params: { query: 'benefits' }
+        it 'checks Flipper for current user' do
+          VCR.use_cassette('search/kendra_success') do
+            get '/v0/search', params: { query: 'benefits' }
 
-          expect(response).to have_http_status(:bad_request)
-          expect(response).to match_response_schema('errors')
+            expect(Flipper).to have_received(:enabled?).with(
+              :search_use_kendra,
+              an_object_having_attributes(flipper_id: user.flipper_id)
+            )
+
+            expect(response).to have_http_status(:ok)
+          end
         end
       end
     end

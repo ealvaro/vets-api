@@ -13,6 +13,7 @@ module V0
 
     skip_before_action :authenticate
     before_action :short_circuit_known_bots, only: :index
+    before_action :load_user
 
     # Returns a page of search results, based on the passed query and page.
     #
@@ -186,7 +187,7 @@ module V0
     def kendra_backend?
       return @kendra_backend if defined?(@kendra_backend)
 
-      @kendra_backend = Flipper.enabled?(:search_use_kendra)
+      @kendra_backend = Flipper.enabled?(:search_use_kendra, current_user)
     end
 
     # Returns a sanitized, permitted version of the passed query params.

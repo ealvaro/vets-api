@@ -2486,7 +2486,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     describe 'search' do
       before do
         allow(Flipper).to receive(:enabled?).with(:search_use_v2_gsa).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:search_use_kendra).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:search_use_kendra, nil).and_return(false)
       end
 
       context 'when successful' do
