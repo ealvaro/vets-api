@@ -1841,6 +1841,7 @@ spec/lib/source_app_middleware_spec.rb @software/va-platform-backend
 spec/lib/ssoe @software/octo-identity
 spec/lib/string_helpers_spec.rb @software/va-platform-backend
 spec/lib/tasks/support/schema_camelizer_spec.rb @software/va-platform-backend
+spec/lib/tasks/support/sc_saved_claim_lookup_spec.rb @software/benefits-decision-reviews-be
 spec/lib/token_validation @software/lighthouse-dash @software/lighthouse-banana-peels
 spec/lib/unified_health_data/ @software/vfs-mhv-integration
 spec/lib/unique_user_events @software/vfs-mhv-integration
