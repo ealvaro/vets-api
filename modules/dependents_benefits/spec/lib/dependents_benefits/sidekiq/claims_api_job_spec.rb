@@ -312,4 +312,58 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsApiJob, type: :job do
       end
     end
   end
+
+  describe '#generate_user_struct' do
+    let(:job) { described_class.new }
+
+    context 'when bgs_truncate_external_key Flipper is disabled' do
+      let(:original_external_key) { 'g' * 60 }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:bgs_truncate_external_key).and_return(false)
+        allow(job).to receive(:generate_user_struct).and_call_original
+        allow(job).to receive(:parent_claim).and_return(parent_claim)
+
+        allow(parent_claim).to receive(:user_data).and_return(
+          {
+            'veteran_information' => {
+              'full_name' => { 'first' => 'John', 'last' => 'Doe', 'middle' => nil },
+              'common_name' => original_external_key
+            }
+          }
+        )
+      end
+
+      it 'does not truncate the common_name in the generated user' do
+        user = job.send(:generate_user_struct)
+
+        expect(user.common_name).to eq(original_external_key)
+      end
+    end
+
+    context 'when bgs_truncate_external_key Flipper is enabled' do
+      let(:original_external_key) { 'k' * 60 }
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:bgs_truncate_external_key).and_return(true)
+        allow(job).to receive(:generate_user_struct).and_call_original
+        allow(job).to receive(:parent_claim).and_return(parent_claim)
+
+        allow(parent_claim).to receive(:user_data).and_return(
+          {
+            'veteran_information' => {
+              'full_name' => { 'first' => 'John', 'last' => 'Doe', 'middle' => nil },
+              'common_name' => original_external_key
+            }
+          }
+        )
+      end
+
+      it 'truncates the common_name in the generated user' do
+        user = job.send(:generate_user_struct)
+
+        expect(user.common_name).to eq(original_external_key.first(BGS::Constants::EXTERNAL_KEY_MAX_LENGTH))
+      end
+    end
+  end
 end

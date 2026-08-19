@@ -307,6 +307,36 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
     end
   end
 
+  describe '#formatted_common_name' do
+    context 'bgs_truncate_external_key Flipper enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:bgs_truncate_external_key).and_return(true)
+      end
+
+      it 'truncates value' do
+        common_name = 'a' * (BGS::Constants::EXTERNAL_KEY_MAX_LENGTH + 10)
+
+        result = job.send(:formatted_common_name, common_name)
+
+        expect(result.length).to eq(BGS::Constants::EXTERNAL_KEY_MAX_LENGTH)
+      end
+    end
+
+    context 'bgs_truncate_external_key Flipper disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:bgs_truncate_external_key).and_return(false)
+      end
+
+      it 'truncates value' do
+        common_name = 'a' * (BGS::Constants::EXTERNAL_KEY_MAX_LENGTH + 10)
+
+        result = job.send(:formatted_common_name, common_name)
+
+        expect(result.length).to eq(common_name.length)
+      end
+    end
+  end
+
   describe 'exception handling' do
     context 'when submit_claims_to_service raises exception with message' do
       let(:exception) { StandardError.new('BGS Error: SSN 123-45-6789 invalid') }

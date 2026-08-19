@@ -252,7 +252,7 @@ module DependentsBenefits::Sidekiq
         participant_id: info['participant_id'],
         icn: info['icn'],
         uuid: info['uuid'],
-        common_name: info['common_name']
+        common_name: formatted_common_name(info['common_name'])
       )
     rescue => e
       monitor.track_error_event('Failed to generate user struct',

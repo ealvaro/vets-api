@@ -82,6 +82,15 @@ module DependentsBenefits::Sidekiq
       handle_job_failure(e)
     end
 
+    # Returns truncated common name with max 39 characters for BGS external_key used for the BGS submission.
+    #
+    # @return [String] the formatted common name
+    def formatted_common_name(common_name)
+      return common_name unless Flipper.enabled?(:bgs_truncate_external_key)
+
+      common_name&.first(BGS::Constants::EXTERNAL_KEY_MAX_LENGTH)
+    end
+
     private
 
     # memoize the job user_data

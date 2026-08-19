@@ -231,6 +231,9 @@ features:
   bgs_param_logging_enabled:
     actor_type: user
     description: Enables logging of BGS parameters (filtered in production)
+  bgs_truncate_external_key:
+    actor_type: user
+    description: Enables truncating value passed in (common_name)
   bio_aquia_usps_address_validation:
     actor_type: user
     description: Enables USPS address validation on BIO-Aquia frontend forms
