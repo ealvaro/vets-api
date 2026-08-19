@@ -1083,6 +1083,7 @@ mhv:
   uhd:
     app_id: 1000
     app_token: faketoken
+    cmop_in_process_window_days: 15
     host: https://example.myhealth.va.gov
     imaging_logging_date_range_days: 180
     labs_logging_date_range_days: 30

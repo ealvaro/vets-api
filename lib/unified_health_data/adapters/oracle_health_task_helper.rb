@@ -27,6 +27,11 @@ module UnifiedHealthData
       # refill state (e.g. "Active: Submitted") indefinitely.
       REFILL_IN_FLIGHT_WINDOW_DAYS = 3
 
+      # Normalized refill statuses that permit an in-flight refill overlay
+      # (submitted/refillinprocess + refill_submit_date). Mirrors the adapter's
+      # STATUS_ACTIVE / STATUS_REFILL_IN_PROCESS values.
+      REFILL_OVERLAY_ELIGIBLE_STATUSES = %w[active refillinprocess].freeze
+
       # Extracts refill submission metadata from Task resources during prescription parsing.
       # Sets refill_submit_date based on the most recent in-flight refill request.
       #
@@ -39,6 +44,12 @@ module UnifiedHealthData
       # @param dispenses_data [Array<Hash>] Array of dispense data for checking subsequent dispenses
       # @return [Hash] Hash containing refill_submit_date if applicable
       def extract_refill_submission_metadata_from_tasks(resource, dispenses_data = [])
+        # Keep refill_submit_date consistent with refill_status: only surface it while
+        # the med's therapy is ongoing (active or a fill already in progress). A stale
+        # Task on a discontinued/expired/on-hold/pending med must not carry a submission
+        # date. Shares refill_overlay_eligible? with extract_refill_status.
+        return {} unless refill_overlay_eligible?(resource)
+
         most_recent_task = most_recent_contained_task(resource, intent: 'order', statuses: honored_refill_statuses)
         return {} unless most_recent_task
 
@@ -48,6 +59,33 @@ module UnifiedHealthData
         return {} if subsequent_dispense?(task_submit_date, dispenses_data)
 
         { refill_submit_date: task_submit_date }
+      end
+
+      # Whether an in-flight refill overlay may apply to a med. True only for the
+      # active family: plainly active, or a fill already in progress. Terminal or
+      # paused states (discontinued/expired/on-hold/pending) suppress the overlay.
+      # Accepts a normalized status string or a FHIR MedicationRequest resource.
+      def refill_overlay_eligible?(status_or_resource)
+        status = if status_or_resource.is_a?(Hash)
+                   normalize_to_legacy_vista_status(status_or_resource)
+                 else
+                   status_or_resource
+                 end
+        REFILL_OVERLAY_ELIGIBLE_STATUSES.include?(status)
+      end
+
+      # Bandaid path: honor the most recent in-flight refill order-Task within the staleness window
+      # (requested => submitted; accepted/in-progress/completed => refillinprocess) when no
+      # subsequent dispense has fulfilled it; otherwise fall through to the normalized status.
+      def extract_refill_status_in_flight(resource, dispenses_data)
+        task = most_recent_contained_task(resource, intent: 'order', statuses: honored_refill_statuses)
+        submit_date = task&.dig('executionPeriod', 'start')
+        if submit_date && in_flight_task_within_window?(submit_date) &&
+           !subsequent_dispense?(submit_date, dispenses_data)
+          return refill_status_for_task_status(task['status'])
+        end
+
+        normalize_to_legacy_vista_status(resource)
       end
 
       # Extracts renewal submission metadata from Task resources during prescription parsing.

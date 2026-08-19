@@ -6,11 +6,9 @@ require 'unified_health_data/client'
 require 'mhv/prescriptions/refill_request_tracker'
 require 'support/shared_contexts/uhd_security_endpoint'
 
-# End-to-end regression coverage for the refill-status classification bug:
-# a freshly staged, still-refillable titratable was surfaced by
-# GET /my_health/v2/prescriptions/:id as refill_status "refillinprocess" even though no
-# refill was ever requested. The fix lives in PrescriptionsAdapter#awaiting_tracking? (only a
-# fill backed by an actual refill/dispense record can be "awaiting tracking").
+# End-to-end coverage confirming the refill-status endpoint reflects the true upstream status
+# for a freshly staged, still-refillable titratable: it must surface as "active"/"Active" and
+# stay refillable, with no client-side reclassification and no RefillRequestTracker override.
 #
 # These specs drive the real read chain, stubbing only the UHD HTTP client:
 #   Client#get_prescriptions_by_date -> PrescriptionService -> PrescriptionsAdapter
@@ -60,20 +58,6 @@ RSpec.describe 'MyHealth::V2::Prescriptions refill_status classification', type:
     base_medication_hash.merge(overrides)
   end
 
-  def refill_record(days_ago)
-    {
-      'rfRecord' => [
-        {
-          'refillStatus' => 'active',
-          'dispensedDate' => (frozen_time - days_ago.days).strftime('%a, %d %b %Y 00:00:00 EDT'),
-          'prescriptionName' => 'METOPROLOL SUCCINATE 100MG SA TAB',
-          'id' => 1001,
-          'prescriptionNumber' => '2721495'
-        }
-      ]
-    }
-  end
-
   def envelope(medication)
     {
       'vista' => { 'medicationList' => { 'medication' => [medication] }, 'errors' => [], 'infoMessages' => [] },
@@ -104,6 +88,8 @@ RSpec.describe 'MyHealth::V2::Prescriptions refill_status classification', type:
     allow(Flipper).to receive(:enabled?).with(:mhv_uhd_api_gateway_security_endpoint).and_return(false)
     allow(Flipper).to receive(:enabled?)
       .with(:mhv_medications_management_improvements, anything).and_return(management_improvements)
+    allow(Flipper).to receive(:enabled?)
+      .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(management_improvements)
   end
 
   describe 'GET /my_health/v2/prescriptions/:id?station_number=989' do
@@ -145,19 +131,6 @@ RSpec.describe 'MyHealth::V2::Prescriptions refill_status classification', type:
           expect(attrs['refill_status']).to eq('active')
           expect(attrs['disp_status']).to eq('Active')
         end
-      end
-    end
-
-    context 'a genuine refill fill awaiting shipment (dispense record, no tracking)' do
-      let(:management_improvements) { true }
-
-      before { stub_uhd_client(base_medication('rxRFRecords' => refill_record(3))) }
-
-      it 'still surfaces Refill in Process end-to-end (feature preserved)' do
-        attrs = show_attributes
-
-        expect(attrs['refill_status']).to eq('refillinprocess')
-        expect(attrs['disp_status']).to eq('Active: Refill in Process')
       end
     end
   end

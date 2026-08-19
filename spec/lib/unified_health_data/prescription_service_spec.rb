@@ -27,6 +27,8 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
       .with(:mhv_medications_oh_renewal_message_rollout, anything).and_return(true)
     allow(Flipper).to receive(:enabled?)
       .with(:mhv_medications_management_improvements, anything).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(false)
   end
 
   describe '#get_prescriptions' do
@@ -69,57 +71,6 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
           ids = prescriptions.map(&:prescription_id)
           expect(ids).to include('26305871') # VistA
           expect(ids).to include('20848812135') # Oracle Health
-        end
-      end
-
-      # Rx 27268253 in the cassette is an Active VistA *initial* fill: a top-level
-      # dispensedDate of 2026-03-12, refillRemaining 0, isRefillable false, and no
-      # refill/dispense records (rxRFRecords: null). A dispensedDate from the initial
-      # fill alone must NOT reclassify it as an in-progress refill — only a fill backed
-      # by an actual refill/dispense record can be awaiting tracking. (The genuine
-      # refill -> "Active: Refill in Process" path is covered end-to-end by
-      # modules/my_health/spec/requests/my_health/v2/prescriptions_refill_status_classification_spec.rb.)
-      context 'an Active initial fill with no dispense record inside the shipping window' do
-        let(:initial_fill_rx_id) { '27268253' }
-
-        context 'when mhv_medications_management_improvements is enabled' do
-          before do
-            allow(Flipper).to receive(:enabled?)
-              .with(:mhv_medications_management_improvements, anything).and_return(true)
-          end
-
-          it 'is not reclassified and stays Active (no refill/dispense record)' do
-            travel_to(Time.zone.parse('2026-03-25 12:00:00 UTC')) do
-              VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-                prescriptions = service.get_prescriptions[:prescriptions]
-                rx = prescriptions.find { |p| p.prescription_id == initial_fill_rx_id }
-
-                expect(rx.is_awaiting_tracking).to be false
-                expect(rx.disp_status).to eq('Active')
-                expect(rx.refill_status).to eq('active')
-              end
-            end
-          end
-        end
-
-        context 'when mhv_medications_management_improvements is disabled' do
-          before do
-            allow(Flipper).to receive(:enabled?)
-              .with(:mhv_medications_management_improvements, anything).and_return(false)
-          end
-
-          it 'leaves the prescription untouched' do
-            travel_to(Time.zone.parse('2026-03-25 12:00:00 UTC')) do
-              VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-                prescriptions = service.get_prescriptions[:prescriptions]
-                rx = prescriptions.find { |p| p.prescription_id == initial_fill_rx_id }
-
-                expect(rx.is_awaiting_tracking).to be_falsey
-                expect(rx.disp_status).to eq('Active')
-                expect(rx.refill_status).to eq('active')
-              end
-            end
-          end
         end
       end
 

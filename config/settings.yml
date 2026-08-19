@@ -1062,6 +1062,7 @@ mhv:
   uhd:
     app_id: <%= ENV['mhv__uhd__app_id'] %>
     app_token: <%= ENV['mhv__uhd__app_token']&.dump %>
+    cmop_in_process_window_days: <%= ENV['mhv__uhd__cmop_in_process_window_days'] || 15 %>
     host: <%= ENV['mhv__uhd__host'] %>
     imaging_logging_date_range_days: <%= ENV['mhv__uhd__imaging_logging_date_range_days'] %>
     labs_logging_date_range_days: <%= ENV['mhv__uhd__labs_logging_date_range_days'] %>

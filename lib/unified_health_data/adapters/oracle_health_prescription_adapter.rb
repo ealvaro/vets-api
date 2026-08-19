@@ -242,38 +242,52 @@ module UnifiedHealthData
         max_date&.to_s
       end
 
-      # Extracts and normalizes MedicationRequest status to VistA-compatible values
-      # Checks for successful submitted refills based on Task resources
-      #
-      # @param resource [Hash] FHIR MedicationRequest resource
-      # @param dispenses_data [Array<Hash>] Array of dispense data for checking subsequent dispenses
-      # @return [String] VistA-compatible status value
+      # Extracts and normalizes MedicationRequest status to a VistA-compatible value, honoring
+      # in-flight refill Tasks only when the med is active and, for the in-flight lifecycle
+      # statuses, the bandaid flag is enabled.
       def extract_refill_status(resource, dispenses_data = [])
-        # Honor the most recent in-flight refill order-Task when it is still within
-        # the staleness window and no subsequent dispense has fulfilled it. A
-        # 'requested' Task maps to 'submitted'; the accepted/in-progress/completed
-        # states (flag-gated in honored_refill_statuses) map to 'refillinprocess'.
-        # Tasks older than the window fall through to the normalized status so a
-        # med does not display an in-flight refill state indefinitely.
-        most_recent_task = most_recent_contained_task(resource, intent: 'order', statuses: honored_refill_statuses)
+        base_status = normalize_to_legacy_vista_status(resource)
 
-        if most_recent_task
-          task_submit_date = most_recent_task.dig('executionPeriod', 'start')
-          if task_submit_date &&
-             in_flight_task_within_window?(task_submit_date) &&
-             !subsequent_dispense?(task_submit_date, dispenses_data)
-            return refill_status_for_task_status(most_recent_task['status'])
+        # An in-flight refill request is an overlay that only applies while the med's
+        # therapy is ongoing -- active, or a fill already in progress. It must never
+        # resurrect a terminal or paused state (discontinued, expired, on-hold,
+        # pending): a stale or anomalous refill Task cannot override the med's real
+        # lifecycle. Guarding here covers both the in-flight and upstream paths.
+        return base_status unless refill_overlay_eligible?(base_status)
+
+        if Flipper.enabled?(:mhv_mmi_refill_status_bandaid_temp, @current_user)
+          extract_refill_status_in_flight(resource, dispenses_data)
+        else
+          extract_refill_status_upstream(resource, dispenses_data)
+        end
+      end
+
+      # Upstream path: only a 'requested' order-Task with no subsequent dispense maps to 'submitted';
+      # everything else falls through to the normalized MedicationRequest status.
+      def extract_refill_status_upstream(resource, dispenses_data)
+        # Find successful refill tasks: intent='order', status='requested', matching focus reference
+        successful_refill_tasks = (resource['contained'] || []).select do |c|
+          c.is_a?(Hash) &&
+            c['resourceType'] == 'Task' &&
+            c['intent'] == 'order' &&
+            c['status'] == 'requested' &&
+            task_references_medication_request?(c, resource['id'])
+        end
+
+        if successful_refill_tasks.any?
+          # Get most recent task by executionPeriod.start
+          most_recent_task = successful_refill_tasks.max_by do |task|
+            parse_date_or_epoch(task.dig('executionPeriod', 'start'))
           end
+
+          task_submit_date = most_recent_task.dig('executionPeriod', 'start')
+          return STATUS_SUBMITTED if task_submit_date && !subsequent_dispense?(task_submit_date, dispenses_data)
         end
 
         normalize_to_legacy_vista_status(resource)
       end
 
-      # Maps an honored in-flight order-Task status to the internal refill status.
-      # 'requested' => submitted; accepted/in-progress/completed => refillinprocess.
-      #
-      # @param task_status [String] Order-Task status
-      # @return [String] Internal refill status value
+      # Maps an honored order-Task status: requested => submitted; others => refillinprocess.
       def refill_status_for_task_status(task_status)
         task_status == REFILL_SUBMITTED_TASK_STATUS ? STATUS_SUBMITTED : STATUS_REFILL_IN_PROCESS
       end

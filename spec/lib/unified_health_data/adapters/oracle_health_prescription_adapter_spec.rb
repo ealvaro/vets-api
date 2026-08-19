@@ -481,8 +481,8 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     context 'with refill submission tracking using Task resources' do
       # These fixtures use fixed mid-2025 Task dates. mhv_medications_management_improvements
       # is enabled by default in this spec (no global stub), so freeze time near the fixture
-      # dates to keep them inside the in-flight staleness window; the window itself is covered
-      # explicitly in the 'in-flight refill Task staleness window' context below.
+      # dates to keep them inside the in-flight staleness window that OracleHealthTaskHelper
+      # applies when deriving refill_submit_date.
       around do |example|
         travel_to(Time.zone.parse('2025-06-26T00:00:00Z')) { example.run }
       end
@@ -825,6 +825,99 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
           expect(result.disp_status).to eq('Active: Submitted')
           expect(result.refill_submit_date).to eq(fresh_date)
         end
+      end
+    end
+
+    # An in-flight refill order-Task is an overlay that only applies on top of an
+    # otherwise-active med. It must never resurrect a med whose real lifecycle is
+    # terminal or paused (discontinued, expired, on-hold, pending). A 'requested'
+    # Task within the staleness window is honored under every flag/path combination,
+    # so these cases isolate the base-lifecycle guard: without it each med would
+    # render "Active: Submitted" and carry a refill_submit_date.
+    context 'in-flight refill Task cannot mask a non-active medication' do
+      let(:fresh_task_date) { 2.days.ago.utc.iso8601 }
+
+      def resource_with_requested_task(**overrides)
+        fhir_resource_with_task(task_status: 'requested', task_date: fresh_task_date).merge(overrides)
+      end
+
+      it 'does not mask a discontinued (stopped) med as Active: Submitted' do
+        result = subject.parse(resource_with_requested_task('status' => 'stopped'))
+
+        expect(result.refill_status).to eq('discontinued')
+        expect(result.disp_status).to eq('Discontinued')
+        expect(result.refill_submit_date).to be_nil
+      end
+
+      it 'does not mask an on-hold med as Active: Submitted' do
+        result = subject.parse(resource_with_requested_task('status' => 'on-hold'))
+
+        expect(result.refill_status).to eq('providerHold')
+        expect(result.disp_status).to eq('Active: On hold')
+        expect(result.refill_submit_date).to be_nil
+      end
+
+      it 'does not mask a pending (draft) med as Active: Submitted' do
+        result = subject.parse(resource_with_requested_task('status' => 'draft'))
+
+        expect(result.refill_status).to eq('pending')
+        expect(result.refill_submit_date).to be_nil
+      end
+
+      it 'does not mask an expired med as Active: Submitted' do
+        resource = resource_with_requested_task
+        resource['dispenseRequest']['validityPeriod']['end'] = 10.days.ago.utc.iso8601
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('expired')
+        expect(result.disp_status).to eq('Expired')
+        expect(result.refill_submit_date).to be_nil
+      end
+
+      it 'still applies the overlay to an active med (control)' do
+        result = subject.parse(resource_with_requested_task)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.disp_status).to eq('Active: Submitted')
+        expect(result.refill_submit_date).to eq(fresh_task_date)
+      end
+
+      it 'suppresses the overlay on a non-active med regardless of the bandaid flag' do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(true)
+
+        result = subject.parse(resource_with_requested_task('status' => 'stopped'))
+
+        expect(result.refill_status).to eq('discontinued')
+        expect(result.refill_submit_date).to be_nil
+      end
+    end
+
+    # extract_refill_status_upstream is the flag-off classification path: only a live
+    # 'requested' order-Task with no subsequent dispense maps to 'submitted'; everything
+    # else reflects the normalized upstream status. The suite enables
+    # mhv_mmi_refill_status_bandaid_temp by default, so these stub it off to exercise it.
+    context 'upstream classification path (bandaid flag disabled)' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(false)
+      end
+
+      it 'maps a requested order-Task with no subsequent dispense to submitted' do
+        resource = fhir_resource_with_task(task_status: 'requested', task_date: 2.days.ago.utc.iso8601)
+
+        result = subject.parse(resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.disp_status).to eq('Active: Submitted')
+      end
+
+      it 'falls through to the normalized status when no order-Task is present' do
+        result = subject.parse(base_fhir_resource)
+
+        expect(result.refill_status).to eq('active')
       end
     end
 

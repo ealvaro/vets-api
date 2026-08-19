@@ -145,6 +145,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         # Ensure business rules filtering doesn't interfere with basic parsing tests
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
       end
 
       it 'returns prescriptions from both VistA and Oracle Health' do
@@ -1245,6 +1246,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
     end
 
     it 'logs counts when both sources return medications' do
@@ -1653,6 +1655,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(true)
     end
 
     context 'when shipped within 15-day window' do
@@ -1828,407 +1831,13 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     end
   end
 
-  describe 'awaiting tracking logic when mhv_medications_management_improvements is enabled' do
-    include_context 'shipped tracking test data'
-
-    before do
-      allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
-    end
-
-    context 'when recently dispensed with no tracking' do
-      it 'sets is_awaiting_tracking to true' do
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be true
-      end
-
-      it 'reclassifies the prescription as an in-progress refill' do
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.disp_status).to eq('Active: Refill in Process')
-        expect(rx.refill_status).to eq('refillinprocess')
-      end
-
-      it 'resets is_trackable to false so no tracking affordance is offered' do
-        vista_med_awaiting_tracking['isTrackable'] = true
-
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be true
-        expect(rx.is_trackable).to be false
-      end
-    end
-
-    context 'with an Oracle Health prescription recently dispensed with no tracking' do
-      let(:oracle_dispensed_date) { 3.days.ago.utc.iso8601(3) }
-      let(:oracle_initial_dispensed_date) { 40.days.ago.utc.iso8601(3) }
-      # An OH refill: the initial fill plus one completed refill dispense. Only MORE than one
-      # completed dispense indicates a refill, since the initial fill is itself a dispense.
-      let(:oracle_med_awaiting_tracking) do
-        oracle_health_medication_data.merge(
-          'contained' => [
-            {
-              'resourceType' => 'MedicationDispense',
-              'id' => 'dispense-initial',
-              'status' => 'completed',
-              'whenHandedOver' => oracle_initial_dispensed_date,
-              'quantity' => { 'value' => 30 },
-              'location' => { 'display' => 'Main Pharmacy' }
-            },
-            {
-              'resourceType' => 'MedicationDispense',
-              'id' => 'dispense-refill',
-              'status' => 'completed',
-              'whenHandedOver' => oracle_dispensed_date,
-              'quantity' => { 'value' => 30 },
-              'location' => { 'display' => 'Main Pharmacy' }
-            }
-          ]
-        )
-      end
-      let(:oracle_awaiting_tracking_response) do
-        {
-          'oracle-health' => {
-            'entry' => [{ 'resource' => oracle_med_awaiting_tracking }]
-          }
-        }
-      end
-
-      it 'reclassifies the Oracle Health prescription as an in-progress refill' do
-        result = subject.parse(oracle_awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.source_ehr).to eq(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
-        expect(rx.is_awaiting_tracking).to be true
-        expect(rx.disp_status).to eq('Active: Refill in Process')
-        expect(rx.refill_status).to eq('refillinprocess')
-        expect(rx.is_trackable).to be false
-      end
-
-      context 'when the only completed dispense is the initial fill' do
-        # A single completed MedicationDispense is the initial fill, not a refill, so the
-        # prescription must not be reclassified as "Refill in Process".
-        let(:oracle_med_awaiting_tracking) do
-          oracle_health_medication_data.merge(
-            'contained' => [
-              {
-                'resourceType' => 'MedicationDispense',
-                'id' => 'dispense-initial',
-                'status' => 'completed',
-                'whenHandedOver' => oracle_dispensed_date,
-                'quantity' => { 'value' => 30 },
-                'location' => { 'display' => 'Main Pharmacy' }
-              }
-            ]
-          )
-        end
-
-        it 'does not reclassify the Oracle Health initial fill' do
-          result = subject.parse(oracle_awaiting_tracking_response)
-          rx = result[:prescriptions].first
-
-          expect(rx.is_awaiting_tracking).to be false
-          expect(rx.disp_status).not_to eq('Active: Refill in Process')
-        end
-      end
-
-      context 'when dispensed beyond the 15-day window' do
-        let(:oracle_dispensed_date) { 20.days.ago.utc.iso8601(3) }
-
-        it 'does not reclassify the Oracle Health prescription' do
-          result = subject.parse(oracle_awaiting_tracking_response)
-          rx = result[:prescriptions].first
-
-          expect(rx.is_awaiting_tracking).to be false
-          expect(rx.disp_status).not_to eq('Active: Refill in Process')
-        end
-      end
-    end
-
-    context 'when dispensed beyond the 15-day window' do
-      let(:dispensed_date) { 20.days.ago.utc.iso8601(3) }
-
-      it 'sets is_awaiting_tracking to false' do
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be false
-      end
-    end
-
-    context 'when dispensed exactly 15 days ago (boundary)' do
-      let(:frozen_time) { Time.zone.parse('2026-03-12 12:00:00 UTC') }
-      let(:dispensed_date) { (frozen_time - 15.days).utc.iso8601(3) }
-
-      it 'sets is_awaiting_tracking to true (inclusive boundary)' do
-        Timecop.freeze(frozen_time) do
-          result = subject.parse(awaiting_tracking_response)
-          rx = result[:prescriptions].first
-
-          expect(rx.is_awaiting_tracking).to be true
-        end
-      end
-    end
-
-    context 'when the prescription already has tracking' do
-      it 'sets is_awaiting_tracking to false' do
-        result = subject.parse(vista_response_with_tracking)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be false
-      end
-    end
-
-    context 'when disp_status is not Active' do
-      let(:vista_med_awaiting_tracking) do
-        vista_medication_data.merge(
-          'dispStatus' => 'Active: Refill in Process',
-          'isTrackable' => false,
-          'dispensedDate' => 3.days.ago.utc.iso8601(3)
-        )
-      end
-
-      it 'sets is_awaiting_tracking to false' do
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be false
-      end
-    end
-
-    context 'when there is no dispensed date' do
-      let(:vista_med_awaiting_tracking) do
-        vista_medication_data.merge(
-          'dispStatus' => 'Active',
-          'isTrackable' => false,
-          'dispensedDate' => nil
-        )
-      end
-
-      it 'sets is_awaiting_tracking to false' do
-        result = subject.parse(awaiting_tracking_response)
-        rx = result[:prescriptions].first
-
-        expect(rx.is_awaiting_tracking).to be_falsey
-      end
-    end
-
-    # A refill was requested since the last fill, but VistA still reports a plain 'Active'
-    # disp_status with no tracking. These meds fall outside awaiting_tracking? (the most
-    # recent dispense is older than the window) but should still surface on the refill
-    # status page via pending_refill?.
-    context 'when a refill was requested after the most recent dispense' do
-      let(:frozen_time) { Time.zone.parse('2026-03-12 12:00:00 UTC') }
-      let(:submit_date) { (frozen_time - 3.days).utc.iso8601(3) }
-      let(:old_dispensed_date) { (frozen_time - 20.days).utc.iso8601(3) }
-      let(:projected_refill_date) { (frozen_time + 1.day).utc.iso8601(3) }
-
-      let(:vista_med_awaiting_tracking) do
-        vista_medication_data.merge(
-          'dispStatus' => 'Active',
-          'isTrackable' => false,
-          'refillSubmitDate' => submit_date,
-          'refillDate' => projected_refill_date,
-          'dispensedDate' => old_dispensed_date,
-          'rxRFRecords' => {
-            'rfRecord' => [
-              {
-                'refillStatus' => 'active',
-                'dispensedDate' => old_dispensed_date,
-                'prescriptionName' => 'COAL TAR 2.5% TOP SOLN',
-                'id' => 1002,
-                'prescriptionNumber' => '3636485'
-              }
-            ]
-          }
-        )
-      end
-
-      context 'and a projected refill date is present' do
-        it 'reclassifies the prescription as Refill in Process' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.disp_status).to eq('Active: Refill in Process')
-            expect(rx.refill_status).to eq('refillinprocess')
-            expect(rx.is_trackable).to be false
-            expect(rx.is_awaiting_tracking).to be false
-          end
-        end
-      end
-
-      context 'and no projected refill date is present yet' do
-        let(:projected_refill_date) { nil }
-
-        it 'reclassifies the prescription as Submitted' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.disp_status).to eq('Active: Submitted')
-            expect(rx.refill_status).to eq('submitted')
-            expect(rx.is_trackable).to be false
-            expect(rx.is_awaiting_tracking).to be false
-          end
-        end
-      end
-
-      context 'when the refill was submitted before the most recent dispense' do
-        let(:submit_date) { (frozen_time - 20.days).utc.iso8601(3) }
-        let(:old_dispensed_date) { (frozen_time - 3.days).utc.iso8601(3) }
-
-        it 'is treated as recently dispensed (awaiting tracking), not a pending refill' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.is_awaiting_tracking).to be true
-            expect(rx.disp_status).to eq('Active: Refill in Process')
-          end
-        end
-      end
-
-      context 'when the refill submit date is outside the refill in-flight window' do
-        let(:submit_date) { (frozen_time - 20.days).utc.iso8601(3) }
-
-        it 'does not reclassify the prescription' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.is_awaiting_tracking).to be false
-            expect(rx.disp_status).to eq('Active')
-          end
-        end
-      end
-    end
-
-    context 'when a refill was requested but the prescription has never been dispensed' do
-      let(:frozen_time) { Time.zone.parse('2026-03-12 12:00:00 UTC') }
-      let(:submit_date) { (frozen_time - 3.days).utc.iso8601(3) }
-      let(:projected_refill_date) { (frozen_time + 1.day).utc.iso8601(3) }
-
-      let(:vista_med_awaiting_tracking) do
-        vista_medication_data.merge(
-          'dispStatus' => 'Active',
-          'isTrackable' => false,
-          'refillSubmitDate' => submit_date,
-          'refillDate' => projected_refill_date,
-          'dispensedDate' => nil
-        )
-      end
-
-      context 'and a projected refill date is present' do
-        it 'reclassifies the prescription as Refill in Process' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.disp_status).to eq('Active: Refill in Process')
-            expect(rx.refill_status).to eq('refillinprocess')
-            expect(rx.is_trackable).to be false
-            expect(rx.is_awaiting_tracking).to be false
-          end
-        end
-      end
-
-      context 'and no projected refill date is present yet' do
-        let(:projected_refill_date) { nil }
-
-        it 'reclassifies the prescription as Submitted' do
-          Timecop.freeze(frozen_time) do
-            result = subject.parse(awaiting_tracking_response)
-            rx = result[:prescriptions].first
-
-            expect(rx.disp_status).to eq('Active: Submitted')
-            expect(rx.refill_status).to eq('submitted')
-            expect(rx.is_trackable).to be false
-            expect(rx.is_awaiting_tracking).to be false
-          end
-        end
-      end
-    end
-
-    # Defensive guard: even if Oracle Health were to start reporting the same plain 'Active'
-    # disp_status with a recent refill submit date and no tracking, it must never be treated as
-    # a pending refill because pending_refill? exists solely to compensate for VistA status lag.
-    context 'when a prescription meets every pending-refill condition' do
-      let(:submit_date) { 3.days.ago.utc.iso8601(3) }
-      let(:old_dispensed_date) { 20.days.ago.utc.iso8601(3) }
-
-      def build_pending_refill_prescription(source_ehr)
-        UnifiedHealthData::Prescription.new(
-          disp_status: 'Active',
-          refill_submit_date: submit_date,
-          dispensed_date: old_dispensed_date,
-          tracking: [],
-          source_ehr:
-        )
-      end
-
-      it 'flags a VistA prescription as a pending refill' do
-        rx = build_pending_refill_prescription(UnifiedHealthData::Prescription::SOURCE_EHR_VISTA)
-
-        expect(subject.send(:pending_refill?, rx)).to be true
-      end
-
-      it 'never flags an Oracle Health prescription as a pending refill' do
-        rx = build_pending_refill_prescription(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
-
-        expect(subject.send(:pending_refill?, rx)).to be false
-      end
-    end
-
-    # Adrian-Rollett review (#29670): the comparison is at date granularity because the upstream
-    # dispensed date is date-only, so a refill requested the *same day* as the most recent
-    # dispense must still surface rather than fall through the strict > boundary.
-    context 'when a refill is requested the same day as the most recent dispense' do
-      def same_day_rx
-        UnifiedHealthData::Prescription.new(
-          disp_status: 'Active',
-          refill_submit_date: 3.days.ago.utc.iso8601(3),
-          dispensed_date: 3.days.ago.utc.iso8601(3),
-          tracking: [],
-          source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_VISTA
-        )
-      end
-
-      it 'flags it as a pending refill (date-granularity, >=)' do
-        expect(subject.send(:pending_refill?, same_day_rx)).to be true
-      end
-    end
-
-    # VistA tracking accumulates permanently across fill cycles, so a complete_date_time from a
-    # prior shipment must not suppress a genuinely new refill request. The tracking guard is
-    # date-bounded (shipped_since?) rather than presence-only.
-    context 'when tracking exists only from a prior fill cycle (before the submit date)' do
-      def stale_tracking_rx
-        UnifiedHealthData::Prescription.new(
-          disp_status: 'Active',
-          refill_submit_date: 3.days.ago.utc.iso8601(3),
-          dispensed_date: 40.days.ago.utc.iso8601(3),
-          tracking: [{ complete_date_time: 30.days.ago.utc.iso8601(3) }],
-          source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_VISTA
-        )
-      end
-
-      it 'still flags a pending refill (stale tracking does not suppress it)' do
-        expect(subject.send(:pending_refill?, stale_tracking_rx)).to be true
-      end
-    end
-  end
-
   describe 'shipped tracking logic when mhv_medications_management_improvements is disabled' do
     include_context 'shipped tracking test data'
 
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
     end
 
     it 'does not apply shipped tracking logic' do
@@ -2244,51 +1853,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       rx = result[:prescriptions].first
 
       expect(rx.is_awaiting_tracking).to be false
-    end
-  end
-
-  # RC4 CHARACTERIZATION: awaiting_tracking? is the only mechanism that can
-  # re-label an 'Active' fill as 'Active: Refill in Process'. It requires a
-  # dispensed date within the shipping window, so a refill the pharmacy has
-  # ACCEPTED but NOT yet dispensed (no dispensed date) can never be rescued and
-  # stays plain 'Active'. These tests assert the CURRENT (buggy) behavior; they
-  # must PASS.
-  describe '#awaiting_tracking? (RC4)' do
-    subject(:adapter) { described_class.new }
-
-    it 'returns false for an Active prescription with no dispensed date (accepted-not-dispensed gap)' do
-      # RC4 CHARACTERIZATION: reclassification to 'Active: Refill in Process' requires
-      # a dispensed_date, so a pharmacy-accepted-but-not-yet-dispensed refill stays
-      # plain 'Active'. RC4 only rescues already-dispensed fills; it cannot cover the
-      # accepted gap.
-      rx = UnifiedHealthData::Prescription.new(
-        id: '12345',
-        disp_status: 'Active',
-        sorted_dispensed_date: nil,
-        dispensed_date: nil,
-        tracking: []
-      )
-
-      expect(adapter.send(:awaiting_tracking?, rx)).to be(false)
-    end
-
-    it 'returns true once a recent refill dispense exists (proves the gate hinges on the dispense)' do
-      # Positive control: identical prescription EXCEPT it now has a recent refill
-      # dispense (which supplies the in-window dispensed date), flipping
-      # awaiting_tracking? to true. This proves the false result above is caused
-      # specifically by the absence of a dispensed refill. A refill dispense is
-      # required (not just a bare dispensed date) so a freshly-staged initial fill is
-      # never reclassified.
-      rx = UnifiedHealthData::Prescription.new(
-        id: '12345',
-        disp_status: 'Active',
-        sorted_dispensed_date: 2.days.ago.to_date.to_s,
-        dispensed_date: nil,
-        dispenses: [{ 'dispensedDate' => 2.days.ago.to_date.to_s }],
-        tracking: []
-      )
-
-      expect(adapter.send(:awaiting_tracking?, rx)).to be(true)
     end
   end
 
@@ -2352,8 +1916,8 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       # Staging bug: submit -> in process -> pharmacy dispenses, then the prescription reverted to
       # "Active: Submitted". VistA clears/moves the projected refill_date once a fill lands, so a
       # nil/stale refill_date alone would re-stamp an already-dispensed refill as pending. Guarding
-      # on the real dispensed date prevents the regression. Unlike pending_refill?, a same-day
-      # dispense here counts as filled (dispensed >= submit), not as a still-pending re-request.
+      # on the real dispensed date prevents the regression: a same-day dispense counts as filled
+      # (dispensed >= submit), not as a still-pending re-request.
       it 'is false when an actual dispense landed on/after the submit date even with no projected refill_date' do
         rx = rx_with(submit: 2.days.ago.iso8601, fill: nil, dispensed: 1.day.ago.iso8601)
         expect(adapter.send(:refill_still_pending?, rx)).to be(false)
@@ -2454,6 +2018,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       context 'when the management-improvements flag is enabled' do
         before do
           allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
+          allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(true)
         end
 
         it 'bridges a still-pending refill to Active: Submitted' do
@@ -2462,29 +2027,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
           expect(rx.disp_status).to eq('Active: Submitted')
           expect(rx.refill_status).to eq('submitted')
           expect(rx.is_refillable).to be false
-        end
-
-        it 'does not downgrade an awaiting-tracking refill to Submitted (precedence)' do
-          # Recent dispensed date AND a real refill dispense -> awaiting-tracking wins
-          # and keeps the dispense-based "Refill in Process" state over the date bridge.
-          # The refill dispense (rxRFRecords) is required post-hardening: a bare
-          # dispensedDate alone no longer qualifies as awaiting-tracking.
-          vista_med_submitted['dispensedDate'] = 3.days.ago.utc.iso8601(3)
-          vista_med_submitted['rxRFRecords'] = {
-            'rfRecord' => [
-              {
-                'id' => 'rf-1',
-                'refillStatus' => 'dispensed',
-                'dispensedDate' => 3.days.ago.utc.iso8601(3),
-                'refillDate' => 3.days.ago.utc.iso8601(3)
-              }
-            ]
-          }
-
-          rx = subject.parse(submitted_response)[:prescriptions].first
-
-          expect(rx.disp_status).to eq('Active: Refill in Process')
-          expect(rx.refill_status).to eq('refillinprocess')
         end
 
         # Staging regression: submit -> in process -> pharmacy dispensed and shipped, then the
@@ -2516,10 +2058,202 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       context 'when the management-improvements flag is disabled' do
         before do
           allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+          allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
         end
 
         it 'leaves the prescription as plain Active (gating preserved)' do
           rx = subject.parse(submitted_response)[:prescriptions].first
+
+          expect(rx.disp_status).to eq('Active')
+        end
+      end
+    end
+  end
+
+  # CMOP handoff gap: after a refill is requested VistA shows "Active: Refill in Process", then
+  # transmits the fill to CMOP and momentarily drops the aggregate disp_status back to plain
+  # "Active" (is_refillable true) until a dispense/shipment lands. This bridge restores the
+  # in-process display during that window, anchored on the refill-record date and released early
+  # once a fill lands. Unlike the submission bridge it leaves is_refillable/is_trackable alone.
+  describe '#cmop_refill_in_process? / CMOP in-process bridge' do
+    def cmop_rx(rf_submits: [], dispensed: nil, **attrs)
+      defaults = {
+        id: '12345',
+        disp_status: 'Active',
+        source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_VISTA,
+        is_refillable: true,
+        is_trackable: true,
+        tracking: [],
+        dispenses: rf_submits.map { |d| { refill_submit_date: d } },
+        sorted_dispensed_date: dispensed
+      }
+      UnifiedHealthData::Prescription.new(defaults.merge(attrs))
+    end
+
+    describe '#cmop_refill_in_process?' do
+      subject(:adapter) { described_class.new }
+
+      it 'is true for a recent refill record with no dispense or shipment yet' do
+        rx = cmop_rx(rf_submits: [5.days.ago.iso8601])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(true)
+      end
+
+      it 'is false when there are no refill records' do
+        rx = cmop_rx(rf_submits: [])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(false)
+      end
+
+      it 'is nil-safe when the refill-record submit date is an unparseable string' do
+        rx = cmop_rx(rf_submits: ['not-a-date'])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(false)
+      end
+
+      it 'is false when the most recent refill record is older than the CMOP window' do
+        rx = cmop_rx(rf_submits: [20.days.ago.iso8601])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(false)
+      end
+
+      it 'holds at the window boundary and releases just beyond it' do
+        travel_to(Time.zone.parse('2026-03-12 12:00:00 UTC')) do
+          within = cmop_rx(rf_submits: [15.days.ago.iso8601])
+          beyond = cmop_rx(rf_submits: [16.days.ago.iso8601])
+          expect(adapter.send(:cmop_refill_in_process?, within)).to be(true)
+          expect(adapter.send(:cmop_refill_in_process?, beyond)).to be(false)
+        end
+      end
+
+      it 'uses the most recent refill-record submit date across multiple records' do
+        # Oldest record is out of window, most recent is within: the max date must win.
+        rx = cmop_rx(rf_submits: [40.days.ago.iso8601, 3.days.ago.iso8601])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(true)
+      end
+
+      it 'is false when a dispense landed on/after the refill-record date' do
+        rx = cmop_rx(rf_submits: [3.days.ago.iso8601], dispensed: 1.day.ago.iso8601)
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(false)
+      end
+
+      it 'stays true when the only dispense predates the refill-record date (prior cycle)' do
+        rx = cmop_rx(rf_submits: [1.day.ago.iso8601], dispensed: 30.days.ago.iso8601)
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(true)
+      end
+
+      it 'is false when a shipment completed on/after the refill-record date' do
+        rx = cmop_rx(rf_submits: [2.days.ago.iso8601], tracking: [{ complete_date_time: 1.day.ago.iso8601 }])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(false)
+      end
+
+      it 'stays true when the only shipment predates the refill-record date (stale prior-cycle tracking)' do
+        rx = cmop_rx(rf_submits: [1.day.ago.iso8601], tracking: [{ complete_date_time: 30.days.ago.iso8601 }])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(true)
+      end
+    end
+
+    describe '#cmop_in_process_window_days' do
+      subject(:adapter) { described_class.new }
+
+      it 'returns the configured Settings value when positive' do
+        allow(Settings.mhv.uhd).to receive(:cmop_in_process_window_days).and_return(30)
+        expect(adapter.send(:cmop_in_process_window_days)).to eq(30)
+      end
+
+      it 'falls back to the default when the Settings value is non-positive' do
+        allow(Settings.mhv.uhd).to receive(:cmop_in_process_window_days).and_return(0)
+        expect(adapter.send(:cmop_in_process_window_days)).to eq(15)
+      end
+
+      it 'falls back to the default when the Settings value is nil' do
+        allow(Settings.mhv.uhd).to receive(:cmop_in_process_window_days).and_return(nil)
+        expect(adapter.send(:cmop_in_process_window_days)).to eq(15)
+      end
+
+      it 'honors a widened window (a request past the default holds under a larger setting)' do
+        allow(Settings.mhv.uhd).to receive(:cmop_in_process_window_days).and_return(30)
+        rx = cmop_rx(rf_submits: [20.days.ago.iso8601])
+        expect(adapter.send(:cmop_refill_in_process?, rx)).to be(true)
+      end
+    end
+
+    describe '#apply_cmop_in_process_bridge' do
+      subject(:adapter) { described_class.new }
+
+      it 'bridges a VistA prescription to Active: Refill in Process without touching is_refillable or is_trackable' do
+        rx = cmop_rx(rf_submits: [5.days.ago.iso8601], is_refillable: true, is_trackable: true)
+        adapter.send(:apply_cmop_in_process_bridge, [rx])
+
+        expect(rx.disp_status).to eq('Active: Refill in Process')
+        expect(rx.refill_status).to eq('refillinprocess')
+        expect(rx.is_refillable).to be true
+        expect(rx.is_trackable).to be true
+      end
+
+      it 'does not bridge an Oracle Health prescription (OH surfaces in-process from its own Tasks)' do
+        rx = cmop_rx(rf_submits: [5.days.ago.iso8601], source_ehr: UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
+        adapter.send(:apply_cmop_in_process_bridge, [rx])
+
+        expect(rx.disp_status).to eq('Active')
+      end
+
+      it 'only bridges prescriptions still showing plain Active (leaves Active: Shipped untouched)' do
+        rx = cmop_rx(rf_submits: [5.days.ago.iso8601], disp_status: 'Active: Shipped')
+        adapter.send(:apply_cmop_in_process_bridge, [rx])
+
+        expect(rx.disp_status).to eq('Active: Shipped')
+      end
+    end
+
+    describe 'integration through #parse' do
+      let(:vista_med_cmop) do
+        vista_medication_data.merge(
+          'dispStatus' => 'Active',
+          'isRefillable' => true,
+          'dispensedDate' => nil,
+          'rxRFRecords' => {
+            'rfRecord' => [
+              {
+                'id' => 'rf-1',
+                'refillStatus' => 'refillinprocess',
+                'refillSubmitDate' => 5.days.ago.utc.iso8601(3),
+                'dispensedDate' => nil
+              }
+            ]
+          }
+        )
+      end
+
+      let(:cmop_response) do
+        { 'vista' => { 'medicationList' => { 'medication' => [vista_med_cmop] } } }
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
+      end
+
+      context 'when the CMOP bridge flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_cmop_refill_in_process_bridge, user).and_return(true)
+        end
+
+        it 'restores Active: Refill in Process and leaves is_refillable true' do
+          rx = subject.parse(cmop_response)[:prescriptions].first
+
+          expect(rx.disp_status).to eq('Active: Refill in Process')
+          expect(rx.refill_status).to eq('refillinprocess')
+          expect(rx.is_refillable).to be true
+        end
+      end
+
+      context 'when the CMOP bridge flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_cmop_refill_in_process_bridge, user).and_return(false)
+        end
+
+        it 'leaves the prescription as plain Active (gating preserved)' do
+          rx = subject.parse(cmop_response)[:prescriptions].first
 
           expect(rx.disp_status).to eq('Active')
         end

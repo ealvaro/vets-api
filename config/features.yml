@@ -2055,6 +2055,16 @@ features:
     actor_type: user
     description: Gradually re-enables Secure Messaging and Medications for flagged users at T+1 instead of T+2 during Oracle Health migration cutover
     enable_in_development: true
+  mhv_medications_cmop_refill_in_process_bridge:
+    actor_type: user
+    description: >-
+      If enabled, keeps VistA prescriptions surfaced as "Active: Refill in Process"
+      while a requested refill is transmitted to CMOP and awaiting a dispense, during
+      which VistA momentarily reports the aggregate status as plain "Active". Bounded by
+      a configurable window (Settings.mhv.uhd.cmop_in_process_window_days, default 15
+      days) off the refill-record date and released early once a dispense or shipment
+      lands. Does not alter is_refillable, so an additional refill can still be requested.
+    enable_in_development: true
   mhv_medications_management_improvements:
     actor_type: user
     description: Enables improvements to medication management functionality
@@ -2074,6 +2084,12 @@ features:
       window without a dispense and how long refills actually take to fill.
       Has no effect on refill classification.
     enable_in_development: true
+  mhv_mmi_refill_status_bandaid_temp:
+    actor_type: user
+    description: >-
+      If enabled, applies the interim refill-status bridging logic that keeps
+      recently-requested VistA/Oracle Health refills surfaced as
+      "Active: Submitted" / "Refill in Process" while upstream status catches up.
   mhv_supply_reordering_enabled:
     actor_type: user
     description: Enables the launch of mhv supply reordering application at /my-health/order-medical-supplies
