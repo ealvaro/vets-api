@@ -255,6 +255,11 @@ RSpec.describe 'Mobile::V0::TravelPayClaims', type: :request do
 
   describe '#show' do
     context 'happy path' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage,
+                                                  instance_of(User)).and_return(false)
+      end
+
       it 'returns claim details for a valid claim ID' do
         VCR.use_cassette('travel_pay/show/success_details', match_requests_on: %i[method path]) do
           claim_id = '3fa85f64-5717-4562-b3fc-2c963f66afa6'

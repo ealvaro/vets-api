@@ -3336,6 +3336,12 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     context 'show' do
       let(:mhv_user) { build(:user, :loa3) }
 
+      before do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage,
+                                                  instance_of(User)).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, nil).and_return(false)
+      end
+
       it 'returns unauthorized for unauthed user' do
         expect(subject).to validate(
           :get,

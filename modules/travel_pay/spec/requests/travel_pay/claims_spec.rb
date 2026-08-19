@@ -75,6 +75,7 @@ RSpec.describe TravelPay::V0::ClaimsController, type: :request do
   describe '#show' do
     before do
       allow(Flipper).to receive(:enabled?).with(:travel_pay_view_claim_details, instance_of(User)).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, instance_of(User)).and_return(false)
     end
 
     it 'returns expanded claim details on success' do

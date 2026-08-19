@@ -5,6 +5,11 @@ require_relative './base_client'
 
 module TravelPay
   class ClaimsClient < TravelPay::BaseClient
+    def initialize(user = nil)
+      super()
+      @user = user
+    end
+
     ##
     # HTTP GET call to the BTSSS 'claims' endpoint
     # API responds with travel pay claims including status
@@ -35,6 +40,8 @@ module TravelPay
     #   totalCostRequested
     #   reimbursementAmount
     #   facilityName
+    # When travel_pay_enable_one_way_mileage is enabled, calls v4 which also
+    # includes startAddress and endAddress on expense items.
     #
     # @return [TravelPay::ClaimDetails]
     #
@@ -43,7 +50,7 @@ module TravelPay
       correlation_id = SecureRandom.uuid
       monitor.log(:info, 'Correlation ID', correlation_id:)
       log_to_statsd('claims', 'get_by_id') do
-        connection(server_url: btsss_url).get("api/v2/claims/#{claim_id}") do |req|
+        connection(server_url: btsss_url).get(claim_details_endpoint(claim_id)) do |req|
           headers = req.headers
           headers['Authorization'] = "Bearer #{auth_session.veis_token}"
           headers['BTSSS-Access-Token'] = auth_session.btsss_token
@@ -138,6 +145,16 @@ module TravelPay
           headers['X-Correlation-ID'] = correlation_id
           headers.merge!(claim_headers)
         end
+      end
+    end
+
+    private
+
+    def claim_details_endpoint(claim_id)
+      if Flipper.enabled?(:travel_pay_enable_one_way_mileage, @user)
+        "api/v4/claims/#{claim_id}"
+      else
+        "api/v2/claims/#{claim_id}"
       end
     end
   end

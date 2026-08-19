@@ -103,6 +103,7 @@ describe TravelPay::ClaimsClient do
     end
 
     it 'returns response from claims/:id endpoint' do
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, nil).and_return(false)
       allow_any_instance_of(TravelPay::ClaimsClient).to receive(:connection).and_return(@conn)
       @stubs.get('/api/v2/claims/uuid1') do
         [
@@ -167,6 +168,66 @@ describe TravelPay::ClaimsClient do
       expect(actual_claim['claimId']).to eq(expected_id)
       expect(actual_claim['claimStatus']).to eq('PreApprovedForPayment')
       expect(actual_claim['expenses']).not_to be_empty
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      it 'calls the v4 claims endpoint' do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+        allow_any_instance_of(TravelPay::ClaimsClient).to receive(:connection).and_return(@conn)
+
+        @stubs.get('/api/v4/claims/uuid1') do
+          [
+            200,
+            {},
+            {
+              'data' => {
+                'claimId' => 'uuid1',
+                'claimStatus' => 'InProgress',
+                'expenses' => [
+                  {
+                    'id' => '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+                    'expenseType' => 'Mileage',
+                    'startAddress' => '123 Main St, Springfield, VA 22150',
+                    'endAddress' => '456 VA Medical Center Dr, Washington, DC 20422'
+                  }
+                ]
+              }
+            }
+          ]
+        end
+
+        client = TravelPay::ClaimsClient.new(user)
+        claims_response = client.get_claim_by_id(auth_session, 'uuid1')
+        actual_claim = claims_response.body['data']
+
+        expect(actual_claim['expenses'].first['startAddress']).to be_present
+        expect(actual_claim['expenses'].first['endAddress']).to be_present
+      end
+    end
+
+    context 'when travel_pay_enable_one_way_mileage is disabled' do
+      it 'calls the v2 claims endpoint' do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+        allow_any_instance_of(TravelPay::ClaimsClient).to receive(:connection).and_return(@conn)
+
+        @stubs.get('/api/v2/claims/uuid1') do
+          [
+            200,
+            {},
+            {
+              'data' => {
+                'claimId' => 'uuid1',
+                'claimStatus' => 'InProgress'
+              }
+            }
+          ]
+        end
+
+        client = TravelPay::ClaimsClient.new(user)
+        claims_response = client.get_claim_by_id(auth_session, 'uuid1')
+
+        expect(claims_response.body['data']['claimId']).to eq('uuid1')
+      end
     end
 
     it 'returns response from claims/search endpoint' do

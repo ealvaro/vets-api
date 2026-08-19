@@ -343,6 +343,36 @@ describe TravelPay::ClaimsService do
 
       expect(actual_claim['expenses'].first['expenseType']).to eq('Other')
     end
+
+    context 'when travel_pay_enable_one_way_mileage is enabled' do
+      it 'surfaces startAddress and endAddress from v4 response' do
+        allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+
+        claim_data_with_addresses = claim_details_data.deep_dup
+        claim_data_with_addresses['data']['expenses'] = [
+          {
+            'id' => '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+            'expenseType' => 'Mileage',
+            'name' => '',
+            'dateIncurred' => '2024-01-01T16:45:34.465Z',
+            'startAddress' => '123 Main St, Springfield, VA 22150',
+            'endAddress' => '456 VA Medical Center Dr, Washington, DC 20422',
+            'costRequested' => 20.00,
+            'costSubmitted' => 20.00
+          }
+        ]
+
+        allow_any_instance_of(TravelPay::ClaimsClient)
+          .to receive(:get_claim_by_id)
+          .and_return(Faraday::Response.new(body: claim_data_with_addresses))
+
+        claim_id = '73611905-71bf-46ed-b1ec-e790593b8565'
+        actual_claim = service.get_claim_details(claim_id)
+
+        expect(actual_claim['expenses'].first['startAddress']).to eq('123 Main St, Springfield, VA 22150')
+        expect(actual_claim['expenses'].first['endAddress']).to eq('456 VA Medical Center Dr, Washington, DC 20422')
+      end
+    end
   end
 
   context 'get_claims_by_date_range' do

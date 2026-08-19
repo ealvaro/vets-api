@@ -279,7 +279,7 @@ module TravelPay
     end
 
     def client
-      TravelPay::ClaimsClient.new
+      TravelPay::ClaimsClient.new(@user)
     end
 
     def documents_client
