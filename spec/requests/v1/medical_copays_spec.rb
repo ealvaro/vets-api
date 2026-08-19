@@ -11,6 +11,7 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
   before do
     sign_in_as(current_user)
 
+    allow(Rails.logger).to receive(:warn)
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('fake-access-token')
     allow(Flipper).to receive(:enabled?).with(:cerner_user_override_lighthouse_copays).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history, anything).and_return(false)
@@ -198,6 +199,47 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
     # - match_requests_on: [:method, :uri] to handle request ordering differences
     let(:vcr_options) { { allow_playback_repeats: true, match_requests_on: %i[method uri] } }
 
+    it 'returns nil for unmatched identifiers' do
+      VCR.use_cassette('lighthouse/hcc/copay_detail_success_no_identifiers', vcr_options) do
+        travel_to Time.utc(2025, 6, 1) do
+          allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history).and_return(true)
+          allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
+          allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+          allow_any_instance_of(V1::MedicalCopaysController).to receive(:use_vbs?).and_return(false)
+          # Mock account data to avoid MissingAccountError
+          allow_any_instance_of(MedicalCopays::LighthouseIntegration::Service)
+            .to receive(:fetch_accounts_for_invoices)
+            .and_return(
+              {
+                '4-O3d8XK44ejMS' => {
+                  'id' => '4-O3d8XK44ejMS',
+                  'status' => 'active',
+                  'balance' => 75.72
+                },
+                '4-Nsb4Vwsulhk8' => {
+                  'id' => '4-Nsb4Vwsulhk8',
+                  'status' => 'active',
+                  'balance' => 100.0
+                }
+              }
+            )
+          get '/v1/medical_copays/4-1abZUKu7LnbcQc'
+
+          expect(response).to have_http_status(:ok)
+
+          response_body = JSON.parse(response.body)
+          data = response_body['data']
+
+          expect(data['type']).to eq('medicalCopayDetails')
+          expect(data['id']).to be_present
+          expect(data['attributes']['billNumber']).to be_nil
+          expect(data['attributes']['accountNumber']).to be_nil
+          expect(Rails.logger).to have_received(:warn).with('Bill number not found in invoice/statement data')
+          expect(Rails.logger).to have_received(:warn).with('Account number not found in account data')
+        end
+      end
+    end
+
     it 'returns copay detail for authenticated user' do
       allow(Flipper).to receive(:enabled?).with(:vha_show_payment_history, anything).and_return(true)
       VCR.use_cassette('lighthouse/hcc/copay_detail_success', vcr_options) do
@@ -261,6 +303,9 @@ RSpec.describe 'V1::MedicalCopays', type: :request do
             ]
           )
           expect(data['meta'].keys).to match_array(%w[line_item_count payment_count])
+
+          expect(data['attributes']['billNumber']).to eq('573-K3FDEC0')
+          expect(data['attributes']['accountNumber']).to eq('5730000000038703KIRLI')
 
           facility = data['attributes']['facility']
           expect(facility).to be_a(Hash)

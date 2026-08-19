@@ -6,14 +6,24 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
   describe 'initialization' do
     context 'with valid invoice data' do
       subject do
-        described_class.new(invoice_data:, account_data:, facility_address:, patient_data:, associated_statements:)
+        described_class.new(invoice_data:, account_data:, facility_address:, patient_data:, associated_statements:,
+                            payments:)
       end
 
       let(:invoice_data) do
         {
           'id' => 'invoice-123',
           'issuer' => { 'display' => 'VA Medical Center' },
-          'identifier' => [{ 'value' => 'BILL-001' }],
+          'identifier' => [
+            {
+              'type' => { 'text' => 'Invoice Number' },
+              'value' => 'INV-001'
+            },
+            {
+              'type' => { 'text' => 'Bill Number' },
+              'value' => 'BILL-001'
+            }
+          ],
           'status' => 'issued',
           '_status' => { 'valueCodeableConcept' => { 'text' => 'Active' } },
           'date' => '2025-06-01T20:29:47Z',
@@ -24,7 +34,20 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
       end
 
       let(:account_data) do
-        { 'identifier' => [{ 'value' => 'ACCT-999' }] }
+        { 'identifier' => [
+          {
+            'type' => { 'text' => 'First Identifier' },
+            'value' => 'FIRST-465'
+          },
+          {
+            'type' => { 'text' => 'Account number' },
+            'value' => 'ACCT-999'
+          },
+          {
+            'type' => { 'text' => 'Other Identifier' },
+            'value' => 'OTHER-123'
+          }
+        ] }
       end
 
       let(:facility_address) do
@@ -172,6 +195,56 @@ RSpec.describe Lighthouse::HCC::CopayDetail do
             }
           ]
         }
+      end
+
+      let(:payments) do
+        [
+          { 'resourceType' => 'PaymentReconciliation',
+            'id' => '4-1aEfHgAROXqTh6',
+            'extension' => [
+              {
+                'url' => 'http://hl7.org/fhir/5.0/StructureDefinition/extension-PaymentReconciliation.paymentIssuer',
+                'valueReference' => { 'reference' => 'https://test-api.va.gov/services/health-care-costs-coverage/v0/r4/Patient/32000551' }
+              },
+              {
+                'url' => 'http://hl7.org/fhir/5.0/StructureDefinition/extension-PaymentReconciliation.allocation.identifier',
+                'valueIdentifier' => { 'type' => { 'text' => 'Bill Number' }, 'value' => '573-K3FDEC0' }
+              },
+              {
+                'url' => 'http://hl7.org/fhir/5.0/StructureDefinition/extension-PaymentReconciliation.allocation.target',
+                'valueReference' => { 'reference' => 'https://test-api.va.gov/services/health-care-costs-coverage/v0/r4/Invoice/4-1abZUKu7LnbcQc' }
+              }
+            ],
+            'identifier' => [{ 'type' => { 'text' => 'Transaction Number' }, 'value' => '-6995813' }],
+            'status' => 'active',
+            'created' => '2025-07-29T01:49:43Z',
+            'outcome' => 'complete',
+            'disposition' => 'PAYMENT (IN PART)',
+            'paymentDate' => '2025-07-28',
+            'paymentAmount' => { 'value' => 9.9 },
+            'paymentIdentifier' => { 'value' => 'P9621699' },
+            'detail' => [
+              { 'type' => { 'text' => 'Administrative Charge Collected' }, 'amount' => { 'value' => 0.61 } },
+              { 'type' => { 'text' => 'Interest Collected' }, 'amount' => { 'value' => 1.01 } },
+              { 'type' => { 'text' => 'Principal Collected' }, 'amount' => { 'value' => 8.28 } }
+            ] }
+        ]
+      end
+
+      it 'extracts basic attributes from payment data' do
+        payment = subject.payments.first
+        expect(payment[:payment_id]).to eq('4-1aEfHgAROXqTh6')
+        expect(payment[:payment_date]).to eq('2025-07-28')
+        expect(payment[:payment_amount]).to eq(9.9)
+        expect(payment[:transaction_number]).to eq('-6995813')
+        expect(payment[:bill_number]).to eq('573-K3FDEC0')
+        expect(payment[:invoice_reference]).to eq('4-1abZUKu7LnbcQc')
+        expect(payment[:disposition]).to eq('PAYMENT (IN PART)')
+        expect(payment[:detail]).to match([
+                                            { type: 'Administrative Charge Collected', amount: 0.61 },
+                                            { type: 'Interest Collected', amount: 1.01 },
+                                            { type: 'Principal Collected', amount: 8.28 }
+                                          ])
       end
 
       it 'extracts basic attributes from invoice data' do

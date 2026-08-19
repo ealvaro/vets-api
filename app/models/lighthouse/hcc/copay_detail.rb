@@ -50,12 +50,12 @@ module Lighthouse
 
       def assign_attributes
         @external_id = @invoice_data['id']
-        @bill_number = @invoice_data.dig('identifier', 0, 'value')
+        @bill_number = extract_bill_number(@invoice_data)
         @status = @invoice_data['status']
         @status_description = @invoice_data.dig('_status', 'valueCodeableConcept', 'text')
         @invoice_date = @invoice_data['date']
         @payment_due_date = calculate_payment_due_date
-        @account_number = @account_data&.dig('identifier', 0, 'value')
+        @account_number = extract_account_number(@account_data)
         @statement_generated_day = extract_statement_generated_day(@account_data)
 
         assign_balances
@@ -223,7 +223,7 @@ module Lighthouse
           payment_date: payment_data['paymentDate'],
           payment_amount: payment_data.dig('paymentAmount', 'value')&.to_f,
           transaction_number: extract_transaction_number(payment_data),
-          bill_number: extract_bill_number(payment_data),
+          bill_number: extract_payment_bill_number(payment_data),
           invoice_reference: extract_invoice_reference(payment_data),
           disposition: payment_data['disposition'],
           detail: build_payment_detail(payment_data)
@@ -235,9 +235,27 @@ module Lighthouse
         identifiers.find { |i| i.dig('type', 'text') == 'Transaction Number' }&.dig('value')
       end
 
-      def extract_bill_number(payment_data)
-        identifiers = payment_data['identifier'] || []
-        identifiers.find { |i| i.dig('type', 'text') == 'Bill Number' }&.dig('value')
+      def extract_bill_number(invoice)
+        identifiers = invoice&.dig('identifier') || []
+        bill_number = identifiers.find { |i| i.dig('type', 'text') == 'Bill Number' }&.dig('value')
+        Rails.logger.warn('Bill number not found in invoice/statement data') if bill_number.blank?
+        bill_number
+      end
+
+      def extract_payment_bill_number(payment)
+        extensions = payment&.dig('extension') || []
+        bill_number = extensions.find do |i|
+          i.dig('valueIdentifier', 'type', 'text') == 'Bill Number'
+        end&.dig('valueIdentifier', 'value')
+        Rails.logger.warn('Bill number not found in payment data') if bill_number.blank?
+        bill_number
+      end
+
+      def extract_account_number(account)
+        identifiers = account&.dig('identifier') || []
+        account_number = identifiers.find { |i| i.dig('type', 'text') == 'Account number' }&.dig('value')
+        Rails.logger.warn('Account number not found in account data') if account_number.blank?
+        account_number
       end
 
       def extract_invoice_reference(payment_data)
