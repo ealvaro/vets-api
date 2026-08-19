@@ -16,6 +16,10 @@ class BenefitsIntakeStatusJob
   STATS_KEY = 'api.benefits_intake.submission_status'
   STALE_SLA = Settings.lighthouse.benefits_intake.report.stale_sla || 10
   BATCH_SIZE = Settings.lighthouse.benefits_intake.report.batch_size || 1000
+  # Form types that must wait for Benefits Intake `final_status: true` before fail/success transitions.
+  FINAL_STATUS_REQUIRED_FORM_TYPES = [
+    CentralMail::SubmitForm4142Job::FORM4142_FORMSUBMISSION_TYPE
+  ].freeze
 
   attr_reader :batch_size
 
@@ -119,26 +123,37 @@ class BenefitsIntakeStatusJob
 
       # https://developer.va.gov/explore/api/benefits-intake/docs
       status = submission.dig('attributes', 'status')
+      final_status = submission.dig('attributes', 'final_status')
 
       # Log the status for debugging
       Rails.logger.info("Processing submission UUID: #{uuid}, Status: #{status}")
 
+      # Opted-in form types: do not fail/succeed until Benefits Intake reports a final status.
+      # Stale/pending metrics still run so stuck submissions remain visible. Other form types unchanged.
+      awaiting_final_status = FINAL_STATUS_REQUIRED_FORM_TYPES.include?(form_id) && final_status != true
+      if awaiting_final_status
+        Rails.logger.info(
+          'Final status not yet available from Benefits Intake API',
+          status:, form_id:, uuid:
+        )
+      end
+
       lighthouse_updated_at = submission.dig('attributes', 'updated_at')
-      if status == 'expired'
+      if !awaiting_final_status && status == 'expired'
         # Expired - Indicate that documents were not successfully uploaded within the 15-minute window.
         error_message = 'expired'
         form_submission_attempt.update(error_message:, lighthouse_updated_at:)
         form_submission_attempt.fail!
         log_result('failure', form_id, uuid, time_to_transition, error_message)
         monitor_failure(form_id, saved_claim_id, uuid)
-      elsif status == 'error'
+      elsif !awaiting_final_status && status == 'error'
         # Error - Indicates that there was an error. Refer to the error code and detail for further information.
         error_message = "#{submission.dig('attributes', 'code')}: #{submission.dig('attributes', 'detail')}"
         form_submission_attempt.update(error_message:, lighthouse_updated_at:)
         form_submission_attempt.fail!
         log_result('failure', form_id, uuid, time_to_transition, error_message)
         monitor_failure(form_id, saved_claim_id, uuid)
-      elsif status == 'vbms'
+      elsif !awaiting_final_status && status == 'vbms'
         # submission was successfully uploaded into a Veteran's eFolder within VBMS
         form_submission_attempt.update(lighthouse_updated_at:)
         form_submission_attempt.vbms!

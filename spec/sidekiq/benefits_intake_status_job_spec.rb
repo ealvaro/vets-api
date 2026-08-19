@@ -245,6 +245,91 @@ RSpec.describe BenefitsIntakeStatusJob, type: :job do
         end
       end
 
+      context 'when the form is a Form 526 ancillary 4142' do
+        let!(:form526_submission) { create(:form526_submission) }
+        let!(:form_submission) do
+          create(:form_submission,
+                 saved_claim_id: form526_submission.saved_claim_id,
+                 form_type: CentralMail::SubmitForm4142Job::FORM4142_FORMSUBMISSION_TYPE)
+        end
+        let!(:form_submission_attempt) do
+          create(:form_submission_attempt, :pending, form_submission:)
+        end
+        let(:uuid) { form_submission_attempt.benefits_intake_uuid }
+        let(:status_job) { BenefitsIntakeStatusJob.new }
+
+        def stub_bulk_status(attributes)
+          data = [{ 'id' => uuid, 'attributes' => attributes }]
+          response = double(success?: true, body: { 'data' => data })
+          allow_any_instance_of(BenefitsIntake::Service).to receive(:bulk_status)
+            .with(uuids: [uuid]).and_return(response)
+        end
+
+        it 'marks the attempt failed when final_status is true and status is error' do
+          stub_bulk_status('status' => 'error', 'code' => 'DOC101', 'detail' => 'bad doc', 'final_status' => true)
+          allow(Flipper).to receive(:enabled?)
+            .with(CentralMail::SubmitForm4142Job::POLLED_FAILURE_EMAIL).and_return(false)
+
+          expect(status_job).to receive(:log_result).with(
+            'failure', form_submission.form_type, uuid, anything, 'DOC101: bad doc'
+          )
+
+          status_job.perform
+
+          expect(form_submission_attempt.reload.aasm_state).to eq 'failure'
+        end
+
+        it 'marks the attempt vbms when final_status is true and status is vbms' do
+          stub_bulk_status('status' => 'vbms', 'final_status' => true)
+
+          expect(status_job).to receive(:log_result).with(
+            'success', form_submission.form_type, uuid, anything
+          )
+
+          status_job.perform
+
+          expect(form_submission_attempt.reload.aasm_state).to eq 'vbms'
+        end
+
+        it 'leaves the attempt pending when final_status is false' do
+          stub_bulk_status('status' => 'error', 'code' => 'DOC101', 'detail' => 'temp', 'final_status' => false)
+          allow(Rails.logger).to receive(:info)
+
+          expect(status_job).to receive(:log_result).with('pending', form_submission.form_type, uuid)
+
+          status_job.perform
+
+          expect(form_submission_attempt.reload.aasm_state).to eq 'pending'
+          expect(Rails.logger).to have_received(:info).with(
+            'Final status not yet available from Benefits Intake API',
+            hash_including(status: 'error', form_id: form_submission.form_type, uuid:)
+          )
+        end
+
+        it 'leaves the attempt pending when final_status is missing' do
+          stub_bulk_status('status' => 'expired')
+
+          expect(status_job).to receive(:log_result).with('pending', form_submission.form_type, uuid)
+
+          status_job.perform
+
+          expect(form_submission_attempt.reload.aasm_state).to eq 'pending'
+        end
+
+        it 'logs stale when final_status is not true and the attempt exceeds the SLA' do
+          form_submission_attempt.update!(created_at: 99.days.ago)
+          stub_bulk_status('status' => 'error', 'final_status' => false)
+
+          expect(status_job).to receive(:log_result).with(
+            'stale', form_submission.form_type, uuid, anything
+          )
+
+          status_job.perform
+
+          expect(form_submission_attempt.reload.aasm_state).to eq 'pending'
+        end
+      end
+
       it 'logs a stale submission if over the number of SLA days' do
         pending_form_submission_attempts = create_list(:form_submission_attempt, 1, :stale)
         batch_uuids = pending_form_submission_attempts.map(&:benefits_intake_uuid)
