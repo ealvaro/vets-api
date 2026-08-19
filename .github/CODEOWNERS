@@ -7,7 +7,7 @@
 .github/ @software/va-platform-backend
 .github/instructions/ask-va-static-data.instructions.md @software/ask-va-engineers
 .github/instructions/my-health-medical-records.instructions.md @software/vfs-mhv-integration
-.github/instructions/my-health-messaging.instructions.md @software/vfs-mhv-integration
+.github/instructions/my-health-messaging.instructions.md @software/mhv-secure-messaging-fe
 .github/instructions/my-health-prescriptions.instructions.md @software/vfs-mhv-integration
 .gitattributes @software/va-platform-backend
 .gitignore @software/va-platform-backend
@@ -43,7 +43,7 @@ app/controllers/concerns/medical_records/error_handler.rb @software/vfs-mhv-inte
 app/controllers/concerns/pdf_filename_generator.rb @software/health-apps-backend
 app/controllers/concerns/pdf_s3_operations.rb @software/benefits-intake-pingwind @software/bio-huntridge
 app/controllers/concerns/sign_in @software/octo-identity
-app/controllers/concerns/sm/electronic_signature_appending.rb @software/vfs-mhv-integration
+app/controllers/concerns/sm/electronic_signature_appending.rb @software/mhv-secure-messaging-fe
 app/controllers/concerns/third_party_transaction_logging.rb @software/va-platform-backend
 app/controllers/concerns/tooltips.rb @software/vfs-mhv-integration
 app/controllers/concerns/traceable.rb @software/va-platform-backend
@@ -186,7 +186,7 @@ app/models/accreditation.rb @software/accredited-representative-crew
 app/models/accredited_individual.rb @software/accredited-representative-crew
 app/models/accredited_organization.rb @software/accredited-representative-crew
 app/models/adapters/payment_history_adapter.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution
-app/models/all_triage_teams.rb @software/vfs-mhv-integration
+app/models/all_triage_teams.rb @software/mhv-secure-messaging-fe
 app/models/appeal_submission_upload.rb @software/benefits-decision-reviews-be
 app/models/appeal_submission.rb @software/benefits-decision-reviews-be
 app/models/application_record.rb @software/va-platform-backend
@@ -221,7 +221,7 @@ app/models/concerns/pension_award_helper.rb @software/benefits-lifestage
 app/models/concerns/redis_caching.rb @software/va-platform-backend
 app/models/concerns/redis_form.rb @software/va-platform-backend
 app/models/concerns/set_guid.rb @software/va-platform-backend
-app/models/concerns/signature_required.rb @software/vfs-mhv-integration
+app/models/concerns/signature_required.rb @software/mhv-secure-messaging-fe
 app/models/concerns/temp_form_validation.rb @software/va-platform-backend
 app/models/concerns/vre_claims_evidence_folder_helpers.rb @software/va-core-veteran-experiences
 app/models/concerns/vre_claims_evidence_upload.rb @software/va-core-veteran-experiences
@@ -316,13 +316,13 @@ app/models/lighthouse/hcc @software/vsa-debt-resolution
 app/models/lighthouse_document.rb @software/va-platform-backend
 app/models/lighthouse526_document_upload.rb @software/disability-benefits
 app/models/maintenance_window.rb @software/va-platform-backend
-app/models/message_draft.rb @software/vfs-mhv-integration
-app/models/message_search.rb @software/vfs-mhv-integration
-app/models/message_thread_details.rb @software/vfs-mhv-integration
-app/models/message_thread.rb @software/vfs-mhv-integration
-app/models/message.rb @software/vfs-mhv-integration
-app/models/messaging_preference.rb @software/vfs-mhv-integration
-app/models/messaging_signature.rb @software/vfs-mhv-integration
+app/models/message_draft.rb @software/mhv-secure-messaging-fe
+app/models/message_search.rb @software/mhv-secure-messaging-fe
+app/models/message_thread_details.rb @software/mhv-secure-messaging-fe
+app/models/message_thread.rb @software/mhv-secure-messaging-fe
+app/models/message.rb @software/mhv-secure-messaging-fe
+app/models/messaging_preference.rb @software/mhv-secure-messaging-fe
+app/models/messaging_signature.rb @software/mhv-secure-messaging-fe
 app/models/mhv_metrics_unique_user_event.rb @software/vfs-mhv-integration
 app/models/mhv_opt_in_flag.rb @software/vfs-mhv-integration @software/octo-identity
 app/models/mhv_user_account.rb @software/octo-identity
@@ -394,9 +394,9 @@ app/models/terms_of_use_agreement.rb @software/octo-identity
 app/models/tooltip.rb @software/vfs-mhv-integration
 app/models/tracking.rb @software/vfs-mhv-integration
 app/models/transaction_notification.rb @software/vfs-authenticated-experience-backend
-app/models/triage_group_info.rb @software/vfs-mhv-integration
-app/models/triage_team_cache.rb @software/vfs-mhv-integration
-app/models/triage_team.rb @software/vfs-mhv-integration
+app/models/triage_group_info.rb @software/mhv-secure-messaging-fe
+app/models/triage_team_cache.rb @software/mhv-secure-messaging-fe
+app/models/triage_team.rb @software/mhv-secure-messaging-fe
 app/models/user_acceptable_verified_credential.rb @software/octo-identity
 app/models/user_account.rb @software/octo-identity
 app/models/user_action_event.rb @software/octo-identity
@@ -434,7 +434,7 @@ app/policies/meb_policy.rb @software/my-education-benefits
 app/policies/medical_copays_policy.rb @software/vsa-debt-resolution
 app/policies/mhv_health_records_policy.rb @software/vfs-mhv-integration
 app/policies/mhv_medical_records_policy.rb @software/vfs-mhv-integration
-app/policies/mhv_messaging_policy.rb @software/vfs-mhv-integration
+app/policies/mhv_messaging_policy.rb @software/mhv-secure-messaging-fe
 app/policies/mhv_prescriptions_policy.rb @software/vfs-mhv-integration
 app/policies/mhv_user_account_policy.rb @software/octo-identity
 app/policies/mpi_policy.rb @software/octo-identity
@@ -707,13 +707,13 @@ app/swagger/swagger/schemas/gibct/institutions.rb @software/va-platform-backend
 app/swagger/swagger/schemas/gibct/meta.rb @software/va-platform-backend
 app/swagger/swagger/schemas/gibct/yellow_ribbon_programs.rb @software/va-platform-backend
 app/swagger/swagger/schemas/health @software/vfs-mhv-integration
-app/swagger/swagger/schemas/health/folders.rb @software/vfs-mhv-integration
+app/swagger/swagger/schemas/health/folders.rb @software/mhv-secure-messaging-fe
 app/swagger/swagger/schemas/health/links.rb @software/vfs-mhv-integration
-app/swagger/swagger/schemas/health/messages.rb @software/vfs-mhv-integration
+app/swagger/swagger/schemas/health/messages.rb @software/mhv-secure-messaging-fe
 app/swagger/swagger/schemas/health/meta.rb @software/vfs-mhv-integration
 app/swagger/swagger/schemas/health/prescriptions.rb @software/vfs-mhv-integration
 app/swagger/swagger/schemas/health/trackings.rb @software/vfs-mhv-integration
-app/swagger/swagger/schemas/health/triage_teams.rb @software/vfs-mhv-integration
+app/swagger/swagger/schemas/health/triage_teams.rb @software/mhv-secure-messaging-fe
 app/swagger/swagger/schemas/intent_to_file.rb @software/disability-benefits
 app/swagger/swagger/schemas/letter_beneficiary.rb @software/mobile-api-team
 app/swagger/swagger/schemas/letters.rb @software/benefits-management-tools-be
@@ -1199,7 +1199,7 @@ lib/sign_in @software/octo-identity
 lib/simple_forms_api_submission @software/platform-va-product-forms
 lib/simple_forms_api/ @software/platform-va-product-forms
 lib/slack @software/va-platform-backend
-lib/sm @software/vfs-mhv-integration
+lib/sm @software/mhv-secure-messaging-fe
 lib/source_app_middleware.rb @software/va-platform-backend
 lib/ssoe @software/octo-identity
 lib/stats_d_metric.rb @software/va-platform-backend
@@ -1346,7 +1346,7 @@ rakelib/remediation_batch_upload.rake @software/octo-benefits-portfolio-code-rev
 rakelib/remove_va1995s_records.rake @software/govcio-vfep-codereviewers
 rakelib/routes_csv.rake @software/va-platform-backend
 rakelib/rswag.rake @software/va-platform-backend
-rakelib/secure_messaging.rake @software/vfs-mhv-integration
+rakelib/secure_messaging.rake @software/mhv-secure-messaging-fe
 rakelib/security.rake @software/va-platform-backend
 rakelib/service_tags.rake @software/va-platform-backend
 rakelib/support/shell_command.rb @software/va-platform-backend
@@ -1442,7 +1442,7 @@ spec/factories/accredited_organizations.rb @software/accredited-representative-c
 spec/factories/appeal_submission_uploads.rb @software/vfs-authenticated-experience-backend
 spec/factories/appeal_submissions.rb @software/vfs-authenticated-experience-backend
 spec/factories/async_transactions.rb @software/vfs-authenticated-experience-backend
-spec/factories/attachments.rb @software/vfs-mhv-integration
+spec/factories/attachments.rb @software/mhv-secure-messaging-fe
 spec/factories/audit/ @software/octo-identity
 spec/factories/bgs @software/benefits-lifestage
 spec/factories/caregivers_assistance_claim.rb @software/health-apps-backend
@@ -1505,10 +1505,10 @@ spec/factories/lighthouse/submission_attempts.rb @software/benefits-lifestage
 spec/factories/lighthouse/submissions.rb @software/benefits-lifestage
 spec/factories/lighthouse526_document_uploads.rb @software/disability-benefits
 spec/factories/maintenance_windows.rb @software/va-platform-backend
-spec/factories/message_drafts.rb @software/vfs-mhv-integration
-spec/factories/message_threads.rb @software/vfs-mhv-integration
-spec/factories/messages.rb @software/vfs-mhv-integration
-spec/factories/messaging_preferences.rb @software/vfs-mhv-integration
+spec/factories/message_drafts.rb @software/mhv-secure-messaging-fe
+spec/factories/message_threads.rb @software/mhv-secure-messaging-fe
+spec/factories/messages.rb @software/mhv-secure-messaging-fe
+spec/factories/messaging_preferences.rb @software/mhv-secure-messaging-fe
 spec/factories/mhv_user_accounts.rb @software/octo-identity
 spec/factories/military_service_episodes.rb @software/vfs-authenticated-experience-backend
 spec/factories/mpi @software/octo-identity
@@ -1538,7 +1538,7 @@ spec/factories/sign_in @software/octo-identity
 spec/factories/spool_file_events.rb @software/govcio-vfep-codereviewers
 spec/factories/supporting_evidence_attachment.rb @software/disability-benefits
 spec/factories/tooltips.rb @software/vfs-mhv-integration
-spec/factories/triage_teams.rb @software/vfs-mhv-integration
+spec/factories/triage_teams.rb @software/mhv-secure-messaging-fe
 spec/factories/user_acceptable_verified_credentials.rb @software/octo-identity
 spec/factories/user_accounts.rb @software/octo-identity
 spec/factories/user_action_events.rb @software/octo-identity
@@ -1838,7 +1838,7 @@ spec/lib/sign_in @software/octo-identity
 spec/lib/simple_forms_api @software/platform-va-product-forms
 spec/lib/simple_forms_api_submission @software/platform-va-product-forms
 spec/lib/slack/service_spec.rb @software/va-platform-backend
-spec/lib/sm @software/vfs-mhv-integration
+spec/lib/sm @software/mhv-secure-messaging-fe
 spec/lib/source_app_middleware_spec.rb @software/va-platform-backend
 spec/lib/ssoe @software/octo-identity
 spec/lib/string_helpers_spec.rb @software/va-platform-backend
@@ -1895,7 +1895,7 @@ spec/models/account_spec.rb @software/octo-identity
 spec/models/accreditation_spec.rb @software/accredited-representative-crew
 spec/models/accredited_individual_spec.rb @software/accredited-representative-crew
 spec/models/accredited_organization_spec.rb @software/accredited-representative-crew
-spec/models/all_triage_teams_spec.rb @software/vfs-mhv-integration
+spec/models/all_triage_teams_spec.rb @software/mhv-secure-messaging-fe
 spec/models/appeal_submission_spec.rb @software/benefits-decision-reviews-be
 spec/models/application_record_spec.rb @software/va-platform-backend
 spec/models/async_transaction/base_spec.rb @software/vfs-authenticated-experience-backend
@@ -1911,7 +1911,7 @@ spec/models/concerns/form526_claim_fast_tracking_concern_spec.rb @software/disab
 spec/models/concerns/form526_conditions_logging_concern_spec.rb @software/disability-benefits
 spec/models/concerns/ibm_data_dictionary_spec.rb @software/benefits-optimization-aquia
 spec/models/concerns/pension_award_helper_spec.rb @software/benefits-lifestage
-spec/models/concerns/signature_required_spec.rb @software/vfs-mhv-integration
+spec/models/concerns/signature_required_spec.rb @software/mhv-secure-messaging-fe
 spec/models/debt_transaction_log_spec.rb @software/vsa-debt-resolution
 spec/models/debts_api @software/vsa-debt-resolution
 spec/models/decision_review_notification_audit_log_spec.rb @software/benefits-decision-reviews-be
@@ -1974,7 +1974,7 @@ spec/models/lighthouse @software/benefits-lifestage
 spec/models/lighthouse/hcc @software/vsa-debt-resolution
 spec/models/lighthouse_document_spec.rb @software/va-platform-backend
 spec/models/lighthouse526_document_upload_spec.rb @software/disability-benefits
-spec/models/message_spec.rb @software/vfs-mhv-integration
+spec/models/message_spec.rb @software/mhv-secure-messaging-fe
 spec/models/mhv_metrics_unique_user_event_spec.rb @software/vfs-mhv-integration
 spec/models/mhv_opt_in_flag_spec.rb @software/vfs-mhv-integration
 spec/models/mhv_user_account_spec.rb @software/octo-identity
@@ -2015,7 +2015,7 @@ spec/models/spool_file_event_spec.rb @software/govcio-vfep-codereviewers
 spec/models/supporting_evidence_attachment_spec.rb @software/disability-benefits
 spec/models/terms_of_use_agreement_spec.rb @software/octo-identity
 spec/models/tooltip_spec.rb @software/vfs-mhv-integration
-spec/models/triage_team_spec.rb @software/vfs-mhv-integration
+spec/models/triage_team_spec.rb @software/mhv-secure-messaging-fe
 spec/models/user_acceptable_verified_credential_spec.rb @software/octo-identity
 spec/models/user_account_spec.rb @software/octo-identity
 spec/models/user_action_event_spec.rb @software/octo-identity
@@ -2040,7 +2040,7 @@ spec/policies/meb_policy_spec.rb @software/my-education-benefits
 spec/policies/medical_copays_policy_spec.rb @software/vsa-debt-resolution
 spec/policies/mhv_health_records_policy_spec.rb @software/vfs-mhv-integration
 spec/policies/mhv_medical_records_policy_spec.rb @software/vfs-mhv-integration
-spec/policies/mhv_messaging_policy_spec.rb @software/vfs-mhv-integration
+spec/policies/mhv_messaging_policy_spec.rb @software/mhv-secure-messaging-fe
 spec/policies/mhv_prescriptions_policy_spec.rb @software/vfs-mhv-integration
 spec/policies/mhv_user_account_policy_spec.rb @software/octo-identity
 spec/policies/mpi_policy_spec.rb @software/octo-identity
@@ -2062,7 +2062,7 @@ spec/rakelib/piilog_repl @software/va-platform-backend
 spec/rakelib/piilog_repl/piilog_helpers_spec.rb @software/va-platform-backend
 spec/rakelib/remediation_batch_upload_spec.rb @software/octo-benefits-portfolio-code-reviewers
 spec/rakelib/reupload_vre_claims_with_corrected_signature_dates_rake_spec.rb @software/govcio-vfep-codereviewers
-spec/rakelib/secure_messaging_spec.rb @software/vfs-mhv-integration
+spec/rakelib/secure_messaging_spec.rb @software/mhv-secure-messaging-fe
 spec/rakelib/user_credential_spec.rb @software/octo-identity
 spec/rakelib/vet360_spec.rb @software/vfs-authenticated-experience-backend
 spec/rakelib/vre_claims_batch_log_rake_spec.rb @software/govcio-vfep-codereviewers
@@ -2379,8 +2379,8 @@ spec/support/rswag/text_helpers.rb @software/lighthouse-dash
 spec/support/rubocop_spec_helper.rb @software/va-platform-backend
 spec/support/rx_client_helpers.rb @software/vfs-mhv-integration @software/mobile-api-team
 spec/support/saml @software/octo-identity
-spec/support/schemas_camelized/all_triage_team.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/all_triage_teams.json @software/vfs-mhv-integration
+spec/support/schemas_camelized/all_triage_team.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/all_triage_teams.json @software/mhv-secure-messaging-fe
 spec/support/schemas_camelized/appointments_response.json @software/vfs-vaos
 spec/support/schemas_camelized/backend_statuses.json @software/va-platform-backend
 spec/support/schemas_camelized/control_information.json @software/vfs-authenticated-experience-backend
@@ -2403,12 +2403,12 @@ spec/support/schemas_camelized/letter_beneficiary_benefit_information_dependent.
 spec/support/schemas_camelized/letter_beneficiary_benefit_information_veteran.json @software/mobile-api-team
 spec/support/schemas_camelized/letter_beneficiary.json @software/mobile-api-team
 spec/support/schemas_camelized/letters.json @software/mobile-api-team
-spec/support/schemas_camelized/message_threads.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/message_with_attachment.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/message.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/messages_thread.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/messages.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/my_health/messaging @software/vfs-mhv-integration
+spec/support/schemas_camelized/message_threads.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/message_with_attachment.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/message.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/messages_thread.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/messages.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/my_health/messaging @software/mhv-secure-messaging-fe
 spec/support/schemas_camelized/my_health/prescriptions/v1 @software/vfs-mhv-integration
 spec/support/schemas_camelized/payment_information.json @software/vfs-authenticated-experience-backend
 spec/support/schemas_camelized/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
@@ -2424,16 +2424,16 @@ spec/support/schemas_camelized/service_history_response.json @software/disabilit
 spec/support/schemas_camelized/submit_disability_form.json @software/disability-benefits
 spec/support/schemas_camelized/suggested_conditions.json @software/disability-benefits
 spec/support/schemas_camelized/suggested_facilities.json @software/vfs-facilities-frontend
-spec/support/schemas_camelized/triage_team.json @software/vfs-mhv-integration
-spec/support/schemas_camelized/triage_teams.json @software/vfs-mhv-integration
+spec/support/schemas_camelized/triage_team.json @software/mhv-secure-messaging-fe
+spec/support/schemas_camelized/triage_teams.json @software/mhv-secure-messaging-fe
 spec/support/schemas_camelized/user_loa1.json @software/octo-identity
 spec/support/schemas_camelized/user_loa3.json @software/octo-identity
 spec/support/schemas_camelized/user_preferences.json @software/octo-identity
 spec/support/schemas_camelized/va_profile @software/vfs-authenticated-experience-backend
 spec/support/schemas_camelized/vaos @software/vfs-vaos
 spec/support/schemas_camelized/veteran_verification @software/vfs-authenticated-experience-backend
-spec/support/schemas/all_triage_team.json @software/vfs-mhv-integration
-spec/support/schemas/all_triage_teams.json @software/vfs-mhv-integration
+spec/support/schemas/all_triage_team.json @software/mhv-secure-messaging-fe
+spec/support/schemas/all_triage_teams.json @software/mhv-secure-messaging-fe
 spec/support/schemas/amendment.json @software/va-platform-backend
 spec/support/schemas/appeals_alert.json @software/va-platform-backend
 spec/support/schemas/appeals_event.json @software/va-platform-backend
@@ -2486,13 +2486,13 @@ spec/support/schemas/letter.json @software/va-platform-backend
 spec/support/schemas/letters.json @software/va-platform-backend
 spec/support/schemas/mdot_accepted.json @software/vfs-mhv-integration
 spec/support/schemas/mdot_supplies.json @software/vfs-mhv-integration
-spec/support/schemas/message_threads.json @software/vfs-mhv-integration
-spec/support/schemas/message_with_attachment.json @software/vfs-mhv-integration
-spec/support/schemas/message.json @software/vfs-mhv-integration
-spec/support/schemas/messages_filtered.json @software/vfs-mhv-integration
-spec/support/schemas/messages_thread.json @software/vfs-mhv-integration
-spec/support/schemas/messages.json @software/vfs-mhv-integration
-spec/support/schemas/my_health/messaging @software/vfs-mhv-integration
+spec/support/schemas/message_threads.json @software/mhv-secure-messaging-fe
+spec/support/schemas/message_with_attachment.json @software/mhv-secure-messaging-fe
+spec/support/schemas/message.json @software/mhv-secure-messaging-fe
+spec/support/schemas/messages_filtered.json @software/mhv-secure-messaging-fe
+spec/support/schemas/messages_thread.json @software/mhv-secure-messaging-fe
+spec/support/schemas/messages.json @software/mhv-secure-messaging-fe
+spec/support/schemas/my_health/messaging @software/mhv-secure-messaging-fe
 spec/support/schemas/my_health/prescriptions/v1 @software/vfs-mhv-integration
 spec/support/schemas/payment_information.json @software/vfs-authenticated-experience-backend
 spec/support/schemas/personal_information_response.json @software/vfs-authenticated-experience-backend
@@ -2515,8 +2515,8 @@ spec/support/schemas/sob @software/govcio-vfep-codereviewers
 spec/support/schemas/submit_disability_form.json @software/disability-benefits
 spec/support/schemas/suggested_conditions.json @software/disability-benefits
 spec/support/schemas/suggested_facilities.json @software/vfs-facilities-frontend
-spec/support/schemas/triage_team.json @software/vfs-mhv-integration
-spec/support/schemas/triage_teams.json @software/vfs-mhv-integration
+spec/support/schemas/triage_team.json @software/mhv-secure-messaging-fe
+spec/support/schemas/triage_teams.json @software/mhv-secure-messaging-fe
 spec/support/schemas/upload_supporting_evidence.json @software/disability-benefits
 spec/support/schemas/user_loa1.json @software/octo-identity
 spec/support/schemas/user_loa3.json @software/octo-identity
@@ -2534,8 +2534,8 @@ spec/support/sidekiq/batch.rb @software/va-platform-backend
 spec/support/sign_in @software/octo-identity
 spec/support/sign_in.rb @software/octo-identity
 spec/support/silence_stream.rb @software/va-platform-backend
-spec/support/sm_client_helpers.rb @software/vfs-mhv-integration
-spec/support/sm_spec_helper.rb @software/vfs-mhv-integration
+spec/support/sm_client_helpers.rb @software/mhv-secure-messaging-fe
+spec/support/sm_spec_helper.rb @software/mhv-secure-messaging-fe
 spec/support/spec_builders.rb @software/va-platform-backend
 spec/support/spool_helpers.rb @software/govcio-vfep-codereviewers
 spec/support/stub_debt_letters.rb @software/vsa-debt-resolution
@@ -2659,8 +2659,8 @@ spec/support/vcr_cassettes/shared @software/va-platform-backend
 spec/support/vcr_cassettes/sharepoint @software/mobile-api-team
 spec/support/vcr_cassettes/sign_in_service @software/octo-identity
 spec/support/vcr_cassettes/slack/slack_bot_notify.yml @software/octo-identity
-spec/support/vcr_cassettes/sm_client @software/vfs-mhv-integration
-spec/support/vcr_cassettes/sm_session @software/vfs-mhv-integration
+spec/support/vcr_cassettes/sm_client @software/mhv-secure-messaging-fe
+spec/support/vcr_cassettes/sm_session @software/mhv-secure-messaging-fe
 spec/support/vcr_cassettes/sob @software/govcio-vfep-codereviewers
 spec/support/vcr_cassettes/spec/support @software/va-platform-backend
 spec/support/vcr_cassettes/spec/support/vcr_cassettes/lighthouse/benefits_claims/documents/lighthouse_document_upload_200_jpg.yml @software/benefits-management-tools-be
