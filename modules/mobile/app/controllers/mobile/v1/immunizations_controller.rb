@@ -9,11 +9,10 @@ module Mobile
     ##
     # Mobile (v1) controller for a Veteran's immunization records.
     #
-    # Reads from the Unified Health Data (UHD) Medical Records service when the
-    # +:mhv_accelerated_delivery_vaccines_enabled+ flag is on, otherwise falls
-    # back to the Lighthouse Health service. Tags the active Datadog span with
-    # the data source, sorts ascending by date, and returns pagination metadata
-    # for backwards compatibility with the mobile frontend.
+    # Reads from the Unified Health Data (UHD) Medical Records service. Tags the
+    # active Datadog span with the data source, sorts ascending by date, and
+    # returns pagination metadata for backwards compatibility with the mobile
+    # frontend.
     #
     class ImmunizationsController < ApplicationController
       include MedicalRecords::ErrorHandler
@@ -23,23 +22,16 @@ module Mobile
       FUTURE_DATE = '3000-01-01'
 
       ##
-      # Lists the current user's immunizations from UHD or Lighthouse, sorted by
+      # Lists the current user's immunizations from UHD, sorted by
       # date, and logs unique-user access events.
       #
       # @return [JSON] serialized immunizations with pagination metadata
       #
       def index
-        data_source = uhd_enabled? ? 'uhd' : 'lighthouse'
-        tag_data_source_span(data_source)
+        tag_data_source_span('uhd')
 
-        if uhd_enabled?
-          records = fetch_uhd_immunizations
-          return if performed? # ErrorHandler already rendered a response
-        else
-          body = service.get_immunizations
-          validate_response_schema(@current_user, body, 'lighthouse_get_immunizations')
-          records = immunizations_adapter.parse(body)
-        end
+        records = fetch_uhd_immunizations
+        return if performed? # ErrorHandler already rendered a response
 
         log_immunization_access
 
@@ -55,9 +47,6 @@ module Mobile
 
       # Fetches immunizations from UHD, with MedicalRecords::ErrorHandler rescue.
       # Errors on the UHD path get structured JSON envelopes from the ErrorHandler.
-      # The Lighthouse path intentionally does NOT use ErrorHandler so that
-      # BackendServiceException bubbles up to the global Mobile exception handler,
-      # which renders the MOBL_502_upstream_error code that VAHB depends on.
       def fetch_uhd_immunizations
         result = uhd_service.get_immunizations
         # Warnings (e.g., Partial Failure responses from SCDF) are not surfaced to the mobile app.
@@ -71,14 +60,8 @@ module Mobile
         handle_error(e, resource_name: 'Mobile immunizations', api_type: 'Mobile UHD')
       end
 
-      def uhd_enabled?
-        return @uhd_enabled if defined?(@uhd_enabled)
-
-        @uhd_enabled = Flipper.enabled?(:mhv_accelerated_delivery_vaccines_enabled, current_user)
-      end
-
       # Grab the active Datadog APM span and
-      # set a custom tag medical_records.data_source to either "uhd" or "lighthouse".
+      # set a custom tag medical_records.data_source to "uhd".
       def tag_data_source_span(data_source)
         span = Datadog::Tracing.active_span
         span&.set_tag('medical_records.data_source', data_source)
@@ -95,49 +78,19 @@ module Mobile
       end
 
       def serialize_immunizations(immunizations)
-        if uhd_enabled?
-          meta = { # Hardcode pagination for backwards compatibility in the app FE
-            pagination: {
-              current_page: 1,
-              per_page: 5000,
-              total_pages: 1,
-              total_entries: immunizations.length
-            }
+        meta = { # Hardcode pagination for backwards compatibility in the app FE
+          pagination: {
+            current_page: 1,
+            per_page: 5000,
+            total_pages: 1,
+            total_entries: immunizations.length
           }
-          UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, meta:)
-        else
-          paginated_immunizations, meta =
-            Mobile::PaginationHelper.paginate(list: immunizations, validated_params: pagination_params)
-          Mobile::V0::ImmunizationSerializer.new(paginated_immunizations, meta)
-        end
-      end
-
-      def immunizations_adapter
-        Mobile::V0::Adapters::Immunizations.new
-      end
-
-      def service
-        Mobile::V0::LighthouseHealth::Service.new(@current_user)
+        }
+        UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, meta:)
       end
 
       def uhd_service
         @uhd_service ||= UnifiedHealthData::MedicalRecordsService.new(@current_user)
-      end
-
-      def pagination_params
-        @pagination_params ||= Mobile::V0::Contracts::PaginationBase.new.call(
-          page_number: params.dig(:page, :number),
-          page_size: params.dig(:page, :size)
-        )
-      end
-
-      def validate_response_schema(user, body, contract_name)
-        # check for successful response structure
-        return if !body.is_a?(Hash) || body[:resource_type] != 'Bundle'
-
-        SchemaContract::ValidationInitiator.call_with_body(
-          user:, body:, contract_name:
-        )
       end
     end
   end

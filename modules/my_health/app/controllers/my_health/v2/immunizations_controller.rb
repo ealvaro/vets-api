@@ -14,10 +14,9 @@ module MyHealth
     ##
     # V2 controller for immunization (vaccine) records.
     #
-    # Reads from the Unified Health Data (UHD) Medical Records service when the
-    # +:mhv_accelerated_delivery_vaccines_enabled+ flag is on, otherwise falls
-    # back to the Lighthouse Veterans Health API. Tags the active Datadog span
-    # with the selected data source and emits StatsD/unique-user metrics.
+    # Index reads from the Unified Health Data (UHD) Medical Records service and
+    # tags the active Datadog span with data source. (Show uses Lighthouse until
+    # SCDF offers a get-by-id endpoint.) Emits StatsD/unique-user metrics.
     #
     class ImmunizationsController < ApplicationController
       include MyHealth::V2::Concerns::ErrorHandler
@@ -34,28 +33,19 @@ module MyHealth
       #   warnings are present, otherwise 200 OK
       #
       def index
-        tag_datadog_data_source(uhd_enabled? ? 'uhd' : 'lighthouse')
+        tag_datadog_data_source('uhd')
 
-        if uhd_enabled?
-          @result = uhd_service.get_immunizations(no_cache: no_cache_requested?)
-          immunizations = sort_records(@result[:records], params[:sort])
-          opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
-          log_vaccines(immunizations.length)
-          render json: UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, opts),
-                 status: warnings_present? ? :partial_content : :ok
-        else
-          response = client.get_immunizations
-          immunizations = Lighthouse::VeteransHealth::Serializers::ImmunizationSerializer
-                          .from_fhir_bundle(response.body)
-
-          log_vaccines(immunizations.length)
-          render json: { data: immunizations }
-        end
+        @result = uhd_service.get_immunizations(no_cache: no_cache_requested?)
+        immunizations = sort_records(@result[:records], params[:sort])
+        opts = warnings_present? ? { meta: { warnings: @result[:warnings] } } : {}
+        log_vaccines(immunizations.length)
+        render json: UnifiedHealthData::Serializers::ImmunizationSerializer.new(immunizations, opts),
+               status: warnings_present? ? :partial_content : :ok
       rescue Common::Exceptions::GatewayTimeout,
              Common::Client::Errors::ClientError,
              Common::Exceptions::BackendServiceException,
              StandardError => e
-        handle_error(e, resource_name: 'immunization records', api_type: uhd_enabled? ? 'SCDF' : 'FHIR')
+        handle_error(e, resource_name: 'immunization records', api_type: 'SCDF')
       end
 
       ##
@@ -97,12 +87,6 @@ module MyHealth
       def tag_datadog_data_source(data_source)
         span = Datadog::Tracing.active_span
         span&.set_tag('medical_records.data_source', data_source)
-      end
-
-      def uhd_enabled?
-        return @uhd_enabled if defined?(@uhd_enabled)
-
-        @uhd_enabled = Flipper.enabled?(:mhv_accelerated_delivery_vaccines_enabled, current_user)
       end
 
       def log_vaccines(vaccines_count)
