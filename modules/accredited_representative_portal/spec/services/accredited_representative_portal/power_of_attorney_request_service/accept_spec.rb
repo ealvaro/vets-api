@@ -293,6 +293,45 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Ac
       }
     end
 
+    context 'when the resolution has already been created concurrently' do
+      before do
+        allow(AccreditedRepresentativePortal::PowerOfAttorneyRequestDecision)
+          .to receive(:create_acceptance!)
+          .and_raise(ActiveRecord::RecordNotUnique.new('duplicate key value violates unique constraint'))
+      end
+
+      it 'wraps ActiveRecord::RecordNotUnique as Accept::Error with :conflict' do
+        expect do
+          service_call
+        end.to raise_error(described_class::Error) { |e|
+          expect(e.status).to eq(:conflict)
+          expect(e.message).to eq('This power of attorney request has already been resolved')
+        }
+      end
+
+      it 'does not create a failed form submission' do
+        expect do
+          expect { service_call }.to raise_error(described_class::Error)
+        end.not_to change(AccreditedRepresentativePortal::PowerOfAttorneyFormSubmission, :count)
+      end
+
+      it 'does not attempt to submit the form to Lighthouse' do
+        expect(BenefitsClaims::Service).not_to receive(:new)
+
+        expect { service_call }.to raise_error(described_class::Error)
+      end
+
+      it 'logs at info level, not error level' do
+        allow(Rails.logger).to receive(:info)
+
+        expect { service_call }.to raise_error(described_class::Error)
+
+        expect(Rails.logger).to have_received(:info)
+          .with("[AR::POA] already_resolved poa_request_id=#{poa_request.id}")
+        expect(Rails.logger).not_to have_received(:error)
+      end
+    end
+
     it 'maps Faraday::TimeoutError to Accept::Error with :gateway_timeout' do
       allow(svc).to receive(:submit2122).and_raise(Faraday::TimeoutError.new('timeout'))
 

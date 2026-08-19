@@ -38,6 +38,8 @@ module AccreditedRepresentativePortal
         handle_resource_not_found(e)
       rescue ActiveRecord::RecordInvalid => e
         handle_record_invalid(e)
+      rescue ActiveRecord::RecordNotUnique => e
+        handle_already_resolved(e)
       rescue *TRANSIENT_ERROR_TYPES, Faraday::TimeoutError => e
         handle_transient_error(e)
       rescue *FATAL_ERROR_TYPES => e
@@ -81,6 +83,11 @@ module AccreditedRepresentativePortal
 
       def handle_record_invalid(error)
         raise Error.new(error.message, :bad_request)
+      end
+
+      def handle_already_resolved(_error)
+        Rails.logger.info("[AR::POA] already_resolved poa_request_id=#{poa_request.id}")
+        raise Error.new('This power of attorney request has already been resolved', :conflict)
       end
 
       def handle_transient_error(error)
