@@ -32,6 +32,35 @@ Cop/NoAttrPackageCreationInJob:
 Project/ForbidFlipperToggleInSpecs:
   Enabled: true
 
+Project/NoDirectTitleize:
+  Enabled: true
+  Exclude:
+    - "spec/**/*"
+    - "modules/*/spec/**/*"
+    - "app/services/form1010cg/auditor.rb"
+    - "app/sidekiq/education_form/forms/va_10203.rb"
+    - "app/sidekiq/education_form/forms/va_1995.rb"
+    - "lib/pdf_fill/extras_generator_v2.rb"
+    - "lib/pdf_fill/forms/form_helper.rb"
+    - "lib/va_profile/exceptions/builder.rb"
+    - "lib/va_profile/models/address.rb"
+    - "lib/vets/type/titlecase_string.rb"
+    - "modules/accredited_representative_portal/app/serializers/accredited_representative_portal/claimant_serializer.rb"
+    - "modules/appeals_api/app/controllers/appeals_api/metadata_controller.rb"
+    - "modules/appeals_api/app/mailers/appeals_api/daily_error_report_mailer.rb"
+    - "modules/appeals_api/app/mailers/appeals_api/decision_review_mailer.rb"
+    - "modules/appeals_api/app/mailers/appeals_api/weekly_error_report_mailer.rb"
+    - "modules/appeals_api/app/sidekiq/appeals_api/monthly_stats_report.rb"
+    - "modules/claims_api/app/services/claims_api/power_of_attorney_request_service/create_request.rb"
+    - "modules/ivc_champva/app/services/ivc_champva/form_version_manager.rb"
+    - "modules/mobile/app/models/mobile/v0/adapters/letter_info.rb"
+    - "modules/mobile/app/models/mobile/v0/adapters/military_information.rb"
+    - "modules/simple_forms_api/app/controllers/simple_forms_api/v1/uploads_controller.rb"
+    - "modules/simple_forms_api/app/services/simple_forms_api/form_remediation/submission_remediation_data.rb"
+    - "modules/simple_forms_api/app/services/simple_forms_api/notification/email.rb"
+    - "modules/simple_forms_api/lib/tasks/resubmit_forms_by_uuid.rake"
+    - "modules/vba_documents/app/controllers/vba_documents/metadata_controller.rb"
+
 Migrations/IsolatedIndexMigration:
   Enabled: true
   Include:

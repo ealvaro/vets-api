@@ -5,6 +5,7 @@ require 'lighthouse/benefits_documents/configuration'
 require 'lighthouse/service_exception'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
+require 'string_helpers'
 
 module BenefitsDocuments
   class Service < Common::Client::Base
@@ -240,7 +241,7 @@ module BenefitsDocuments
     end
 
     def create_personalisation(document)
-      { first_name: document.first_name.titleize,
+      { first_name: StringHelpers.titlecase_name(document.first_name),
         document_type: document.description,
         file_name: document.file_name,
         obfuscated_file_name: BenefitsDocuments::Utilities::Helpers.generate_obscured_file_name(document.file_name),

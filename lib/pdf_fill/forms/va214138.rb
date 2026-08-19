@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'string_helpers'
+
 module PdfFill
   module Forms
     class Va214138 < FormBase
@@ -226,9 +228,9 @@ module PdfFill
         form_data[:claimantFullName] ||= {}
         form_data[:claimantFullName].merge!(
           {
-            first: form_data.dig(:claimantFullName, :first)&.titleize,
-            middleInitial: form_data.dig(:claimantFullName, :middle)&.first&.titleize,
-            last: form_data.dig(:claimantFullName, :last)&.titleize
+            first: StringHelpers.titlecase_name(form_data.dig(:claimantFullName, :first)),
+            middleInitial: StringHelpers.titlecase_name(form_data.dig(:claimantFullName, :middle)&.first),
+            last: StringHelpers.titlecase_name(form_data.dig(:claimantFullName, :last))
           }
         )
         form_data[:veteranSocialSecurityNumber] = split_ssn(form_data[:veteranSocialSecurityNumber])

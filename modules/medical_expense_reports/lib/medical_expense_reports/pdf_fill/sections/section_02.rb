@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'medical_expense_reports/pdf_fill/section'
+require 'string_helpers'
 require 'pdf_fill/forms/form_helper'
 
 module MedicalExpenseReports
@@ -97,9 +98,10 @@ module MedicalExpenseReports
       # expand claimant information
       def expand(form_data = {})
         form_data['claimantFullName'] ||= {}
-        form_data['claimantFullName']['first'] = form_data.dig('claimantFullName', 'first')&.titleize
+        form_data['claimantFullName']['first'] =
+          StringHelpers.titlecase_name(form_data.dig('claimantFullName', 'first'))
         form_data['claimantFullName']['middle'] = form_data.dig('claimantFullName', 'middle')&.first&.capitalize
-        form_data['claimantFullName']['last'] = form_data.dig('claimantFullName', 'last')&.titleize
+        form_data['claimantFullName']['last'] = StringHelpers.titlecase_name(form_data.dig('claimantFullName', 'last'))
         form_data['claimantAddress'] ||= {}
         form_data['primaryPhone'] ||= {}
         if form_data['primaryPhone']['countryCode'] == 'US'

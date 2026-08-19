@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'medical_expense_reports/pdf_fill/section'
+require 'string_helpers'
 
 module MedicalExpenseReports
   module PdfFill
@@ -51,9 +52,10 @@ module MedicalExpenseReports
       # expand veteran name
       def expand(form_data = {})
         form_data['veteranFullName'] ||= {}
-        form_data['veteranFullName']['first'] = form_data.dig('veteranFullName', 'first')&.titleize
-        form_data['veteranFullName']['middle'] = form_data.dig('veteranFullName', 'middle')&.first&.titleize
-        form_data['veteranFullName']['last'] = form_data.dig('veteranFullName', 'last')&.titleize
+        form_data['veteranFullName']['first'] = StringHelpers.titlecase_name(form_data.dig('veteranFullName', 'first'))
+        form_data['veteranFullName']['middle'] =
+          StringHelpers.titlecase_name(form_data.dig('veteranFullName', 'middle')&.first)
+        form_data['veteranFullName']['last'] = StringHelpers.titlecase_name(form_data.dig('veteranFullName', 'last'))
         form_data
       end
     end

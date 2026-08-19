@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'string_helpers'
+
 module SimpleFormsApi
   module Notification
     class Email
@@ -190,7 +192,10 @@ module SimpleFormsApi
         type_specific_first_name_method = :"#{notification_type}_first_name"
         if result && form.respond_to?(type_specific_first_name_method)
           type_specific_first_name = form.public_send(type_specific_first_name_method)
-          result['first_name'] = type_specific_first_name.titleize if type_specific_first_name.present?
+          if type_specific_first_name.present?
+            result['first_name'] =
+              StringHelpers.titlecase_name(type_specific_first_name)
+          end
         end
 
         result

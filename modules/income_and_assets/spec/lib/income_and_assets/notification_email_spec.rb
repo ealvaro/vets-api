@@ -61,4 +61,27 @@ RSpec.describe IncomeAndAssets::NotificationEmail do
       end
     end
   end
+
+  describe '#first_name' do
+    subject { described_class.new(saved_claim.id) }
+
+    before do
+      subject.instance_variable_set(:@claim, saved_claim)
+    end
+
+    it 'titlecases an all-caps first name without splitting on inflection acronyms' do
+      allow(saved_claim).to receive_messages(claimant_first_name: 'VANESSA', veteran_first_name: nil)
+      expect(subject.send(:first_name)).to eq('Vanessa')
+    end
+
+    it 'preserves hyphenated all-caps names' do
+      allow(saved_claim).to receive_messages(claimant_first_name: 'ANNE-MARIE', veteran_first_name: nil)
+      expect(subject.send(:first_name)).to eq('Anne-Marie')
+    end
+
+    it 'defaults to Veteran when no name is available' do
+      allow(saved_claim).to receive_messages(claimant_first_name: nil, veteran_first_name: nil)
+      expect(subject.send(:first_name)).to eq('Veteran')
+    end
+  end
 end

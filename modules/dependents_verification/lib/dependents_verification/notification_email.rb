@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'dependents_verification/notification_callback'
+require 'string_helpers'
 require 'veteran_facing_services/notification_email/saved_claim'
 
 module DependentsVerification
@@ -24,7 +25,7 @@ module DependentsVerification
 
       # confirmation, error
       dependents_verification = {
-        'first_name' => claim.veteran_first_name&.titleize,
+        'first_name' => StringHelpers.titlecase_name(claim.veteran_first_name),
         'date_received' => claim.form_submissions&.last&.form_submission_attempts&.last&.lighthouse_updated_at
       }
 

@@ -9,6 +9,14 @@ module StringHelpers
     str.slice(0, 1).capitalize + str.slice(1..-1)
   end
 
+  def titlecase_name(name)
+    return name if name.blank?
+    return name unless name == name.upcase || name == name.downcase
+
+    cased = name.downcase.gsub(/(?:\A|(?<=[\s\-.'’]))\p{L}/, &:upcase)
+    cased.gsub(/(?<=\A|\s)(?:ii|iii|iv)(?=\s|\z)/i, &:upcase)
+  end
+
   def mask_sensitive(string)
     string&.gsub(/.(?=.{4})/, '*')
   end

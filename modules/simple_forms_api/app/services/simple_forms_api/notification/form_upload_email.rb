@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'string_helpers'
+
 module SimpleFormsApi
   module Notification
     class FormUploadEmail
@@ -150,7 +152,7 @@ module SimpleFormsApi
 
       def get_personalization
         {
-          'first_name' => form_data.dig('full_name', 'first')&.titleize,
+          'first_name' => StringHelpers.titlecase_name(form_data.dig('full_name', 'first')),
           'form_number' => form_number,
           'form_name' => form_data['form_name'],
           'date_submitted' => date_submitted,

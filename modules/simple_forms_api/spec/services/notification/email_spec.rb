@@ -1691,4 +1691,21 @@ describe SimpleFormsApi::Notification::Email do
       end
     end
   end
+
+  describe '#get_personalization with a type-specific first name' do
+    let(:config) do
+      { form_data: { 'claim_ownership' => 'self', 'claimant_type' => 'veteran',
+                     'veteran_full_name' => { 'first' => 'Lee' } },
+        form_number: 'vba_21_10210', confirmation_number: 'confirmation_number',
+        date_submitted: Time.zone.today.strftime('%B %d, %Y') }
+    end
+
+    it 'titlecases an all-caps first name without splitting on inflection acronyms' do
+      email = described_class.new(config, notification_type: :confirmation)
+      form = email.instance_variable_get(:@form)
+      form.define_singleton_method(:confirmation_first_name) { 'VANESSA' }
+
+      expect(email.__send__(:get_personalization)['first_name']).to eq('Vanessa')
+    end
+  end
 end

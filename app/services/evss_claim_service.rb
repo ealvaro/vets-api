@@ -6,6 +6,7 @@ require 'evss/auth_headers'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
 require 'logging/helper/data_scrubber'
+require 'string_helpers'
 
 # EVSS Claims Status Tool
 class EVSSClaimService
@@ -148,7 +149,7 @@ class EVSSClaimService
   end
 
   def create_personalisation(document)
-    first_name = auth_headers['va_eauth_firstName'].titleize unless auth_headers['va_eauth_firstName'].nil?
+    first_name = StringHelpers.titlecase_name(auth_headers['va_eauth_firstName'])
     { first_name:,
       document_type: document.description,
       file_name: document.file_name,

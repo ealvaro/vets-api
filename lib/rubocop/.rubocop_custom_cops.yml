@@ -6,4 +6,5 @@ require:
   - ./cop/attr_package_delete_after_retry.rb
   - ./cop/no_attr_package_creation_in_job.rb
   - ./cop/project/forbid_flipper_toggle_in_specs.rb
+  - ./cop/project/no_direct_titleize.rb
   - ./cop/migrations/isolated_index_migration.rb

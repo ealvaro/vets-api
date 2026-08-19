@@ -54,6 +54,10 @@ module IncreaseCompensation
       parsed_form.dig('veteranFullName', 'first')
     end
 
+    def claimant_first_name
+      parsed_form.dig('claimantFullName', 'first')
+    end
+
     # Utility function to retrieve veteran last name from form
     #
     # @return [String]

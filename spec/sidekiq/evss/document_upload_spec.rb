@@ -345,4 +345,43 @@ RSpec.describe EVSS::DocumentUpload, type: :job do
       end
     end
   end
+
+  describe '.create_personalisation' do
+    let(:exhausted_msg) do
+      {
+        'args' => [{ 'va_eauth_firstName' => first_name },
+                   user_account_uuid,
+                   { 'evss_claim_id' => claim_id,
+                     'tracked_item_id' => tracked_item_id,
+                     'document_type' => document_type,
+                     'file_name' => file_name }],
+        'created_at' => issue_instant,
+        'failed_at' => issue_instant
+      }
+    end
+
+    context 'when the first name is all caps' do
+      let(:first_name) { 'VANESSA' }
+
+      it 'titlecases the name without splitting on inflection acronyms' do
+        expect(described_class.create_personalisation(exhausted_msg)[:first_name]).to eq('Vanessa')
+      end
+    end
+
+    context 'when the first name is all caps and hyphenated' do
+      let(:first_name) { 'ANNE-MARIE' }
+
+      it 'preserves the hyphen' do
+        expect(described_class.create_personalisation(exhausted_msg)[:first_name]).to eq('Anne-Marie')
+      end
+    end
+
+    context 'when the first name is missing' do
+      let(:first_name) { nil }
+
+      it 'returns a nil first name' do
+        expect(described_class.create_personalisation(exhausted_msg)[:first_name]).to be_nil
+      end
+    end
+  end
 end

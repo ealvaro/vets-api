@@ -34,4 +34,17 @@ RSpec.describe DependentsVerification::NotificationEmail do
       described_class.new(23).deliver(:submitted)
     end
   end
+
+  describe '#personalization' do
+    subject { described_class.new(saved_claim.id) }
+
+    before do
+      subject.instance_variable_set(:@claim, saved_claim)
+    end
+
+    it 'titlecases an all-caps veteran first name without splitting on inflection acronyms' do
+      allow(saved_claim).to receive(:veteran_first_name).and_return('VANESSA')
+      expect(subject.send(:personalization)['first_name']).to eq('Vanessa')
+    end
+  end
 end

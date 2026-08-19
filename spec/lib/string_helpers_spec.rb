@@ -20,6 +20,107 @@ describe StringHelpers do
     end
   end
 
+  describe '#titlecase_name' do
+    context 'with all-caps input (normalized without acronym splitting)' do
+      fixtures = [
+        ['IVANOVA', 'Ivanova'],
+        ['SHARIPOVA', 'Sharipova'],
+        ['VANBUREN', 'Vanburen'],
+        ['SMITH-JONES', 'Smith-Jones'],
+        ["O'BRIEN", "O'Brien"],
+        ['O’BRIEN', 'O’Brien'],
+        ['MARY ANNE', 'Mary Anne'],
+        ['VAN DYKE', 'Van Dyke'],
+        ['DE LA CRUZ', 'De La Cruz'],
+        ['ST. JOHN', 'St. John'],
+        ['J.R.', 'J.R.'],
+        ['JOSÉ', 'José'],
+        ['MÜLLER', 'Müller'],
+        ['ÑUÑEZ', 'Ñuñez'],
+        ['ИВАНОВА', 'Иванова']
+      ]
+
+      fixtures.each do |input, expected|
+        it "formats #{input} as #{expected}" do
+          expect(described_class.titlecase_name(input)).to eq(expected)
+        end
+      end
+    end
+
+    context 'with all-lowercase input (normalized)' do
+      fixtures = [
+        ['ivanova', 'Ivanova'],
+        ["o'brien", "O'Brien"],
+        ['j', 'J']
+      ]
+
+      fixtures.each do |input, expected|
+        it "formats #{input} as #{expected}" do
+          expect(described_class.titlecase_name(input)).to eq(expected)
+        end
+      end
+    end
+
+    context 'with roman numeral suffixes II, III, and IV' do
+      fixtures = [
+        ['JOHN SMITH III', 'John Smith III'],
+        ['SMITH II', 'Smith II'],
+        ['SMITH IV', 'Smith IV']
+      ]
+
+      fixtures.each do |input, expected|
+        it "formats #{input} as #{expected}" do
+          expect(described_class.titlecase_name(input)).to eq(expected)
+        end
+      end
+    end
+
+    context 'with mixed-case input (passed through untouched)' do
+      fixtures = [
+        ['McDonald', 'McDonald'],
+        ["O'Brien", "O'Brien"],
+        ['IVanova', 'IVanova'],
+        ['Ivanova', 'Ivanova']
+      ]
+
+      fixtures.each do |input, expected|
+        it "leaves #{input} as #{expected}" do
+          expect(described_class.titlecase_name(input)).to eq(expected)
+        end
+      end
+    end
+
+    context 'with structure that must be preserved' do
+      fixtures = [
+        ['MARY  ANNE', 'Mary  Anne'],
+        [' IVANOVA ', ' Ivanova '],
+        ['J', 'J'],
+        ['-', '-'],
+        ['123', '123']
+      ]
+
+      fixtures.each do |input, expected|
+        it "preserves #{input.inspect} as #{expected.inspect}" do
+          expect(described_class.titlecase_name(input)).to eq(expected)
+        end
+      end
+    end
+
+    context 'with nil or blank input' do
+      it 'returns nil for nil' do
+        expect(described_class.titlecase_name(nil)).to be_nil
+      end
+
+      it 'returns an empty string unchanged' do
+        expect(described_class.titlecase_name('')).to eq('')
+      end
+
+      it 'returns a whitespace-only string unchanged' do
+        expect(described_class.titlecase_name('   ')).to eq('   ')
+      end
+    end
+  end
+
   describe '#mask_sensitive' do
     it 'replaces part of the string with asterisks' do
       expect(described_class.mask_sensitive('sdkfjsdklflsdf')).to eq('**********lsdf')

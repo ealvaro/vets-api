@@ -180,4 +180,30 @@ RSpec.describe PdfFill::Forms::Va214138 do
       end
     end
   end
+
+  describe '#merge_fields with all-caps names' do
+    subject(:merged) { form.merge_fields }
+
+    let(:base_data) do
+      {
+        claimantFullName: { first: 'VANESSA', middle: 'ivan', last: 'SMITH-JONES' },
+        veteranSocialSecurityNumber: '123456789',
+        veteranDateOfBirth: '1970-01-15',
+        claimantPhone: '8005551234',
+        claimantAddress: {
+          street: '123 Main St',
+          city: 'Richmond',
+          state: 'VA',
+          postalCode: '23220'
+        },
+        remarks: 'This is a test remark.'
+      }
+    end
+
+    it 'titlecases names without splitting on inflection acronyms' do
+      expect(merged['claimantFullName']['first']).to eq('Vanessa')
+      expect(merged['claimantFullName']['middleInitial']).to eq('I')
+      expect(merged['claimantFullName']['last']).to eq('Smith-Jones')
+    end
+  end
 end

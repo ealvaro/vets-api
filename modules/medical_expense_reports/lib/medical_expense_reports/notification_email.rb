@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'medical_expense_reports/notification_callback'
+require 'string_helpers'
 require 'veteran_facing_services/notification_email/saved_claim'
 
 module MedicalExpenseReports
@@ -24,7 +25,7 @@ module MedicalExpenseReports
     def first_name
       first = claim.claimant_first_name || claim.veteran_first_name
 
-      first&.titleize || 'Veteran'
+      StringHelpers.titlecase_name(first) || 'Veteran'
     end
 
     # @see VeteranFacingServices::NotificationEmail::SavedClaim#personalization

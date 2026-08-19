@@ -246,4 +246,38 @@ RSpec.describe EVSSClaimService do
       end
     end
   end
+
+  describe '#create_personalisation' do
+    let(:document) do
+      instance_double(EVSSClaimDocument, description: 'Other Correspondence', file_name: 'doctors-note.pdf')
+    end
+
+    before do
+      allow(service).to receive(:auth_headers).and_return({ 'va_eauth_firstName' => first_name })
+    end
+
+    context 'when the first name is all caps' do
+      let(:first_name) { 'VANESSA' }
+
+      it 'titlecases the name without splitting on inflection acronyms' do
+        expect(service.send(:create_personalisation, document)[:first_name]).to eq('Vanessa')
+      end
+    end
+
+    context 'when the first name is all caps and hyphenated' do
+      let(:first_name) { 'ANNE-MARIE' }
+
+      it 'preserves the hyphen' do
+        expect(service.send(:create_personalisation, document)[:first_name]).to eq('Anne-Marie')
+      end
+    end
+
+    context 'when the first name is missing' do
+      let(:first_name) { nil }
+
+      it 'returns a nil first name' do
+        expect(service.send(:create_personalisation, document)[:first_name]).to be_nil
+      end
+    end
+  end
 end

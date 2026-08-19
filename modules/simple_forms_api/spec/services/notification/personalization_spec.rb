@@ -98,5 +98,16 @@ describe SimpleFormsApi::Notification::Personalization do
         end
       end
     end
+
+    context 'when the first name is all caps' do
+      let(:form) do
+        SimpleFormsApi::VBA210966.new({ 'benefit_selection' => { 'compensation' => true },
+                                        'veteran_full_name' => { 'first' => 'VANESSA' } })
+      end
+
+      it 'titlecases the name without splitting on inflection acronyms' do
+        expect(personalization.to_hash['first_name']).to eq('Vanessa')
+      end
+    end
   end
 end

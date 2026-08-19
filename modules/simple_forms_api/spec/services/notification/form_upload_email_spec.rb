@@ -348,4 +348,19 @@ describe SimpleFormsApi::Notification::FormUploadEmail do
       end
     end
   end
+
+  describe '#get_personalization' do
+    let(:config) do
+      { form_number: '21-0779',
+        form_data: { 'full_name' => { 'first' => 'VANESSA' }, 'email' => 'test@email.com' },
+        confirmation_number: 'confirmation-number',
+        date_submitted: Time.zone.today.strftime('%B %d, %Y') }
+    end
+
+    it 'titlecases an all-caps first name without splitting on inflection acronyms' do
+      email = described_class.new(config, notification_type: :confirmation)
+
+      expect(email.__send__(:get_personalization)['first_name']).to eq('Vanessa')
+    end
+  end
 end

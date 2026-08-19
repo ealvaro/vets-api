@@ -7,6 +7,7 @@ require 'logging/helper/data_scrubber'
 require 'evss/failure_notification'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
+require 'string_helpers'
 
 class EVSS::DocumentUpload
   include Sidekiq::Job
@@ -129,7 +130,7 @@ class EVSS::DocumentUpload
 
   # This will be used by EVSS::FailureNotification
   def self.create_personalisation(msg)
-    first_name = msg['args'][0]['va_eauth_firstName'].titleize unless msg['args'][0]['va_eauth_firstName'].nil?
+    first_name = StringHelpers.titlecase_name(msg['args'][0]['va_eauth_firstName'])
     document_type = EVSSClaimDocument.new(msg['args'][2]).description
     # Obscure the file name here since this will be used to generate a failed email
     # NOTE: the template that we use for va_notify.send_email uses `filename` but we can also pass in `file_name`

@@ -33,11 +33,31 @@ RSpec.describe IncreaseCompensation::NotificationEmail do
     end
   end
 
-  # describe '#first_name' do
-  #   it 'returns the veterans first name' do
-  #     # expect(IncreaseCompensation::SavedClaim).to receive(:find).with(23).and_return saved_claim
-  #     notifier = described_class.new(23)
-  #     expect(notifier.send(:first_name)).to eq('Johnny')
-  #   end
-  # end
+  describe '#first_name' do
+    subject { described_class.new(saved_claim.id) }
+
+    before do
+      subject.instance_variable_set(:@claim, saved_claim)
+    end
+
+    it 'titlecases an all-caps first name without splitting on inflection acronyms' do
+      allow(saved_claim).to receive(:veteran_first_name).and_return('VANESSA')
+      expect(subject.send(:first_name)).to eq('Vanessa')
+    end
+
+    it 'preserves hyphenated all-caps names' do
+      allow(saved_claim).to receive(:veteran_first_name).and_return('ANNE-MARIE')
+      expect(subject.send(:first_name)).to eq('Anne-Marie')
+    end
+
+    it 'falls back to the claimant first name' do
+      allow(saved_claim).to receive_messages(veteran_first_name: nil, claimant_first_name: 'VANESSA')
+      expect(subject.send(:first_name)).to eq('Vanessa')
+    end
+
+    it 'defaults to Veteran when no name is available' do
+      allow(saved_claim).to receive(:veteran_first_name).and_return(nil)
+      expect(subject.send(:first_name)).to eq('Veteran')
+    end
+  end
 end

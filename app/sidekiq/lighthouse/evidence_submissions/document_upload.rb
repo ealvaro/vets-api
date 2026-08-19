@@ -6,6 +6,7 @@ require 'lighthouse/benefits_documents/worker_service'
 require 'logging/helper/data_scrubber'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
+require 'string_helpers'
 
 module Lighthouse
   module EvidenceSubmissions
@@ -103,7 +104,7 @@ module Lighthouse
 
       # This will be used by Lighthouse::FailureNotification
       def self.create_personalisation(msg)
-        first_name = msg['args'][1]['first_name'].titleize unless msg['args'][1]['first_name'].nil?
+        first_name = StringHelpers.titlecase_name(msg['args'][1]['first_name'])
         document_type = LighthouseDocument.new(msg['args'][1]).description
         # Obscure the file name here since this will be used to generate a failed email
         # NOTE: the template that we use for va_notify.send_email uses `filename` but we can also pass in `file_name`

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'increase_compensation/notification_callback'
+require 'string_helpers'
 require 'veteran_facing_services/notification_email/saved_claim'
 
 module IncreaseCompensation
@@ -25,7 +26,7 @@ module IncreaseCompensation
     def first_name
       first = claim.veteran_first_name || claim.claimant_first_name
 
-      first&.titleize || 'Veteran'
+      StringHelpers.titlecase_name(first) || 'Veteran'
     end
 
     # Provides the date received with fallback to claim submission date

@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
+require 'string_helpers'
+
 module SimpleFormsApi
   module Notification
     class Personalization
       attr_reader :first_name, :form, :date_submitted, :confirmation_number, :lighthouse_updated_at, :expiration_date
 
       def initialize(form:, config:, expiration_date: nil)
-        @first_name = form.notification_first_name&.titleize
+        @first_name = StringHelpers.titlecase_name(form.notification_first_name)
         @date_submitted = config[:date_submitted]
         @confirmation_number = config[:confirmation_number]
         @lighthouse_updated_at = config[:lighthouse_updated_at]
