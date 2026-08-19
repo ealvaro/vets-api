@@ -30,11 +30,28 @@ module TravelPay
 
     # Usage:
     # TravelPay::Constants::TRIP_TYPES[:one_way]
+    # TODO: After 8/20/26 TP API release, remove TRIP_TYPES and rename SPACED_TRIP_TYPES to TRIP_TYPES.
     TRIP_TYPES = {
       one_way: 'OneWay',
       round_trip: 'RoundTrip',
       unspecified: 'Unspecified'
     }.freeze
+
+    # Spaced equivalents accepted by the updated BTSSS API (travel_pay_api_spaced_keys).
+    SPACED_TRIP_TYPES = {
+      one_way: 'One Way',
+      round_trip: 'Round Trip',
+      unspecified: 'Unspecified'
+    }.freeze
+
+    # TODO: After 8/20/26 TP API release, remove ALL_TRIP_TYPE_VALUES and validate against TRIP_TYPES.values.
+    ALL_TRIP_TYPE_VALUES = (TRIP_TYPES.values + SPACED_TRIP_TYPES.values).uniq.freeze
+
+    # Maps unspaced trip type values to their spaced equivalents for BTSSS API submission.
+    # TODO: After 8/20/26 TP API release, remove this mapping.
+    TRIP_TYPE_TO_SPACED = TRIP_TYPES.each_with_object({}) do |(key, val), hash|
+      hash[val] = SPACED_TRIP_TYPES[key]
+    end.freeze
 
     # Usage:
     # TravelPay::Constants::COMMON_CARRIER_EXPLANATIONS[:privately_owned_vehicle_not_available]

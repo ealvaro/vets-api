@@ -126,7 +126,17 @@ module TravelPay
         request_body[api_key] = camelize_hash_keys(value)
       end
 
+      # TODO: After 8/20/26 TP API release, remove this normalization.
+      normalize_trip_type!(request_body) if Flipper.enabled?(:travel_pay_api_spaced_keys, @auth_manager.user)
+
       request_body
+    end
+
+    # Converts unspaced trip type values (e.g. 'RoundTrip') to spaced ('Round Trip') for BTSSS.
+    def normalize_trip_type!(body)
+      return unless body['tripType']
+
+      body['tripType'] = TravelPay::Constants::TRIP_TYPE_TO_SPACED.fetch(body['tripType'], body['tripType'])
     end
 
     ##

@@ -12,7 +12,8 @@ module TravelPay
     attribute :return_date, :datetime
 
     validates :vendor_name, presence: true, length: { maximum: 255 }
-    validates :trip_type, presence: true, inclusion: { in: TravelPay::Constants::TRIP_TYPES.values }
+    # TODO: After 8/20/26 TP API release, replace ALL_TRIP_TYPE_VALUES with TRIP_TYPES.values.
+    validates :trip_type, presence: true, inclusion: { in: TravelPay::Constants::ALL_TRIP_TYPE_VALUES }
     validates :departed_from, presence: true, length: { maximum: 255 }
     validates :arrived_to, presence: true, length: { maximum: 255 }
     validates :departure_date, presence: true
@@ -56,8 +57,10 @@ module TravelPay
     # Returns true if the trip type is RoundTrip
     #
     # @return [Boolean] true if trip is round trip
+    # TODO: After 8/20/26 TP API release, remove SPACED_TRIP_TYPES check; keep only TRIP_TYPES[:round_trip].
     def round_trip?
-      trip_type == TravelPay::Constants::TRIP_TYPES[:round_trip]
+      trip_type == TravelPay::Constants::TRIP_TYPES[:round_trip] ||
+        trip_type == TravelPay::Constants::SPACED_TRIP_TYPES[:round_trip]
     end
 
     # Validates that departure and arrival locations are different

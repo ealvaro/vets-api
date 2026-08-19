@@ -49,6 +49,14 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         expect(subject).to be_valid
       end
 
+      it 'accepts spaced trip_type values' do
+        subject.trip_type = 'One Way'
+        expect(subject).to be_valid
+
+        subject.trip_type = 'Round Trip'
+        expect(subject).to be_valid
+      end
+
       it 'rejects invalid casing' do
         subject.trip_type = 'one_way'
         expect(subject).not_to be_valid

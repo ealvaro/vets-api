@@ -112,5 +112,28 @@ RSpec.describe TravelPay::ExpenseNormalizer do
 
       expect(expense['reasonNotUsingPOV']).to eq('TotallyUnknownValue')
     end
+
+    it 'normalizes reasonNotUsingPOV when expenseType is spaced Common Carrier' do
+      expense = {
+        'expenseType' => 'Common Carrier',
+        'reasonNotUsingPOV' => 'PrivatelyOwnedVehicleNotAvailable'
+      }
+
+      normalizer.normalize_expense(expense)
+
+      expect(expense['reasonNotUsingPOV'])
+        .to eq('Privately Owned Vehicle Not Available')
+    end
+
+    it 'normalizes Parking expenseType when name is Parking and expenseType is spaced' do
+      expense = {
+        'expenseType' => 'Other',
+        'name' => 'Parking'
+      }
+
+      normalizer.normalize_expense(expense)
+
+      expect(expense['expenseType']).to eq('Parking')
+    end
   end
 end

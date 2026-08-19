@@ -99,11 +99,12 @@ module TravelPay
           req.headers['BTSSS-Access-Token'] = auth_session.btsss_token
           req.headers['X-Correlation-ID'] = correlation_id
           req.headers.merge!(claim_headers)
+          trip_type = params['trip_type'] || 'RoundTrip'
           req.body = {
             'claimId' => params['claim_id'],
             'dateIncurred' => params['appt_date'],
-            'tripType' => params['trip_type'] || 'RoundTrip', # default to Round Trip if not specified
-            'description' => params['description'] || 'mileage' # this is required, default to mileage
+            'tripType' => normalize_outbound_trip_type(trip_type),
+            'description' => params['description'] || 'mileage'
           }.to_json
         end
       end
@@ -222,6 +223,13 @@ module TravelPay
       else
         TravelPay::Constants::BASE_EXPENSE_PATHS[:mileage]
       end
+    end
+
+    # TODO: After 8/20/26 TP API release, remove and use spaced values directly.
+    def normalize_outbound_trip_type(value)
+      return value unless Flipper.enabled?(:travel_pay_api_spaced_keys, @user)
+
+      TravelPay::Constants::TRIP_TYPE_TO_SPACED.fetch(value, value)
     end
   end
 end

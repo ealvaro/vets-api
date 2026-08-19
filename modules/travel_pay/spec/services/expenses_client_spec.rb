@@ -457,4 +457,62 @@ describe TravelPay::ExpensesClient do
       end
     end
   end
+
+  describe '#add_mileage_expense normalize_outbound_trip_type' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+    end
+
+    context 'when travel_pay_api_spaced_keys is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(true) }
+
+      it 'converts RoundTrip to spaced value' do
+        @stubs.post('/api/v2/expenses/mileage') do |env|
+          body = JSON.parse(env.body)
+          expect(body['tripType']).to eq('Round Trip')
+          [200, {}, { 'data' => { 'expenseId' => 'test-id' } }]
+        end
+
+        client.add_mileage_expense(auth_session,
+                                   { 'claim_id' => 'c1', 'appt_date' => '2024-01-01', 'trip_type' => 'RoundTrip' })
+      end
+
+      it 'converts OneWay to spaced value' do
+        @stubs.post('/api/v2/expenses/mileage') do |env|
+          body = JSON.parse(env.body)
+          expect(body['tripType']).to eq('One Way')
+          [200, {}, { 'data' => { 'expenseId' => 'test-id' } }]
+        end
+
+        client.add_mileage_expense(auth_session,
+                                   { 'claim_id' => 'c1', 'appt_date' => '2024-01-01', 'trip_type' => 'OneWay' })
+      end
+
+      it 'passes already-spaced values through unchanged' do
+        @stubs.post('/api/v2/expenses/mileage') do |env|
+          body = JSON.parse(env.body)
+          expect(body['tripType']).to eq('Round Trip')
+          [200, {}, { 'data' => { 'expenseId' => 'test-id' } }]
+        end
+
+        client.add_mileage_expense(auth_session,
+                                   { 'claim_id' => 'c1', 'appt_date' => '2024-01-01', 'trip_type' => 'Round Trip' })
+      end
+    end
+
+    context 'when travel_pay_api_spaced_keys is disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(false) }
+
+      it 'leaves trip type values unchanged' do
+        @stubs.post('/api/v2/expenses/mileage') do |env|
+          body = JSON.parse(env.body)
+          expect(body['tripType']).to eq('RoundTrip')
+          [200, {}, { 'data' => { 'expenseId' => 'test-id' } }]
+        end
+
+        client.add_mileage_expense(auth_session,
+                                   { 'claim_id' => 'c1', 'appt_date' => '2024-01-01', 'trip_type' => 'RoundTrip' })
+      end
+    end
+  end
 end

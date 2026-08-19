@@ -13,7 +13,8 @@ module TravelPay
 
       expense['expenseType'] = expense['name'] if expense['name']&.downcase == 'parking'
 
-      if expense['expenseType'] == 'CommonCarrier'
+      # TODO: After 8/20/26 TP API release, remove gsub and match 'Common Carrier' directly.
+      if expense['expenseType']&.gsub(' ', '') == 'CommonCarrier'
         expense['reasonNotUsingPOV'] =
           normalize_reason_not_using_pov(expense['reasonNotUsingPOV'])
       end

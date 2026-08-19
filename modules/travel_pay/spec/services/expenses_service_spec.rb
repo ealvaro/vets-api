@@ -562,6 +562,8 @@ describe TravelPay::ExpensesService do
     end
 
     context 'mileage expense specific fields' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(false) }
+
       it 'converts mileage-specific fields correctly' do
         params = {
           'expense_type' => 'mileage',
@@ -650,6 +652,8 @@ describe TravelPay::ExpensesService do
     end
 
     context 'flight expense specific fields' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(false) }
+
       it 'converts flight-specific fields correctly' do
         params = {
           'expense_type' => 'airtravel',
@@ -750,6 +754,60 @@ describe TravelPay::ExpensesService do
                                'costRequested' => 5.00,
                                'claimId' => 'claim-123'
                              })
+      end
+    end
+
+    context 'when travel_pay_api_spaced_keys flag is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(true) }
+
+      it 'converts unspaced trip type to spaced for BTSSS' do
+        params = {
+          'expense_type' => 'mileage',
+          'purchase_date' => '2024-11-01',
+          'trip_type' => 'RoundTrip',
+          'claim_id' => 'claim-123'
+        }
+
+        result = build_request_body(params)
+        expect(result['tripType']).to eq('Round Trip')
+      end
+
+      it 'converts OneWay to One Way' do
+        params = {
+          'expense_type' => 'airtravel',
+          'trip_type' => 'OneWay',
+          'claim_id' => 'claim-123'
+        }
+
+        result = build_request_body(params)
+        expect(result['tripType']).to eq('One Way')
+      end
+
+      it 'passes already-spaced values through unchanged' do
+        params = {
+          'expense_type' => 'mileage',
+          'trip_type' => 'Round Trip',
+          'claim_id' => 'claim-123'
+        }
+
+        result = build_request_body(params)
+        expect(result['tripType']).to eq('Round Trip')
+      end
+    end
+
+    context 'when travel_pay_api_spaced_keys flag is disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:travel_pay_api_spaced_keys, user).and_return(false) }
+
+      it 'leaves trip type values unchanged' do
+        params = {
+          'expense_type' => 'mileage',
+          'purchase_date' => '2024-11-01',
+          'trip_type' => 'RoundTrip',
+          'claim_id' => 'claim-123'
+        }
+
+        result = build_request_body(params)
+        expect(result['tripType']).to eq('RoundTrip')
       end
     end
 

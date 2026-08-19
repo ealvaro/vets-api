@@ -13,7 +13,8 @@ module TravelPay
 
     attr_accessor :user
 
-    validates :trip_type, presence: true, inclusion: { in: TravelPay::Constants::TRIP_TYPES.values }
+    # TODO: After 8/20/26 TP API release, replace ALL_TRIP_TYPE_VALUES with TRIP_TYPES.values.
+    validates :trip_type, presence: true, inclusion: { in: TravelPay::Constants::ALL_TRIP_TYPE_VALUES }
 
     ADDRESS_PARAMS = %i[address_line1 address_line2 city state_code postal_code].freeze
 

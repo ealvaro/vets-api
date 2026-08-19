@@ -3407,6 +3407,13 @@ features:
       A switch that toggles availability of the submit mileage expense feature.
       Enabled - Requests are handled as normal. Frontend features are available per toggle settings.
       Disabled - Requests are not handled. Server returns a 503 (Service Unavailable) until re-enabled. Frontend features are not available.
+  travel_pay_api_spaced_keys:
+    actor_type: user
+    enable_in_development: true
+    description: >-
+      When enabled, Travel Pay uses spaced keys (e.g. 'Air Travel') for expense type
+      and trip type params to match the updated BTSSS API. When disabled, keys are
+      normalized to remove spaces (e.g. 'AirTravel').
   travel_pay_appt_add_v4_upgrade:
     actor_type: user
     enable_in_development: true
