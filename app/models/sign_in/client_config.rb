@@ -38,6 +38,8 @@ module SignIn
     enum :auth_method, { pkce: 'pkce', client_secret: 'client_secret', private_key_jwt: 'private_key_jwt' },
          prefix: true
 
+    attr_accessor :pkce
+
     def self.valid_client_id?(client_id:)
       find_by(client_id:).present?
     end

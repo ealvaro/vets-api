@@ -1,6 +1,9 @@
 clear:
   enabled: true
 
+entra:
+  enabled: true
+
 mvi:
   url: http://www.example.com
 sign_in:

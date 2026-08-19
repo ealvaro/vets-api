@@ -82,6 +82,7 @@ RSpec.describe SignIn::UserCodeMapCreator do
         idme_uuid: nil,
         logingov_uuid:,
         clear_uuid: nil,
+        entra_uuid: nil,
         icn:,
         credential_attributes_digest:
       ).and_call_original
@@ -95,6 +96,42 @@ RSpec.describe SignIn::UserCodeMapCreator do
       expect(user_code_map.type).to eq(type)
       expect(user_code_map.client_state).to eq(client_state)
       expect(user_code_map.client_config).to eq(client_config)
+    end
+
+    context 'when the credential is entra' do
+      let(:service_name) { SignIn::Constants::Auth::ENTRA }
+      let(:entra_uuid) { SecureRandom.hex }
+      let(:user_attributes) do
+        {
+          entra_uuid:,
+          csp_email:,
+          all_csp_emails:,
+          first_name:,
+          last_name:
+        }
+      end
+      let!(:user_verification) { create(:entra_user_verification, entra_uuid:) }
+
+      it 'calls Login::UserVerifier with the entra_uuid' do
+        expect(Login::UserVerifier).to receive(:new).with(
+          login_type: type,
+          auth_broker:,
+          mhv_uuid: nil,
+          idme_uuid: nil,
+          logingov_uuid: nil,
+          clear_uuid: nil,
+          entra_uuid:,
+          icn:,
+          credential_attributes_digest: nil
+        ).and_call_original
+
+        subject
+      end
+
+      it 'creates a code container mapped to the entra user verification' do
+        code_container = SignIn::CodeContainer.find(subject.login_code)
+        expect(code_container.user_verification_id).to eq(user_verification.id)
+      end
     end
 
     context 'if client config enforced terms is set to va terms' do

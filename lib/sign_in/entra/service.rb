@@ -15,10 +15,28 @@ module SignIn
         build_user_info(claims)
       end
 
+      def build_user_info(claims)
+        info = claims.with_indifferent_access
+
+        OAuth::UserInfo.new(
+          sub: info[:sub],
+          email: info[:email],
+          first_name: info[:given_name],
+          last_name: info[:family_name],
+          icn: info[:icn],
+          secid: info[:secid],
+          multifactor: true
+        )
+      end
+
       private
 
       def default_acr
         OAuth::Constants::ENTRA_IAL2
+      end
+
+      def digest_credential_attributes?
+        false
       end
 
       def auth_params(_acr, state, _operation, **)
@@ -45,21 +63,7 @@ module SignIn
       end
 
       def parse_token_response(response_body)
-        { access_token: response_body[:access_token], id_token: response_body[:id_token] }
-      end
-
-      def build_user_info(claims)
-        info = claims.with_indifferent_access
-
-        OAuth::UserInfo.new(
-          sub: info[:sub],
-          email: info[:email],
-          first_name: info[:given_name],
-          last_name: info[:family_name],
-          icn: info[:icn],
-          secid: info[:secid],
-          multifactor: true
-        )
+        { access_token: response_body[:id_token] }
       end
 
       def credential_attributes(user_info)

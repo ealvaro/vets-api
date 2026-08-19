@@ -6,6 +6,7 @@ module SignIn
                 :idme_uuid,
                 :logingov_uuid,
                 :clear_uuid,
+                :entra_uuid,
                 :credential_email,
                 :all_credential_emails,
                 :verified_icn,
@@ -22,6 +23,7 @@ module SignIn
       @idme_uuid = user_attributes[:idme_uuid]
       @logingov_uuid = user_attributes[:logingov_uuid]
       @clear_uuid = user_attributes[:clear_uuid]
+      @entra_uuid = user_attributes[:entra_uuid]
       @credential_email = user_attributes[:csp_email]
       @all_credential_emails = user_attributes[:all_csp_emails]
       @edipi = user_attributes[:edipi]
@@ -89,6 +91,7 @@ module SignIn
                                                      idme_uuid:,
                                                      logingov_uuid:,
                                                      clear_uuid:,
+                                                     entra_uuid:,
                                                      icn: verified_icn,
                                                      credential_attributes_digest:).perform
     end

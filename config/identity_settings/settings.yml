@@ -11,6 +11,7 @@ clear:
   redirect_uri: http://localhost:3000/v0/sign_in/callback
 
 entra:
+  enabled: false
   client_cert_path: spec/fixtures/sign_in/oauth.crt
   client_id: 3f7019bf-4510-4a2d-a782-ae0b6b119e9d
   client_key_path: spec/fixtures/sign_in/oauth.key

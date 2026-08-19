@@ -2,6 +2,7 @@
 
 require 'sign_in/logingov/service'
 require 'sign_in/idme/service'
+require 'sign_in/entra/service'
 
 module MockedAuthentication
   module Credential
@@ -30,6 +31,8 @@ module MockedAuthentication
         case type
         when SignIn::Constants::Auth::LOGINGOV
           logingov_auth_service
+        when SignIn::Constants::Auth::ENTRA
+          entra_auth_service
         else
           idme_auth_service(type)
         end
@@ -78,6 +81,10 @@ module MockedAuthentication
 
       def logingov_auth_service
         @logingov_auth_service ||= SignIn::Logingov::Service.new
+      end
+
+      def entra_auth_service
+        @entra_auth_service ||= SignIn::Entra::Service.new
       end
     end
   end

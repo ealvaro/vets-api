@@ -125,6 +125,25 @@ describe MockedAuthentication::Credential::Service do
         expect(subject.ssn).to eq('somessn')
       end
     end
+
+    context 'when type is entra' do
+      let(:type) { SignIn::Constants::Auth::ENTRA }
+      let(:credential_info) do
+        { sub: 'some-sub', email: 'some-email', given_name: 'some-first-name',
+          family_name: 'some-last-name', icn: 'some-icn', secid: 'some-secid' }
+      end
+
+      it 'returns user info parsed by the entra service' do
+        expect(subject).to be_a(SignIn::OAuth::UserInfo)
+        expect(subject.sub).to eq('some-sub')
+        expect(subject.email).to eq('some-email')
+        expect(subject.first_name).to eq('some-first-name')
+        expect(subject.last_name).to eq('some-last-name')
+        expect(subject.icn).to eq('some-icn')
+        expect(subject.secid).to eq('some-secid')
+        expect(subject.multifactor).to be(true)
+      end
+    end
   end
 
   describe '#normalized_attributes' do
@@ -258,6 +277,44 @@ describe MockedAuthentication::Credential::Service do
           address: expected_address,
           phone_number:,
           digest:
+        }
+      end
+
+      it 'returns expected attributes' do
+        expect(subject).to eq(expected_attributes)
+      end
+    end
+
+    context 'when type is equal to entra' do
+      let(:type) { SignIn::Constants::Auth::ENTRA }
+      let(:user_info) do
+        SignIn::OAuth::UserInfo.new(
+          sub: user_uuid,
+          email:,
+          multifactor:,
+          first_name:,
+          last_name:,
+          icn:,
+          secid:
+        )
+      end
+      let(:icn) { 'some-icn' }
+      let(:secid) { 'some-secid' }
+      let(:authn_context) { SignIn::Constants::Auth::ENTRA_IAL2 }
+      let(:expected_attributes) do
+        {
+          entra_uuid: user_uuid,
+          current_ial: IAL::TWO,
+          max_ial: IAL::TWO,
+          service_name: type,
+          csp_email: email,
+          multifactor:,
+          authn_context:,
+          auto_uplevel:,
+          first_name:,
+          last_name:,
+          icn:,
+          secid:
         }
       end
 

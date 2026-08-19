@@ -3,6 +3,7 @@
 require 'sign_in/logingov/service'
 require 'sign_in/idme/service'
 require 'sign_in/clear/service'
+require 'sign_in/entra/service'
 require 'credential/service'
 
 module SignIn
@@ -30,6 +31,8 @@ module SignIn
         logingov_auth_service
       when Constants::Auth::CLEAR
         clear_auth_service
+      when Constants::Auth::ENTRA
+        entra_auth_service
       else
         idme_auth_service
       end
@@ -45,6 +48,10 @@ module SignIn
 
     def clear_auth_service
       @clear_auth_service ||= Clear::Service.new
+    end
+
+    def entra_auth_service
+      @entra_auth_service ||= Entra::Service.new
     end
 
     def mock_auth_service

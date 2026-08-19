@@ -27,6 +27,7 @@ class UserIdentity < Common::RedisStore
   attribute :idme_uuid
   attribute :logingov_uuid
   attribute :clear_uuid
+  attribute :entra_uuid
   attribute :verified_at # Login.gov IAL2 verification timestamp
   attribute :sec_id
   attribute :mhv_icn # only needed by B/E not serialized in user_serializer

@@ -317,6 +317,32 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
         it_behaves_like 'error response'
       end
 
+      context 'when type param is entra' do
+        let(:type_value) { 'entra' }
+        let(:type) { { type: type_value } }
+        let(:credential_service_providers) { %w[idme logingov entra] }
+        let(:acr_value) { 'ial2' }
+        let(:code_challenge) { { code_challenge: Base64.urlsafe_encode64('some-safe-code-challenge') } }
+        let(:code_challenge_method) { { code_challenge_method: 'S256' } }
+
+        context 'and entra is enabled' do
+          before { allow(IdentitySettings.entra).to receive(:enabled).and_return(true) }
+
+          it 'renders a redirect to the entra authorization url' do
+            expect(subject).to have_http_status(:ok)
+            expect(subject.body).to include(IdentitySettings.entra.oauth_url)
+          end
+        end
+
+        context 'and entra is not enabled' do
+          let(:expected_error) { 'Type is not valid' }
+
+          before { allow(IdentitySettings.entra).to receive(:enabled).and_return(false) }
+
+          it_behaves_like 'error response'
+        end
+      end
+
       shared_context 'a logingov authentication service interface' do
         context 'and acr param is not given' do
           let(:acr) { {} }

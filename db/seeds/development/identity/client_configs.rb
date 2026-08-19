@@ -30,7 +30,7 @@ vaweb.update!(authentication: SignIn::Constants::Auth::COOKIE,
               shared_sessions: true,
               refresh_token_duration: SignIn::Constants::RefreshToken::VALIDITY_LENGTH_SHORT_MINUTES,
               service_levels: SignIn::Constants::Auth::ACR_VALUES,
-              credential_service_providers: SignIn::Constants::Auth::CSP_TYPES)
+              credential_service_providers: SignIn::Constants::Auth::CSP_TYPES.without(SignIn::Constants::Auth::ENTRA))
 
 # Create Config for VA flagship mobile Sign in Service client
 vamobile = SignIn::ClientConfig.find_or_initialize_by(client_id: 'vamobile')
@@ -122,7 +122,9 @@ vamock.update!(authentication: SignIn::Constants::Auth::MOCK,
                access_token_audience: 'va.gov',
                logout_redirect_uri: 'http://localhost:3001',
                shared_sessions: true,
-               refresh_token_duration: SignIn::Constants::RefreshToken::VALIDITY_LENGTH_SHORT_MINUTES)
+               refresh_token_duration: SignIn::Constants::RefreshToken::VALIDITY_LENGTH_SHORT_MINUTES,
+               credential_service_providers: [SignIn::Constants::Auth::IDME, SignIn::Constants::Auth::LOGINGOV,
+                                              SignIn::Constants::Auth::MHV, SignIn::Constants::Auth::ENTRA])
 
 # Create Config for mobile mocked authentication client
 vamock_mobile = SignIn::ClientConfig.find_or_initialize_by(client_id: 'vamock-mobile')

@@ -12,7 +12,9 @@ FactoryBot.define do
         "#{digits[0..9]}V#{digits[10..]}"
       end
       user_account { create(:user_account, icn:) }
-      user_verification { create(:user_verification, user_account:, idme_uuid:, logingov_uuid:, clear_uuid:) }
+      user_verification do
+        create(:user_verification, user_account:, idme_uuid:, logingov_uuid:, clear_uuid:, entra_uuid:)
+      end
       authn_context { LOA::IDME_LOA1_VETS }
       email { 'abraham.lincoln@vets.gov' }
       first_name { 'abraham' }
@@ -25,6 +27,7 @@ FactoryBot.define do
       idme_uuid { Faker::Alphanumeric.alphanumeric(number: 32) }
       logingov_uuid { nil }
       clear_uuid { nil }
+      entra_uuid { nil }
       verified_at { nil }
       sec_id { '123498767' }
       participant_id { Faker::Number.number(digits: 8) }
@@ -104,6 +107,7 @@ FactoryBot.define do
           idme_uuid:,
           logingov_uuid:,
           clear_uuid:,
+          entra_uuid:,
           verified_at:,
           sec_id:,
           icn:,

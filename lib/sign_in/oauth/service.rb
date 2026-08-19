@@ -30,9 +30,9 @@ module SignIn
       end
 
       def normalized_attributes(user_info, credential_level)
-        base_attributes(user_info, credential_level)
-          .merge(credential_attributes(user_info))
-          .tap { |attributes| attributes[:digest] = credential_attributes_digest(attributes, user_info.sub) }
+        attributes = base_attributes(user_info, credential_level).merge(credential_attributes(user_info))
+        attributes[:digest] = credential_attributes_digest(attributes, user_info.sub) if digest_credential_attributes?
+        attributes
       end
 
       def token(code, ...)
@@ -166,6 +166,10 @@ module SignIn
 
       def valid_optional_scopes(optional_scopes)
         optional_scopes.to_a & self.class::OPTIONAL_SCOPES
+      end
+
+      def digest_credential_attributes?
+        true
       end
 
       def credential_attributes_digest(attributes, credential_uuid)

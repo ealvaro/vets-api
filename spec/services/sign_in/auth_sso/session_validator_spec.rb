@@ -126,6 +126,7 @@ RSpec.describe SignIn::AuthSSO::SessionValidator do
           idme_uuid: user_verification.idme_uuid,
           logingov_uuid: user_verification.logingov_uuid,
           clear_uuid: user_verification.clear_uuid,
+          entra_uuid: user_verification.entra_uuid,
           credential_email: session.credential_email,
           mhv_credential_uuid: user_verification.mhv_uuid,
           first_name: session.user_attributes_hash[:first_name],
@@ -147,6 +148,19 @@ RSpec.describe SignIn::AuthSSO::SessionValidator do
 
         it 'sets the session assurance level to IAL2' do
           expect(validator.perform[:acr]).to eq(SignIn::Constants::Auth::IAL2)
+        end
+      end
+
+      context 'and the credential is Entra' do
+        let(:credential_service_providers) { %w[idme logingov entra] }
+        let!(:user_verification) { create(:entra_user_verification, user_account:) }
+
+        it 'sets the session assurance level to IAL2' do
+          expect(validator.perform[:acr]).to eq(SignIn::Constants::Auth::IAL2)
+        end
+
+        it 'returns the entra_uuid in the user attributes' do
+          expect(validator.perform[:entra_uuid]).to eq(user_verification.entra_uuid)
         end
       end
     end

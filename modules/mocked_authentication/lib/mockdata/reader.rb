@@ -6,14 +6,17 @@ module MockedAuthentication
       LOGINGOV_CREDENTIAL_FILEPATH = 'logingov'
       IDME_CREDENTIAL_FILEPATH = 'idme'
       MHV_CREDENTIAL_FILEPATH = 'mhv'
+      ENTRA_CREDENTIAL_FILEPATH = 'entra'
 
       IDME_MPI_FILEPATH = 'profile_idme_uuid'
       LOGINGOV_MPI_FILEPATH = 'profile_logingov_uuid'
+      ENTRA_MPI_FILEPATH = 'profile_icn'
 
       def self.find_credentials(credential_type:)
         credential_file_names = get_credential_file_names_for_type(credential_type)
         mpi_directory = get_mpi_file_directory_for_type(credential_type)
-        get_mocked_credential_data(credential_file_names, mpi_directory)
+        mpi_identifier_key = get_mpi_identifier_key_for_type(credential_type)
+        get_mocked_credential_data(credential_file_names, mpi_directory, mpi_identifier_key)
       end
 
       class << self
@@ -42,6 +45,8 @@ module MockedAuthentication
             LOGINGOV_CREDENTIAL_FILEPATH
           when SignIn::Constants::Auth::MHV
             MHV_CREDENTIAL_FILEPATH
+          when SignIn::Constants::Auth::ENTRA
+            ENTRA_CREDENTIAL_FILEPATH
           end
         end
 
@@ -51,25 +56,31 @@ module MockedAuthentication
             IDME_MPI_FILEPATH
           when SignIn::Constants::Auth::LOGINGOV
             LOGINGOV_MPI_FILEPATH
+          when SignIn::Constants::Auth::ENTRA
+            ENTRA_MPI_FILEPATH
           end
         end
 
-        def get_mocked_credential_data(credential_file_names, mpi_directory)
+        def get_mpi_identifier_key_for_type(type)
+          type == SignIn::Constants::Auth::ENTRA ? 'icn' : 'sub'
+        end
+
+        def get_mocked_credential_data(credential_file_names, mpi_directory, mpi_identifier_key)
           mocked_credential_data = {}
           credential_file_names.each do |credential_file_name|
             credential_user_identifier = File.basename(credential_file_name, '.json')
             mocked_credential_data[credential_user_identifier] =
-              update_mocked_credential_data(credential_file_name, mpi_directory)
+              update_mocked_credential_data(credential_file_name, mpi_directory, mpi_identifier_key)
           end
 
           mocked_credential_data
         end
 
-        def update_mocked_credential_data(credential_file_name, mpi_directory)
+        def update_mocked_credential_data(credential_file_name, mpi_directory, mpi_identifier_key)
           credential_file = File.read(credential_file_name)
           encoded_credential_file = Base64.encode64(credential_file)
           credential_data = JSON.parse(credential_file)
-          mpi_file = "#{mpi_directory}/#{credential_data['sub']}.yml"
+          mpi_file = "#{mpi_directory}/#{credential_data[mpi_identifier_key]}.yml"
 
           {
             encoded_credential: encoded_credential_file,

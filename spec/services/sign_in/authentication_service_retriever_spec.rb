@@ -68,6 +68,15 @@ RSpec.describe SignIn::AuthenticationServiceRetriever do
         end
       end
 
+      context 'and type is equal to entra' do
+        let(:type) { SignIn::Constants::Auth::ENTRA }
+        let(:expected_credential_service) { SignIn::Entra::Service }
+
+        it 'returns expected credential service object' do
+          expect(subject).to be_a(expected_credential_service)
+        end
+      end
+
       context 'and type is not equal to logingov' do
         let(:type) { 'some-type' }
         let(:expected_credential_service) { SignIn::Idme::Service }

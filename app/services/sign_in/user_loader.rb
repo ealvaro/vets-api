@@ -79,6 +79,7 @@ module SignIn
         idme_uuid: user_verification.idme_uuid || user_verification.backing_idme_uuid,
         logingov_uuid: user_verification.logingov_uuid,
         clear_uuid: user_verification.clear_uuid,
+        entra_uuid: user_verification.entra_uuid,
         loa:,
         email: session.credential_email,
         authn_context:,
@@ -108,15 +109,18 @@ module SignIn
         user_is_verified? ? Constants::Auth::LOGIN_GOV_IAL2 : Constants::Auth::LOGIN_GOV_IAL1
       when Constants::Auth::CLEAR
         user_is_verified? ? Constants::Auth::CLEAR_IAL2 : Constants::Auth::CLEAR_IAL1
+      when Constants::Auth::ENTRA
+        Constants::Auth::ENTRA_IAL2
       end
     end
 
     def multifactor
-      user_is_verified? && idme_logingov_or_clear_service
+      user_is_verified? && multifactor_service
     end
 
-    def idme_logingov_or_clear_service
-      [Constants::Auth::IDME, Constants::Auth::LOGINGOV, Constants::Auth::CLEAR].include?(sign_in[:service_name])
+    def multifactor_service
+      [Constants::Auth::IDME, Constants::Auth::LOGINGOV, Constants::Auth::CLEAR,
+       Constants::Auth::ENTRA].include?(sign_in[:service_name])
     end
 
     def user_is_verified?
@@ -133,7 +137,8 @@ module SignIn
         {
           idme: user_verifications.idme.count,
           logingov: user_verifications.logingov.count,
-          clear: user_verifications.clear.count
+          clear: user_verifications.clear.count,
+          entra: user_verifications.entra.count
         }
       end
     end

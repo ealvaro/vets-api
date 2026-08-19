@@ -101,11 +101,12 @@ describe SignIn::Entra::Service do
         subject.token(code)
       end
 
-      it 'returns the access and id tokens', vcr: { cassette_name: 'identity/entra_200_responses' } do
+      it 'returns the id token as the access token', vcr: { cassette_name: 'identity/entra_200_responses' } do
         result = subject.token(code)
+        decoded_token = JWT.decode(result[:access_token], nil, false).first
 
-        expect(result.keys).to contain_exactly(:access_token, :id_token)
-        expect(JWT.decode(result[:id_token], nil, false).first).to include('preferred_username' => 'john.doe@va.gov')
+        expect(result.keys).to contain_exactly(:access_token)
+        expect(decoded_token).to include('preferred_username' => 'john.doe@va.gov')
       end
 
       it 'makes a form urlencoded request with the expected body',
@@ -168,7 +169,7 @@ describe SignIn::Entra::Service do
     after { Timecop.return }
 
     context 'when the id token is valid' do
-      let(:id_token) { subject.token(code)[:id_token] }
+      let(:id_token) { subject.token(code)[:access_token] }
       let(:expected_jwks_fetch_log) { '[SignIn][Entra][Service] Get Public JWKs Success' }
 
       it 'fetches the public jwks to verify the id token signature',
@@ -207,7 +208,7 @@ describe SignIn::Entra::Service do
     end
 
     context 'when the id token is expired' do
-      let(:id_token) { subject.token(code)[:id_token] }
+      let(:id_token) { subject.token(code)[:access_token] }
       let(:expected_error) { SignIn::OAuth::Errors::JWTExpiredError }
       let(:expected_error_message) { '[SignIn][Entra][Service] JWT has expired' }
 
@@ -235,8 +236,6 @@ describe SignIn::Entra::Service do
     end
     let(:attributes) { subject.normalized_attributes(user_info, credential_level) }
 
-    let(:digest) { 'some-digest' }
-    let(:credential_digester) { instance_double(SignIn::CredentialAttributesDigester, perform: digest) }
     let(:expected_attributes) do
       {
         entra_uuid: user_uuid,
@@ -250,15 +249,18 @@ describe SignIn::Entra::Service do
         multifactor: true,
         service_name: 'entra',
         authn_context: SignIn::Constants::Auth::ENTRA_IAL2,
-        auto_uplevel: false,
-        digest:
+        auto_uplevel: false
       }
     end
 
-    before { allow(SignIn::CredentialAttributesDigester).to receive(:new).and_return(credential_digester) }
-
     it 'returns the expected attributes from the id token claims' do
       expect(attributes).to eq(expected_attributes)
+    end
+
+    it 'does not digest the credential attributes' do
+      expect(SignIn::CredentialAttributesDigester).not_to receive(:new)
+
+      attributes
     end
   end
 end

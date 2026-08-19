@@ -60,10 +60,7 @@ module V0
         if client_config(client_id).blank?
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Client id is not valid'
         end
-        unless client_config(client_id).valid_credential_service_provider?(type)
-          raise ::SignIn::Errors::MalformedParamsError.new message: 'Type is not valid'
-        end
-        if type == ::SignIn::Constants::Auth::CLEAR && !IdentitySettings.clear.enabled
+        unless client_config(client_id).valid_credential_service_provider?(type) && csp_enabled?(type)
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Type is not valid'
         end
         unless ::SignIn::Constants::Auth::OPERATION_TYPES.include?(operation)
@@ -74,6 +71,17 @@ module V0
         end
         if prompt.present? && ::SignIn::Constants::Auth::PROMPT_TYPES.exclude?(prompt)
           raise ::SignIn::Errors::MalformedParamsError.new message: 'Prompt is not valid'
+        end
+      end
+
+      def csp_enabled?(type)
+        case type
+        when ::SignIn::Constants::Auth::CLEAR
+          IdentitySettings.clear.enabled
+        when ::SignIn::Constants::Auth::ENTRA
+          IdentitySettings.entra.enabled
+        else
+          true
         end
       end
     end

@@ -9,6 +9,7 @@ module Login
                    logingov_uuid:,
                    icn:,
                    clear_uuid: nil,
+                   entra_uuid: nil,
                    credential_attributes_digest: nil)
       @login_type = login_type
       @auth_broker = auth_broker
@@ -16,6 +17,7 @@ module Login
       @idme_uuid = idme_uuid
       @logingov_uuid = logingov_uuid
       @clear_uuid = clear_uuid
+      @entra_uuid = entra_uuid
       @icn = icn.presence
       @credential_attributes_digest = credential_attributes_digest
       @deprecated_log = nil
@@ -35,6 +37,7 @@ module Login
                 :idme_uuid,
                 :logingov_uuid,
                 :clear_uuid,
+                :entra_uuid,
                 :icn,
                 :deprecated_log,
                 :user_account_mismatch_log,
@@ -48,6 +51,7 @@ module Login
     IDME_TYPE = :idme_uuid
     LOGINGOV_TYPE = :logingov_uuid
     CLEAR_TYPE = :clear_uuid
+    ENTRA_TYPE = :entra_uuid
 
     # Queries for a UserVerification on the user, based off the credential identifier
     # If a UserVerification doesn't exist, create one and a UserAccount record associated
@@ -210,6 +214,8 @@ module Login
                   LOGINGOV_TYPE
                 when SignIn::Constants::Auth::CLEAR
                   CLEAR_TYPE
+                when SignIn::Constants::Auth::ENTRA
+                  ENTRA_TYPE
                 end
     end
 
@@ -223,6 +229,8 @@ module Login
                         logingov_uuid
                       when CLEAR_TYPE
                         clear_uuid
+                      when ENTRA_TYPE
+                        entra_uuid
                       end
     end
   end
