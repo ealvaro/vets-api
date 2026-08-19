@@ -34,23 +34,28 @@ module Mobile
 
       SURVEY_TYPES = %w[giveFeedback].freeze
 
-      def perform
-        SURVEY_TYPES.each { |survey_type| process_survey_type(survey_type) }
+      # @param preserve_data [Boolean] When true, uploaded records are not deleted after a successful upload.
+      #   Useful for dry-run/debugging scenarios. Defaults to false (records are deleted after upload).
+      # @param survey_types [String, Array<String>] One or more survey types to process.
+      #   Each value is matched against the `survey_type` column on Mobile::SurveyResponse.
+      #   Defaults to SURVEY_TYPES, which includes all survey types to be included in the default processing.
+      def perform(preserve_data: false, survey_types: SURVEY_TYPES)
+        Array(survey_types).each { |survey_type| process_survey_type(survey_type, preserve_data) }
       end
 
       private
 
-      def process_survey_type(survey_type)
+      def process_survey_type(survey_type, preserve_data)
+        Rails.logger.info('Mobile survey response upload starting', { survey_type: })
         survey_responses = Mobile::SurveyResponse.where(survey_type:).order(:id).to_a
         response_ids = survey_responses.map(&:id)
 
         if response_ids.blank?
-          Rails.logger.info('Mobile survey response upload skipped - no matching responses',
-                            { survey_type: })
+          Rails.logger.info('Mobile survey response upload skipped - no matching responses', { survey_type: })
           return
         end
 
-        upload_survey_responses(survey_type, survey_responses, response_ids)
+        upload_survey_responses(survey_type, survey_responses, response_ids, preserve_data)
       rescue SharePoint::AuthenticationError => e
         Rails.logger.error('Mobile survey response upload authentication failed',
                            { survey_type:, error_class: e.class.name })
@@ -65,8 +70,8 @@ module Mobile
         raise
       end
 
-      def upload_survey_responses(survey_type, survey_responses, response_ids)
-        survey_type_snake = survey_type.to_s.underscore
+      def upload_survey_responses(survey_type, survey_responses, response_ids, preserve_data)
+        survey_type_snake = survey_type.to_s.underscore.gsub(/[^a-z0-9_]/, '')
         base_sharepoint_path = Settings.sharepoint.mobile_survey_storage.filepath.to_s
         sharepoint_path = [base_sharepoint_path, survey_type_snake].compact_blank.join('/')
         csv_data = build_csv_data(survey_responses)
@@ -79,16 +84,17 @@ module Mobile
 
         raise UploadError, "SharePoint upload failed with status: #{response.status}" unless response.success?
 
-        Mobile::SurveyResponse.where(id: response_ids).delete_all
-        log_upload_success(survey_type, response, response_ids.size)
+        Mobile::SurveyResponse.where(id: response_ids).delete_all unless preserve_data
+        log_upload_success(survey_type, response, response_ids.size, preserve_data)
       end
 
-      def log_upload_success(survey_type, response, count)
+      def log_upload_success(survey_type, response, count, preserve_data)
         Rails.logger.info('Mobile survey response upload succeeded',
                           {
                             survey_type:,
                             status: response.status,
-                            uploaded_count: count
+                            uploaded_count: count,
+                            preserve_data:
                           })
       end
 
