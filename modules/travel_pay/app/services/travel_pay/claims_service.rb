@@ -238,15 +238,44 @@ module TravelPay
 
     def rescue_pagination_errors(e, claims)
       if claims[:data].empty?
-        monitor.track_request(:error, "#{e}. Could not retrieve claims by date range.",
-                              'travel_pay.claims.pagination_error')
-        raise
+        if forbidden_error?(e)
+          # A 403 here usually means a non-veteran hit this endpoint
+          # Treat it as "no claims" rather than an error and log details for insight
+          log_forbidden_request_details
+          empty_claims_list
+        else
+          monitor.track_request(:error, "#{e}. Could not retrieve claims by date range.",
+                                'travel_pay.claims.pagination_error')
+          raise
+        end
       else
         claims => { data:, total_record_count:, page_number: }
         monitor.log(:error,
                     "#{e}. Retrieved #{data.size} of #{total_record_count} claims, ending on page #{page_number}.")
         build_claims_response({ **claims, status: 206 })
       end
+    end
+
+    def forbidden_error?(e)
+      e.is_a?(Common::Exceptions::BackendServiceException) && e.original_status == 403
+    end
+
+    def log_forbidden_request_details
+      mpi_cached = MPIData.for_user(@user.identity).mpi_response_is_cached?
+
+      monitor.log(
+        :info,
+        'travel_pay_claims_403_signals',
+        loa: @user.loa[:current],
+        is_veteran: mpi_cached ? @user.person_types.include?('VET') : nil,
+        has_facilities: mpi_cached ? @user.vha_facility_ids.any? : nil
+      )
+    rescue => e
+      monitor.log(:warn, "travel_pay_claims_403_signals could not be logged: #{e.message}")
+    end
+
+    def empty_claims_list
+      build_claims_response({ data: [], total_record_count: 0, page_number: DEFAULT_PAGE_NUMBER, status: 200 })
     end
 
     def client

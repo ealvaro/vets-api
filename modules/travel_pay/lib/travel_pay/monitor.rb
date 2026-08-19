@@ -32,6 +32,9 @@ module TravelPay
       error
       code
       status
+      loa
+      is_veteran
+      has_facilities
     ].freeze
 
     def initialize

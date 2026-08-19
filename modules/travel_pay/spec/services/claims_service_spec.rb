@@ -346,6 +346,9 @@ describe TravelPay::ClaimsService do
   end
 
   context 'get_claims_by_date_range' do
+    let(:user_details) { { loa: { current: 3 }, person_types: ['VET'], vha_facility_ids: [668] } }
+    let(:mpi) { instance_double(MPIData, mpi_response_is_cached?: true) }
+
     let(:claims_by_date_meta) do
       {
         'statusCode' => 200,
@@ -460,6 +463,7 @@ describe TravelPay::ClaimsService do
     before do
       allow(Rails.logger).to receive(:info)
       allow(Rails.logger).to receive(:error)
+      allow(MPIData).to receive(:for_user).and_return(mpi)
     end
 
     it 'paginates and returns claims that are in the specified date range' do
@@ -613,6 +617,125 @@ describe TravelPay::ClaimsService do
       end.to raise_error(Common::Exceptions::BackendServiceException)
       expect(Rails.logger).to have_received(:error).with(
         a_string_matching(/Could not retrieve claim/i), hash_including(service: 'travel-pay')
+      )
+    end
+
+    it 'returns an empty claims list if BTSSS returns a 403 with no claims retrieved yet' do
+      allow_any_instance_of(TravelPay::ClaimsClient)
+        .to receive(:get_claims_by_date)
+        .with(auth_session, {
+                start_date: '2024-01-01T16:45:34Z',
+                end_date: '2024-03-01T16:45:34Z',
+                page_size: 1,
+                page_number: 1
+              })
+        .and_raise(Common::Exceptions::BackendServiceException.new(
+                     'VA900',
+                     { source: 'test' },
+                     403,
+                     {
+                       'statusCode' => 403,
+                       'message' => 'Forbidden.',
+                       'success' => false,
+                       'data' => nil
+                     }
+                   ))
+
+      allow(user).to receive_messages(user_details)
+
+      claims_by_date = service.get_claims_by_date_range({
+                                                          'start_date' => '2024-01-01T16:45:34Z',
+                                                          'end_date' => '2024-03-01T16:45:34Z',
+                                                          'page_size' => 1
+                                                        })
+
+      expect(claims_by_date[:data]).to eq([])
+      expect(claims_by_date[:metadata]['status']).to equal(200)
+      expect(claims_by_date[:metadata]['totalRecordCount']).to equal(0)
+      expect(Rails.logger).to have_received(:info).with(
+        'travel_pay_claims_403_signals',
+        hash_including(
+          service: 'travel-pay',
+          context: hash_including(
+            loa: user_details[:loa][:current],
+            is_veteran: user_details[:person_types].include?('VET'),
+            has_facilities: user_details[:vha_facility_ids].any?
+          )
+        )
+      )
+    end
+
+    it 'logs is_veteran/has_facilities as unknown if MPI is not already cached, without fetching it' do
+      allow_any_instance_of(TravelPay::ClaimsClient)
+        .to receive(:get_claims_by_date)
+        .with(auth_session, {
+                start_date: '2024-01-01T16:45:34Z',
+                end_date: '2024-03-01T16:45:34Z',
+                page_size: 1,
+                page_number: 1
+              })
+        .and_raise(Common::Exceptions::BackendServiceException.new(
+                     'VA900',
+                     { source: 'test' },
+                     403,
+                     {
+                       'statusCode' => 403,
+                       'message' => 'Forbidden.',
+                       'success' => false,
+                       'data' => nil
+                     }
+                   ))
+
+      allow(MPIData).to receive(:for_user).and_return(instance_double(MPIData, mpi_response_is_cached?: false))
+      allow(user).to receive_messages(loa: user_details[:loa])
+      expect(user).not_to receive(:person_types)
+      expect(user).not_to receive(:vha_facility_ids)
+
+      claims_by_date = service.get_claims_by_date_range({
+                                                          'start_date' => '2024-01-01T16:45:34Z',
+                                                          'end_date' => '2024-03-01T16:45:34Z',
+                                                          'page_size' => 1
+                                                        })
+
+      expect(claims_by_date[:data]).to eq([])
+      expect(Rails.logger).to have_received(:info).with(
+        'travel_pay_claims_403_signals',
+        hash_including(
+          context: hash_including(loa: user_details[:loa][:current], is_veteran: nil, has_facilities: nil)
+        )
+      )
+    end
+
+    it 'raises an exception for a non-403 error even with 403 handling in place' do
+      allow_any_instance_of(TravelPay::ClaimsClient)
+        .to receive(:get_claims_by_date)
+        .with(auth_session, {
+                start_date: '2024-01-01T16:45:34Z',
+                end_date: '2024-03-01T16:45:34Z',
+                page_size: 1,
+                page_number: 1
+              })
+        .and_raise(Common::Exceptions::BackendServiceException.new(
+                     'VA900',
+                     { source: 'test' },
+                     500,
+                     {
+                       'statusCode' => 500,
+                       'message' => 'Internal Server Error.',
+                       'success' => false,
+                       'data' => nil
+                     }
+                   ))
+
+      expect do
+        service.get_claims_by_date_range({
+                                           'start_date' => '2024-01-01T16:45:34Z',
+                                           'end_date' => '2024-03-01T16:45:34Z',
+                                           'page_size' => 1
+                                         })
+      end.to raise_error(Common::Exceptions::BackendServiceException)
+      expect(Rails.logger).to have_received(:error).with(
+        a_string_matching(/Could not retrieve claims by date range/i), hash_including(service: 'travel-pay')
       )
     end
 
