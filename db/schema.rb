@@ -1329,6 +1329,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_224744) do
     t.string "user_uuid", null: false
     t.boolean "workflow_complete", default: false, null: false
     t.index ["backup_submitted_claim_id"], name: "index_form526_submissions_on_backup_submitted_claim_id"
+    t.index ["created_at"], name: "index_form526_submissions_on_created_at"
     t.index ["needs_kms_rotation"], name: "index_form526_submissions_on_needs_kms_rotation"
     t.index ["saved_claim_id"], name: "index_form526_submissions_on_saved_claim_id", unique: true
     t.index ["submitted_claim_id"], name: "index_form526_submissions_on_submitted_claim_id", unique: true
