@@ -294,67 +294,135 @@ describe IvcChampva::PdfStamper do
     let(:out_path) { "#{random_path}.pdf" }
     let(:pdftk_error_message) { 'java.lang.ClassCastException: pdftk crashed' }
 
-    context 'when an error occurs during stamping' do
+    context 'when champva_pdf_stamper_use_hexapdf is enabled' do
       before do
+        allow(Flipper).to receive(:enabled?).with(:champva_pdf_stamper_use_hexapdf).and_return(true)
         allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
-        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(StandardError, 'pdftk error')
-      end
-
-      it 'attempts to delete the temporary stamping file' do
-        expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
-        expect { perform_multistamp }.to raise_error(StandardError, 'pdftk error')
-      end
-
-      context 'when deleting the temporary stamping file fails' do
-        before do
-          allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_raise(Errno::ENOENT, out_path)
-        end
-
-        it 'proceeds gracefully' do
-          expect { perform_multistamp }.to raise_error(StandardError, 'pdftk error')
-        end
-      end
-    end
-
-    context 'when pdftk raises PdfForms::PdftkError' do
-      before do
-        allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
-        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
-          .and_raise(PdfForms::PdftkError, pdftk_error_message)
-        allow(StatsD).to receive(:increment)
         allow(described_class).to receive(:perform_multistamp_with_hexapdf)
         allow(File).to receive(:delete)
         allow(File).to receive(:rename)
       end
 
-      it 'falls back to HexaPDF watermark stamping instead of raising' do
+      it 'stamps the pdf using HexaPDF directly, without calling pdftk' do
+        expect(PdfFill::Filler::PDF_FORMS).not_to receive(:multistamp)
         expect { perform_multistamp }.not_to raise_error
 
         expect(described_class).to have_received(:perform_multistamp_with_hexapdf).with(
           stamped_template_path, stamp_path, out_path
         )
-        expect(StatsD).to have_received(:increment).with('api.ivc_champva.pdftk_fallback')
         expect(File).to have_received(:delete).with(stamped_template_path)
         expect(File).to have_received(:rename).with(out_path, stamped_template_path)
       end
+
+      context 'when an error occurs during stamping' do
+        before do
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+            .and_raise(StandardError, 'hexapdf error')
+        end
+
+        it 'attempts to delete the temporary stamping file' do
+          expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
+          expect { perform_multistamp }.to raise_error(StandardError, 'hexapdf error')
+        end
+
+        context 'when deleting the temporary stamping file fails' do
+          before do
+            allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_raise(Errno::ENOENT, out_path)
+          end
+
+          it 'proceeds gracefully' do
+            expect { perform_multistamp }.to raise_error(StandardError, 'hexapdf error')
+          end
+        end
+      end
     end
 
-    context 'when the HexaPDF fallback itself fails' do
+    context 'when champva_pdf_stamper_use_hexapdf is disabled' do
       before do
+        allow(Flipper).to receive(:enabled?).with(:champva_pdf_stamper_use_hexapdf).and_return(false)
         allow(Common::FileHelpers).to receive(:random_file_path).and_return(random_path)
-        allow(Common::FileHelpers).to receive(:delete_file_if_exists)
-        allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
-          .and_raise(PdfForms::PdftkError, pdftk_error_message)
-        allow(StatsD).to receive(:increment)
-        allow(described_class).to receive(:perform_multistamp_with_hexapdf)
-          .and_raise(StandardError, 'hexapdf also failed')
       end
 
-      it 'still cleans up and reraises, same as any other stamping failure' do
-        expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
-        expect { perform_multistamp }.to raise_error(StandardError, 'hexapdf also failed')
+      context 'when pdftk succeeds' do
+        before do
+          allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+          allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+          allow(File).to receive(:delete)
+          allow(File).to receive(:rename)
+        end
+
+        it 'stamps via pdftk and does not fall back to HexaPDF' do
+          expect { perform_multistamp }.not_to raise_error
+
+          expect(PdfFill::Filler::PDF_FORMS).to have_received(:multistamp).with(
+            stamped_template_path, stamp_path, out_path
+          )
+          expect(described_class).not_to have_received(:perform_multistamp_with_hexapdf)
+          expect(File).to have_received(:delete).with(stamped_template_path)
+          expect(File).to have_received(:rename).with(out_path, stamped_template_path)
+        end
+      end
+
+      context 'when an error occurs during stamping' do
+        before do
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp).and_raise(StandardError, 'pdftk error')
+        end
+
+        it 'attempts to delete the temporary stamping file' do
+          expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
+          expect { perform_multistamp }.to raise_error(StandardError, 'pdftk error')
+        end
+
+        context 'when deleting the temporary stamping file fails' do
+          before do
+            allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_raise(Errno::ENOENT, out_path)
+          end
+
+          it 'proceeds gracefully' do
+            expect { perform_multistamp }.to raise_error(StandardError, 'pdftk error')
+          end
+        end
+      end
+
+      context 'when pdftk raises PdfForms::PdftkError' do
+        before do
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+            .and_raise(PdfForms::PdftkError, pdftk_error_message)
+          allow(StatsD).to receive(:increment)
+          allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+          allow(File).to receive(:delete)
+          allow(File).to receive(:rename)
+        end
+
+        it 'falls back to HexaPDF watermark stamping instead of raising' do
+          expect { perform_multistamp }.not_to raise_error
+
+          expect(described_class).to have_received(:perform_multistamp_with_hexapdf).with(
+            stamped_template_path, stamp_path, out_path
+          )
+          expect(StatsD).to have_received(:increment).with('api.ivc_champva.pdftk_fallback')
+          expect(File).to have_received(:delete).with(stamped_template_path)
+          expect(File).to have_received(:rename).with(out_path, stamped_template_path)
+        end
+      end
+
+      context 'when the HexaPDF fallback itself fails' do
+        before do
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(PdfFill::Filler::PDF_FORMS).to receive(:multistamp)
+            .and_raise(PdfForms::PdftkError, pdftk_error_message)
+          allow(StatsD).to receive(:increment)
+          allow(described_class).to receive(:perform_multistamp_with_hexapdf)
+            .and_raise(StandardError, 'hexapdf also failed')
+        end
+
+        it 'still cleans up and reraises, same as any other stamping failure' do
+          expect(Common::FileHelpers).to receive(:delete_file_if_exists).with(out_path)
+          expect { perform_multistamp }.to raise_error(StandardError, 'hexapdf also failed')
+        end
       end
     end
   end
@@ -388,10 +456,8 @@ describe IvcChampva::PdfStamper do
       context 'when the stamped file size is less than the original' do
         let(:stamped_size) { orig_size - 1 }
 
-        it 'raises an error message' do
-          expect { verify }.to raise_error(
-            'An error occurred while verifying stamp: The PDF remained unchanged upon stamping.'
-          )
+        it 'succeeds, since HexaPDF may recompress and shrink the file even when content was added' do
+          expect { verify }.not_to raise_error
         end
       end
     end

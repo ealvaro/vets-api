@@ -578,6 +578,10 @@ features:
   champva_ignore_recent_missing_statuses:
     actor_type: user
     description: Enables ignoring the most recent form submissions in the MissingFormStatusJob
+  champva_pdf_stamper_use_hexapdf:
+    actor_type: user
+    description: If enabled, IVC CHAMPVA PdfStamper uses HexaPDF directly for overlay stamping instead of pdftk
+      (pdftk with a HexaPDF fallback is used when disabled).
   chapter_36_form_dd_rum_monitoring:
     actor_type: user
     description: Enables Datadog Real User Monitoring for the Chapter 36 (PCPG) form

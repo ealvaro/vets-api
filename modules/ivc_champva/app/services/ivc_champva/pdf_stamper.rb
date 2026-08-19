@@ -192,35 +192,38 @@ module IvcChampva
     end
     # rubocop:enable Metrics/MethodLength
 
-    # pdftk (specifically pdftk-java) has known, longstanding bugs where certain
-    # non-conforming AcroForm structures in the input PDF cause it to crash with an
-    # unhandled java.lang.ClassCastException (see e.g. gitlab.com/pdftk-java/pdftk
-    # issues #17, #45, #47, #110, #139, #166). When that happens we fall back to
-    # HexaPDF's watermark CLI, which does not share pdftk-java's AcroForm parsing
-    # bugs and is already used elsewhere in this codebase for the same kind of
-    # overlay stamping (see PDFUtilities::PDFStamper).
+    # pdftk (specifically pdftk-java) has known, longstanding bugs where certain non-conforming
+    # AcroForm structures in the input PDF cause it to crash with an unhandled
+    # java.lang.ClassCastException (see e.g. gitlab.com/pdftk-java/pdftk issues #17, #45, #47, #110,
+    # #139, #166). Behind champva_pdf_stamper_use_hexapdf, HexaPDF is used directly, skipping pdftk
+    # entirely; otherwise pdftk is tried first and falls back to HexaPDF on that known bug.
     def self.perform_multistamp(stamped_template_path, stamp_path) # rubocop:disable Metrics/MethodLength
       Rails.logger.info 'IVC Champva Forms - PdfStamper: entered perform_multistamp'
       out_path = "#{Common::FileHelpers.random_file_path}.pdf"
-      pdftk = PdfFill::Filler::PDF_FORMS
-      Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp calling pdftk.multistamp'
-      begin
-        pdftk.multistamp(stamped_template_path, stamp_path, out_path)
-      rescue PdfForms::PdftkError => e
-        if e.message.include?('ClassCastException')
-          Rails.logger.warn(
-            "IVC Champva Forms - PdfStamper: pdftk failed with known ClassCastException bug (#{e.class}), " \
-            'falling back to HexaPDF watermark stamping'
-          )
-          StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
-          perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
-        else
-          raise
+      if Flipper.enabled?(:champva_pdf_stamper_use_hexapdf)
+        Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp calling perform_multistamp_with_hexapdf'
+        perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+      else
+        pdftk = PdfFill::Filler::PDF_FORMS
+        Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp calling pdftk.multistamp'
+        begin
+          pdftk.multistamp(stamped_template_path, stamp_path, out_path)
+        rescue PdfForms::PdftkError => e
+          if e.message.include?('ClassCastException')
+            Rails.logger.warn(
+              "IVC Champva Forms - PdfStamper: pdftk failed with known ClassCastException bug (#{e.class}), " \
+              'falling back to HexaPDF watermark stamping'
+            )
+            StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
+            perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
+          else
+            raise
+          end
         end
       end
-      Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post pdftk.multistamp delete'
+      Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post stamping delete'
       File.delete(stamped_template_path)
-      Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post pdftk.multistamp rename'
+      Rails.logger.info 'IVC Champva Forms - PdfStamper: perform_multistamp post stamping rename'
       File.rename(out_path, stamped_template_path)
     rescue
       begin
@@ -236,7 +239,7 @@ module IvcChampva
       raise
     end
 
-    # Fallback used when pdftk fails with PdfForms::PdftkError.
+    # Fallback used when pdftk fails (or default flow, behind champva_pdf_stamper_use_hexapdf).
     # Mirrors PDFUtilities::PDFStamper#stamp_pdf's approach.
     # @see https://github.com/gettalong/hexapdf/blob/master/lib/hexapdf/cli/watermark.rb
     def self.perform_multistamp_with_hexapdf(stamped_template_path, stamp_path, out_path)
@@ -265,7 +268,10 @@ module IvcChampva
       yield
       stamped_size = File.size(template_path)
 
-      raise StandardError, 'The PDF remained unchanged upon stamping.' unless stamped_size > orig_size
+      # HexaPDF recompresses PDF streams, so a stamped file can end up smaller than the
+      # original even though content was added - a strict size increase isn't a reliable
+      # signal, so just check that the file changed at all.
+      raise StandardError, 'The PDF remained unchanged upon stamping.' if stamped_size == orig_size
     rescue Prawn::Errors::IncompatibleStringEncoding
       Rails.logger.info 'IVC Champva Forms - PdfStamper: error on verify, incompatible string encoding, re-raising'
       raise
