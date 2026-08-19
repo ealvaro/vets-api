@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_220136) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_224744) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -640,6 +640,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_220136) do
     t.index ["md5"], name: "index_claims_api_auto_established_claims_on_md5"
     t.index ["needs_kms_rotation"], name: "index_claims_api_auto_established_claims_on_needs_kms_rotation"
     t.index ["source"], name: "index_claims_api_auto_established_claims_on_source"
+    t.index ["status", "created_at"], name: "index_claims_api_auto_established_claims_on_status_created_at"
     t.index ["veteran_icn"], name: "index_claims_api_auto_established_claims_on_veteran_icn"
   end
 
