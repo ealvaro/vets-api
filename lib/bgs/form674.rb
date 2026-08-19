@@ -8,6 +8,7 @@ require_relative 'vnp_benefit_claim'
 require_relative 'vnp_relationships'
 require_relative 'vnp_veteran'
 require_relative 'dependent_higher_ed_attendance'
+require_relative 'person_cache'
 require_relative '../bep/awards/service'
 
 module BGS
@@ -24,6 +25,7 @@ module BGS
       @claim_type_end_product = options[:claim_type_end_product]
       @update_proc_state_on_complete = options[:update_proc_state_on_complete]
       @options = options
+      @person_cache = options[:person_cache] || PersonCache.new(@user)
     end
 
     def submit(payload)
@@ -100,7 +102,9 @@ module BGS
       # if it's nil, it is v1.
       dependent_student_map = {}
       payload&.dig('dependents_application', 'student_information').to_a.each do |student|
-        dependent = DependentHigherEdAttendance.new(proc_id:, payload:, user: @user, student:).create
+        dependent = DependentHigherEdAttendance.new(proc_id:, payload:, user: @user, student:,
+                                                    person_cache: @person_cache).create
+
         dependents << dependent
         dependent_student_map[dependent[:vnp_participant_id]] = student
       end

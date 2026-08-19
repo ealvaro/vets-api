@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 require_relative 'service'
+require_relative 'person_cache'
 
 module BGS
   class Dependents
-    def initialize(proc_id:, payload:, user:)
+    def initialize(proc_id:, payload:, user:, person_cache: nil)
       @proc_id = proc_id
       @payload = payload
       @dependents = []
       @dependents_application = @payload['dependents_application']
       @user = user
       @views = payload['view:selectable686_options']
+      @person_cache = person_cache || PersonCache.new(@user)
     end
 
     def create_all
@@ -31,8 +33,7 @@ module BGS
 
         formatted_info = death.format_info
         death_info['dependent_death_location']['location']['state_code'] = death_info['dependent_death_location']['location'].delete('state') # rubocop:disable Layout/LineLength
-        participant = bgs_service.create_participant(@proc_id)
-        bgs_service.create_person(person_params(death, participant, formatted_info))
+        participant = @person_cache.create_person(person_params(death, {}, formatted_info))
         # Need to add death location once BGS adds support for this functionality
 
         @dependents << death.serialize_dependent_result(
@@ -52,8 +53,7 @@ module BGS
     def report_divorce
       divorce = BGSDependents::Divorce.new(@dependents_application['report_divorce'])
       formatted_info = divorce.format_info
-      participant = bgs_service.create_participant(@proc_id)
-      bgs_service.create_person(person_params(divorce, participant, formatted_info))
+      participant = @person_cache.create_person(person_params(divorce, {}, formatted_info))
 
       @dependents << divorce.serialize_dependent_result(
         participant,

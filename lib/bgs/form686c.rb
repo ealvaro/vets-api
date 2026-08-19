@@ -9,6 +9,7 @@ require_relative 'vnp_benefit_claim'
 require_relative 'vnp_relationships'
 require_relative 'vnp_veteran'
 require_relative 'children'
+require_relative 'person_cache'
 require_relative '../bep/awards/service'
 
 module BGS
@@ -31,6 +32,7 @@ module BGS
       @proc_id = options[:proc_id] if options.present?
       @claim_type_end_product = options[:claim_type_end_product]
       @options = options
+      @person_cache = options[:person_cache] || PersonCache.new(@user)
     end
 
     # rubocop:disable Metrics/MethodLength
@@ -80,9 +82,9 @@ module BGS
     private
 
     def process_relationships(proc_id, veteran, payload)
-      dependents = Dependents.new(proc_id:, payload:, user: @user).create_all
-      marriages = Marriages.new(proc_id:, payload:, user: @user).create_all
-      children = Children.new(proc_id:, payload:, user: @user).create_all
+      dependents = Dependents.new(proc_id:, payload:, user: @user, person_cache: @person_cache).create_all
+      marriages = Marriages.new(proc_id:, payload:, user: @user, person_cache: @person_cache).create_all
+      children = Children.new(proc_id:, payload:, user: @user, person_cache: @person_cache).create_all
 
       veteran_dependents = dependents + marriages + children[:dependents]
 

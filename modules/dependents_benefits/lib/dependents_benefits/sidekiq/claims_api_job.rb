@@ -10,6 +10,7 @@ require 'bgs/marriages'
 require 'bgs/children'
 require 'bgs/student_school'
 require 'bgs/dependent_higher_ed_attendance'
+require 'bgs/person_cache'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -195,19 +196,21 @@ module DependentsBenefits::Sidekiq
     # Send relationship data to VNP tables
     def send_vnp_relationship(proc_id, veteran)
       user = generate_user_struct
+      person_cache = ::BGS::PersonCache.new(user)
       # upload data for each spouse, child, parent, etc
       # report_death, report_divorce
-      dependents = ::BGS::Dependents.new(proc_id:, payload: normalized_data, user:).create_all
+      dependents = ::BGS::Dependents.new(proc_id:, payload: normalized_data, user:, person_cache:).create_all
 
       # veteran_marriage_history, spouse_marriage_history, add_spouse
-      marriages = ::BGS::Marriages.new(proc_id:, payload: normalized_data, user:).create_all
+      marriages = ::BGS::Marriages.new(proc_id:, payload: normalized_data, user:, person_cache:).create_all
 
       # children_to_add, step_children, child_marriage, child_stopped_attending_school
-      children = ::BGS::Children.new(proc_id:, payload: normalized_data, user:).create_all
+      children = ::BGS::Children.new(proc_id:, payload: normalized_data, user:, person_cache:).create_all
 
       # student_information (i.e. 674-related children 18-23)
       students = (normalized_data.dig('dependents_application', 'student_information') || []).map do |student|
-        result = ::BGS::DependentHigherEdAttendance.new(proc_id:, payload: normalized_data, user:, student:).create
+        result = ::BGS::DependentHigherEdAttendance.new(proc_id:, payload: normalized_data, user:, student:,
+                                                        person_cache:).create
         ::BGS::StudentSchool.new(
           proc_id:, vnp_participant_id: result[:vnp_participant_id], payload: normalized_data,
           user:, student:
@@ -216,11 +219,9 @@ module DependentsBenefits::Sidekiq
       end
 
       ::BGS::VnpRelationships.new(
-        proc_id:,
-        veteran:,
+        proc_id:, veteran:, user:,
         dependents: dependents + marriages + children[:dependents] + students,
-        step_children: children[:step_children],
-        user:
+        step_children: children[:step_children]
       ).create_all
     end
 

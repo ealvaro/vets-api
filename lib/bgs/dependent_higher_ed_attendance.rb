@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 require_relative 'service'
+require_relative 'person_cache'
 
 module BGS
   class DependentHigherEdAttendance
-    def initialize(proc_id:, payload:, user:, student:)
+    def initialize(proc_id:, payload:, user:, student:, person_cache: nil)
       @proc_id = proc_id
       @payload = payload
       @dependents_application = payload['dependents_application']
       @dependents = {}
       @user = user
       @student = student
+      @person_cache = person_cache || PersonCache.new(@user)
     end
 
     def create
@@ -20,9 +22,9 @@ module BGS
     def report_adult_children_attending_school
       adult_attending_school = BGSDependents::AdultChildAttendingSchool.new(@student)
       formatted_info = adult_attending_school.format_info
-      participant = bgs_service.create_participant(@proc_id)
 
-      bgs_service.create_person(person_params(adult_attending_school, participant, formatted_info))
+      participant = @person_cache.create_person(person_params(adult_attending_school, {}, formatted_info))
+
       send_address(adult_attending_school, participant, adult_attending_school.address)
       @dependents = adult_attending_school.serialize_dependent_result(
         participant,

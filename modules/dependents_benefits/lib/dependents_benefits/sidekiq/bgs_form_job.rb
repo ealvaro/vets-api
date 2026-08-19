@@ -6,6 +6,7 @@ require 'bgs/form674'
 require 'bgs/vnp_veteran'
 require 'bgs/vnp_benefit_claim'
 require 'bgs/benefit_claim'
+require 'bgs/person_cache'
 require 'dependents_benefits/sidekiq/dependent_submission_job'
 
 module DependentsBenefits::Sidekiq
@@ -91,9 +92,10 @@ module DependentsBenefits::Sidekiq
       user = generate_user_struct
       veteran = ::BGS::VnpVeteran.new(proc_id:, payload: normalized_form_data, user:, claim_type: ep_code).create
 
-      # send 686, 674 data
-      child_claims.each do |claim|
-        service_response = send_combined_claim_part(claim, veteran)
+      person_cache = ::BGS::PersonCache.new(user)
+      # send 686, 674 data. We want to process the 686 data, if any, first
+      child_claims.sort_by { |c| c.form_id == DependentsBenefits::ADD_REMOVE_DEPENDENT ? 0 : 1 }.each do |claim|
+        service_response = send_combined_claim_part(claim, veteran, person_cache)
         raise DependentSubmissionError, service_response&.error unless service_response&.success?
       end
 
@@ -107,14 +109,14 @@ module DependentsBenefits::Sidekiq
     # Submit an individual child claims to BGS
     #
     # @return [void]
-    def send_combined_claim_part(claim, veteran)
+    def send_combined_claim_part(claim, veteran, person_cache)
       submission = find_or_create_form_submission(claim)
       submission_attempt = create_form_submission_attempt(submission)
       claim.user_data # populates and retrieves if not already present on claim
       if claim.form_id == DependentsBenefits::ADD_REMOVE_DEPENDENT
-        submit_686c_form(claim, { veteran:, skip_claim_create: true })
+        submit_686c_form(claim, { veteran:, skip_claim_create: true, person_cache: })
       elsif claim.form_id == DependentsBenefits::SCHOOL_ATTENDANCE_APPROVAL
-        submit_674_form(claim, { veteran:, skip_claim_create: true })
+        submit_674_form(claim, { veteran:, skip_claim_create: true, person_cache: })
       end
       mark_submission_attempt_succeeded(submission_attempt)
       DependentsBenefits::ServiceResponse.new(status: true)

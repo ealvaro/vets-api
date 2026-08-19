@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 require_relative 'service'
+require_relative 'person_cache'
 
 module BGS
   class Marriages
-    def initialize(proc_id:, payload:, user:)
+    def initialize(proc_id:, payload:, user:, person_cache: nil)
       @user = user
       @dependents = []
       @proc_id = proc_id
       @payload = payload
       @dependents_application = @payload['dependents_application']
+      @person_cache = person_cache || PersonCache.new(@user)
     end
 
     def create_all
@@ -26,9 +28,8 @@ module BGS
       @dependents_application[type].each do |former_spouse|
         former_marriage = BGSDependents::MarriageHistory.new(former_spouse)
         marriage_info = former_marriage.format_info
-        participant = bgs_service.create_participant(@proc_id)
 
-        create_person(former_marriage, participant, marriage_info)
+        participant = @person_cache.create_person(person_params(former_marriage, {}, marriage_info))
 
         @dependents << former_marriage.serialize_dependent_result(
           participant,
@@ -57,9 +58,8 @@ module BGS
     def add_spouse
       spouse = BGSDependents::Spouse.new(@dependents_application)
       spouse_info = spouse.format_info
-      participant = bgs_service.create_participant(@proc_id)
 
-      create_person(spouse, participant, spouse_info)
+      participant = @person_cache.create_person(person_params(spouse, {}, spouse_info))
       send_address(spouse, participant, spouse_info)
 
       @dependents << spouse.serialize_dependent_result(
@@ -77,10 +77,8 @@ module BGS
       )
     end
 
-    def create_person(calling_object, participant, marriage_info)
-      params = calling_object.create_person_params(@proc_id, participant[:vnp_ptcpnt_id], marriage_info)
-
-      bgs_service.create_person(params)
+    def person_params(calling_object, participant, marriage_info)
+      calling_object.create_person_params(@proc_id, participant[:vnp_ptcpnt_id], marriage_info)
     end
 
     def send_address(calling_object, participant, address_info)

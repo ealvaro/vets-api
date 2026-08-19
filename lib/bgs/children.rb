@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 require_relative 'service'
+require_relative 'person_cache'
 
 module BGS
   class Children
-    def initialize(proc_id:, payload:, user:)
+    def initialize(proc_id:, payload:, user:, person_cache: nil)
       @user = user
       @children = []
       @step_children = []
       @proc_id = proc_id
       @views = payload['view:selectable686_options']
       @dependents_application = payload['dependents_application']
+      @person_cache = person_cache || PersonCache.new(@user)
     end
 
     def create_all
@@ -32,9 +34,8 @@ module BGS
       @dependents_application['children_to_add'].each do |child_info|
         child = BGSDependents::Child.new(child_info)
         formatted_info = child.format_info
-        participant = bgs_service.create_participant(@proc_id)
 
-        bgs_service.create_person(person_params(child, participant, formatted_info))
+        participant = @person_cache.create_person(person_params(child, {}, formatted_info))
         send_address(child, participant, child.address(@dependents_application))
 
         step_child_parent(child_info) if child.family_relationship_type == 'Stepchild'
@@ -57,8 +58,9 @@ module BGS
       @dependents_application['step_children'].each do |stepchild_info|
         step_child = BGSDependents::StepChild.new(stepchild_info)
         formatted_info = step_child.format_info
-        participant = bgs_service.create_participant(@proc_id)
-        bgs_service.create_person(person_params(step_child, participant, formatted_info))
+
+        participant = @person_cache.create_person(person_params(step_child, {}, formatted_info))
+
         if stepchild_info['who_does_the_stepchild_live_with'].present?
           guardian_participant = bgs_service.create_participant(@proc_id)
           step_child_guardian_person(guardian_participant, stepchild_info)
