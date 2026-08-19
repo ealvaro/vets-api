@@ -24,6 +24,31 @@ module BBInternal
     LOCK_TTL_SECONDS = 15
     LOCK_RETRY_DELAY = 0.1
 
+    # Allowlist of userProfile keys returned as the +demographics+ portion of the
+    # self-entered information response. The upstream MHV User Management API
+    # returns many additional sensitive fields (ssn, confSsn, userName, password
+    # hint questions/answers, lock metadata, etc.) that the frontend never
+    # consumes. Only the keys read by the Self-Entered Information PDF generator's
+    # demographics converter are transmitted to the browser.
+    DEMOGRAPHICS_ALLOWED_KEYS = %w[
+      name
+      birthDate
+      gender
+      bloodType
+      isOrganDonor
+      maritalStatus
+      isPatient
+      isVeteran
+      isCaregiver
+      isPatientAdvocate
+      isHealthCareProvider
+      isServiceMember
+      isOther
+      currentOccupation
+      contact
+      address
+    ].freeze
+
     ################################################################################
     # User Management APIs
     ################################################################################
@@ -219,9 +244,12 @@ module BBInternal
       responses = bb_result[:responses].merge(um_result[:responses])
       errors = bb_result[:errors].merge(um_result[:errors])
 
-      # Extract just the patient.userProfile and assign to demographics
+      # Extract just the patient.userProfile and assign to demographics, filtered
+      # to the allowlist so sensitive fields (ssn, password hints, etc.) are not
+      # transmitted to the browser.
       patient = responses.delete(:demographics)
-      responses[:demographics] = patient['userProfile'] if patient && patient['userProfile']
+      user_profile = patient && patient['userProfile']
+      responses[:demographics] = user_profile.slice(*DEMOGRAPHICS_ALLOWED_KEYS) if user_profile
 
       { responses:, errors: }
     end

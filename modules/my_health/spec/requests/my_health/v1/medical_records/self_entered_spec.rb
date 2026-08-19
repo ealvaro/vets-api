@@ -89,6 +89,27 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       expect_aal_logged(1)
     end
 
+    it 'filters the demographics payload to the allowlist of non-sensitive fields' do
+      VCR.use_cassette('mr_client/get_self_entered_information') do
+        get '/my_health/v1/medical_records/self_entered'
+      end
+
+      expect(response).to have_http_status(:ok)
+
+      json = JSON.parse(response.body)
+      demographics = json['responses']['demographics']
+      expect(demographics).to be_a(Hash)
+
+      sensitive_keys = %w[
+        ssn confSsn userName password confPassword oldPassword temporaryPassword
+        passwordHintQuestion1 passwordHintQuestion2 passwordHintAnswer1 passwordHintAnswer2
+        passwordLastChanged passwordLockOut lockCount lockDate
+      ]
+      expect(demographics.keys & sensitive_keys).to be_empty
+
+      expect(demographics.keys).to all(be_in(BBInternal::Client::DEMOGRAPHICS_ALLOWED_KEYS))
+    end
+
     # Test that the :mhv_xml_html_errors middleware is bypassed
     context 'when one of the upstream calls errors out with a 502 XML error' do
       let(:allergy_error_response) do
