@@ -1922,10 +1922,6 @@ features:
     actor_type: user
     description: Control fetching OH health condition data
     enable_in_development: false
-  mhv_accelerated_delivery_vital_signs_enabled:
-    actor_type: user
-    description: Control fetching OH vitals data
-    enable_in_development: false
   mhv_accelerated_delivery_uhd_enabled:
     actor_type: user
     description: Control whether vets-api allows fetching any MR data from MHV UHD

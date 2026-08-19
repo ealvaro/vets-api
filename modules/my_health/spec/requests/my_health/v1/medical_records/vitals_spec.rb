@@ -80,8 +80,6 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::Vitals', type: :request do
       # so we need to disable them to test the Lighthouse OH data path.
       allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_enabled,
                                                 instance_of(User)).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_accelerated_delivery_vital_signs_enabled,
-                                                instance_of(User)).and_return(false)
     end
 
     it 'responds to GET #index' do
