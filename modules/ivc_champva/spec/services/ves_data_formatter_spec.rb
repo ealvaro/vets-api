@@ -201,6 +201,31 @@ describe IvcChampva::VesDataFormatter do
     end
   end
 
+  describe 'sponsor name is entirely non-Latin script' do
+    it 'raises a missing-field error since transliteration strips it to blank' do
+      @parsed_form_data_copy['veteran']['full_name']['first'] = '田中'
+
+      expect do
+        IvcChampva::VesDataFormatter.format_for_request(@parsed_form_data_copy, form_uuid:)
+      end.to raise_error(ArgumentError, 'sponsor first name is missing')
+    end
+  end
+
+  describe '.transliterate_and_strip' do
+    it 'returns nil when given a blank value' do
+      expect(IvcChampva::VesDataFormatter.transliterate_and_strip(nil)).to be_nil
+      expect(IvcChampva::VesDataFormatter.transliterate_and_strip('')).to be_nil
+    end
+
+    it 'strips disallowed characters from Latin text' do
+      expect(IvcChampva::VesDataFormatter.transliterate_and_strip('2Jöhn~!')).to eq 'John'
+    end
+
+    it 'returns nil when transliteration strips everything' do
+      expect(IvcChampva::VesDataFormatter.transliterate_and_strip('田中')).to be_nil
+    end
+  end
+
   describe 'sponsor address' do
     it 'raises an error when address is missing' do
       @parsed_form_data_copy['veteran'].delete('address')

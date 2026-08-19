@@ -85,6 +85,8 @@ module IvcChampva
             submit_merged_docs_only_cst(parsed_form_data)
           elsif flow == :form_submission
             submit_merged_docs_only_form_submission(parsed_form_data)
+          elsif docs_only_resubmission?(parsed_form_data)
+            raise ArgumentError, 'Documents-only resubmission flow is not enabled for this request'
           else
             process_standard_merged_champva_submission(parsed_form_data)
           end
