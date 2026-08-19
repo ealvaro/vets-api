@@ -34,12 +34,17 @@ module Mobile
 
       SURVEY_TYPES = %w[giveFeedback].freeze
 
-      # @param preserve_data [Boolean] When true, uploaded records are not deleted after a successful upload.
+      # @param opts [Hash] Optional arguments. Accepts string or symbol keys; string keys are used when
+      #   enqueuing via Sidekiq cron (JSON serialization converts symbol keys to strings).
+      # @option opts [Boolean] :preserve_data When true, uploaded records are not deleted after a successful upload.
       #   Useful for dry-run/debugging scenarios. Defaults to false (records are deleted after upload).
-      # @param survey_types [String, Array<String>] One or more survey types to process.
+      # @option opts [String, Array<String>] :survey_types One or more survey types to process.
       #   Each value is matched against the `survey_type` column on Mobile::SurveyResponse.
       #   Defaults to SURVEY_TYPES, which includes all survey types to be included in the default processing.
-      def perform(preserve_data: false, survey_types: SURVEY_TYPES)
+      def perform(opts = {})
+        options = opts.transform_keys(&:to_sym)
+        preserve_data = options.fetch(:preserve_data, false)
+        survey_types = options.fetch(:survey_types, SURVEY_TYPES)
         Array(survey_types).each { |survey_type| process_survey_type(survey_type, preserve_data) }
       end
 

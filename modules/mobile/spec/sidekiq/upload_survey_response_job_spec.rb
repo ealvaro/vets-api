@@ -290,7 +290,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
     end
 
     context 'with preserve_data: true' do
-      it 'does not delete rows after successful upload' do
+      it 'does not delete rows after successful upload when called with symbol keys (Ruby invocation)' do
         uuid = SecureRandom.uuid
         Mobile::SurveyResponse.create!(
           survey_type: 'giveFeedback',
@@ -314,13 +314,39 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         subject.perform(preserve_data: true)
 
-        # Data should still exist
+        expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(1)
+      end
+
+      it 'does not delete rows after successful upload when called with string keys (Sidekiq cron invocation)' do
+        uuid = SecureRandom.uuid
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: uuid,
+          survey_data: {
+            'q01' => {
+              'type' => 'free_response',
+              'label' => 'How was your experience?',
+              'value' => 'Great'
+            }
+          },
+          metadata: { 'os' => 'iOS' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv).and_return(response)
+
+        subject.perform('preserve_data' => true)
+
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(1)
       end
     end
 
     context 'with survey_types parameter' do
-      it 'processes only the specified survey type when passed as a string' do
+      it 'processes only the specified survey type when called with symbol keys (Ruby invocation)' do
         uuid_give_feedback = SecureRandom.uuid
         uuid_intercept = SecureRandom.uuid
         Mobile::SurveyResponse.create!(
@@ -341,12 +367,39 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
         expect(SharePoint::Service).to receive(:new)
           .with(sharepoint_feature: :mobile_survey_storage)
           .and_return(service)
-        # Should only call once for the single survey type
         expect(service).to receive(:upload_csv).once.and_return(response)
 
         subject.perform(survey_types: 'intercept')
 
-        # Only intercept should be deleted
+        expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(1)
+        expect(Mobile::SurveyResponse.where(survey_type: 'intercept').count).to eq(0)
+      end
+
+      it 'processes only the specified survey type when called with string keys (Sidekiq cron invocation)' do
+        uuid_give_feedback = SecureRandom.uuid
+        uuid_intercept = SecureRandom.uuid
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: uuid_give_feedback,
+          survey_data: { 'q01' => { 'type' => 'text', 'label' => 'Question', 'value' => 'feedback' } },
+          metadata: { 'os' => 'iOS' }
+        )
+        Mobile::SurveyResponse.create!(
+          survey_type: 'intercept',
+          user_uuid: uuid_intercept,
+          survey_data: { 'q01' => { 'type' => 'text', 'label' => 'Question', 'value' => 'intercept' } },
+          metadata: { 'os' => 'Android' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv).once.and_return(response)
+
+        subject.perform('survey_types' => 'intercept')
+
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(1)
         expect(Mobile::SurveyResponse.where(survey_type: 'intercept').count).to eq(0)
       end
@@ -373,10 +426,9 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
           .with(sharepoint_feature: :mobile_survey_storage)
           .twice
           .and_return(service)
-        # Should call once per survey type
         expect(service).to receive(:upload_csv).twice.and_return(response)
 
-        subject.perform(survey_types: %w[giveFeedback intercept])
+        subject.perform('survey_types' => %w[giveFeedback intercept])
 
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(0)
         expect(Mobile::SurveyResponse.where(survey_type: 'intercept').count).to eq(0)
