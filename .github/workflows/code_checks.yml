@@ -788,7 +788,9 @@ jobs:
 
       - name: Fetch PR base for undercover diff
         if: needs.tests.result == 'success' && github.event_name == 'pull_request'
-        run: git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+        run: |
+          git fetch --no-tags --depth=50 origin "${{ github.event.pull_request.base.sha }}"
+          git fetch --no-tags --deepen=50 origin
 
       - name: Run undercover
         if: needs.tests.result == 'success' && github.event_name == 'pull_request'
@@ -796,8 +798,10 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
+          MERGE_BASE=$(git merge-base HEAD "${{ github.event.pull_request.base.sha }}" 2>/dev/null \
+            || echo "${{ github.event.pull_request.base.sha }}")
           bundle exec undercover \
-            --compare "${{ github.event.pull_request.base.sha }}" \
+            --compare "$MERGE_BASE" \
             2>&1 | tee /tmp/undercover-output.txt
 
       - name: Sticky undercover comment on PR
