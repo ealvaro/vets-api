@@ -419,14 +419,17 @@ module UnifiedHealthData
       # @param has_in_progress_dispense [Boolean] Whether the most recent dispense is in-progress
       # @return [String] VistA status value
       def normalize_active_status(_refills_remaining, expiration_date, has_in_progress_dispense, resource = nil)
-        # Rule: Most recent dispense is in-progress → refillinprocess
-        # This takes priority over expired status since an active refill is being processed
-        return STATUS_REFILL_IN_PROCESS if has_in_progress_dispense
-
-        # Rule: Past expiration date → expired (UNLESS it's a Non-VA medication)
+        # Rule: Past legal expiration → expired (UNLESS it's a Non-VA medication), and this takes
+        # priority over an in-progress dispense. Oracle Health has no 'expired' MedicationRequest
+        # status, so an expired Rx keeps mr_status='active'; any refill/dispense in flight against it
+        # will FAIL the OH Work Queue Monitor once the request is processed. Surfacing 'expired'
+        # (over 'refillinprocess') keeps the card honest and blocks a doomed re-refill.
         is_non_va = resource && non_va_med?(resource)
         is_past_expiration = expiration_date && expiration_date < Time.current.utc
         return STATUS_EXPIRED if is_past_expiration && !is_non_va
+
+        # Rule: Most recent dispense is in-progress → refillinprocess (only while not expired).
+        return STATUS_REFILL_IN_PROCESS if has_in_progress_dispense
 
         # Default: active
         STATUS_ACTIVE

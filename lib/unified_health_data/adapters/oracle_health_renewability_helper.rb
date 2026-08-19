@@ -86,6 +86,12 @@ module UnifiedHealthData
       # @param resource [Hash] FHIR MedicationRequest resource
       # @return [Boolean] true if active processing detected
       def active_processing?(resource)
+        # An expired Rx cannot have genuine active processing: any refill request or in-progress
+        # dispense in flight against it will FAIL the OH Work Queue Monitor once processed. Ignoring
+        # those signals lets an expired-within-120-days Rx surface under "Renewal needed before
+        # refill" instead of being pinned by a doomed in-flight request.
+        return false if prescription_expired?(resource)
+
         return true if refill_requested_via_web_or_mobile?(resource)
 
         medication_dispenses(resource).any? do |dispense|

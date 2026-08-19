@@ -253,17 +253,32 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.is_renewable).to be false
       end
 
-      it 'marks prescription as not renewable when most recent dispense is in-progress (Gate 7)' do
-        resource = fhir_resource(
-          status: 'active',
-          refills: 1,
-          expiration: 30.days.ago,
-          source: 'VA',
-          dispense_status: 'in-progress'
-        )
+      it 'is not renewable when a dispense is in-progress and the Rx is not expired (Gate 7)' do
+        # Gate 7 blocks renewal during genuine in-flight processing. A completed dispense makes
+        # Gate 3 pass and refills are exhausted, so an added in-progress dispense is the only thing
+        # that can drive renewability to false here.
+        resource = fhir_resource(status: 'active', refills: 0, expiration: 30.days.from_now,
+                                 source: 'VA', dispense_status: 'completed')
+        resource['contained'] << { 'resourceType' => 'MedicationDispense', 'id' => 'dispense-2',
+                                   'status' => 'in-progress', 'whenHandedOver' => nil,
+                                   'location' => { 'display' => '648' } }
 
         result = subject.parse(resource)
         expect(result.is_renewable).to be false
+      end
+
+      it 'is renewable when expired within 120 days despite an in-progress dispense' do
+        # Oracle Health keeps mr_status='active' past legal expiration; a refill/dispense in flight
+        # against an expired Rx will FAIL the OH Work Queue Monitor, so that doomed in-progress
+        # dispense must not block renewal. The Rx should surface under "Renewal needed before refill".
+        resource = fhir_resource(status: 'active', refills: 0, expiration: 30.days.ago,
+                                 source: 'VA', dispense_status: 'completed')
+        resource['contained'] << { 'resourceType' => 'MedicationDispense', 'id' => 'dispense-2',
+                                   'status' => 'in-progress', 'whenHandedOver' => nil,
+                                   'location' => { 'display' => '648' } }
+
+        result = subject.parse(resource)
+        expect(result.is_renewable).to be true
       end
     end
 
@@ -334,6 +349,17 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       it 'maps active to "expired" when past expiration date regardless of refills remaining' do
         result = subject.parse(fhir_resource(status: 'active', refills: 3, expiration: 1.day.ago, source: 'VA'))
         expect(result.refill_status).to eq('expired')
+      end
+
+      it 'maps active to "expired" over "refillinprocess" when past expiration with an in-progress dispense' do
+        # OH has no 'expired' MedicationRequest status, so an expired Rx keeps mr_status='active';
+        # an in-flight fill against it will FAIL the OH Work Queue Monitor, so expiration must win
+        # over the in-progress dispense and the card must not offer a doomed re-refill.
+        result = subject.parse(fhir_resource(status: 'active', refills: 3, expiration: 1.day.ago,
+                                             source: 'VA', dispense_status: 'in-progress'))
+        expect(result.refill_status).to eq('expired')
+        expect(result.disp_status).to eq('Expired')
+        expect(result.is_refillable).to be false
       end
 
       it 'maps active to "expired" when expired more than 120 days ago' do

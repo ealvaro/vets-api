@@ -399,10 +399,13 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewabilityHelper do
       end
 
       it 'returns false when refill requested via web/mobile extension' do
+        # Not expired + refills exhausted isolates Gate 7: only the in-flight web/mobile
+        # refill request can drive renewal to false here (an expired Rx would short-circuit
+        # active_processing? and renew despite the doomed request).
         resource = fhir_resource(
           status: 'active',
-          refills: 1,
-          expiration: 30.days.ago,
+          refills: 0,
+          expiration: 30.days.from_now,
           source: 'VA',
           dispense_status: 'completed'
         ).merge(
@@ -529,10 +532,12 @@ RSpec.describe UnifiedHealthData::Adapters::OracleHealthRenewabilityHelper do
       end
 
       it 'fails renewal when one dispense is in-progress among completed ones' do
+        # Not expired + refills exhausted isolates Gate 7: only the in-progress dispense
+        # can drive renewal to false here (an expired Rx renews despite in-flight processing).
         resource = fhir_resource(
           status: 'active',
-          refills: 1,
-          expiration: 30.days.ago,
+          refills: 0,
+          expiration: 30.days.from_now,
           source: 'VA'
         ).merge(
           'contained' => [
