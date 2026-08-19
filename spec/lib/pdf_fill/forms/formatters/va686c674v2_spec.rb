@@ -87,10 +87,19 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
       before do
         form_data['dependents_application']['children_to_add'] = [
           {
+            'full_name' => {
+              'first' => 'Joe',
+              'middle' => 'Butler',
+              'last' => 'Kid'
+            },
             'no_ssn_reason' => 'Nonresident Alien',
             'no_ssn' => true
           },
           {
+            'full_name' => {
+              'first' => 'Jane',
+              'last' => 'Lastname'
+            },
             'no_ssn_reason' => 'No SSN Assigned by SSA',
             'no_ssn' => true
           }
@@ -116,19 +125,25 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
 
         # Combine all remark lines to check for the full text
         combined_remarks = form_data['remarks'].values.compact.join
-        expect(combined_remarks).to include('16B. Child no SSN reason: Nonresident Alien')
-        expect(combined_remarks).to include('17B. Child no SSN reason: No SSN Assigned by SSA')
+        expect(combined_remarks).to include('16B. Joe B Kid no SSN reason: Nonresident Alien')
+        expect(combined_remarks).to include('17B. Jane Lastname no SSN reason: No SSN Assigned by SSA')
       end
 
       context 'when there are more than 4 children' do
         before do
           form_data['dependents_application']['children_to_add'] = [
-            { 'no_ssn_reason' => 'Nonresident Alien', 'no_ssn' => true },
-            { 'no_ssn_reason' => 'No SSN Assigned by SSA', 'no_ssn' => true },
-            { 'no_ssn_reason' => 'Nonresident Alien', 'no_ssn' => true },
-            { 'no_ssn_reason' => 'Nonresident Alien', 'no_ssn' => true },
-            { 'no_ssn_reason' => 'Nonresident Alien', 'no_ssn' => true },
-            { 'no_ssn_reason' => 'Nonresident Alien', 'no_ssn' => true }
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid1' }, 'no_ssn_reason' => 'Nonresident Alien',
+              'no_ssn' => true },
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid2' }, 'no_ssn_reason' => 'No SSN Assigned by SSA',
+              'no_ssn' => true },
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid3' }, 'no_ssn_reason' => 'Nonresident Alien',
+              'no_ssn' => true },
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid4' }, 'no_ssn_reason' => 'Nonresident Alien',
+              'no_ssn' => true },
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid5' }, 'no_ssn_reason' => 'Nonresident Alien',
+              'no_ssn' => true },
+            { 'full_name' => { 'first' => 'Jill', 'last' => 'Kid6' }, 'no_ssn_reason' => 'Nonresident Alien',
+              'no_ssn' => true }
           ]
         end
 
@@ -137,12 +152,12 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
 
           # Combine all remark lines to check for the full text
           combined_remarks = form_data['remarks'].values.compact.join
-          expect(combined_remarks).to include('16B. Child no SSN reason: Nonresident Alien')
-          expect(combined_remarks).to include('17B. Child no SSN reason: No SSN Assigned by SSA')
-          expect(combined_remarks).to include('18B. Child no SSN reason: Nonresident Alien')
-          expect(combined_remarks).to include('19B. Child no SSN reason: Nonresident Alien')
-          expect(combined_remarks).to include('1B. Child no SSN reason: Nonresident Alien')
-          expect(combined_remarks).to include('2B. Child no SSN reason: Nonresident Alien')
+          expect(combined_remarks).to include('16B. Jill Kid1 no SSN reason: Nonresident Alien')
+          expect(combined_remarks).to include('17B. Jill Kid2 no SSN reason: No SSN Assigned by SSA')
+          expect(combined_remarks).to include('18B. Jill Kid3 no SSN reason: Nonresident Alien')
+          expect(combined_remarks).to include('19B. Jill Kid4 no SSN reason: Nonresident Alien')
+          expect(combined_remarks).to include('1B. Jill Kid5 no SSN reason: Nonresident Alien')
+          expect(combined_remarks).to include('2B. Jill Kid6 no SSN reason: Nonresident Alien')
         end
       end
     end
@@ -155,6 +170,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         }
         form_data['dependents_application']['children_to_add'] = [
           {
+            'full_name' => { 'first' => 'Jill', 'last' => 'Kid' },
             'no_ssn_reason' => 'Nonresident Alien',
             'no_ssn' => true
           }
@@ -167,7 +183,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         # Combine all remark lines to check for the full text
         combined_remarks = form_data['remarks'].values.compact.join
         expect(combined_remarks).to include('11C. Spouse no SSN reason: Nonresident Alien')
-        expect(combined_remarks).to include('16B. Child no SSN reason: Nonresident Alien')
+        expect(combined_remarks).to include('16B. Jill Kid no SSN reason: Nonresident Alien')
       end
     end
 
@@ -222,10 +238,12 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
       before do
         form_data['dependents_application']['children_to_add'] = [
           {
+            'full_name' => { 'first' => 'Jill', 'last' => 'Kid1' },
             'no_ssn' => true,
             'no_ssn_reason' => 'Nonresident Alien'
           },
           {
+            'full_name' => { 'first' => 'Jill', 'last' => 'Kid2' },
             'no_ssn' => true,
             'no_ssn_reason' => 'No SSN Assigned by SSA'
           }
@@ -250,8 +268,8 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         described_class.expand_no_ssn_cases(form_data)
 
         combined_remarks = form_data['remarks'].values.compact.join
-        expect(combined_remarks).to include('16B. Child no SSN reason: Nonresident Alien')
-        expect(combined_remarks).to include('17B. Child no SSN reason: No SSN Assigned by SSA')
+        expect(combined_remarks).to include('16B. Jill Kid1 no SSN reason: Nonresident Alien')
+        expect(combined_remarks).to include('17B. Jill Kid2 no SSN reason: No SSN Assigned by SSA')
       end
     end
 
@@ -284,17 +302,21 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
       before do
         form_data['dependents_application']['children_to_add'] = [
           {
+            'full_name' => { 'first' => 'Jake', 'last' => 'Kid1' },
             'ssn' => '111111111'
             # No no_ssn flag or reason - should be untouched
           },
           {
+            'full_name' => { 'first' => 'Jake', 'last' => 'Kid2' },
             'no_ssn_reason' => 'Nonresident Alien'
           },
           {
+            'full_name' => { 'first' => 'Jake', 'last' => 'Kid3' },
             'no_ssn' => true
             # Has no_ssn flag but no reason
           },
           {
+            'full_name' => { 'first' => 'Jake', 'last' => 'Kid4' },
             'no_ssn' => true,
             'no_ssn_reason' => 'No SSN Assigned by SSA'
             # Has both flag and reason
@@ -325,8 +347,8 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         described_class.expand_no_ssn_cases(form_data)
 
         combined_remarks = form_data['remarks'].values.compact.join
-        expect(combined_remarks).to include('17B. Child no SSN reason: Nonresident Alien')
-        expect(combined_remarks).to include('19B. Child no SSN reason: No SSN Assigned by SSA')
+        expect(combined_remarks).to include('17B. Jake Kid2 no SSN reason: Nonresident Alien')
+        expect(combined_remarks).to include('19B. Jake Kid4 no SSN reason: No SSN Assigned by SSA')
         expect(combined_remarks).not_to include('16B') # First child has no reason
         expect(combined_remarks).not_to include('18B') # Third child has no reason
       end
@@ -339,11 +361,13 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         form_data['dependents_application']['children_to_add'] = Array.new(8) do |i|
           if [1, 3, 4, 6, 7].include?(i)
             {
+              'full_name' => { 'first' => 'Jake', 'last' => "Kid#{i}" },
               'no_ssn_reason' => "Child #{i + 1}",
               'no_ssn' => true
             }
           else
             {
+              'full_name' => { 'first' => 'Jake', 'last' => "Kid#{i}" },
               'ssn' => "#{i}#{i}#{i}#{i}#{i}#{i}#{i}#{i}#{i}"
             }
           end
@@ -354,11 +378,11 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
         described_class.expand_no_ssn_cases(form_data)
 
         combined_remarks = form_data['remarks'].values.compact.join
-        expect(combined_remarks).to include('17B. Child no SSN reason: Child 2')  # index 1 -> question 17
-        expect(combined_remarks).to include('19B. Child no SSN reason: Child 4')  # index 3 -> question 19
-        expect(combined_remarks).to include('1B. Child no SSN reason: Child 5')   # index 4 -> question 1
-        expect(combined_remarks).to include('3B. Child no SSN reason: Child 7')   # index 6 -> question 3
-        expect(combined_remarks).to include('4B. Child no SSN reason: Child 8')   # index 7 -> question 4
+        expect(combined_remarks).to include('17B. Jake Kid1 no SSN reason: Child 2')  # index 1 -> question 17
+        expect(combined_remarks).to include('19B. Jake Kid3 no SSN reason: Child 4')  # index 3 -> question 19
+        expect(combined_remarks).to include('1B. Jake Kid4 no SSN reason: Child 5')   # index 4 -> question 1
+        expect(combined_remarks).to include('3B. Jake Kid6 no SSN reason: Child 7')   # index 6 -> question 3
+        expect(combined_remarks).to include('4B. Jake Kid7 no SSN reason: Child 8')   # index 7 -> question 4
       end
     end
 
@@ -368,6 +392,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
           before do
             form_data['dependents_application']['children_to_add'] = [
               {
+                'full_name' => { 'first' => 'Jake', 'last' => 'Kid' },
                 'no_ssn' => true,
                 'no_ssn_reason' => valid_reason
               }
@@ -378,7 +403,7 @@ RSpec.describe PdfFill::Forms::Formatters::Va686c674v2 do
             described_class.expand_no_ssn_cases(form_data)
 
             combined_remarks = form_data['remarks'].values.compact.join
-            expect(combined_remarks).to include("16B. Child no SSN reason: #{valid_reason}")
+            expect(combined_remarks).to include("16B. Jake Kid no SSN reason: #{valid_reason}")
           end
         end
       end

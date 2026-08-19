@@ -84,8 +84,10 @@ module PdfFill
               reason = child['no_ssn_reason']
               next if reason.blank?
 
+              child_name = format_full_name(child['full_name'])
+
               question_number = calculate_child_question_number(index)
-              remarks << "#{question_number}B. Child no SSN reason: #{reason}"
+              remarks << "#{question_number}B. #{child_name} no SSN reason: #{reason}"
             end
           end
 
@@ -132,6 +134,23 @@ module PdfFill
             # 35 characters is remark line limit in pdf
             combined_text.scan(/.{1,35}/).each_with_index do |chunk, index|
               form_remarks["remarks_line#{index + 1 + index_offset}"] = chunk
+            end
+          end
+
+          ##
+          # Converts a full name Hash into a string
+          # @param full_name [Hash] The 'name' object, should have 'first', 'last' fields
+          # @return [String]
+          def format_full_name(full_name)
+            return '' if full_name.blank?
+
+            last = full_name['last']
+            first = full_name['first']
+            middle = full_name['middle']
+            if middle.present?
+              "#{first} #{middle.first} #{last}"
+            else
+              "#{first} #{last}"
             end
           end
         end

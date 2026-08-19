@@ -1124,6 +1124,7 @@ lib/pdf_fill/concerns/field_overflow_monitoring.rb @software/benefits-lifestage
 lib/pdf_fill/forms/field_mappings/va210779.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/field_mappings/va212680.rb @software/benefits-optimization-aquia
 lib/pdf_fill/forms/field_mappings/va21p530a.rb @software/benefits-optimization-aquia
+lib/pdf_fill/forms/formatters/va686c674v2.rb @software/benefits-lifestage
 lib/pdf_fill/forms/pdfs/21-0779.pdf @software/benefits-optimization-aquia
 lib/pdf_fill/forms/pdfs/21-2680.pdf @software/benefits-optimization-aquia
 lib/pdf_fill/forms/pdfs/21-674.pdf @software/benefits-lifestage
@@ -1795,6 +1796,7 @@ spec/lib/pagerduty @software/va-platform-backend
 spec/lib/pcpg @software/benefits-non-disability
 spec/lib/pdf_fill @software/health-apps-backend
 spec/lib/pdf_fill/concerns/field_overflow_monitoring.rb @software/benefits-lifestage
+spec/lib/pdf_fill/forms/formatters/va686c674v2_spec.rb @software/benefits-lifestage
 spec/lib/pdf_fill/forms/va210779_spec.rb @software/benefits-optimization-aquia
 spec/lib/pdf_fill/forms/va212680_spec.rb @software/benefits-optimization-aquia
 spec/lib/pdf_fill/processors/va220839_processor_spec.rb @software/govcio-vfep-codereviewers
