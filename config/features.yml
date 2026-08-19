@@ -312,6 +312,10 @@ features:
     actor_type: user
     description: If enabled, Form 21-526EZ will enforce schema hardening rules.
     enable_in_development: false
+  disability_compensation_conditions_evidence_messaging_test:
+    actor_type: user
+    description: If enabled, displays experimental messaging on supporting evidence pages of the Form526EZ.
+    enable_in_development: false
   disability_compensation_fix_poisoned_ipf:
     actor_type: user
     description: >
