@@ -49,6 +49,7 @@ module V0
         'id' => evidence_submission.id.to_s,
         'fileName' => metadata.dig('personalisation', 'file_name'),
         'documentType' => metadata.dig('personalisation', 'document_type'),
+        'fileSize' => evidence_submission.file_size,
         'uploadStatus' => evidence_submission.upload_status,
         'createdAt' => evidence_submission.created_at.iso8601
       }

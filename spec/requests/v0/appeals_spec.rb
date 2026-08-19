@@ -181,10 +181,14 @@ RSpec.describe 'V0::Appeals', type: :request do
             sc_entry = body['data'].find { |e| e['id'] == sc_id }
             submissions = sc_entry['attributes']['evidenceSubmissions']
             expect(submissions.size).to eq(1)
+            expect(submissions.first.keys).to match_array(
+              %w[id fileName documentType fileSize uploadStatus createdAt]
+            )
             expect(submissions.first).to include(
               'id' => submission.id.to_s,
               'fileName' => 'doctors-note.pdf',
               'documentType' => 'Correspondence',
+              'fileSize' => 1234,
               'uploadStatus' => 'SUCCESS'
             )
             expect(submissions.first['createdAt']).to be_present
