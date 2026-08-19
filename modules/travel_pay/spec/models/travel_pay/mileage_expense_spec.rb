@@ -122,6 +122,11 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         expect(params).not_to include(a_hash_including(:start_address))
         expect(params).not_to include(a_hash_including(:end_address))
       end
+
+      it 'does not include challenge mileage params' do
+        params = described_class.permitted_params(user)
+        expect(params).not_to include(:challenge_mileage, :challenge_requested_mileage, :challenge_reason)
+      end
     end
 
     context 'when travel_pay_enable_one_way_mileage is enabled' do
@@ -141,6 +146,11 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
       it 'still includes base params' do
         params = described_class.permitted_params(user)
         expect(params).to include(:purchase_date, :trip_type, :description)
+      end
+
+      it 'includes challenge mileage params' do
+        params = described_class.permitted_params(user)
+        expect(params).to include(:challenge_mileage, :challenge_requested_mileage, :challenge_reason)
       end
     end
 
@@ -213,6 +223,16 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         expect(params).not_to have_key('start_address')
         expect(params).not_to have_key('end_address')
       end
+
+      it 'excludes challenge mileage fields even when set' do
+        subject.challenge_mileage = true
+        subject.challenge_requested_mileage = 12.5
+        subject.challenge_reason = 'Odometer reading differs'
+        params = subject.to_service_params
+        expect(params).not_to have_key('challenge_mileage')
+        expect(params).not_to have_key('challenge_requested_mileage')
+        expect(params).not_to have_key('challenge_reason')
+      end
     end
 
     context 'when travel_pay_enable_one_way_mileage is enabled' do
@@ -244,6 +264,29 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         subject.end_address = nil
         params = subject.to_service_params
         expect(params).not_to have_key('end_address')
+      end
+
+      it 'includes challenge mileage fields when present' do
+        subject.challenge_mileage = true
+        subject.challenge_requested_mileage = 12.5
+        subject.challenge_reason = 'Odometer reading differs'
+        params = subject.to_service_params
+        expect(params['challenge_mileage']).to be true
+        expect(params['challenge_requested_mileage']).to eq(12.5)
+        expect(params['challenge_reason']).to eq('Odometer reading differs')
+      end
+
+      it 'includes challenge_mileage when explicitly false' do
+        subject.challenge_mileage = false
+        params = subject.to_service_params
+        expect(params['challenge_mileage']).to be false
+      end
+
+      it 'excludes challenge mileage fields when not set' do
+        params = subject.to_service_params
+        expect(params).not_to have_key('challenge_mileage')
+        expect(params).not_to have_key('challenge_requested_mileage')
+        expect(params).not_to have_key('challenge_reason')
       end
     end
   end

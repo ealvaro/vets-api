@@ -7,6 +7,9 @@ module TravelPay
     attribute :trip_type, :string
     attribute :start_address
     attribute :end_address
+    attribute :challenge_mileage, :boolean
+    attribute :challenge_requested_mileage, :float
+    attribute :challenge_reason, :string
 
     attr_accessor :user
 
@@ -15,13 +18,16 @@ module TravelPay
     ADDRESS_PARAMS = %i[address_line1 address_line2 city state_code postal_code].freeze
 
     # Returns the list of permitted parameters for mileage expenses
-    # Overrides base params completely since mileage doesn't use description or cost_requested
+    # Overrides base params since mileage doesn't use cost_requested, and adds
+    # address and challenge mileage fields when one-way mileage is enabled
     #
-    # @return [Array<Symbol>] list of permitted parameter names
+    # @return [Array<Symbol, Hash>] list of permitted parameter names, including a nested
+    #   Hash for start/end addresses when one-way mileage is enabled
     def self.permitted_params(user = nil)
       base = %i[purchase_date trip_type description]
       if Flipper.enabled?(:travel_pay_enable_one_way_mileage, user)
-        base + [{ start_address: ADDRESS_PARAMS, end_address: ADDRESS_PARAMS }]
+        base + [{ start_address: ADDRESS_PARAMS, end_address: ADDRESS_PARAMS },
+                :challenge_mileage, :challenge_requested_mileage, :challenge_reason]
       else
         base
       end
@@ -49,6 +55,9 @@ module TravelPay
       if Flipper.enabled?(:travel_pay_enable_one_way_mileage, user)
         params['start_address'] = start_address.to_h if start_address.present?
         params['end_address'] = end_address.to_h if end_address.present?
+        params['challenge_mileage'] = challenge_mileage unless challenge_mileage.nil?
+        params['challenge_requested_mileage'] = challenge_requested_mileage if challenge_requested_mileage.present?
+        params['challenge_reason'] = challenge_reason if challenge_reason.present?
       end
       params
     end
