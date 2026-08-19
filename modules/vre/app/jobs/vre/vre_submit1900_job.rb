@@ -49,7 +49,7 @@ module VRE
       submission, attempt = setup_submission_tracking(claim_id, submission_id)
 
       begin
-        claim = SavedClaim::VeteranReadinessEmploymentClaim.find(claim_id)
+        claim = find_claim(claim_id)
         user = OpenStruct.new(JSON.parse(KmsEncrypted::Box.new.decrypt(encrypted_user)))
         claim.send_to_vre(user)
         StatsD.increment("#{STATSD_KEY_PREFIX}.success")
@@ -77,6 +77,10 @@ module VRE
     end
 
     private
+
+    def find_claim(claim_id)
+      ::SavedClaim.find(claim_id)
+    end
 
     def setup_submission_tracking(claim_id, submission_id)
       return [nil, nil] unless submission_id

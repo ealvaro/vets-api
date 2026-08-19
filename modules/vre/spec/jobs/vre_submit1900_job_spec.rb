@@ -26,13 +26,13 @@ describe VRE::VRESubmit1900Job do
     { 'args' => [], 'class' => 'VRE::VRESubmit1900Job', 'error_message' => 'An error occurred',
       'queue' => 'default' }
   end
-  let(:claim) { create(:veteran_readiness_employment_claim) }
+  let(:claim) { create(:vre_veteran_readiness_employment_claim) }
 
   describe '#perform' do
     subject { described_class.new.perform(claim.id, encrypted_user) }
 
     before do
-      allow(SavedClaim::VeteranReadinessEmploymentClaim).to receive(:find).and_return(claim)
+      allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
     end
 
     after do
@@ -53,7 +53,7 @@ describe VRE::VRESubmit1900Job do
 
   describe 'when queue is exhausted' do
     before do
-      allow(SavedClaim::VeteranReadinessEmploymentClaim).to receive(:find).and_return(claim)
+      allow(SavedClaim).to receive(:find).with(claim.id).and_return(claim)
     end
 
     it 'sends a failure email to user' do
@@ -69,7 +69,7 @@ describe VRE::VRESubmit1900Job do
 
   describe '#duplicate_submission_check' do
     let(:user_account) { create(:user_account) }
-    let(:form_type) { SavedClaim::VeteranReadinessEmploymentClaim::FORM }
+    let(:form_type) { VRE::VREVeteranReadinessEmploymentClaim::FORM }
 
     before do
       allow(StatsD).to receive(:increment)
@@ -87,7 +87,7 @@ describe VRE::VRESubmit1900Job do
         # Create only 1 submission (not a duplicate)
         create(:form_submission,
                user_account:,
-               form_type: SavedClaim::VeteranReadinessEmploymentClaim::FORM,
+               form_type: VRE::VREVeteranReadinessEmploymentClaim::FORM,
                created_at: 1.hour.ago)
 
         subject.send(:duplicate_submission_check, user_account)
@@ -145,6 +145,29 @@ describe VRE::VRESubmit1900Job do
 
         expect(StatsD).not_to have_received(:increment)
       end
+    end
+  end
+
+  describe '#perform when vre_modular_api flag is disabled' do
+    subject { described_class.new.perform(legacy_claim.id, encrypted_user) }
+
+    let(:legacy_claim) { create(:veteran_readiness_employment_claim) }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:vre_modular_api).and_return(false)
+      allow(SavedClaim).to receive(:find).with(legacy_claim.id).and_return(legacy_claim)
+    end
+
+    after { subject }
+
+    it 'uses SavedClaim to look up the claim via STI' do
+      expect(SavedClaim)
+        .to receive(:find).with(legacy_claim.id).and_return(legacy_claim)
+      allow(legacy_claim).to receive(:send_to_vre)
+    end
+
+    it 'calls send_to_vre on the legacy claim' do
+      expect(legacy_claim).to receive(:send_to_vre).with(anything)
     end
   end
 end

@@ -5,6 +5,36 @@ module Swagger
     class VeteranReadinessEmploymentClaims
       include Swagger::Blocks
 
+      swagger_path '/vre/v0/claims' do
+        operation :post do
+          extend Swagger::Responses::ValidationError
+          extend Swagger::Responses::SavedForm
+
+          key :description, 'Submit an employment readiness claim (CH31)/28-1900 via VRE module'
+          key :operationId, 'addVREVeteranReadinessEmploymentClaim'
+          key :tags, %w[benefits_forms]
+
+          parameter :optional_authorization
+
+          parameter do
+            key :name, :veteran_readiness_employment_claim
+            key :in, :body
+            key :description, 'Veteran Readiness Employment Claim form data'
+            key :required, true
+
+            schema do
+              key :type, :object
+              property :veteran_readiness_employment_claim do
+                key :type, :object
+                property :form do
+                  key :type, :string
+                end
+              end
+            end
+          end
+        end
+      end
+
       swagger_path '/v0/veteran_readiness_employment_claims' do
         operation :post do
           extend Swagger::Responses::ValidationError

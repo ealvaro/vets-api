@@ -51,7 +51,7 @@ RSpec.describe VRE::V0::ClaimsController, type: :controller do
         form_params = { veteran_readiness_employment_claim: { form: test_form.form } }
         post(:create, params: form_params)
 
-        claim = SavedClaim::VeteranReadinessEmploymentClaim.last
+        claim = VRE::VREVeteranReadinessEmploymentClaim.last
         expect(claim.user_account).to eq(loa3_user.user_account)
       end
     end
@@ -65,7 +65,7 @@ RSpec.describe VRE::V0::ClaimsController, type: :controller do
         form_params = { veteran_readiness_employment_claim: { form: test_form.form } }
         post(:create, params: form_params)
 
-        claim = SavedClaim::VeteranReadinessEmploymentClaim.last
+        claim = VRE::VREVeteranReadinessEmploymentClaim.last
         expect(claim.user_account).to be_nil
       end
     end
@@ -138,27 +138,20 @@ RSpec.describe VRE::V0::ClaimsController, type: :controller do
       end
     end
 
-    context 'when vre_form_submission_tracking flipper is disabled' do
+    context 'when vre_modular_api flipper is disabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:vre_form_submission_tracking).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:vre_modular_api, anything).and_return(false)
       end
 
-      it 'does not create a FormSubmission record' do
-        expect { post(:create, params: form_params) }
-          .not_to change(FormSubmission, :count)
-      end
-
-      it 'passes nil as submission_id to job' do
-        post(:create, params: form_params)
-
-        job_args = VRE::VRESubmit1900Job.jobs.last['args']
-        expect(job_args[2]).to be_nil
-      end
-
-      it 'still creates the claim successfully' do
+      it 'creates a SavedClaim::VeteranReadinessEmploymentClaim record' do
         expect { post(:create, params: form_params) }
           .to change(SavedClaim::VeteranReadinessEmploymentClaim, :count).by(1)
         expect(response).to have_http_status(:ok)
+      end
+
+      it 'does not create a VRE::VREVeteranReadinessEmploymentClaim record' do
+        expect { post(:create, params: form_params) }
+          .not_to change(VRE::VREVeteranReadinessEmploymentClaim, :count)
       end
     end
   end

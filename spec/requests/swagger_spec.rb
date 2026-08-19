@@ -2661,6 +2661,39 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     describe 'veteran readiness employment claims' do
+      it 'supports adding veteran readiness employment claim via VRE module endpoint' do
+        VCR.use_cassette('veteran_readiness_employment/send_to_vre') do
+          allow(ClaimsApi::VBMSUploader).to receive(:new) { OpenStruct.new(upload!: true) }
+          expect(subject).to validate(
+            :post,
+            '/vre/v0/claims',
+            200,
+            headers.merge(
+              '_data' => {
+                'veteran_readiness_employment_claim' => {
+                  form: build(:veteran_readiness_employment_claim).form
+                }
+              }
+            )
+          )
+        end
+      end
+
+      it 'throws an error when adding veteran readiness employment claim via VRE module endpoint' do
+        expect(subject).to validate(
+          :post,
+          '/vre/v0/claims',
+          422,
+          headers.merge(
+            '_data' => {
+              'veteran_readiness_employment_claim' => {
+                'invalid-form' => { invalid: true }.to_json
+              }
+            }
+          )
+        )
+      end
+
       it 'supports adding veteran readiness employment claim' do
         VCR.use_cassette('veteran_readiness_employment/send_to_vre') do
           allow(ClaimsApi::VBMSUploader).to receive(:new) { OpenStruct.new(upload!: true) }

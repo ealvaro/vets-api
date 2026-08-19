@@ -116,6 +116,7 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
         allow(OpenSSL::PKCS12).to receive(:new).and_return(double.as_null_object)
         @vbms_client = FakeVBMS.new
         allow(VBMS::Client).to receive(:from_env_vars).and_return(@vbms_client)
+        allow(claim).to receive(:send_email)
       end
 
       it 'calls #send_to_lighthouse!' do
@@ -156,6 +157,10 @@ RSpec.describe SavedClaim::VeteranReadinessEmploymentClaim do
 
       # We want all submission to go through with RES
       context 'non-submission to VRE' do
+        before do
+          allow(claim).to receive(:send_email)
+        end
+
         context 'flipper enabled' do
           it 'stops submission if location is not in list' do
             expect_any_instance_of(RES::Ch31Form).to receive(:submit)

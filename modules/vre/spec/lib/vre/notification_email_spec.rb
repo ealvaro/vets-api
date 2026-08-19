@@ -6,13 +6,13 @@ require 'vre/notification_callback'
 
 RSpec.describe VRE::NotificationEmail do
   describe '#deliver' do
-    let(:saved_claim) { create(:veteran_readiness_employment_claim) }
+    let(:saved_claim) { create(:vre_veteran_readiness_employment_claim) }
     let(:notification_email) { described_class.new(saved_claim.id) }
     let(:vanotify) { double(send_email: true) }
 
     %i[confirmation_vbms confirmation_lighthouse error].each do |email_type|
       it 'successfully sends an email using correct values from Settings' do
-        expect(SavedClaim::VeteranReadinessEmploymentClaim)
+        expect(SavedClaim)
           .to receive(:find).with(saved_claim.id).and_return(saved_claim)
 
         api_key = Settings.vanotify.services.veteran_readiness_and_employment.api_key
@@ -38,6 +38,22 @@ RSpec.describe VRE::NotificationEmail do
           .to eq(settings.email.confirmation_vbms.template_id)
         expect(service_config.email.error.template_id)
           .to eq(settings.email.error.template_id)
+      end
+    end
+
+    context 'when vre_modular_api flag is disabled' do
+      let(:legacy_claim) { create(:veteran_readiness_employment_claim) }
+      let(:legacy_notification_email) { described_class.new(legacy_claim.id) }
+
+      %i[confirmation_vbms confirmation_lighthouse error].each do |email_type|
+        it 'uses SavedClaim to look up the claim regardless of flag state' do
+          expect(SavedClaim)
+            .to receive(:find).with(legacy_claim.id).and_return(legacy_claim)
+
+          allow(VaNotify::Service).to receive(:new).and_return(vanotify)
+
+          legacy_notification_email.deliver(email_type)
+        end
       end
     end
   end

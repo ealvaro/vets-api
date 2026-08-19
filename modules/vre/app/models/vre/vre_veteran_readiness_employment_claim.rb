@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'vre/notification_email'
+require 'vre/ch31_form'
 
 module VRE
   class VREVeteranReadinessEmploymentClaim < ::SavedClaim

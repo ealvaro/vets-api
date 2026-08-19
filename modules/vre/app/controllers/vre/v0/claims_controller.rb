@@ -9,10 +9,9 @@ module VRE
 
       def create
         if claim.save
-          if Flipper.enabled?(:vre_form_submission_tracking)
-            submission_id = setup_form_submission_tracking(claim,
-                                                           user_account)
-          end
+          submission_id = if Flipper.enabled?(:vre_form_submission_tracking, current_user)
+                            setup_form_submission_tracking(claim, user_account)
+                          end
           VRE::VRESubmit1900Job.perform_async(claim.id, encrypted_user, submission_id)
           Rails.logger.info "ClaimID=#{claim.confirmation_number} Form=#{claim.class::FORM}"
           clear_saved_form(claim.form_id)
@@ -29,11 +28,20 @@ module VRE
       private
 
       def user_account
-        @user_account ||= UserAccount.find_by(icn: current_user.icn) if current_user.icn.present?
+        unless @user_account_retrieved
+          @user_account = current_user.icn.present? ? UserAccount.find_by(icn: current_user.icn) : nil
+          @user_account_retrieved = true
+        end
+        @user_account
       end
 
       def claim
-        @claim ||= SavedClaim::VeteranReadinessEmploymentClaim.new(form: filtered_params[:form], user_account:)
+        claim_class = if Flipper.enabled?(:vre_modular_api, current_user)
+                        VRE::VREVeteranReadinessEmploymentClaim
+                      else
+                        SavedClaim::VeteranReadinessEmploymentClaim
+                      end
+        @claim ||= claim_class.new(form: filtered_params[:form], user_account:)
       end
 
       def setup_form_submission_tracking(claim, user_account)
@@ -58,7 +66,11 @@ module VRE
       end
 
       def filtered_params
-        params.require(:veteran_readiness_employment_claim).permit(:form)
+        if params[:veteran_readiness_employment_claim]
+          params.require(:veteran_readiness_employment_claim).permit(:form)
+        else
+          params.permit(:form)
+        end
       end
 
       def short_name
