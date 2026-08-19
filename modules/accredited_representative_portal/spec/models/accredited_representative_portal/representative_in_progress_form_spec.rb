@@ -50,7 +50,7 @@ RSpec.describe AccreditedRepresentativePortal::RepresentativeInProgressForm, typ
     let(:rep_user_account) { create(:user_account) }
     let(:expected_form_data) do
       <<~HEREDOC
-        {"veteranFullName":{"first":"Maurice","last":"Murphy"},"address":{"view:militaryBaseDescription":{},"postalCode":"10458-5149","country":"USA","street":"441 E Fordham Rd","city":"Bronx","state":"NY"},"veteranSsn":"796265005","veteranDateOfBirth":"19730526"}
+        {"veteranSubPage":{"veteranFullName":{"first":"Maurice","last":"Murphy"},"address":{"postalCode":"10458-5149"},"veteranSsn":"796265005","veteranDateOfBirth":"1973-05-26"}}
       HEREDOC
     end
 
@@ -63,6 +63,22 @@ RSpec.describe AccreditedRepresentativePortal::RepresentativeInProgressForm, typ
         expect(form.rep_user_account_id).to eq rep_user_account.id
         expect(form.veteran_icn).to eq veteran_icn
       end
+    end
+  end
+
+  describe '#data_and_metadata' do
+    it 'marks prefill true for an unpersisted, MPI-only record' do
+      VCR.use_cassette('mpi/find_candidate/find_profile_with_identifier') do
+        rep_user_account = create(:user_account)
+        form = described_class.build_for_rep_and_veteran(nil, rep_user_account.id, '1012832013V553700')
+        expect(form).not_to be_persisted
+        expect(form.data_and_metadata[:metadata]['prefill']).to be true
+      end
+    end
+
+    it 'marks prefill false once a draft has actually been saved' do
+      form = create(:representative_in_progress_form)
+      expect(form.data_and_metadata[:metadata]['prefill']).to be false
     end
   end
 end

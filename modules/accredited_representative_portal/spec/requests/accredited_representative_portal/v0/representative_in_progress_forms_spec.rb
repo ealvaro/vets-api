@@ -62,25 +62,23 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
       let(:expected_response) do
         {
           formData: {
-            veteranFullName: {
-              first: 'Mitchell',
-              last: 'Jenkins'
-            },
-            address: {
-              'view:militaryBaseDescription': {},
-              postalCode: '78772',
-              country: 'USA',
-              street: '121 A St',
-              city: 'Austin',
-              state: 'TX'
-            },
-            veteranSsn: '796122306',
-            veteranDateOfBirth: '19490304'
+            veteranSubPage: {
+              veteranFullName: {
+                first: 'Mitchell',
+                last: 'Jenkins'
+              },
+              address: {
+                postalCode: '78772'
+              },
+              veteranSsn: '796122306',
+              veteranDateOfBirth: '1949-03-04'
+            }
           },
           metadata: {
             expiresAt: nil,
             lastUpdated: 0,
-            inProgressFormId: nil
+            inProgressFormId: nil,
+            prefill: true
           }
         }
       end
@@ -113,7 +111,7 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
           expect(response).to have_http_status(:ok)
           body = response.parsed_body
           expect(body['formData']).to be_present
-          expect(body['metadata']).to include('inProgressFormId' => form.id)
+          expect(body['metadata']).to include('inProgressFormId' => form.id, 'prefill' => false)
         end
       end
 
@@ -174,6 +172,25 @@ RSpec.describe 'AccreditedRepresentativePortal::V0::RepresentativeInProgressForm
 
           expect(response).to have_http_status(:ok)
           expect(existing_form.reload.form_data).to eq(form_data)
+        end
+      end
+
+      context 'when formData is sent as a nested JSON object (not pre-stringified)' do
+        it 'saves successfully instead of 500ing on ActionController::Parameters' do
+          put "#{base_path}?claimant_id=#{claimant_id}",
+              params: {
+                formData: { veteranSubPage: { veteranFullName: { first: 'Chad', last: 'Carr' } } },
+                metadata: { returnUrl: '/submit-va-form-21-686c-arp/options-selection' }
+              },
+              as: :json
+
+          expect(response).to have_http_status(:ok)
+
+          form = AccreditedRepresentativePortal::RepresentativeInProgressForm.for_rep_and_veteran(
+            form_id, rep_user.user_account_uuid, veteran_icn
+          )
+          expect(form.form_data).to be_a(String)
+          expect(JSON.parse(form.form_data)['veteranSubPage']['veteranFullName']['first']).to eq('Chad')
         end
       end
 
