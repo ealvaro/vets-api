@@ -1,3 +1,4 @@
+brew 'cmake' # required to build rugged (undercover dependency)
 brew 'clamav' # anti-virus scanner
 brew 'coreutils' # gnu coreutils
 brew 'docker-compose'
