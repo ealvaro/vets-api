@@ -12,11 +12,6 @@ module NotificationsClientPatch
   PRODUCTION_BASE_URL = 'https://api.notifications.va.gov'
 
   def initialize(secret_token = nil, base_url = nil)
-    unless Flipper.enabled?(:va_notify_enhanced_uuid_validation)
-      super
-      return
-    end
-
     token_length = detect_token_length(secret_token)
     @secret_token = extract_secret_token(secret_token, token_length)
     @service_id = extract_service_id(secret_token, token_length)
@@ -36,8 +31,6 @@ module NotificationsClientPatch
   end
 
   def validate_uuids!
-    return super unless Flipper.enabled?(:va_notify_enhanced_uuid_validation)
-
     raise ArgumentError, 'Invalid service_id format' unless valid_uuid?(@service_id)
 
     raise ArgumentError, 'Invalid secret_token format' unless valid_token?(@secret_token)

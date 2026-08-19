@@ -27,10 +27,6 @@ RSpec.describe NotificationsClientPatch do
   end
 
   describe '#initialize' do
-    before do
-      allow(Flipper).to receive(:enabled?).with(:va_notify_enhanced_uuid_validation).and_return(true)
-    end
-
     context 'when composite ends with UUID api_key' do
       let(:key_name) { 'test-key' }
       let(:service_id) { SecureRandom.uuid }
@@ -121,22 +117,6 @@ RSpec.describe NotificationsClientPatch do
       it 'logs successful validation' do
         allow(Rails.logger).to receive(:info)
         expect(Rails.logger).to receive(:info).with(/validation successful/)
-        speaker_class.new(composite)
-      end
-    end
-
-    context 'when va_notify_enhanced_uuid_validation is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_enhanced_uuid_validation).and_return(false)
-      end
-
-      let(:key_name) { 'test-key' }
-      let(:service_id) { SecureRandom.uuid }
-      let(:api_key) { SecureRandom.uuid }
-      let(:composite) { "#{key_name}-#{service_id}-#{api_key}" }
-
-      it 'does not execute patch-specific logging' do
-        expect(Rails.logger).not_to receive(:info).with(/NotificationsClientPatch/)
         speaker_class.new(composite)
       end
     end
