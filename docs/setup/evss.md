@@ -28,5 +28,6 @@ backend testing, you will need to reference the appropriate private repository.
 
 ## EVSS Service via Open VPN
 
-To develop locally against the EVSS CI environment you must connect through the 'EVSS Open' VPN.
+To develop locally against the EVSS CI environment you must connect through
+the 'EVSS Open' VPN.
 Contact your product/project manager for access.
