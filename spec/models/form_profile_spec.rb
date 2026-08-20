@@ -2693,6 +2693,30 @@ RSpec.describe FormProfile, type: :model do
     end
   end
 
+  # The all-claims v2 form shares the live 526 schema/mappings and reuses the v1
+  # form profile. Without prefill registration the frontend can't load the v2
+  # form and bounces the Veteran back to the intro (RoutedSavableApp redirect).
+  describe '21-526EZ-V2 (all-claims v2) prefill registration' do
+    it 'is prefill-enabled' do
+      expect(FormProfile.prefill_enabled_forms).to include('21-526EZ-V2')
+    end
+
+    it 'resolves to the live 526 form profile class' do
+      expect(FormProfile.for(form_id: '21-526EZ-V2', user:)).to be_a(FormProfiles::VA526ez)
+    end
+
+    it 'loads its form mapping without raising' do
+      expect { FormProfile.load_form_mapping('21-526EZ-V2') }.not_to raise_error
+    end
+
+    it 'loads the correct mapping data' do
+      mapping_file = Rails.root.join('config', 'form_profile_mappings', '21-526EZ-V2.yml')
+      mappings = YAML.load_file(mapping_file)
+
+      expect(FormProfile.load_form_mapping('21-526EZ-V2')).to match(mappings)
+    end
+  end
+
   describe '.for with newly added form_upload forms' do
     %w[
       21-4170-UPLOAD

@@ -798,6 +798,7 @@ config/form_profile_mappings/21-4138.yml @software/platform-va-product-forms
 config/form_profile_mappings/21-4140.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/21-4502.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/21-526EZ.yml @software/disability-benefits
+config/form_profile_mappings/21-526EZ-V2.yml @software/disability-benefits
 config/form_profile_mappings/21-686C.yml @software/disability-benefits
 config/form_profile_mappings/21-8940.yml @software/benefits-intake-pingwind
 config/form_profile_mappings/21-8940v1.yml @software/benefits-intake-pingwind

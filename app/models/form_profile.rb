@@ -99,7 +99,7 @@ class FormProfile
     edu: %w[22-1990 22-1990EMEB 22-1995 22-5490 22-5490E
             22-0993 22-0994 FEEDBACK-TOOL 22-10203 22-1990EZ
             22-10297 22-0803 22-10272 22-10278 22-0976 22-0989 22-0810 22-0839],
-    evss: ['21-526EZ'],
+    evss: %w[21-526EZ 21-526EZ-V2],
     form214140: ['21-4140'],
     form214502: ['21-4502'],
     form_mock_ae_design_patterns: ['FORM-MOCK-AE-DESIGN-PATTERNS'],
@@ -199,6 +199,7 @@ class FormProfile
     '21-4140' => ::FormProfiles::VA214140,
     '21-4502' => ::FormProfiles::VA214502,
     '21-526EZ' => ::FormProfiles::VA526ez,
+    '21-526EZ-V2' => ::FormProfiles::VA526ez,
     '21-8940v1' => IncreaseCompensation::FormProfiles::VA218940v1,
     '21-8940' => IncreaseCompensation::FormProfiles::VA218940v1,
     '21P-0537' => ::FormProfiles::VA21p0537,
