@@ -853,7 +853,7 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         result = subject.parse(resource_with_requested_task('status' => 'on-hold'))
 
         expect(result.refill_status).to eq('providerHold')
-        expect(result.disp_status).to eq('Active: On hold')
+        expect(result.disp_status).to eq('Active: On Hold')
         expect(result.refill_submit_date).to be_nil
       end
 
