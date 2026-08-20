@@ -4,6 +4,10 @@ require 'lighthouse/benefits_claims/service'
 
 module AccreditedRepresentativePortal
   class FormSubmissionPolicy < ApplicationPolicy
+    def dependents?
+      claimant_representative.present?
+    end
+
     def check_poa_status?
       claimant_representative.present?
     end
