@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "failed_station_list",
+    "successful_station_list",
+    "last_updated_time",
+    "prescription_list",
+    "errors",
+    "info_messages"
+  ],
+  "properties": {
+    "failed_station_list": { "type": "string" },
+    "successful_station_list": { "type": "string" },
+    "last_updated_time": { "type": "string" },
+    "prescription_list": { "type": ["array", "null"] },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error_code", "developer_message", "message"],
+        "properties": {
+          "error_code": { "type": "integer" },
+          "developer_message": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "info_messages": { "type": "array" }
+  }
+}

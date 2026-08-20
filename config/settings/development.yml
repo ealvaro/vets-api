@@ -1404,6 +1404,7 @@ schema_contract:
   message_signature: modules/mobile/app/schemas/message_signature.json
   messages_for_thread: modules/mobile/app/schemas/messages_for_thread.json
   messages_index: modules/mobile/app/schemas/messages_index.json
+  rx_post_refill_rxs: modules/mobile/app/schemas/rx_post_refill_rxs.json
   test_index: spec/fixtures/schema_contract/test_schema.json
   triage_teams: modules/mobile/app/schemas/triage_teams.json
   update_demographics: modules/mobile/app/schemas/update_demographics.json

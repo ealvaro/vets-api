@@ -124,6 +124,40 @@ RSpec.describe 'health/rx/prescriptions', type: :request do
       end
     end
 
+    context 'schema contract validates in staging' do
+      let(:user_account) { create(:user_account) }
+
+      before do
+        user.user_account_uuid = user_account.id
+        user.save!
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'validates the response schema' do
+        VCR.use_cassette('mobile/rx_refill/prescriptions/refills_prescriptions') do
+          put '/mobile/v0/health/rx/prescriptions/refill', params: { ids: %w[21530889 21539942] }, headers: sis_headers
+        end
+        expect(response).to be_successful
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last.status).to eq('success')
+      end
+    end
+
+    context 'schema contract does not validate in production' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+      end
+
+      it 'does not validate the response schema' do
+        VCR.use_cassette('mobile/rx_refill/prescriptions/refills_prescriptions') do
+          put '/mobile/v0/health/rx/prescriptions/refill', params: { ids: %w[21530889 21539942] }, headers: sis_headers
+        end
+        expect(response).to be_successful
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.count).to eq(0)
+      end
+    end
+
     # Temporarily removing test until we can figure out how to handle cache
     # context 'prescription cache is present on refill' do
     #   it 'flushes prescription cache on refill' do

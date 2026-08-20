@@ -24,7 +24,7 @@ module Mobile
 
       def refill
         resource = client.post_refill_rxs(ids)
-
+        validate_response_schema(resource, 'rx_post_refill_rxs')
         render json: Mobile::V0::PrescriptionsRefillsSerializer.new(@current_user.uuid, resource.body)
       end
 
@@ -122,6 +122,14 @@ module Mobile
 
       def non_va_meds?(data)
         data.any? { |item| item.prescription_source == 'NV' }
+      end
+
+      def validate_response_schema(response, contract_name)
+        SchemaContract::ValidationInitiator.call(
+          user: @current_user,
+          response:,
+          contract_name:
+        )
       end
     end
   end
