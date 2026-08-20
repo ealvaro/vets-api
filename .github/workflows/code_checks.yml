@@ -14,8 +14,9 @@
 name: Code Checks
 on:
   push:
-    branches: 
+    branches:
       - master
+      - production-bypass
   pull_request:
     types: [opened, reopened, synchronize]
 permissions:
@@ -118,6 +119,7 @@ jobs:
         if: |
           (
             github.ref == 'refs/heads/master' ||
+            github.ref == 'refs/heads/production-bypass' ||
             (github.event_name == 'pull_request' && steps.gemfile_changes.outputs.any_changed == 'true')
           )
         continue-on-error: true
@@ -166,6 +168,7 @@ jobs:
           steps.bundle_audit.outcome == 'failure' &&
           (
             github.ref == 'refs/heads/master' ||
+            github.ref == 'refs/heads/production-bypass' ||
             (github.event_name == 'pull_request' && steps.gemfile_changes.outputs.any_changed == 'true')
           )
         uses: ./.github/actions/vsp-github-actions/slack-socket

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: ["Code Checks"]
-    branches: master
+    branches: [master, production-bypass]
     types: [completed]
 permissions:
   id-token: write
@@ -100,14 +100,26 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           cache-from: type=registry,ref=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           cache-to: type=inline
-  deploy:
+  deploy_dev_staging:
     needs: build_and_push
     if: ${{ github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.conclusion == 'success' }}
     uses: software/vets-api/.github/workflows/deploy-template.yml@master
     with:
       ecr_repository: "vets-api"
       manifests_directory: "vets-api"
-      auto_deploy_envs: "dev staging prod sandbox"
+      auto_deploy_envs: "dev staging"
+      commit_sha: ${{ github.event.workflow_run.head_commit.id }}
+    secrets:
+      va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+
+  deploy_prod_sandbox:
+    needs: build_and_push
+    if: ${{ github.event.workflow_run.head_branch == 'production-bypass' && github.event.workflow_run.conclusion == 'success' }}
+    uses: software/vets-api/.github/workflows/deploy-template.yml@master
+    with:
+      ecr_repository: "vets-api"
+      manifests_directory: "vets-api"
+      auto_deploy_envs: "prod sandbox"
       commit_sha: ${{ github.event.workflow_run.head_commit.id }}
     secrets:
       va_vsp_bot_private_key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
