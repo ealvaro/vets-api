@@ -89,7 +89,7 @@ RSpec.describe SurvivorsBenefits::V0::ClaimsController, type: :controller do
 
       it 'calls submit_claim_to_bpds with the claim id and current user' do
         expect_any_instance_of(described_class).to receive(:submit_claim_to_bpds)
-          .with(claim.id, instance_of(User))
+          .with(claim.id, claim.form_id, instance_of(User))
 
         post(:create, params: { survivors_benefits_claim: { form: claim.form } })
       end
@@ -113,7 +113,8 @@ RSpec.describe SurvivorsBenefits::V0::ClaimsController, type: :controller do
         end
 
         it 'tracks the BPDS failure' do
-          expect(bpds_monitor).to receive(:track_submit_failure).with(claim.id, instance_of(StandardError))
+          expect(bpds_monitor).to receive(:track_submit_failure).with(claim.id, claim.form_id,
+                                                                      instance_of(StandardError))
 
           post(:create, params: { survivors_benefits_claim: { form: claim.form } })
         end

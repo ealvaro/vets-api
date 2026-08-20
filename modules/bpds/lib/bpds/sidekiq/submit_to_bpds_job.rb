@@ -71,10 +71,10 @@ module BPDS
           bpds_uuid = response['uuid']
           @bpds_submission.submission_attempts.create(status: 'submitted', response: response.to_json,
                                                       bpds_id: bpds_uuid)
-          @monitor.track_submit_success(saved_claim_id, bpds_uuid)
+          @monitor.track_submit_success(saved_claim_id, @form_id, bpds_uuid)
         rescue => e
           @bpds_submission.submission_attempts.create(status: 'failure', error_message: e.message)
-          @monitor.track_submit_failure(saved_claim_id, e)
+          @monitor.track_submit_failure(saved_claim_id, @form_id, e)
           raise
         end
       end
@@ -91,6 +91,7 @@ module BPDS
       # and initializes a BPDS::Monitor instance.
       def init(saved_claim_id)
         @saved_claim = SavedClaim.find(saved_claim_id)
+        @form_id = @saved_claim.form_id
         @bpds_submission = BPDS::Submission.find_or_create_by(
           saved_claim: @saved_claim,
           form_id: @saved_claim.form_id,

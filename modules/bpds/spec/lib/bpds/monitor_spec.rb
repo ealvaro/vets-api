@@ -6,6 +6,7 @@ require 'bpds/monitor'
 RSpec.describe BPDS::Monitor do
   let(:monitor) { described_class.new }
   let(:claim_id) { 123 }
+  let(:form_id) { 'Form-XYZ' }
   let(:bpds_uuid) { 'abc-123' }
   let(:error) { StandardError.new('Something went wrong') }
   let(:user_type) { 'loa3' }
@@ -21,9 +22,10 @@ RSpec.describe BPDS::Monitor do
         "#{BPDS::Monitor::SERVICE_NAME} begun for saved_claim ##{claim_id}",
         'api.bpds_service.service_json.begun',
         call_location: instance_of(Thread::Backtrace::Location),
-        claim_id:
+        claim_id:,
+        form_id:
       )
-      monitor.track_service_begun(claim_id)
+      monitor.track_service_begun(claim_id, form_id)
     end
   end
 
@@ -35,6 +37,7 @@ RSpec.describe BPDS::Monitor do
         'api.bpds_service.submit_json.begun',
         call_location: instance_of(Thread::Backtrace::Location),
         claim_id:,
+        form_id:,
         edipi_present: true,
         file_number_present: true,
         icn_present: false,
@@ -42,7 +45,7 @@ RSpec.describe BPDS::Monitor do
         ssn_present: false
       )
 
-      monitor.track_submit_begun(claim_id, {
+      monitor.track_submit_begun(claim_id, form_id, {
                                    participant_id_present: true,
                                    file_number_present: true,
                                    ssn_present: false,
@@ -60,9 +63,10 @@ RSpec.describe BPDS::Monitor do
         'api.bpds_service.submit_json.success',
         call_location: instance_of(Thread::Backtrace::Location),
         claim_id:,
+        form_id:,
         bpds_uuid:
       )
-      monitor.track_submit_success(claim_id, bpds_uuid)
+      monitor.track_submit_success(claim_id, form_id, bpds_uuid)
     end
 
     it 'tracks the submit success event without bpds_uuid' do
@@ -72,9 +76,10 @@ RSpec.describe BPDS::Monitor do
         'api.bpds_service.submit_json.success',
         call_location: instance_of(Thread::Backtrace::Location),
         claim_id:,
+        form_id:,
         bpds_uuid: nil
       )
-      monitor.track_submit_success(claim_id)
+      monitor.track_submit_success(claim_id, form_id)
     end
   end
 
@@ -86,10 +91,11 @@ RSpec.describe BPDS::Monitor do
         'api.bpds_service.submit_json.failure',
         call_location: instance_of(Thread::Backtrace::Location),
         claim_id:,
+        form_id:,
         error: error.message,
         errors: nil
       )
-      monitor.track_submit_failure(claim_id, error)
+      monitor.track_submit_failure(claim_id, form_id, error)
     end
   end
 
@@ -186,6 +192,7 @@ RSpec.describe BPDS::Monitor do
           'api.bpds_service.job_skipped_missing_identifier',
           call_location: instance_of(Thread::Backtrace::Location),
           claim_id:,
+          form_id:,
           user_is_present: false,
           user_is_nil: true,
           user_class: 'NilClass',
@@ -193,7 +200,7 @@ RSpec.describe BPDS::Monitor do
           claim_has_user_account_id: false,
           claim_has_user_account: false
         )
-        monitor.track_skip_bpds_job(claim_id, nil)
+        monitor.track_skip_bpds_job(claim_id, form_id, nil)
       end
     end
 
@@ -212,6 +219,7 @@ RSpec.describe BPDS::Monitor do
           'api.bpds_service.job_skipped_missing_identifier',
           call_location: instance_of(Thread::Backtrace::Location),
           claim_id:,
+          form_id:,
           user_is_present: true,
           user_is_nil: false,
           user_class: 'User',
@@ -219,7 +227,7 @@ RSpec.describe BPDS::Monitor do
           claim_has_user_account_id: false,
           claim_has_user_account: false
         )
-        monitor.track_skip_bpds_job(claim_id, user)
+        monitor.track_skip_bpds_job(claim_id, form_id, user)
       end
     end
   end

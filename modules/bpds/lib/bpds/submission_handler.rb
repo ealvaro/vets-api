@@ -19,7 +19,7 @@ module BPDS
   #
   #     def create
   #       claim = create_claim(params)
-  #       submit_claim_to_bpds(claim.id, current_user) if claim.save
+  #       submit_claim_to_bpds(claim.id, claim.form_id, current_user) if claim.save
   #     end
   #   end
   #
@@ -36,13 +36,14 @@ module BPDS
     # 4. Queues the BPDS submission job
     #
     # @param claim_id [Integer] The saved claim id to submit to BPDS
+    # @param form_id [String] The saved claim form id
     # @param target_user [User] the user whose identifiers should be sent; default `current_user`
     #
     # @return [Boolean] true if submission was queued, false otherwise
-    def submit_claim_to_bpds(claim_id, target_user = nil)
+    def submit_claim_to_bpds(claim_id, form_id, target_user = nil)
       return false unless Flipper.enabled?(:bpds_service_enabled)
 
-      bpds_monitor.track_service_begun(claim_id)
+      bpds_monitor.track_service_begun(claim_id, form_id)
 
       @user = target_user || current_user
       payload = {
@@ -54,12 +55,12 @@ module BPDS
       }.merge(retrieve_user_identifier_for_bpds || {}).compact_blank
 
       if payload.blank? # no identifiers could be found from any source
-        bpds_monitor.track_skip_bpds_job(claim_id, user)
+        bpds_monitor.track_skip_bpds_job(claim_id, form_id, user)
         return false
       end
 
       encrypted_payload = KmsEncrypted::Box.new.encrypt(payload.to_json)
-      bpds_monitor.track_submit_begun(claim_id, extract_payload_metrics(payload))
+      bpds_monitor.track_submit_begun(claim_id, form_id, extract_payload_metrics(payload))
       BPDS::Sidekiq::SubmitToBPDSJob.perform_async(claim_id, encrypted_payload)
 
       true

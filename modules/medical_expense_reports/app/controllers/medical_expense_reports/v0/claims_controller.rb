@@ -148,9 +148,9 @@ module MedicalExpenseReports
       #
       # @param claim [MedicalExpenseReports::SavedClaim]
       def submit_claim_to_bpds_safely(claim)
-        submit_claim_to_bpds(claim.id, current_user)
+        submit_claim_to_bpds(claim.id, claim.form_id, current_user)
       rescue => e
-        bpds_monitor.track_submit_failure(claim.id, e)
+        bpds_monitor.track_submit_failure(claim.id, claim.form_id, e)
         Rails.logger.warn('[MedicalExpenseReports] BPDS parallel submission failed; claim submission continues',
                           claim_id: claim.id, exception: e)
       end

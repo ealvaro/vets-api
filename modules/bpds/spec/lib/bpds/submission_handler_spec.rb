@@ -35,7 +35,7 @@ RSpec.describe BPDS::SubmissionHandler do
 
       it 'returns false without submitting' do
         expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
-        expect(controller.submit_claim_to_bpds(claim.id)).to be false
+        expect(controller.submit_claim_to_bpds(claim.id, claim.form_id)).to be false
       end
     end
 
@@ -43,9 +43,9 @@ RSpec.describe BPDS::SubmissionHandler do
       before { allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true) }
 
       it 'tracks skip event and returns false' do
-        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id, nil)
-        expect(controller.submit_claim_to_bpds(claim.id)).to be false
+        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id, claim.form_id)
+        expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id, claim.form_id, nil)
+        expect(controller.submit_claim_to_bpds(claim.id, claim.form_id)).to be false
       end
     end
 
@@ -67,10 +67,11 @@ RSpec.describe BPDS::SubmissionHandler do
           icn_present: true,
           edipi_present: true
         }
-        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, hash_including(expected_hash))
+        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id, claim.form_id)
+        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, claim.form_id,
+                                                                  hash_including(expected_hash))
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
-        expect(controller.submit_claim_to_bpds(claim.id)).to be true
+        expect(controller.submit_claim_to_bpds(claim.id, claim.form_id)).to be true
       end
     end
 
@@ -93,10 +94,11 @@ RSpec.describe BPDS::SubmissionHandler do
           ssn_present: true
 
         }
-        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id)
-        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, hash_including(expected_hash))
+        expect(bpds_monitor).to receive(:track_service_begun).with(claim.id, claim.form_id)
+        expect(bpds_monitor).to receive(:track_submit_begun).with(claim.id, claim.form_id,
+                                                                  hash_including(expected_hash))
         expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).with(claim.id, 'encrypted')
-        expect(controller.submit_claim_to_bpds(claim.id)).to be true
+        expect(controller.submit_claim_to_bpds(claim.id, claim.form_id)).to be true
       end
     end
   end

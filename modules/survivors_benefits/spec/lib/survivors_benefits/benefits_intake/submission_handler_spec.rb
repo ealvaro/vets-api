@@ -121,7 +121,8 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmissionHandler do
           expect(bpds_monitor).to receive(:track_get_user_identifier_result).with('mpi', true, true).once
           expect(bpds_monitor).to receive(:track_get_user_identifier_file_number_result).with(true).once
           expect(bpds_monitor).to receive(:track_submit_begun)
-            .with(claim.id, hash_including(participant_id_present: true, icn_present: true, ssn_present: true)).once
+            .with(claim.id, claim.form_id, hash_including(participant_id_present: true, icn_present: true,
+                                                          ssn_present: true)).once
           expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).once
 
           expect(instance.handle(:success)).to be true
@@ -137,7 +138,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmissionHandler do
           expect_any_instance_of(MPI::Service).not_to receive(:find_profile_by_identifier)
           expect(bpds_monitor).to receive(:track_get_user_identifier_file_number_result).with(true).once
           expect(bpds_monitor).to receive(:track_submit_begun)
-            .with(claim.id, hash_including(file_number_present: true)).once
+            .with(claim.id, claim.form_id, hash_including(file_number_present: true)).once
           expect(BPDS::Sidekiq::SubmitToBPDSJob).to receive(:perform_async).once
 
           expect(instance.handle(:success)).to be true
@@ -167,7 +168,7 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmissionHandler do
 
         it 'tracks the skip and does not enqueue' do
           expect(bpds_monitor).to receive(:track_get_user_identifier_file_number_result).with(false).once
-          expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id, nil).once
+          expect(bpds_monitor).to receive(:track_skip_bpds_job).with(claim.id, claim.form_id, nil).once
           expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
 
           expect(instance.handle(:success)).to be true
@@ -184,7 +185,8 @@ RSpec.describe SurvivorsBenefits::BenefitsIntake::SubmissionHandler do
 
         it 'swallows the error, tracks the failure, and still completes on_success' do
           expect(notification).to receive(:deliver).with(:received)
-          expect(bpds_monitor).to receive(:track_submit_failure).with(claim.id, instance_of(StandardError)).once
+          expect(bpds_monitor).to receive(:track_submit_failure).with(claim.id, claim.form_id,
+                                                                      instance_of(StandardError)).once
           expect(BPDS::Sidekiq::SubmitToBPDSJob).not_to receive(:perform_async)
 
           expect(instance.handle(:success)).to be true

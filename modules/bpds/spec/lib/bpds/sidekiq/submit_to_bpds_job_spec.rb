@@ -58,7 +58,7 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
             response: response.to_json,
             bpds_id: response['uuid']
           )
-          expect(monitor).to have_received(:track_submit_success).with(claim.id, response['uuid'])
+          expect(monitor).to have_received(:track_submit_success).with(claim.id, claim.form_id, response['uuid'])
         end
       end
 
@@ -74,7 +74,7 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
             response: response.to_json,
             bpds_id: response['uuid']
           )
-          expect(monitor).to have_received(:track_submit_success).with(claim.id, response['uuid'])
+          expect(monitor).to have_received(:track_submit_success).with(claim.id, claim.form_id, response['uuid'])
         end
       end
 
@@ -97,7 +97,7 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
             response: response.to_json,
             bpds_id: response['uuid']
           )
-          expect(monitor).to have_received(:track_submit_success).with(claim.id, response['uuid'])
+          expect(monitor).to have_received(:track_submit_success).with(claim.id, claim.form_id, response['uuid'])
         end
       end
     end
@@ -133,7 +133,7 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
           status: 'failure',
           error_message: 'Submission failed'
         )
-        expect(monitor).to have_received(:track_submit_failure).with(claim.id, error)
+        expect(monitor).to have_received(:track_submit_failure).with(claim.id, claim.form_id, error)
       end
     end
 

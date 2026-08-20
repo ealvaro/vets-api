@@ -62,7 +62,7 @@ module Pensions
         submit_traceability_to_event_bus(claim)
 
         # See BPDS::SubmissionHandler
-        submit_claim_to_bpds(claim.id, current_user)
+        submit_claim_to_bpds(claim.id, claim.form_id, current_user)
 
         process_attachments(in_progress_form, claim)
 

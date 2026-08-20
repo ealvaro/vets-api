@@ -40,6 +40,7 @@ module IncomeAndAssets
       end
 
       # POST creates and validates an instance of `claim_class`
+      # rubocop:disable Metrics/MethodLength
       def create
         claim = create_claim(filtered_params[:form])
         monitor.track_create_attempt(claim, current_user)
@@ -54,7 +55,9 @@ module IncomeAndAssets
         end
 
         # See BPDS::SubmissionHandler
-        submit_claim_to_bpds(claim.id, current_user) if Flipper.enabled?(:income_and_assets_bpds_service_enabled)
+        if Flipper.enabled?(:income_and_assets_bpds_service_enabled)
+          submit_claim_to_bpds(claim.id, claim.form_id, current_user)
+        end
 
         process_attachments(in_progress_form, claim)
 
@@ -69,6 +72,7 @@ module IncomeAndAssets
         monitor.track_create_error(in_progress_form, claim, current_user, e)
         raise e
       end
+      # rubocop:enable Metrics/MethodLength
 
       private
 

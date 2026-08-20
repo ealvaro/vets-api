@@ -72,16 +72,17 @@ module SurvivorsBenefits
       # metric when no usable identifier is found.
       def submit_to_bpds_after_vbms
         claim_id = claim.id
-        bpds_monitor.track_service_begun(claim_id)
+        form_id = claim.form_id
+        bpds_monitor.track_service_begun(claim_id, form_id)
         payload = bpds_identifiers_for_claim
 
         if payload.blank?
-          bpds_monitor.track_skip_bpds_job(claim_id, nil)
+          bpds_monitor.track_skip_bpds_job(claim_id, form_id, nil)
           return
         end
 
         encrypted_payload = KmsEncrypted::Box.new.encrypt(payload.to_json)
-        bpds_monitor.track_submit_begun(claim_id, bpds_payload_metrics(payload))
+        bpds_monitor.track_submit_begun(claim_id, form_id, bpds_payload_metrics(payload))
         ::BPDS::Sidekiq::SubmitToBPDSJob.perform_async(claim_id, encrypted_payload)
       rescue => e
         # BPDS is experimental and must never disrupt claim submission. This runs after VBMS
@@ -89,7 +90,7 @@ module SurvivorsBenefits
         # received email sent, and the attempt marked vbms!), so we swallow any failure here
         # rather than relying on the poller's rescue. This keeps a BPDS error from affecting
         # this claim's handling or other claims in the same SubmissionStatusJob batch.
-        bpds_monitor.track_submit_failure(claim_id, e)
+        bpds_monitor.track_submit_failure(claim_id, form_id, e)
       end
 
       # Tries MPI lookup using the claim's stored user_account ICN, then falls

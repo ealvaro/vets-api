@@ -30,6 +30,7 @@ module BPDS
       user_has_icn
       claim_has_user_account_id
       claim_has_user_account
+      form_id
     ].freeze
 
     def initialize
@@ -39,8 +40,9 @@ module BPDS
     # Track service started
     #
     # @param claim_id [Integer] the SavedClaim id
-    def track_service_begun(claim_id)
-      context = { claim_id: }
+    # @param form_id [String] the SavedClaim form id
+    def track_service_begun(claim_id, form_id)
+      context = { claim_id:, form_id: }
       track_request(
         :info,
         "#{SERVICE_NAME} begun for saved_claim ##{claim_id}",
@@ -53,8 +55,9 @@ module BPDS
     # Track submission request started
     #
     # @param claim_id [Integer] the SavedClaim id
-    def track_submit_begun(claim_id, payload_metrics)
-      context = { claim_id: }
+    # @param form_id [String] the SavedClaim form id
+    def track_submit_begun(claim_id, form_id, payload_metrics)
+      context = { claim_id:, form_id: }
       track_request(
         :info,
         "#{SERVICE_NAME} submit begun for saved_claim ##{claim_id}",
@@ -72,9 +75,10 @@ module BPDS
     # Track submission successful
     #
     # @param claim_id [Integer] the SavedClaim id
+    # @param form_id [String] the SavedClaim form id
     # @param bpds_uuid [String, nil] the UUID returned from BPDS
-    def track_submit_success(claim_id, bpds_uuid = nil)
-      context = { claim_id:, bpds_uuid: }
+    def track_submit_success(claim_id, form_id, bpds_uuid = nil)
+      context = { claim_id:, form_id:, bpds_uuid: }
       track_request(
         :info,
         "#{SERVICE_NAME} submit succeeded for saved_claim ##{claim_id}",
@@ -87,10 +91,12 @@ module BPDS
     # Track submission request failure
     #
     # @param claim_id [Integer] the SavedClaim id
+    # @param form_id [String] the SavedClaim form id
     # @param e [Error] the error which occurred
-    def track_submit_failure(claim_id, e)
+    def track_submit_failure(claim_id, form_id, e)
       context = {
         claim_id:,
+        form_id:,
         error: e&.message,
         errors: e.try(:errors)
       }
@@ -198,11 +204,13 @@ module BPDS
     # Tracks and logs the event when a BPDS job is skipped due to a missing user identifier.
     #
     # @param claim_id [Integer, String] The ID of the saved claim for which the BPDS job was skipped.
+    # @param form_id [String] the SavedClaim form id
     # @param user [Object] The current user
-    def track_skip_bpds_job(claim_id, user)
+    def track_skip_bpds_job(claim_id, form_id, user)
       claim = SavedClaim.find_by(id: claim_id) # find_by to not raise an error
       context = {
         claim_id:,
+        form_id:,
         user_is_present: user.present?,
         user_is_nil: user.nil?,
         user_class: user.class.name,

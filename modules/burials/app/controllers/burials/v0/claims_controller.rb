@@ -58,7 +58,7 @@ module Burials
         end
 
         # See BPDS::SubmissionHandler
-        submit_claim_to_bpds(claim.id, current_user) if Flipper.enabled?(:burial_bpds_service_enabled)
+        submit_claim_to_bpds(claim.id, claim.form_id, current_user) if Flipper.enabled?(:burial_bpds_service_enabled)
 
         process_attachments(in_progress_form, claim)
 
