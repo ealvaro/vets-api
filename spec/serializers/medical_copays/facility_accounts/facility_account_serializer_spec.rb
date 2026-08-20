@@ -13,6 +13,44 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
     described_class.index(total_current_balance:, facilities:)
   end
 
+  describe '.show' do
+    it 'camelizes every key without the index envelope' do
+      result = described_class.show(facility_account)
+
+      expect(result.keys).to contain_exactly(
+        'stationId', 'facilityName', 'isCerner', 'accountNumber', 'currentBalance',
+        'pastDueBalance', 'statementDate', 'dueDate', 'transactions'
+      )
+    end
+
+    it 'camelizes keys nested below the transaction, not just the transaction itself' do
+      account = facility_account(
+        transactions: [{ billing_reference: 'H1234',
+                         medication: { medication_name: 'ATORVASTATIN', days_supply: 30 } }]
+      )
+
+      transaction = described_class.show(account)['transactions'].first
+
+      expect(transaction.keys).to contain_exactly('billingReference', 'medication')
+      expect(transaction['medication'].keys).to contain_exactly('medicationName', 'daysSupply')
+    end
+
+    it 'emits the detail-only attributes the index leaves null' do
+      account = facility_account(account_number: '123456', statement_date: Date.new(2025, 12, 11))
+
+      result = described_class.show(account)
+
+      expect(result['accountNumber']).to eq('123456')
+      expect(result['statementDate']).to eq('2025-12-11')
+    end
+
+    it 'omits model attributes that are not on the allowlist' do
+      stub_const("#{described_class}::ATTRIBUTES", %i[station_id current_balance].freeze)
+
+      expect(described_class.show(facility_account).keys).to contain_exactly('stationId', 'currentBalance')
+    end
+  end
+
   it 'camelizes the envelope and every facility key' do
     result = serialize([facility_account])
 
@@ -59,7 +97,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
   end
 
   it 'omits model attributes that are not on the index allowlist' do
-    stub_const("#{described_class}::INDEX_ATTRIBUTES", %i[station_id current_balance].freeze)
+    stub_const("#{described_class}::ATTRIBUTES", %i[station_id current_balance].freeze)
 
     expect(serialize([facility_account])['facilities'].first.keys).to contain_exactly(
       'stationId', 'currentBalance'

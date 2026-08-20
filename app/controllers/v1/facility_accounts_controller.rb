@@ -10,6 +10,13 @@ module V1
       render json: MedicalCopays::FacilityAccounts::FacilityAccountSerializer.index(**service.facility_accounts)
     end
 
+    def show
+      account = service.facility_account(params[:facility_id])
+      raise Common::Exceptions::RecordNotFound, params[:facility_id] if account.nil?
+
+      render json: MedicalCopays::FacilityAccounts::FacilityAccountSerializer.show(account)
+    end
+
     private
 
     def authorize_icn

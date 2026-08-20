@@ -328,6 +328,133 @@ class Swagger::V1::Requests::MedicalCopays
     end
   end
 
+  swagger_path '/v1/medical_copays/facility/{facility_id}' do
+    operation :get do
+      key :description,
+          'A single medical copay facility account, with its account number and transaction history. ' \
+          'Response is source-blind; isCerner indicates source.'
+      key :operationId, 'getMedicalCopayFacility'
+      key :tags, %w[medical_copays]
+
+      parameter :authorization
+
+      parameter do
+        key :name, :facility_id
+        key :in, :path
+        key :description,
+            'VA facility station number (e.g. 757), as returned by GET /v1/medical_copays/facilities'
+        key :required, true
+        key :type, :string
+      end
+
+      response 200 do
+        key :description, 'Successful facility account lookup'
+
+        schema do
+          property :stationId,
+                   type: :string,
+                   example: '757',
+                   description: 'Canonical VA facility station number'
+
+          property :facilityName,
+                   type: :string,
+                   example: 'Chalmers P. Wylie Veterans Outpatient Clinic'
+
+          property :isCerner,
+                   type: :boolean,
+                   example: false,
+                   description: 'true when the data came from VBS (Cerner), false for Lighthouse'
+
+          property :accountNumber,
+                   type: %i[string null],
+                   example: '123456'
+
+          property :currentBalance,
+                   type: :number,
+                   format: :float,
+                   example: 105.24
+
+          property :pastDueBalance,
+                   type: :number,
+                   format: :float,
+                   example: 0.00
+
+          property :dueDate,
+                   type: :string,
+                   format: :date,
+                   example: '2026-01-05'
+
+          property :statementDate,
+                   type: :string,
+                   format: :date,
+                   example: '2025-12-11'
+
+          property :transactions,
+                   type: %i[array null],
+                   description: 'Charges and payments across the account, most recent first' do
+            items do
+              property :id, type: %i[string null], example: 'B1'
+
+              property :type,
+                       type: :string,
+                       enum: %w[charge payment credit],
+                       example: 'charge'
+
+              property :date, type: %i[string null], format: :date, example: '2025-12-01'
+
+              property :amount, type: %i[number null], format: :float, example: 105.24
+
+              property :description,
+                       type: %i[string null],
+                       example: 'RX COPAY',
+                       description: 'Charges only; absent on payments'
+
+              property :billingReference,
+                       type: %i[string null],
+                       example: 'H1234',
+                       description: 'Charges only; absent on payments'
+
+              property :provider,
+                       type: %i[string null],
+                       example: 'Dr X',
+                       description: 'Charges only; absent on payments'
+
+              property :medication,
+                       type: %i[object null],
+                       description: 'Prescription charges only; null when the charge has no MedicationDispense' do
+                property :medicationName, type: %i[string null], example: 'ATORVASTATIN'
+                property :rxNumber, type: %i[string null], example: '2719324'
+                property :quantity, type: %i[number null], example: 30
+                property :daysSupply, type: %i[number null], example: 30
+              end
+            end
+          end
+        end
+      end
+
+      response 403 do
+        key :description, 'Forbidden; requires enable_facility_account_history feature flag or missing ICN'
+        schema do
+          key :$ref, :Errors
+        end
+      end
+
+      response 404 do
+        key :description, 'The user has no copay account at that facility'
+        schema do
+          key :$ref, :Errors
+        end
+      end
+
+      response 502 do
+        key :description, 'An upstream copay service (VBS or Lighthouse) failed'
+        schema do
+          key :$ref, :Errors
+        end
+      end
+    end
+  end
+
   swagger_path '/v1/medical_copays/summary' do
     operation :get do
       key :description,

@@ -4007,5 +4007,89 @@ RSpec.describe 'the v1 API documentation', order: :defined, type: %i[apivore req
         end
       end
     end
+
+    context 'medical copay facility account' do
+      let(:facility_id) { { 'facility_id' => '757' } }
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:enable_facility_account_history, anything)
+                                            .and_return(feature_enabled)
+        allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, anything).and_return(true)
+      end
+
+      def stub_show(account)
+        allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(
+          instance_double(MedicalCopays::FacilityAccounts::LighthouseBuilder, build_facility_account: account)
+        )
+      end
+
+      context 'when the feature is enabled' do
+        let(:feature_enabled) { true }
+
+        it 'validates the route' do
+          stub_show(
+            MedicalCopays::FacilityAccounts::FacilityAccount.new(
+              station_id: '757', facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+              is_cerner: false, account_number: '123456', current_balance: 105.24, past_due_balance: 0.0,
+              statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5),
+              transactions: [{ id: 'B1', type: 'charge', date: '2025-12-01', description: 'RX COPAY',
+                               amount: 105.24, billing_reference: 'H1234', provider: 'Dr X',
+                               medication: { medication_name: 'ATORVASTATIN', rx_number: '2719324',
+                                             quantity: 30, days_supply: 30 } }]
+            )
+          )
+
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facility/{facility_id}',
+            200,
+            headers.merge(facility_id)
+          )
+        end
+
+        it 'validates the not found route' do
+          stub_show(nil)
+
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facility/{facility_id}',
+            404,
+            headers.merge(facility_id)
+          )
+        end
+      end
+
+      context 'when the feature is disabled' do
+        let(:feature_enabled) { false }
+
+        it 'validates the route' do
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facility/{facility_id}',
+            403,
+            headers.merge(facility_id)
+          )
+        end
+      end
+
+      context 'when an upstream copay service fails' do
+        let(:feature_enabled) { true }
+
+        it 'validates the route' do
+          builder = instance_double(MedicalCopays::FacilityAccounts::LighthouseBuilder)
+          allow(builder).to receive(:build_facility_account).and_raise(MedicalCopays::VBS::Service::ServiceError)
+          allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(builder)
+
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facility/{facility_id}',
+            502,
+            headers.merge(facility_id)
+          )
+        end
+      end
+    end
   end
 end

@@ -461,6 +461,7 @@ Rails.application.routes.draw do
       collection do
         get :summary
         get :facilities, to: 'facility_accounts#index'
+        get 'facility/:facility_id', to: 'facility_accounts#show'
       end
     end
   end

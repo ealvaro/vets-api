@@ -130,6 +130,73 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
     end
   end
 
+  describe '#facility_account' do
+    let(:payment_history_enabled) { true }
+    let(:lighthouse_copays_enabled) { true }
+    let(:cerner_user) { false }
+    let(:account) { MedicalCopays::FacilityAccounts::FacilityAccount.new(station_id: '757') }
+
+    it 'returns the account the builder found for the station' do
+      allow(lighthouse_builder).to receive(:build_facility_account).with('757').and_return(account)
+
+      expect(service.facility_account('757')).to eq(account)
+    end
+
+    describe 'monitoring' do
+      before do
+        allow(StatsD).to receive(:increment)
+        allow(StatsD).to receive(:measure).and_call_original
+      end
+
+      it 'times the build and counts the success, tagged by source' do
+        allow(lighthouse_builder).to receive(:build_facility_account).and_return(account)
+
+        service.facility_account('757')
+
+        expect(StatsD).to have_received(:measure)
+          .with('api.mcp.facility_accounts.show.latency', tags: ['source:lighthouse'])
+        expect(StatsD).to have_received(:increment)
+          .with('api.mcp.facility_accounts.show.success', tags: ['source:lighthouse'])
+      end
+
+      it 'counts a failure with the error class' do
+        allow(lighthouse_builder).to receive(:build_facility_account)
+          .and_raise(MedicalCopays::VBS::Service::ServiceError)
+
+        expect { service.facility_account('757') }.to raise_error(Common::Exceptions::BadGateway)
+        expect(StatsD).to have_received(:increment).with(
+          'api.mcp.facility_accounts.show.failure',
+          tags: ['source:lighthouse', 'error:MedicalCopaysVBSServiceServiceError']
+        )
+      end
+
+      context 'when the station has no account' do
+        before { allow(lighthouse_builder).to receive(:build_facility_account).and_return(nil) }
+
+        it 'records a not_found, not a failure' do
+          expect(service.facility_account('757')).to be_nil
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.mcp.facility_accounts.show.not_found', tags: ['source:lighthouse'])
+          expect(StatsD).not_to have_received(:increment)
+            .with('api.mcp.facility_accounts.show.failure', anything)
+        end
+
+        it 'logs the station id' do
+          allow(Rails.logger).to receive(:warn)
+
+          service.facility_account('757')
+
+          expect(Rails.logger).to have_received(:warn).with(
+            'MedicalCopays::FacilityAccounts no account found',
+            station_id: '757',
+            user_uuid: user.uuid
+          )
+        end
+      end
+    end
+  end
+
   describe 'feature gating' do
     context 'when enable_facility_account_history is disabled' do
       let(:payment_history_enabled) { false }

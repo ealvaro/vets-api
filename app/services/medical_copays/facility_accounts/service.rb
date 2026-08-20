@@ -21,14 +21,16 @@ module MedicalCopays
       def facility_accounts
         require_payment_history!
 
-        facilities = build_facility_accounts
+        facilities = with_metrics(:index) { builder.build_facility_accounts }
         { total_current_balance: FacilityAccount.sum_balances(facilities), facilities: }
       end
 
       def facility_account(station_id)
         require_payment_history!
 
-        builder.build_facility_account(station_id)
+        account = with_metrics(:show) { builder.build_facility_account(station_id) }
+        record_missing_account(station_id) if account.nil?
+        account
       end
 
       def statements(_station_id)
@@ -40,20 +42,24 @@ module MedicalCopays
 
       private
 
-      def build_facility_accounts
-        result = StatsD.measure("#{STATSD_KEY_PREFIX}.index.latency", tags: statsd_tags) do
-          builder.build_facility_accounts
-        end
-        StatsD.increment("#{STATSD_KEY_PREFIX}.index.success", tags: statsd_tags)
+      def with_metrics(action, &)
+        result = StatsD.measure("#{STATSD_KEY_PREFIX}.#{action}.latency", tags: statsd_tags, &)
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action}.success", tags: statsd_tags)
         result
       rescue => e
-        StatsD.increment("#{STATSD_KEY_PREFIX}.index.failure",
+        StatsD.increment("#{STATSD_KEY_PREFIX}.#{action}.failure",
                          tags: statsd_tags + ["error:#{e.class.to_s.delete(':')}"])
         raise unless UPSTREAM_SERVICE_ERRORS.any? { |error_class| e.is_a?(error_class) }
 
         Rails.logger.error('MedicalCopays::FacilityAccounts upstream service error',
                            error_class: e.class.name, user_uuid: @user.uuid)
         raise Common::Exceptions::BadGateway
+      end
+
+      def record_missing_account(station_id)
+        StatsD.increment("#{STATSD_KEY_PREFIX}.show.not_found", tags: statsd_tags)
+        Rails.logger.warn('MedicalCopays::FacilityAccounts no account found',
+                          station_id:, user_uuid: @user.uuid)
       end
 
       def require_payment_history!
