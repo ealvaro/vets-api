@@ -9,6 +9,8 @@ module EducationBenefitsClaims
   class SubmissionHandler < ::BenefitsIntake::SubmissionHandler::SavedClaim
     VALID_FORM_IDS = %w[
       22-10278
+      22-0810
+      22-10272
     ].freeze
     # A little bit of metaprogramming here: we want one handler to handle
     # several different form types. This works fine for all the instance methods
@@ -54,7 +56,7 @@ module EducationBenefitsClaims
 
     # handle a success result
     def on_success
-      notification_email.deliver(:received) if claim.form_id == '22-10278'
+      notification_email.deliver(:received)
       super
     end
 

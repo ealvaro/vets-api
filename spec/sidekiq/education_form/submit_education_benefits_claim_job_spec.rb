@@ -6,21 +6,34 @@ RSpec.describe EducationForm::SubmitEducationBenefitsClaimJob, form: :education_
   subject { described_class.new }
 
   let(:claim) { create(:va10278) }
+  let(:form_pdf_path) { 'tmp/test-submit-education-benefits-claim-job.pdf' }
   let(:stub_service) { double('BenefitsIntake::Service') }
   let(:stub_monitor) { double('EducationBenefitsClaims::Monitor') }
+  let(:generated_pdfs) { [] }
 
   before do
+    # PDFStamper leaves its source behind and the stubbed intake service means the job
+    # cannot clean up after itself; track both paths so the spec can
+    allow_any_instance_of(PDFUtilities::PDFStamper).to receive(:run).and_wrap_original do |original, path, **kw|
+      generated_pdfs << path
+      original.call(path, **kw).tap { |stamped| generated_pdfs << stamped }
+    end
+
     allow(BenefitsIntake::Service).to receive(:new).and_return(stub_service)
     allow(stub_service).to receive(:request_upload)
-    allow(stub_service).to receive_messages(valid_document?: 'tmp/test.pdf', location: 'http://example.com/upload',
+    allow(stub_service).to receive_messages(valid_document?: form_pdf_path, location: 'http://example.com/upload',
                                             uuid: 'acde070d-8c4c-4f0d-9d8a-162843c10333')
-    allow(claim).to receive(:to_pdf).and_return('tmp/test.pdf')
+    allow(claim).to receive(:to_pdf).and_return(form_pdf_path)
 
     allow(EducationBenefitsClaims::Monitor).to receive(:new).and_return(stub_monitor)
     allow(stub_monitor).to receive(:track_submission_success)
     allow(stub_monitor).to receive(:track_submission_retry)
     allow(stub_monitor).to receive(:track_submission_begun)
     allow(stub_monitor).to receive(:track_submission_attempted)
+  end
+
+  after do
+    generated_pdfs.each { |path| Common::FileHelpers.delete_file_if_exists(path) }
   end
 
   describe '#perform' do
@@ -105,6 +118,67 @@ RSpec.describe EducationForm::SubmitEducationBenefitsClaimJob, form: :education_
         expect(stub_monitor).to receive(:track_submission_attempted)
         subject.perform(claim.id)
       end
+    end
+  end
+
+  describe 'supporting documents' do
+    let(:captured) { {} }
+
+    before do
+      # echo the document back so the paths handed to the upload can be asserted on
+      allow(stub_service).to receive(:valid_document?) { |document:| document }
+      allow(stub_service).to receive(:perform_upload) do |**payload|
+        captured[:payload] = payload
+        captured[:attachments_on_disk] = payload[:attachments].select { |path| File.exist?(path) }
+        OpenStruct.new(success?: true)
+      end
+    end
+
+    shared_examples 'uploads supporting documents' do |form_id|
+      context 'with supporting documents' do
+        let!(:supporting_documents) do
+          create_list(:claim_evidence, 2, saved_claim_id: claim.id, form_id:)
+        end
+
+        it 'passes a stamped document for each supporting document into the upload' do
+          subject.perform(claim.id)
+
+          attachments = captured[:payload][:attachments]
+          expect(attachments.size).to eq(supporting_documents.size)
+          expect(attachments.uniq.size).to eq(supporting_documents.size)
+          expect(attachments).not_to include(captured[:payload][:document])
+          expect(captured[:attachments_on_disk]).to match_array(attachments)
+        end
+
+        it 'reports the attachments to the monitor' do
+          expect(stub_monitor).to receive(:track_submission_attempted) do |_claim, _service, _uuid, payload|
+            expect(payload[:attachments].size).to eq(supporting_documents.size)
+          end
+
+          subject.perform(claim.id)
+        end
+      end
+
+      context 'without supporting documents' do
+        it 'uploads the form with no attachments' do
+          subject.perform(claim.id)
+
+          expect(captured[:payload][:attachments]).to eq([])
+          expect(captured[:payload][:document]).to be_present
+        end
+      end
+    end
+
+    context 'with a 22-0810 claim' do
+      let(:claim) { create(:va0810) }
+
+      it_behaves_like 'uploads supporting documents', '22-0810'
+    end
+
+    context 'with a 22-10272 claim' do
+      let(:claim) { create(:va10272) }
+
+      it_behaves_like 'uploads supporting documents', '22-10272'
     end
   end
 

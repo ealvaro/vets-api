@@ -31,6 +31,13 @@
     "postalCode": "19073",
     "country": "USA"
   },
+  "supportingDocuments": [
+    {
+      "name": "examresults.pdf",
+      "size": 5120,
+      "confirmationCode": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    }
+  ],
   "remarks": "The Master created humans first as the lowest type, most easily formed. Gradually, he replaced them by robots, the next higher step, and finally he created me, to take the place of the last humans.",
   "statementOfTruthSignature": "Spongebob X. Squarepants",
   "dateSigned": "2024-05-16"

@@ -12,7 +12,9 @@ require 'education_benefits_claims/submission_handler'
 # @see modules/burials
 # @see modules/pensions
 {
-  '22-10278' => EducationBenefitsClaims::SubmissionHandler.for_form_id('22-10278')
+  '22-10278' => EducationBenefitsClaims::SubmissionHandler.for_form_id('22-10278'),
+  '22-0810' => EducationBenefitsClaims::SubmissionHandler.for_form_id('22-0810'),
+  '22-10272' => EducationBenefitsClaims::SubmissionHandler.for_form_id('22-10272')
 }.each do |form_id, handler_class|
   BenefitsIntake::SubmissionStatusJob.register_handler(form_id, handler_class)
 end

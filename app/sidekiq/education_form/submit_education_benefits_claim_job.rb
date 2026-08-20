@@ -7,7 +7,7 @@ module EducationForm
     include Sidekiq::Job
 
     # Only process form types submitted via Benefits Intake (22-0989 uses the nightly spool file).
-    FORMS_IDS = %w[22-10278].freeze
+    FORMS_IDS = %w[22-10278 22-0810 22-10272].freeze
 
     class EducationBenefitClaimIntakeError < StandardError; end
 
