@@ -4,15 +4,18 @@ module MyHealth
   module V2
     module Prescriptions
       class DrugSheetsController < RxController
+        include Rx::NdcValidator
+
         # Search for drug sheet documentation by NDC (National Drug Code).
         # Uses Krames API to fetch drug information HTML content.
         def search
           ndc = params[:ndc]
           return render_ndc_required_error if ndc.blank?
 
-          documentation = client.get_rx_documentation(ndc)
-          prescription_documentation = PrescriptionDocumentation.new({ html: documentation[:data] })
-          render json: MyHealth::V2::DrugSheetSerializer.new(prescription_documentation)
+          validate_ndc_format!(ndc)
+          render_documentation(ndc)
+        rescue Rx::NdcValidator::InvalidNdcFormatError
+          render_ndc_invalid_error
         rescue Common::Exceptions::BackendServiceException => e
           raise e unless e.original_status == 404
 
@@ -20,20 +23,34 @@ module MyHealth
         rescue Common::Exceptions::Forbidden
           raise
         rescue => e
-          Rails.logger.error(
-            'DrugSheetsController: Failed to fetch documentation',
-            ndc:,
-            error_class: e.class.name,
-            error_message: e.message,
-            backtrace: e.backtrace&.first(10)
-          )
+          log_documentation_error(ndc, e)
           render_service_unavailable_error
         end
 
         private
 
+        def render_documentation(ndc)
+          documentation = client.get_rx_documentation(ndc)
+          prescription_documentation = PrescriptionDocumentation.new({ html: documentation[:data] })
+          render json: MyHealth::V2::DrugSheetSerializer.new(prescription_documentation)
+        end
+
+        def log_documentation_error(ndc, error)
+          Rails.logger.error(
+            'DrugSheetsController: Failed to fetch documentation',
+            ndc:,
+            error_class: error.class.name,
+            error_message: error.message,
+            backtrace: error.backtrace&.first(10)
+          )
+        end
+
         def render_ndc_required_error
           render json: { error: { code: 'NDC_REQUIRED', message: 'NDC number is required' } }, status: :bad_request
+        end
+
+        def render_ndc_invalid_error
+          render json: { error: { code: 'NDC_INVALID', message: 'Invalid NDC format' } }, status: :bad_request
         end
 
         def render_not_found_error

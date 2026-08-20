@@ -5,6 +5,7 @@ require 'common/client/concerns/mhv_session_based_client'
 require 'rx/configuration'
 require 'rx/client_session'
 require 'rx/rx_gateway_timeout'
+require 'rx/ndc_validator'
 require 'active_support/core_ext/hash/slice'
 require 'vets/collection'
 
@@ -14,6 +15,7 @@ module Rx
   #
   class Client < Common::Client::Base
     include Common::Client::Concerns::MHVSessionBasedClient
+    include Rx::NdcValidator
 
     configuration Rx::Configuration
     client_session Rx::ClientSession
@@ -21,6 +23,8 @@ module Rx
     STATSD_KEY_PREFIX = 'api.mhv.rxrefill'
     CACHE_TTL = 3600 * 1 # 1 hour cache
     CACHE_TTL_ZERO = 0
+
+    InvalidNdcFormatError = Rx::NdcValidator::InvalidNdcFormatError
 
     def initialize(session:, upstream_request: nil)
       @upstream_request = upstream_request
@@ -81,9 +85,12 @@ module Rx
     ##
     # Get documentation for a single prescription
     #
+    # @param ndc [String] National Drug Code (digits only, optionally with dashes)
+    # @raise [InvalidNdcFormatError] if NDC contains invalid characters (path traversal prevention)
     # @return [Common::Collection[PrescriptionDocumentation]]
     #
     def get_rx_documentation(ndc)
+      validate_ndc_format!(ndc)
       perform(:get, get_path("getrxdoc/#{ndc}"), nil, get_headers(token_headers)).body
     end
 

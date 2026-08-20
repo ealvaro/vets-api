@@ -177,4 +177,26 @@ describe Rx::Client do
       expect(config.x_api_key).to eq('test-api-key')
     end
   end
+
+  describe '#get_rx_documentation' do
+    context 'with invalid NDC' do
+      it 'raises InvalidNdcFormatError for path traversal attempts' do
+        expect { client.get_rx_documentation('../../ess/rxtracking/1') }
+          .to raise_error(Rx::Client::InvalidNdcFormatError, 'Invalid NDC format')
+      end
+    end
+
+    context 'with valid NDC' do
+      before do
+        allow(client).to receive(:perform).and_return(
+          double(body: { data: '<html>Drug info</html>' })
+        )
+      end
+
+      it 'accepts valid NDC and calls perform' do
+        expect { client.get_rx_documentation('00013-2646-81') }.not_to raise_error
+        expect(client).to have_received(:perform)
+      end
+    end
+  end
 end

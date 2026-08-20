@@ -114,6 +114,45 @@ RSpec.describe 'MyHealth::V2::Prescriptions::DrugSheets', type: :request do
         end
       end
 
+      context 'when NDC contains path traversal characters' do
+        [
+          ['../../ess/rxtracking/1', 'path traversal with ../'],
+          ['../../ess/medications', 'traversal to medications endpoint'],
+          ['..%2F..%2Fess%2Frxtracking%2F1', 'URL-encoded traversal'],
+          ['12345/../../admin', 'mixed digits with traversal'],
+          ['..\\..\\ess\\rxtracking\\1', 'backslash traversal']
+        ].each do |invalid_ndc, description|
+          it "returns bad request for #{description}" do
+            post '/my_health/v2/prescriptions/drug_sheets/search', params: { ndc: invalid_ndc }
+
+            expect(response).to have_http_status(:bad_request)
+            json_response = JSON.parse(response.body)
+            expect(json_response['error']['code']).to eq('NDC_INVALID')
+            expect(json_response['error']['message']).to eq('Invalid NDC format')
+          end
+        end
+      end
+
+      context 'when NDC has valid format variations' do
+        it 'accepts NDC with only digits' do
+          VCR.use_cassette('rx_client/prescriptions/rx_documentation_search') do
+            post '/my_health/v2/prescriptions/drug_sheets/search', params: { ndc: '00013264681' }
+
+            expect(response).to have_http_status(:ok)
+          end
+        end
+
+        it 'accepts NDC with dashes (formatted NDC)' do
+          allow_any_instance_of(Rx::Client).to receive(:get_rx_documentation)
+            .with('00013-2646-81')
+            .and_return({ data: '<html>Drug info</html>' })
+
+          post '/my_health/v2/prescriptions/drug_sheets/search', params: { ndc: '00013-2646-81' }
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
       context 'when documentation is not found (404)' do
         before do
           backend_exception = Common::Exceptions::BackendServiceException.new(
