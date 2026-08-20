@@ -27,7 +27,7 @@ module MyHealth
       #
       def generate
         ccd = service.initiate_ccd
-        remember_ccd_job_owner(ccd.job_id)
+        cache_ccd_job_owner(ccd.job_id)
         http_status = ccd.http_status == 200 ? :ok : :accepted
         render json: UnifiedHealthData::Serializers::CcdSerializer.new(ccd).serializable_hash, status: http_status
       rescue Common::Exceptions::GatewayTimeout,
@@ -45,6 +45,7 @@ module MyHealth
       def status
         job_id = params[:job_id]
         ccd = service.get_ccd_status(job_id:)
+        cache_ccd_job_owner(ccd.task_id)
         http_status = ccd.http_status == 200 ? :ok : :accepted
         render json: UnifiedHealthData::Serializers::CcdSerializer.new(ccd).serializable_hash, status: http_status
       rescue Common::Exceptions::GatewayTimeout,
@@ -95,10 +96,9 @@ module MyHealth
       ##
       # Rejects requests for a CCD job the current user does not own.
       #
-      # Numeric task ids (enumerable) are verified against the user's own CCD jobs
-      # (scoped to +current_user.icn+ upstream). Pre-correlation UUID job ids are not yet in
-      # that list, so ownership is verified against the mapping recorded at generation time.
-      # Any other id shape is rejected.
+      # Numeric task ids and pre-correlation UUID job ids are both recorded against the requesting
+      # user (at generation and during status polling). For numeric task ids, the ICN-scoped jobs
+      # list is a fallback when the cache key is missing (e.g. older CCDs).
       #
       # @return [void] renders 404 and halts the request when ownership fails
       #
@@ -106,11 +106,13 @@ module MyHealth
         job_id = params[:job_id]
 
         if job_id&.match?(NUMERIC_TASK_ID)
+          return if owner_cached_for_current_user?(job_id)
+
           owned_ids = owned_ccd_job_ids
           return if performed? # get_ccd_jobs failed and already rendered an error
           return if owned_ids.include?(job_id)
         elsif job_id&.match?(UUID_FORMAT)
-          return if ccd_job_owner(job_id) == @current_user.icn
+          return if owner_cached_for_current_user?(job_id)
         end
 
         render_error('CCD Not Found', 'The requested CCD is not available', '404', 404, :not_found)
@@ -127,10 +129,10 @@ module MyHealth
         []
       end
 
-      # Records the pre-correlation UUID job id against the requesting user so ownership can be
-      # verified before the job appears in the ICN-scoped jobs list. Best-effort: a cache failure
-      # must not break generation.
-      def remember_ccd_job_owner(job_id)
+      # Records a CCD job identifier (pre-correlation UUID or correlated numeric task id) against the
+      # requesting user so ownership can be verified before the job appears in the ICN-scoped jobs list.
+      # Best-effort: a cache failure must not break generation or polling.
+      def cache_ccd_job_owner(job_id)
         return if job_id.blank?
 
         Rails.cache.write("#{CCD_JOB_OWNER_CACHE_PREFIX}#{job_id}", @current_user.icn,
@@ -142,6 +144,13 @@ module MyHealth
       # @return [String, nil] the ICN that generated the given job id, if still cached
       def ccd_job_owner(job_id)
         Rails.cache.read("#{CCD_JOB_OWNER_CACHE_PREFIX}#{job_id}")
+      end
+
+      # True only when the cached owner is present and matches the current user, so a cache miss
+      # (nil) can never match a nil ICN.
+      def owner_cached_for_current_user?(job_id)
+        owner = ccd_job_owner(job_id)
+        owner.present? && owner == @current_user.icn
       end
 
       ##

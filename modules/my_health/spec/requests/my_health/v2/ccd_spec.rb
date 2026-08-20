@@ -150,6 +150,19 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
       end
     end
 
+    context 'when a status response includes a correlated task id' do
+      it 'records the task owner in the cache' do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        allow(Rails).to receive(:cache).and_return(cache)
+
+        VCR.use_cassette(status_cassette, match_requests_on: %i[method path]) do
+          get status_path
+        end
+
+        expect(cache.read("uhd:ccd_job_owner:#{job_id}")).to be_present
+      end
+    end
+
     context 'when CCD generation is complete' do
       let(:success_cassette) { 'unified_health_data/get_ccd_success_200' }
 
@@ -253,6 +266,28 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
       end
     end
 
+    context 'when the ownership lookup fails upstream' do
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
+      let(:client_error) do
+        Common::Client::Errors::ClientError.new('SCDF service unavailable', 503)
+      end
+
+      before do
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
+        allow(service_double).to receive(:get_ccd_jobs).and_raise(client_error)
+      end
+
+      it 'surfaces the upstream error instead of a 404 and does not call the status service' do
+        expect(service_double).not_to receive(:get_ccd_status)
+
+        get status_path
+
+        expect(response).to have_http_status(:bad_gateway)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['title']).to eq('SCDF API Error')
+      end
+    end
+
     context 'when polling with an owned pre-correlation UUID job id' do
       let(:job_id) { 'b0733653-30b4-411f-a997-7453039e510c' }
       let(:generated_ccd) { UnifiedHealthData::Ccd.new(job_id:, source: 'oracle-health', http_status: 202) }
@@ -322,6 +357,37 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
     before do
       allow_any_instance_of(UnifiedHealthData::CcdService)
         .to receive(:get_ccd_jobs).and_return(owned_ccd_jobs)
+    end
+
+    context 'when the jobs list lags but ownership was cached during generate/poll' do
+      let(:job_uuid) { 'b0733653-30b4-411f-a997-7453039e510c' }
+      let(:generated_ccd) { UnifiedHealthData::Ccd.new(job_id: job_uuid, source: 'oracle-health', http_status: 202) }
+      let(:not_ready_ccd) do
+        UnifiedHealthData::Ccd.new(job_id: job_uuid, task_id: job_id, source: 'oracle-health', http_status: 202)
+      end
+      let(:xml_cassette) { 'unified_health_data/get_ccd_s3_download_xml' }
+
+      before do
+        allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+        allow_any_instance_of(UnifiedHealthData::CcdService).to receive(:get_ccd_jobs).and_return([])
+        allow_any_instance_of(UnifiedHealthData::CcdService).to receive(:initiate_ccd).and_return(generated_ccd)
+        allow_any_instance_of(UnifiedHealthData::CcdService)
+          .to receive(:get_ccd_status).with(job_id: job_uuid).and_return(not_ready_ccd)
+      end
+
+      it 'allows the numeric download via the cached owner even when the jobs list is empty' do
+        # generate caches the UUID owner; the status poll caches the numeric task owner
+        get '/my_health/v2/medical_records/ccd/generate'
+        get "/my_health/v2/medical_records/ccd/status/#{job_uuid}"
+
+        VCR.use_cassette(success_cassette, match_requests_on: %i[method path]) do
+          VCR.use_cassette(xml_cassette, match_requests_on: %i[method uri]) do
+            get "#{download_path}.xml"
+          end
+        end
+
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     context 'when successful with XML format' do
@@ -445,6 +511,25 @@ RSpec.describe 'MyHealth::V2::CcdController', type: :request do
 
           expect(response).to have_http_status(:forbidden)
         end
+      end
+    end
+
+    context 'when the presigned URL is malformed' do
+      let(:service_double) { instance_double(UnifiedHealthData::CcdService) }
+
+      before do
+        allow(UnifiedHealthData::CcdService).to receive(:new).and_return(service_double)
+        allow(service_double).to receive(:get_ccd_jobs).and_return(owned_ccd_jobs)
+        allow(service_double).to receive(:get_ccd_url)
+          .with(job_id:, format: 'xml').and_return('https://exa mple.com/bad url')
+      end
+
+      it 'returns 400 bad request' do
+        get download_path
+
+        expect(response).to have_http_status(:bad_request)
+        json_response = JSON.parse(response.body)
+        expect(json_response['errors'].first['title']).to eq('Bad Request')
       end
     end
 
