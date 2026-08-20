@@ -95,6 +95,60 @@ RSpec.describe 'Mobile::V0::Health::Locations', type: :request do
           expect(response).to have_http_status(:bad_request)
         end
       end
+
+      context 'when in the staging environment' do
+        let(:user_account) { create(:user_account) }
+
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('staging')
+        end
+
+        it 'initiates schema contract validation' do
+          user.user_account_uuid = user_account.id
+          user.save!
+
+          VCR.use_cassette('mobile/lighthouse_health/get_lh_location', match_requests_on: %i[method uri]) do
+            VCR.use_cassette('lighthouse/facilities/v1/200_facilities') do
+              get '/mobile/v0/health/locations/I2-3JYDMXC6RXTU4H25KRVXATSEJQ000000', headers: sis_headers
+            end
+          end
+          SchemaContract::ValidationJob.drain
+          expect(SchemaContract::Validation.last.contract_name).to eq('lighthouse_get_location')
+          expect(SchemaContract::Validation.last.status).to eq('success')
+        end
+
+        it 'does not initiate schema contract validation for unsuccessful response shape' do
+          user.user_account_uuid = user_account.id
+          user.save!
+
+          allow_any_instance_of(Mobile::V0::LighthouseHealth::Service)
+            .to receive(:get_location)
+            .and_return({ resource_type: 'OperationOutcome', issue: [{ severity: 'error' }] })
+
+          get '/mobile/v0/health/locations/I2-3JYDMXC6RXTU4H25KRVXATSEJQ000000', headers: sis_headers
+
+          SchemaContract::ValidationJob.drain
+          expect(response).to have_http_status(:bad_request)
+          expect(SchemaContract::Validation.count).to eq(0)
+        end
+      end
+
+      context 'when in the production environment' do
+        before do
+          allow(Settings).to receive(:vsp_environment).and_return('production')
+        end
+
+        it 'does not initiate schema contract validation' do
+          VCR.use_cassette('mobile/lighthouse_health/get_lh_location', match_requests_on: %i[method uri]) do
+            VCR.use_cassette('lighthouse/facilities/v1/200_facilities') do
+              get '/mobile/v0/health/locations/I2-3JYDMXC6RXTU4H25KRVXATSEJQ000000', headers: sis_headers
+            end
+          end
+          SchemaContract::ValidationJob.drain
+          expect(response).to be_successful
+          expect(SchemaContract::Validation.count).to eq(0)
+        end
+      end
     end
 
     context 'when mhv_vaccine_mobile_return_empty_location_data feature flag is enabled' do

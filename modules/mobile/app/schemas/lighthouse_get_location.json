@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resource_type"],
+  "properties": {
+    "resource_type": { "type": "string" },
+    "id": { "type": "string" },
+    "identifier": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "system": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "status": { "type": "string" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "mode": { "type": "string" },
+    "type": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "coding": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "display": { "type": "string" }
+              }
+            }
+          },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "telecom": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "system": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "line": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "postal_code": { "type": "string" }
+      }
+    },
+    "physical_type": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coding": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "display": { "type": "string" }
+            }
+          }
+        },
+        "text": { "type": "string" }
+      }
+    },
+    "managing_organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reference": { "type": "string" },
+        "display": { "type": "string" }
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@ module Mobile
 
       def show
         lh_location = service.get_location(params[:id])
+        validate_response_schema(@current_user, lh_location, 'lighthouse_get_location')
         if lh_location[:identifier].nil?
           raise Common::Exceptions::BackendServiceException, 'validation_errors_bad_request'
         end
@@ -33,6 +34,14 @@ module Mobile
         return unless Flipper.enabled?(:mhv_vaccine_mobile_return_empty_location_data, @current_user)
 
         render json: {}
+      end
+
+      def validate_response_schema(user, body, contract_name)
+        return if !body.is_a?(Hash) || body[:resource_type] != 'Location'
+
+        SchemaContract::ValidationInitiator.call_with_body(
+          user:, body:, contract_name:
+        )
       end
     end
   end
