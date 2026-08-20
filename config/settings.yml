@@ -2326,3 +2326,9 @@ websockets:
   websocket_settings: <%= ENV['websockets__websocket_settings'] %>
 xlsx_file_fetcher:
   github_access_token: <%= ENV['xlsx_file_fetcher__github_access_token'] %>
+  github_app:
+    app_id: <%= ENV['xlsx_file_fetcher__github_app__app_id'] %>
+    base_uri: https://api.va.ghe.com
+    org: software
+    private_key: <%= ENV['xlsx_file_fetcher__github_app__private_key'] %>
+    repo: software/va.gov-team-sensitive

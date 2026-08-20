@@ -2342,3 +2342,9 @@ websockets:
   websocket_settings: false
 xlsx_file_fetcher:
   github_access_token: ~
+  github_app:
+    app_id: ~
+    base_uri: ~
+    org: ~
+    private_key: ~
+    repo: ~

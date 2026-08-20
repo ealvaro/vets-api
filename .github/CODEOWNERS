@@ -1071,6 +1071,7 @@ lib/gi/lcpe/response.rb @software/govcio-vfep-codereviewers
 lib/gi/search_client.rb @software/govcio-vfep-codereviewers
 lib/gi/search_configuration.rb @software/govcio-vfep-codereviewers
 lib/gibft @software/govcio-vfep-codereviewers
+lib/github @software/va-platform-backend
 lib/github_authentication @software/va-platform-backend
 lib/hca @software/health-apps-backend @software/vfs-authenticated-experience-backend
 lib/http_method_not_allowed.rb @software/va-platform-backend
@@ -1747,6 +1748,7 @@ spec/lib/gi/lcpe/client_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/gi/lcpe/response_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/gi/search_client_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/gi/search_configuration_spec.rb @software/govcio-vfep-codereviewers
+spec/lib/github @software/va-platform-backend
 spec/lib/github_authentication @software/octo-identity
 spec/lib/github_authentication/coverband_reporters_web_spec.rb @software/va-platform-backend
 spec/lib/hca @software/health-apps-backend

@@ -6,6 +6,7 @@ RSpec.describe SensitiveRepoCsvFileFetcher do
   subject { described_class.new }
 
   let(:github_token) { 'fake_github_token' }
+  let(:token_generator) { instance_double(Github::InstallationTokenGenerator, generate: github_token) }
   let(:csv_content) do
     "Number,LastName,FirstName,MiddleName,WorkAddress1,WorkCity,WorkState,WorkZip,WorkNumber,WorkEmailAddress\n" \
       "102,Abel,Jami,Marie,105 Main Street,Painesville,OH,44077,440-350-2591,jami.abel@example.gov\n"
@@ -15,7 +16,14 @@ RSpec.describe SensitiveRepoCsvFileFetcher do
   let(:octokit_client) { instance_double(Octokit::Client) }
 
   before do
-    allow(Settings.xlsx_file_fetcher).to receive(:github_access_token).and_return(github_token)
+    allow(Settings.xlsx_file_fetcher.github_app).to receive_messages(
+      app_id: 'fake_app_id',
+      private_key: 'fake_private_key',
+      org: 'software',
+      repo: 'software/va.gov-team-sensitive',
+      base_uri: 'https://api.va.ghe.com'
+    )
+    allow(Github::InstallationTokenGenerator).to receive(:new).and_return(token_generator)
     allow(Octokit::Client).to receive(:new).and_return(octokit_client)
     allow(octokit_client).to receive(:contents).and_return(file_info)
   end
@@ -39,14 +47,14 @@ RSpec.describe SensitiveRepoCsvFileFetcher do
       end
     end
 
-    context 'when the GitHub access token is blank' do
+    context 'when the GitHub app configuration is invalid' do
       before do
-        allow(Settings.xlsx_file_fetcher).to receive(:github_access_token).and_return('')
+        allow(Settings.xlsx_file_fetcher.github_app).to receive(:app_id).and_return('')
       end
 
       it 'returns nil and logs an error' do
         expect(Rails.logger).to receive(:error).with(
-          /SensitiveRepoCsvFileFetcher error:.*GitHub access token is missing/
+          /SensitiveRepoCsvFileFetcher error:.*GitHub app_id is missing/
         )
 
         expect(subject.fetch).to be_nil

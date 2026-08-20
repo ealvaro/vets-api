@@ -2334,3 +2334,9 @@ websockets:
   websocket_settings: false
 xlsx_file_fetcher:
   github_access_token: ~
+  github_app:
+    app_id: fake_app_id
+    base_uri: https://api.va.ghe.com
+    org: software
+    private_key: fake_private_key
+    repo: software/va.gov-team-sensitive
