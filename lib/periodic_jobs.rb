@@ -182,6 +182,10 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Uploads mobile survey responses to SharePoint and deletes from the database
   mgr.register('0 3 1 * *', 'Mobile::V0::UploadSurveyResponseJob')
 
+  # Temporarily uploads mobile intercept survey responses to SharePoint on daily basis
+  mgr.register('0 3 * * *', 'Mobile::V0::UploadSurveyResponseJob',
+               'args' => [{ 'survey_types' => 'intercept', 'preserve_data' => true }])
+
   # Hourly slack alert of errored claim submissions
   mgr.register('0 * * * *', 'ClaimsApi::ReportHourlyUnsuccessfulSubmissions')
 
