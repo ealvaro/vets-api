@@ -199,6 +199,67 @@ RSpec.describe RepresentationManagement::AccreditedIndividualSearch, type: :mode
       include_examples 'search behavior', AccreditedIndividual
     end
 
+    context 'when representatives have no active accreditation' do
+      let(:params) do
+        { model_class: AccreditedIndividual, type: 'representative', distance: 50,
+          lat: 38.9072, long: -77.0369, sort: 'distance_asc', name: nil, org_name: nil }
+      end
+      let(:location) { 'POINT(-77.050552 38.820450)' } # ~6 miles from Washington, D.C.
+      let!(:active_rep) do
+        create(:accredited_individual, :with_organizations, registration_number: '11100',
+                                                            individual_type: 'representative',
+                                                            long: -77.050552, lat: 38.820450, location:)
+      end
+      let!(:rep_without_accreditation) do
+        create(:accredited_individual, registration_number: '22200', individual_type: 'representative',
+                                       long: -77.050552, lat: 38.820450, location:)
+      end
+      let!(:rep_with_deactivated_accreditation) do
+        create(:accredited_individual, :with_organizations, registration_number: '33300',
+                                                            individual_type: 'representative',
+                                                            long: -77.050552, lat: 38.820450, location:).tap do |ind|
+          ind.accreditations.update_all(deactivated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+        end
+      end
+
+      it 'excludes representatives that have no active accreditation' do
+        results = described_class.new(params).perform.pluck(:id)
+
+        expect(results).to include(active_rep.id)
+        expect(results).not_to include(rep_without_accreditation.id, rep_with_deactivated_accreditation.id)
+      end
+    end
+
+    context 'when filtering by org_name with a deactivated membership' do
+      let(:params) do
+        { model_class: AccreditedIndividual, type: 'representative', distance: 50,
+          lat: 38.9072, long: -77.0369, sort: 'distance_asc', name: nil, org_name: 'Target Org' }
+      end
+      let(:location) { 'POINT(-77.050552 38.820450)' } # ~6 miles from Washington, D.C.
+      let(:target_org) { create(:accredited_organization, name: 'Target Org') }
+      let(:other_org) { create(:accredited_organization, name: 'Other Org') }
+      let!(:active_member) do
+        create(:accredited_individual, registration_number: '44400', individual_type: 'representative',
+                                       long: -77.050552, lat: 38.820450, location:).tap do |ind|
+          create(:accreditation, accredited_individual: ind, accredited_organization: target_org)
+        end
+      end
+      let!(:deactivated_member) do
+        create(:accredited_individual, registration_number: '55500', individual_type: 'representative',
+                                       long: -77.050552, lat: 38.820450, location:).tap do |ind|
+          create(:accreditation, accredited_individual: ind, accredited_organization: target_org,
+                                 deactivated_at: Time.current)
+          create(:accreditation, accredited_individual: ind, accredited_organization: other_org)
+        end
+      end
+
+      it 'excludes representatives whose membership to that org has been deactivated' do
+        results = described_class.new(params).perform.pluck(:id)
+
+        expect(results).to contain_exactly(active_member.id)
+      end
+    end
+
     context 'when the model_class is Veteran::Service::Representative' do
       let!(:org1) { create(:veteran_organization, poa: 'A1Q', name: 'Org Name') }
       let!(:org2) { create(:veteran_organization, poa: 'H4L', name: 'Another Org Name') }

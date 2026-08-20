@@ -47,6 +47,16 @@ class AccreditedIndividual < ApplicationRecord
   scope :attorneys, -> { where(individual_type: 'attorney') }
   scope :representatives, -> { where(individual_type: 'representative') }
   scope :claims_agents, -> { where(individual_type: 'claims_agent') }
+
+  # Individuals that have at least one active (non-deactivated) accreditation. Used to exclude
+  # representatives whose organization memberships have all been deactivated.
+  scope :with_active_accreditation, lambda {
+    where(
+      'EXISTS (SELECT 1 FROM accreditations ' \
+      'WHERE accreditations.accredited_individual_id = accredited_individuals.id ' \
+      'AND accreditations.deactivated_at IS NULL)'
+    )
+  }
   scope :with_location, lambda {
     where('location IS NOT NULL OR (lat IS NOT NULL AND "long" IS NOT NULL)')
   }

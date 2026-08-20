@@ -109,6 +109,32 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedIndividuals', type: :req
         expect(parsed_response['meta']['pagination']['total_entries']).to eq(4)
       end
 
+      context 'when an individual has a deactivated organization membership' do
+        let(:location) { 'POINT(-73.77623285 42.65140884)' }
+        let!(:active_org) { create(:accredited_organization, name: 'Active Org') }
+        let!(:deactivated_org) { create(:accredited_organization, name: 'Deactivated Org') }
+        let!(:individual) do
+          create(:accredited_individual, individual_type: 'representative', first_name: 'Zeta',
+                                         long: -73.77623285, lat: 42.65140884, location:).tap do |ind|
+            create(:accreditation, accredited_individual: ind, accredited_organization: active_org)
+            create(:accreditation, accredited_individual: ind, accredited_organization: deactivated_org,
+                                   deactivated_at: Time.current)
+          end
+        end
+
+        it 'only serializes active organization memberships' do
+          get path, params: { type:, lat:, long: }
+
+          parsed_response = JSON.parse(response.body)
+          entry = parsed_response['data'].find { |e| e['id'] == individual.id }
+          org_names = entry['attributes']['accredited_organizations']['data'].map do |org|
+            org['attributes']['name']
+          end
+
+          expect(org_names).to contain_exactly('Active Org')
+        end
+      end
+
       context 'when there are no results for the search criteria' do
         it 'returns an empty list' do
           get path, params: { type: 'claims_agent', lat:, long: }

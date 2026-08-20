@@ -37,11 +37,15 @@ module RepresentationManagement
 
     def base_query
       if model_class == AccreditedIndividual
-        model_class
-          .includes(:accredited_organizations)
-          .select('accredited_individuals.*', distance_query_string)
-          .where(individual_type: type)
-          .order(sort_query_string)
+        query = model_class
+                .includes(:active_accredited_organizations)
+                .select('accredited_individuals.*', distance_query_string)
+                .where(individual_type: type)
+                .order(sort_query_string)
+        # Representatives with no active accreditation have no organization to appoint through and
+        # should not appear. Attorneys and claims agents have no accreditations by design.
+        query = query.with_active_accreditation if type == AccreditedIndividual::INDIVIDUAL_TYPE_VSO_REPRESENTATIVE
+        query
       else
         model_class
           .joins('JOIN LATERAL UNNEST(veteran_representatives.poa_codes) AS UnnestedPoaCode ON true')
@@ -96,7 +100,7 @@ module RepresentationManagement
 
     def find_with_org_name(query)
       if model_class == AccreditedIndividual
-        query.left_joins(:accredited_organizations)
+        query.left_joins(:active_accredited_organizations)
              .group('accredited_individuals.id')
              .having('? = ANY(ARRAY_AGG(accredited_organizations.name))', org_name)
       else

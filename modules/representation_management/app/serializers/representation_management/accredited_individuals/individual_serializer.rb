@@ -20,7 +20,7 @@ module RepresentationManagement
 
       attribute :accredited_organizations do |object, params|
         modes = (params[:acceptance_modes] || {})[object.registration_number] || {}
-        organizations = object.accredited_organizations.map do |org|
+        organizations = object.active_accredited_organizations.map do |org|
           RepresentationManagement::OrganizationWithAcceptanceMode.new(
             org, acceptance_mode: modes[org.poa_code]
           )
