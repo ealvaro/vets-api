@@ -73,7 +73,7 @@ module VAProfile
         end
 
         def self.get_person(vet360_id)
-          stub_user = OpenStruct.new(vet360_id:)
+          stub_user = Data.define(:vet360_id).new(vet360_id:)
           new(stub_user).get_person
         end
 
@@ -135,6 +135,7 @@ module VAProfile
           changes = transaction_status.changed_field
 
           send_contact_change_notification(transaction_status, changes)
+          invalidate_cache_on_success(transaction_status)
 
           transaction_status
         end
@@ -179,6 +180,7 @@ module VAProfile
           transaction_status = get_transaction_status(route, EmailTransactionResponse)
 
           send_email_change_notification(transaction_status)
+          invalidate_cache_on_success(transaction_status)
 
           transaction_status
         end
@@ -207,6 +209,7 @@ module VAProfile
 
           changes = transaction_status.changed_field
           send_contact_change_notification(transaction_status, changes)
+          invalidate_cache_on_success(transaction_status)
 
           transaction_status
         end
@@ -339,6 +342,19 @@ module VAProfile
 
             old_email.destroy
           end
+        end
+
+        def invalidate_cache_on_success(transaction_status)
+          return unless transaction_status.transaction.completed_success?
+          return if @user.nil? || @user.icn.blank?
+
+          VAProfileRedis::V2::Cache.invalidate(@user)
+          MPIData.find(@user.icn)&.destroy
+        rescue => e
+          # best-effort: a stale cache is preferable to a 500 on transaction status polling.
+          # error class only, not e.message, since Redis/MPIData error text can include
+          # identifiers derived from the user's ICN
+          Rails.logger.warn('ContactInformationV2 cache invalidation failed', error_class: e.class.to_s)
         end
 
         def enqueue_email_job(email, personalisation, function)

@@ -4,7 +4,6 @@ require 'va_profile/models/transaction'
 require 'va_profile/response'
 require 'logging/helper/data_scrubber'
 
-# rubocop:disable ThreadSafety/ClassInstanceVariable
 module VAProfile
   module ContactInformation
     module V2
@@ -31,18 +30,18 @@ module VAProfile
         attr_reader :response_body
 
         def self.from(raw_response = nil)
-          @response_body = raw_response&.body
+          response_body = raw_response&.body
 
-          log_transaction_error if error?
+          log_transaction_error(response_body) if error?(response_body)
 
           new(
             raw_response&.status,
-            transaction: VAProfile::Models::Transaction.build_from(@response_body)
+            transaction: VAProfile::Models::Transaction.build_from(response_body)
           )
         end
 
-        def self.log_transaction_error
-          redacted_response_body = redact_response_body(@response_body)
+        def self.log_transaction_error(response_body)
+          redacted_response_body = redact_response_body(response_body)
 
           Rails.logger.error(
             'VAProfile contact info transaction error',
@@ -59,8 +58,8 @@ module VAProfile
           redacted_response_body
         end
 
-        def self.error?
-          @response_body.try(:[], 'tx_status') == ERROR_STATUS
+        def self.error?(response_body)
+          response_body.try(:[], 'tx_status') == ERROR_STATUS
         end
 
         def self.scrub_pii(message)
@@ -71,12 +70,13 @@ module VAProfile
       class AddressTransactionResponse < TransactionResponse
         attribute :response_body, Hash
 
-        def self.from(*args)
+        def self.from(raw_response = nil)
+          response_body = raw_response&.body
           return_val = super
 
-          log_error
+          log_error(response_body)
 
-          return_val.response_body = @response_body
+          return_val.response_body = response_body
           return_val
         end
 
@@ -97,20 +97,20 @@ module VAProfile
           end
         end
 
-        def self.log_error
-          if error?
+        def self.log_error(response_body)
+          if error?(response_body)
             PersonalInformationLog.create(
               error_class: 'VAProfile::ContactInformation::V2::AddressTransactionResponseError',
               data:
                 {
-                  address: @response_body['tx_push_input'].except(
+                  address: response_body['tx_push_input'].except(
                     'address_id',
                     'originating_source_system',
                     'source_system_user',
                     'effective_start_date',
                     'va_profile_id'
                   ),
-                  errors: @response_body['tx_messages']
+                  errors: response_body['tx_messages']
                 }
             )
           end
@@ -123,23 +123,23 @@ module VAProfile
         NOT_FOUND_IN_MPI_CODE = 'MVI201'
 
         def self.from(raw_response, user)
+          response_body = raw_response&.body
           return_val = super(raw_response)
-          @user = user
 
-          log_mpi_error if @user.mpi_status == :ok
+          log_mpi_error(user, response_body) if user.mpi_status == :ok
 
           return_val
         end
 
-        def self.log_mpi_error
-          if error?
-            @response_body['tx_messages'].each do |tx_message|
+        def self.log_mpi_error(user, response_body)
+          if error?(response_body)
+            response_body['tx_messages'].each do |tx_message|
               if tx_message['code'] == NOT_FOUND_IN_MPI_CODE
                 return Rails.logger.error(
                   'va profile mpi not found',
-                  user_account: @user.user_account,
-                  edipi: @user.edipi,
-                  response_body: redact_response_body(@response_body),
+                  user_account: user.user_account,
+                  edipi: user.edipi,
+                  response_body: redact_response_body(response_body),
                   error: :va_profile
                 )
               end
@@ -153,10 +153,11 @@ module VAProfile
       class EmailTransactionResponse < TransactionResponse
         attribute :response_body, Hash
 
-        def self.from(*args)
+        def self.from(raw_response = nil)
+          response_body = raw_response&.body
           return_val = super
 
-          return_val.response_body = @response_body
+          return_val.response_body = response_body
 
           return_val
         end
@@ -172,10 +173,11 @@ module VAProfile
       class TelephoneTransactionResponse < TransactionResponse
         attribute :response_body, Hash
 
-        def self.from(*args)
+        def self.from(raw_response = nil)
+          response_body = raw_response&.body
           return_val = super
 
-          return_val.response_body = @response_body
+          return_val.response_body = response_body
           return_val
         end
 
@@ -206,4 +208,3 @@ module VAProfile
     end
   end
 end
-# rubocop:enable ThreadSafety/ClassInstanceVariable

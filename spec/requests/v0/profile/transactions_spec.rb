@@ -101,7 +101,10 @@ RSpec.describe 'transactions' do
             transaction_id: '0ea91332-4713-4008-bd57-40541ee8d4d4'
           )
 
-          expect_any_instance_of(Common::RedisStore).to receive(:destroy)
+          # invalidated once by the service on completed_success? and again by the controller's
+          # after_action; asserting on the class method avoids coupling to how many underlying
+          # Common::RedisStore instances end up receiving #destroy across the two call sites
+          expect(VAProfileRedis::V2::Cache).to receive(:invalidate).at_least(:once)
 
           get("/v0/profile/status/#{transaction.transaction_id}")
         end

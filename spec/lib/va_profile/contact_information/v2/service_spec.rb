@@ -439,6 +439,34 @@ describe VAProfile::ContactInformation::V2::Service do
           expect(response.transaction.id).to eq(transaction_id)
         end
       end
+
+      context 'when the transaction completed successfully' do
+        it 'invalidates the VAProfile redis cache and the MPI data cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/telephone_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(described_class).to receive(:send_contact_change_notification)
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(true)
+            mpi_data = instance_double(MPIData, destroy: nil)
+            allow(MPIData).to receive(:find).with(user.icn).and_return(mpi_data)
+            expect(VAProfileRedis::V2::Cache).to receive(:invalidate).with(user)
+            expect(mpi_data).to receive(:destroy)
+
+            subject.get_telephone_transaction_status(transaction_id)
+          end
+        end
+      end
+
+      context 'when the transaction has not completed' do
+        it 'does not invalidate either cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/telephone_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(described_class).to receive(:send_contact_change_notification)
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(false)
+            expect(VAProfileRedis::V2::Cache).not_to receive(:invalidate)
+            expect(MPIData).not_to receive(:find)
+
+            subject.get_telephone_transaction_status(transaction_id)
+          end
+        end
+      end
     end
 
     context 'when not successful' do
@@ -526,6 +554,32 @@ describe VAProfile::ContactInformation::V2::Service do
           expect(response).to be_ok
           expect(response.transaction).to be_a(VAProfile::Models::Transaction)
           expect(response.transaction.id).to eq(transaction_id)
+        end
+      end
+
+      context 'when the transaction completed successfully' do
+        it 'invalidates the VAProfile redis cache and the MPI data cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(true)
+            mpi_data = instance_double(MPIData, destroy: nil)
+            allow(MPIData).to receive(:find).with(user.icn).and_return(mpi_data)
+            expect(VAProfileRedis::V2::Cache).to receive(:invalidate).with(user)
+            expect(mpi_data).to receive(:destroy)
+
+            subject.get_email_transaction_status(transaction_id)
+          end
+        end
+      end
+
+      context 'when the transaction has not completed' do
+        it 'does not invalidate either cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/email_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(false)
+            expect(VAProfileRedis::V2::Cache).not_to receive(:invalidate)
+            expect(MPIData).not_to receive(:find)
+
+            subject.get_email_transaction_status(transaction_id)
+          end
         end
       end
 
@@ -800,6 +854,34 @@ describe VAProfile::ContactInformation::V2::Service do
           expect(response).to be_ok
           expect(response.transaction).to be_a(VAProfile::Models::Transaction)
           expect(response.transaction.id).to eq(transaction_id)
+        end
+      end
+
+      context 'when the transaction completed successfully' do
+        it 'invalidates the VAProfile redis cache and the MPI data cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/address_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(described_class).to receive(:send_contact_change_notification)
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(true)
+            mpi_data = instance_double(MPIData, destroy: nil)
+            allow(MPIData).to receive(:find).with(user.icn).and_return(mpi_data)
+            expect(VAProfileRedis::V2::Cache).to receive(:invalidate).with(user)
+            expect(mpi_data).to receive(:destroy)
+
+            subject.get_address_transaction_status(transaction_id)
+          end
+        end
+      end
+
+      context 'when the transaction has not completed' do
+        it 'does not invalidate either cache' do
+          VCR.use_cassette('va_profile/v2/contact_information/address_transaction_status', VCR::MATCH_EVERYTHING) do
+            allow_any_instance_of(described_class).to receive(:send_contact_change_notification)
+            allow_any_instance_of(VAProfile::Models::Transaction).to receive(:completed_success?).and_return(false)
+            expect(VAProfileRedis::V2::Cache).not_to receive(:invalidate)
+            expect(MPIData).not_to receive(:find)
+
+            subject.get_address_transaction_status(transaction_id)
+          end
         end
       end
     end
