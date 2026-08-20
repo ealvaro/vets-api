@@ -485,6 +485,7 @@ app/serializers/intent_to_file_serializer.rb @software/disability-benefits
 app/serializers/lighthouse @software/vfs-facilities-frontend
 app/serializers/lighthouse_rating_info_serializer.rb @software/vfs-facilities
 app/serializers/maintenance_window_serializer.rb @software/va-platform-backend
+app/serializers/medical_copays @software/vsa-debt-resolution
 app/serializers/mhv_user_account_serializer.rb @software/octo-identity
 app/serializers/onsite_notification_serializer.rb @software/vfs-authenticated-experience-backend
 app/serializers/payment_history_serializer.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution
@@ -2139,6 +2140,7 @@ spec/requests/v0/upload_supporting_evidence_spec.rb @software/disability-benefit
 spec/requests/v0/user_spec.rb @software/octo-identity
 spec/requests/v0/veteran_status_cards_spec.rb @software/mobile-api-team
 spec/requests/v1/apidoc @software/va-platform-backend
+spec/requests/v1/facility_accounts_spec.rb @software/vsa-debt-resolution
 spec/requests/v1/gi/lcpe/exams_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/v1/gi/lcpe/lacs_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/v1/gi/version_public_exports_spec.rb @software/govcio-vfep-codereviewers
@@ -2187,6 +2189,7 @@ spec/serializers/in_progress_form_serializer_spec.rb @software/vfs-authenticated
 spec/serializers/intent_to_file_serializer_spec.rb @software/disability-benefits
 spec/serializers/lighthouse @software/vfs-facilities
 spec/serializers/lighthouse_rating_info_serializer_spec.rb @software/vfs-facilities
+spec/serializers/medical_copays @software/vsa-debt-resolution
 spec/serializers/mhv_user_account_serializer_spec.rb @software/octo-identity
 spec/serializers/onsite_notification_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/serializers/payment_history_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/vsa-debt-resolution

@@ -102,6 +102,15 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
       expect(accounts.first.is_cerner).to be(false)
     end
 
+    context 'when the account is missing its statement generated day' do
+      let(:invoice) { invoice_double(statement_generated_day: nil) }
+
+      it 'falls back to the invoice date rather than failing the whole index' do
+        expect(accounts.first.statement_date).to eq(Date.new(2025, 12, 20))
+        expect(accounts.first.due_date).to eq(Date.new(2026, 1, 14))
+      end
+    end
+
     context 'when an older statement cycle is unpaid' do
       let(:invoices) { [invoice, invoice_double(invoice_date: '2025-11-20T04:00:00Z', current_balance: 50.0)] }
 

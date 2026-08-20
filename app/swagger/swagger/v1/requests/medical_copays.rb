@@ -244,6 +244,90 @@ class Swagger::V1::Requests::MedicalCopays
     end
   end
 
+  swagger_path '/v1/medical_copays/facilities' do
+    operation :get do
+      key :description, 'List medical copay facility accounts. Response is source-blind; isCerner indicates source.'
+      key :operationId, 'getMedicalCopayFacilities'
+      key :tags, %w[medical_copays]
+
+      parameter :authorization
+
+      response 200 do
+        key :description, 'Successful facility accounts lookup'
+
+        schema do
+          property :totalCurrentBalance,
+                   type: :number,
+                   format: :float,
+                   example: 105.24,
+                   description: 'Sum of current balances across all facilities'
+
+          property :facilities, type: :array do
+            items do
+              property :stationId,
+                       type: :string,
+                       example: '757',
+                       description: 'Canonical VA facility station number'
+
+              property :facilityName,
+                       type: :string,
+                       example: 'Chalmers P. Wylie Veterans Outpatient Clinic'
+
+              property :isCerner,
+                       type: :boolean,
+                       example: false,
+                       description: 'true when the data came from VBS (Cerner), false for Lighthouse'
+
+              property :currentBalance,
+                       type: :number,
+                       format: :float,
+                       example: 105.24
+
+              property :pastDueBalance,
+                       type: :number,
+                       format: :float,
+                       example: 0.00
+
+              property :dueDate,
+                       type: :string,
+                       format: :date,
+                       example: '2026-01-05'
+
+              property :statementDate,
+                       type: :string,
+                       format: :date,
+                       example: '2025-12-11'
+
+              property :accountNumber,
+                       type: %i[string null],
+                       description: 'Always null on this index; populated only by the per-facility detail lookup'
+
+              property :transactions,
+                       type: %i[array null],
+                       description: 'Always null on this index; populated only by the per-facility detail lookup' do
+                items type: :object
+              end
+            end
+          end
+        end
+      end
+
+      response 403 do
+        key :description, 'Forbidden; requires enable_facility_account_history feature flag or missing ICN'
+        schema do
+          key :$ref, :Errors
+        end
+      end
+
+      response 502 do
+        key :description, 'An upstream copay service (VBS or Lighthouse) failed'
+        schema do
+          key :$ref, :Errors
+        end
+      end
+    end
+  end
+
   swagger_path '/v1/medical_copays/summary' do
     operation :get do
       key :description,

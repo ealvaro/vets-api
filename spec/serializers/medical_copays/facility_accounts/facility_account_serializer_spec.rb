@@ -1,0 +1,72 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
+  def facility_account(**overrides)
+    MedicalCopays::FacilityAccounts::FacilityAccount.new(
+      { station_id: '757', is_cerner: false, current_balance: 0.0 }.merge(overrides)
+    )
+  end
+
+  def serialize(facilities, total_current_balance: 0.0)
+    described_class.index(total_current_balance:, facilities:)
+  end
+
+  it 'camelizes the envelope and every facility key' do
+    result = serialize([facility_account])
+
+    expect(result.keys).to contain_exactly('totalCurrentBalance', 'facilities')
+    expect(result['facilities'].first.keys).to contain_exactly(
+      'stationId', 'facilityName', 'isCerner', 'accountNumber', 'currentBalance',
+      'pastDueBalance', 'statementDate', 'dueDate', 'transactions'
+    )
+  end
+
+  it 'camelizes nested transaction keys' do
+    account = facility_account(
+      transactions: [{ billing_reference: 'B1', provider_name: 'Dr X', date_posted: '2025-12-01' }]
+    )
+
+    transaction = serialize([account])['facilities'].first['transactions'].first
+
+    expect(transaction.keys).to contain_exactly('billingReference', 'providerName', 'datePosted')
+  end
+
+  it 'emits dates as ISO strings and keeps unset attributes null' do
+    account = facility_account(
+      facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+      current_balance: 105.24, past_due_balance: 0.0,
+      statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5)
+    )
+
+    expect(serialize([account], total_current_balance: 105.24)).to eq(
+      'totalCurrentBalance' => 105.24,
+      'facilities' => [
+        {
+          'stationId' => '757',
+          'facilityName' => 'Chalmers P. Wylie Veterans Outpatient Clinic',
+          'isCerner' => false,
+          'accountNumber' => nil,
+          'currentBalance' => 105.24,
+          'pastDueBalance' => 0.0,
+          'statementDate' => '2025-12-11',
+          'dueDate' => '2026-01-05',
+          'transactions' => nil
+        }
+      ]
+    )
+  end
+
+  it 'omits model attributes that are not on the index allowlist' do
+    stub_const("#{described_class}::INDEX_ATTRIBUTES", %i[station_id current_balance].freeze)
+
+    expect(serialize([facility_account])['facilities'].first.keys).to contain_exactly(
+      'stationId', 'currentBalance'
+    )
+  end
+
+  it 'returns an empty facilities list when the user has no accounts' do
+    expect(serialize([])).to eq('totalCurrentBalance' => 0.0, 'facilities' => [])
+  end
+end

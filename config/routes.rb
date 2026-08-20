@@ -460,6 +460,7 @@ Rails.application.routes.draw do
     resources :medical_copays, only: %i[index show] do
       collection do
         get :summary
+        get :facilities, to: 'facility_accounts#index'
       end
     end
   end

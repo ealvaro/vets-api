@@ -527,6 +527,20 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
   end
 
   describe '#list_months' do
+    # Callers rescue on the class that reaches them, so pin what an upstream failure
+    # actually raises rather than trusting a hand-raised double.
+    it 'lets the mapped Common::Exceptions error through when Lighthouse 500s' do
+      allow(Auth::ClientCredentials::JWTGenerator).to receive(:generate_token).and_return('fake-jwt')
+      stub_request(:post, %r{/oauth2/health-care-costs-coverage/system/v1/token})
+        .to_return(status: 200, body: { access_token: 'fake-token', expires_in: 300 }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, %r{/services/health-care-costs-coverage/v0/r4/Invoice})
+        .to_return(status: 500, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      expect { described_class.new('123').list_months }
+        .to raise_error(Common::Exceptions::ExternalServerInternalServerError)
+    end
+
     it 'declares an optional include_line_items keyword defaulting to false' do
       params = described_class.instance_method(:list_months).parameters
       expect(params).to include(%i[key include_line_items])

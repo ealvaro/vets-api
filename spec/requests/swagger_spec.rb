@@ -7,6 +7,7 @@ require 'support/bb_client_helpers'
 require 'support/pagerduty/services/spec_setup'
 require 'support/stub_debt_letters'
 require 'support/medical_copays/stub_medical_copays'
+require 'medical_copays/cerner_facilities'
 require 'support/stub_efolder_documents'
 require_relative '../../modules/debts_api/spec/support/stub_financial_status_report'
 require 'bgs/service'
@@ -3933,6 +3934,77 @@ RSpec.describe 'the v1 API documentation', order: :defined, type: %i[apivore req
           expect(subject).to validate(:get, '/v1/post911_gi_bill_status', 200, headers)
         end
         Timecop.return
+      end
+    end
+
+    context 'medical copay facility accounts' do
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
+        allow(Flipper).to receive(:enabled?).with(:enable_facility_account_history, anything)
+                                            .and_return(feature_enabled)
+      end
+
+      context 'when the feature is enabled' do
+        let(:feature_enabled) { true }
+
+        before do
+          allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, anything).and_return(true)
+          allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(
+            instance_double(
+              MedicalCopays::FacilityAccounts::LighthouseBuilder,
+              build_facility_accounts: [
+                MedicalCopays::FacilityAccounts::FacilityAccount.new(
+                  station_id: '757', facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+                  is_cerner: false, current_balance: 105.24, past_due_balance: 0.0,
+                  statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5)
+                )
+              ]
+            )
+          )
+        end
+
+        it 'validates the route' do
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facilities',
+            200,
+            headers
+          )
+        end
+      end
+
+      context 'when the feature is disabled' do
+        let(:feature_enabled) { false }
+
+        it 'validates the route' do
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facilities',
+            403,
+            headers
+          )
+        end
+      end
+
+      context 'when an upstream copay service fails' do
+        let(:feature_enabled) { true }
+
+        before do
+          allow(Flipper).to receive(:enabled?).with(:enable_lighthouse_copays, anything).and_return(true)
+          builder = instance_double(MedicalCopays::FacilityAccounts::LighthouseBuilder)
+          allow(builder).to receive(:build_facility_accounts).and_raise(MedicalCopays::VBS::Service::ServiceError)
+          allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(builder)
+        end
+
+        it 'validates the route' do
+          expect(subject).to validate(
+            :get,
+            '/v1/medical_copays/facilities',
+            502,
+            headers
+          )
+        end
       end
     end
   end

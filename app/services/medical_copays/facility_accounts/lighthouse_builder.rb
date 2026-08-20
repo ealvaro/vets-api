@@ -130,6 +130,10 @@ module MedicalCopays
 
       def statement_date_for(invoice)
         invoice_date = Date.parse(invoice.invoice_date)
+        # HCCC guarantees account-statementGeneratedDay, but local mock accounts are missing it.
+        # Remove this fallback once vets-api-mockdata carries the extension everywhere.
+        return invoice_date if invoice.statement_generated_day.blank?
+
         Date.new(invoice_date.year, invoice_date.month, invoice.statement_generated_day)
       end
 
