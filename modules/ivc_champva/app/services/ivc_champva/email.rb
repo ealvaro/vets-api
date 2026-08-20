@@ -82,23 +82,13 @@ module IvcChampva
     end
 
     def perform_email_send(template_id, personalisation, callback_options)
-      if Flipper.enabled?(:va_notify_v2_ivc_champva_email)
-        VANotify::V2::QueueEmailJob.enqueue(
-          data[:email],
-          template_id,
-          personalisation,
-          'Settings.vanotify.services.ivc_champva.api_key',
-          callback_options
-        )
-      else
-        VANotify::EmailJob.perform_async(
-          data[:email],
-          template_id,
-          personalisation,
-          Settings.vanotify.services.ivc_champva.api_key,
-          callback_options
-        )
-      end
+      VANotify::V2::QueueEmailJob.enqueue(
+        data[:email],
+        template_id,
+        personalisation,
+        'Settings.vanotify.services.ivc_champva.api_key',
+        callback_options
+      )
     end
 
     def perform_email_send_sync(template_id, personalisation, callback_options)

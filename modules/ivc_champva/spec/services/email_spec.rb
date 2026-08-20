@@ -30,80 +30,25 @@ RSpec.describe IvcChampva::Email, type: :service do
       allow(Rails).to receive(:env).and_return('staging')
     end
 
-    context 'when va_notify_v2_ivc_champva_email flipper is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
-      end
-
-      it 'enqueues VANotify::EmailJob with correct parameters' do
-        expect(VANotify::EmailJob).to receive(:perform_async).with(
-          data[:email],
-          expected_template_id,
-          expected_personalisation,
-          Settings.vanotify.services.ivc_champva.api_key,
-          expected_callback_options
-        )
-        subject.send_email
-      end
-
-      it 'returns true on success' do
-        allow(VANotify::EmailJob).to receive(:perform_async)
-        expect(subject.send_email).to be true
-      end
+    it 'enqueues VANotify::V2::QueueEmailJob with correct parameters' do
+      expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
+        data[:email],
+        expected_template_id,
+        expected_personalisation,
+        'Settings.vanotify.services.ivc_champva.api_key',
+        expected_callback_options
+      )
+      subject.send_email
     end
 
-    context 'when va_notify_v2_ivc_champva_email flipper is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(true)
-      end
-
-      it 'enqueues VANotify::V2::QueueEmailJob with correct parameters' do
-        expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
-          data[:email],
-          expected_template_id,
-          expected_personalisation,
-          'Settings.vanotify.services.ivc_champva.api_key',
-          expected_callback_options
-        )
-        subject.send_email
-      end
-
-      it 'returns true on success' do
-        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-        expect(subject.send_email).to be true
-      end
-
-      context 'when an error occurs' do
-        before do
-          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue).and_raise(StandardError.new('Test error'))
-        end
-
-        it 'handles the error and logs it' do
-          allow(Rails.logger).to receive(:error)
-
-          expect { subject.send_email }.not_to raise_error
-
-          expect(Rails.logger).to have_received(:error).with('Pega Status Update Email Error: Test error')
-        end
-      end
-    end
-
-    context 'in invalid environments' do
-      before do
-        allow(Rails).to receive(:env).and_return('development')
-      end
-
-      it 'does not enqueue any email job' do
-        expect(VANotify::EmailJob).not_to receive(:perform_async)
-        expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
-        subject.send_email
-      end
+    it 'returns true on success' do
+      allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+      expect(subject.send_email).to be true
     end
 
     context 'when an error occurs' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
-        allow(VANotify::EmailJob).to receive(:perform_async).and_raise(StandardError.new('Test error'))
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue).and_raise(StandardError.new('Test error'))
       end
 
       it 'handles the error and logs it' do
@@ -115,20 +60,28 @@ RSpec.describe IvcChampva::Email, type: :service do
       end
     end
 
+    context 'in invalid environments' do
+      before do
+        allow(Rails).to receive(:env).and_return('development')
+      end
+
+      it 'does not enqueue any email job' do
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
+
+        subject.send_email
+
+        expect(VANotify::V2::QueueEmailJob).not_to have_received(:enqueue)
+      end
+    end
+
     context 'when sync: true' do
       subject { described_class.new(data, sync: true) }
-
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
-      end
 
       it 'calls VaNotify::Service directly instead of enqueuing' do
         service_double = instance_double(VaNotify::Service)
         allow(VaNotify::Service).to receive(:new).and_return(service_double)
         allow(service_double).to receive(:send_email)
-
-        expect(VANotify::EmailJob).not_to receive(:perform_async)
-        expect(VANotify::V2::QueueEmailJob).not_to receive(:enqueue)
+        allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
         subject.send_email
 
@@ -141,6 +94,7 @@ RSpec.describe IvcChampva::Email, type: :service do
           template_id: expected_template_id,
           personalisation: expected_personalisation
         )
+        expect(VANotify::V2::QueueEmailJob).not_to have_received(:enqueue)
       end
 
       it 'returns true on success' do
@@ -180,15 +134,14 @@ RSpec.describe IvcChampva::Email, type: :service do
 
       before do
         allow(Rails).to receive(:env).and_return('staging')
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_ivc_champva_email).and_return(false)
       end
 
       it 'includes nil values for missing optional keys in personalisation' do
-        expect(VANotify::EmailJob).to receive(:perform_async).with(
+        expect(VANotify::V2::QueueEmailJob).to receive(:enqueue).with(
           data[:email],
           expected_template_id,
           hash_including(first_name: nil, last_name: nil),
-          Settings.vanotify.services.ivc_champva.api_key,
+          'Settings.vanotify.services.ivc_champva.api_key',
           expected_callback_options
         )
         subject.send_email

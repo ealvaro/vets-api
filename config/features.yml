@@ -3545,11 +3545,6 @@ features:
   va_notify_v2_health_care_application_model_send_failure_email:
     actor_type: user
     description: If enabled, HealthCareApplication will use VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
-  va_notify_v2_ivc_champva_email:
-    actor_type: user
-    description: >-
-      If enabled, IvcChampva::Email will use VANotify::V2::QueueEmailJob
-      instead of VANotify::EmailJob
   va_notify_v2_meb_confirmation_email:
     actor_type: user
     description: >-
