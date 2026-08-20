@@ -1,0 +1,124 @@
+name: Watch Engineers Review Gate
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+      - dismissed
+
+concurrency:
+  group: watch-engineers-approval-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+    contents: read
+    pull-requests: write
+    statuses: write
+
+jobs:
+  gate:
+    name: Require watch-engineers approval on watch-engineers PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate cross-repo token for actions
+        id: vsp-bot-app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: ${{ vars.VA_VSP_BOT_APP_ID }}
+          private-key: ${{ secrets.VA_VSP_BOT_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Check team membership and approvals
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.vsp-bot-app-token.outputs.token }}
+          script: |
+            const org = 'software'
+            const team = 'watch-engineers'
+            const statusContext = 'watch-engineers/review-gate'
+
+            const pr = context.payload.pull_request
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+
+            async function isTeamMember(username) {
+              try {
+                const { data } = await github.rest.teams.getMembershipForUserInOrg({
+                  org,
+                  team_slug: team,
+                  username,
+                })
+                return data.state === 'active'
+              } catch (e) {
+                if (e.status === 404) return false
+                throw e
+              }
+            }
+
+            const authorIsTeamMember = await isTeamMember(pr.user.login)
+
+            const isOpenAction = context.eventName === 'pull_request' &&
+              ['opened', 'ready_for_review'].includes(context.payload.action)
+
+            if (authorIsTeamMember && isOpenAction && !pr.draft) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  team_reviewers: [team],
+                })
+              } catch (e) {
+                core.warning(`Could not request ${team} review: ${e.message}`)
+              }
+            }
+
+            let state = 'success'
+            let description = 'No watch-engineers approval required'
+
+            if (authorIsTeamMember) {
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                owner,
+                repo,
+                pull_number: pr.number,
+              })
+
+              // latest review per user wins, mirrors GitHub's own approval semantics
+              const latestByUser = new Map()
+              for (const r of reviews) {
+                latestByUser.set(r.user.login, r)
+              }
+
+              let approvedByTeammate = false
+              for (const [username, review] of latestByUser) {
+                if (username === pr.user.login) continue
+                if (review.state !== 'APPROVED') continue
+                if (await isTeamMember(username)) {
+                  approvedByTeammate = true
+                  break
+                }
+              }
+
+              state = approvedByTeammate ? 'success' : 'pending'
+              description = approvedByTeammate
+                ? 'Approved by a watch-engineers teammate'
+                : 'Needs approval from a watch-engineers teammate (author is on the team)'
+            }
+
+            await github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: pr.head.sha,
+              state,
+              context: statusContext,
+              description,
+            })
