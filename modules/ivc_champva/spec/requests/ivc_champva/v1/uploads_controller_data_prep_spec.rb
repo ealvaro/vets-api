@@ -279,6 +279,40 @@ RSpec.describe 'IvcChampva::V1::UploadsController data preparation', type: :requ
       end
     end
 
+    context 'when flag is enabled with standalone 10-7959C and no insurance data' do
+      let(:mock_form) { double('Form', form_id: 'vha_10_7959c', uuid:, data: {}, metadata: {}) }
+      let(:ohi_pdf) { "#{uuid}_vha_10_7959c-tmp.pdf" }
+      let(:parsed_form_data) do
+        data = JSON.parse(
+          Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json',
+                          'vha_10_7959c_rev2025.json').read
+        )
+        data['supporting_docs'] = []
+        data['applicants'].first['health_insurance'] = []
+        data['applicants'].first['medicare'] = []
+        data
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:champva_send_ohi_ves_to_pega, nil).and_return(true)
+        allow(controller).to receive(:get_form_id).and_return('vha_10_7959c')
+        allow(controller).to receive(:track_form_submission_metrics)
+        allow(IvcChampva::FormVersionManager).to receive_messages(create_form_instance: mock_form,
+                                                                  get_legacy_form_id: 'vha_10_7959c')
+        allow(mock_form).to receive_messages(prepare_submission_data: [['vha_10_7959c'], nil], validated_metadata: {},
+                                             handle_attachments: [ohi_pdf])
+      end
+
+      it 'writes OHI VES JSON and maps the main PDF via meta-jsonfile' do
+        file_paths, metadata = controller.send(:get_file_paths_and_metadata, parsed_form_data)
+
+        expect(file_paths.any? { |path| path.include?('_ohi_ves_0.json') }).to be true
+        expect(metadata['attachment_ids']).to include('VES OHI JSON')
+        pdf_meta = metadata.dig('additional_file_metadata', "#{uuid}_vha_10_7959c.pdf")
+        expect(pdf_meta['meta-jsonfile']).to include('_ohi_ves_0.json')
+      end
+    end
+
     context 'when flag is disabled' do
       let(:parsed_form_data) do
         JSON.parse(

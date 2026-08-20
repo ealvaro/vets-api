@@ -67,13 +67,19 @@ module IvcChampva
       ves_request
     end
 
+    # Builds OHI VES requests from applicants.
+    # Standalone 10-7959C emits one request per applicant even with empty
+    # health_insurance/medicare (the form is the OHI cert, including "none").
+    # 10-10D-EXTENDED only emits for applicants with OHI data.
+    #
     # @return [Array<IvcChampva::VesOhiRequest>]
     def self.format_for_ohi_request(parsed_form_data, form_uuid:)
       applicants = parsed_form_data['applicants'] || []
+      standalone = parsed_form_data['form_number'] == '10-7959C'
       ohi_requests = []
 
       applicants.each do |applicant|
-        next unless applicant_has_ohi_data?(applicant)
+        next unless standalone || applicant_has_ohi_data?(applicant)
 
         ohi_data = transform_ohi_to_ves_format(applicant, parsed_form_data, form_uuid:)
         validate_ohi_data(ohi_data)

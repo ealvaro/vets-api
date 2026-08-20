@@ -885,6 +885,34 @@ describe IvcChampva::VesDataFormatter do
         expect(ohi_requests.first.application_uuid).to eq(form_uuid)
         expect(ohi_requests.first.beneficiary_medicare.person_uuid).to match(/\A[0-9a-f-]{36}\z/)
       end
+
+      it 'builds a request for standalone 10-7959C applicants with empty insurance arrays' do
+        standalone = JSON.parse(
+          File.read('modules/ivc_champva/spec/fixtures/form_json/vha_10_7959c_rev2025.json')
+        )
+        standalone['applicants'].first['health_insurance'] = []
+        standalone['applicants'].first['medicare'] = []
+
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(standalone, form_uuid:)
+
+        expect(ohi_requests.length).to eq(1)
+        beneficiary = ohi_requests.first.beneficiary_medicare
+        expect(beneficiary.medicare_parts).to eq([])
+        expect(beneficiary.other_insurances).to eq([])
+      end
+
+      it 'does not build a request for 10-10D-EXTENDED applicants with empty insurance arrays' do
+        data = extended_form_data.deep_dup
+        data['form_number'] = '10-10D-EXTENDED'
+        data['applicants'].each do |applicant|
+          applicant['health_insurance'] = []
+          applicant['medicare'] = []
+        end
+
+        ohi_requests = IvcChampva::VesDataFormatter.format_for_ohi_request(data, form_uuid:)
+
+        expect(ohi_requests).to eq([])
+      end
     end
 
     describe '.find_matching_beneficiary' do

@@ -651,7 +651,8 @@ module IvcChampva
       end
 
       ##
-      # Generates one OHI VES JSON file per applicant with OHI data.
+      # Generates one OHI VES JSON file per OHI request (standalone 10-7959C:
+      # every applicant; 10-10D-EXTENDED: applicants with OHI data).
       #
       # @param [Object] form The form instance
       # @param [Hash] parsed_form_data complete form submission data
