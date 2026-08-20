@@ -633,7 +633,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
     end
 
     context 'filter_count inactive (legacy V1 status behavior)' do
-      it 'counts prescriptions with Expired, Discontinued, or Active: On hold statuses as inactive' do
+      it 'counts prescriptions with Expired, Discontinued, or Active: On Hold statuses as inactive' do
         VCR.use_cassette('unified_health_data/get_prescriptions_success', match_requests_on: %i[method path]) do
           get('/my_health/v2/prescriptions', headers:)
 
@@ -641,7 +641,7 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
           filter_count = json_response['meta']['filter_count']
           prescriptions = json_response['data']
 
-          legacy_non_active = ['Expired', 'Discontinued', 'Active: On hold']
+          legacy_non_active = ['Expired', 'Discontinued', 'Active: On Hold']
           expected_inactive = prescriptions.count do |rx|
             legacy_non_active.include?(rx['attributes']['disp_status'])
           end

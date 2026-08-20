@@ -27,7 +27,7 @@ module MyHealth
 
       IN_PROGRESS_STATUSES_V1 = ['Active: Refill in Process', 'Active: Submitted'].freeze
 
-      NON_ACTIVE_STATUSES_V1 = ['Expired', 'Discontinued', 'Active: On hold'].freeze
+      NON_ACTIVE_STATUSES_V1 = ['Expired', 'Discontinued', 'Active: On Hold'].freeze
 
       UNKNOWN_STATUS_V1 = 'Unknown'
 

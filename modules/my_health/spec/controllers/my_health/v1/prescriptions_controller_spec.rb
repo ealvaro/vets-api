@@ -62,7 +62,7 @@ RSpec.describe MyHealth::V1::PrescriptionsController, type: :controller do
         build_rx(disp_status: 'Active'),
         build_rx(disp_status: 'Active: Refill in Process'),
         build_rx(disp_status: 'Active: Non-VA'),
-        build_rx(disp_status: 'Active: On hold'),
+        build_rx(disp_status: 'Active: On Hold'),
         build_rx(disp_status: 'Active: Parked'),
         build_rx(disp_status: 'Active: Submitted'),
         build_rx(disp_status: 'Expired'),

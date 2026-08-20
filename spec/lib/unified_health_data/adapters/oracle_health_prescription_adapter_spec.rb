@@ -415,10 +415,10 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.disp_status).to eq('Active: Non-VA')
       end
 
-      it 'maps on-hold to "Active: On hold" disp_status' do
+      it 'maps on-hold to "Active: On Hold" disp_status' do
         resource = base_fhir_resource.merge('status' => 'on-hold')
         result = subject.parse(resource)
-        expect(result.disp_status).to eq('Active: On hold')
+        expect(result.disp_status).to eq('Active: On Hold')
       end
 
       it 'maps in-progress dispense to "Active: Refill in Process" disp_status' do

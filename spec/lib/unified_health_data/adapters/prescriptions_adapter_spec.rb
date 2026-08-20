@@ -1564,7 +1564,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
         statuses = prescriptions.map(&:refill_status)
         # Should have legacy raw statuses only
-        expect(statuses).not_to include('Active', 'Inactive', 'Active: On hold')
+        expect(statuses).not_to include('Active', 'Inactive', 'Active: On Hold')
         expect(statuses).to include('active', 'expired', 'providerHold')
       end
     end

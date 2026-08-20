@@ -44,7 +44,7 @@ module UnifiedHealthData
       DISP_ACTIVE_NON_VA = 'Active: Non-VA'
       DISP_ACTIVE_SUBMITTED = 'Active: Submitted'
       DISP_ACTIVE_REFILL_IN_PROCESS = 'Active: Refill in Process'
-      DISP_ACTIVE_ON_HOLD = 'Active: On hold'
+      DISP_ACTIVE_ON_HOLD = 'Active: On Hold'
       DISP_DISCONTINUED = 'Discontinued'
       DISP_EXPIRED = 'Expired'
       DISP_UNKNOWN = 'Unknown'
