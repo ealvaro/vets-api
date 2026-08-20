@@ -174,7 +174,7 @@ module Pensions
       def expand_service_branch(service_branch)
         return if service_branch.blank?
 
-        service_branch.transform_values! { |served| to_checkbox_on_off_v2(served) }
+        service_branch.transform_values! { |served| to_checkbox_on_off(served) }
       end
 
       ##

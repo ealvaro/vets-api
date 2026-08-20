@@ -277,7 +277,7 @@ module Pensions
                            'to' => split_date(expense.dig('careDateRange', 'to'))
                          },
                          'careDateRangeOverflow' => build_date_range_string(expense['careDateRange']),
-                         'noCareEndDate' => to_checkbox_on_off_v2(expense['noCareEndDate'])
+                         'noCareEndDate' => to_checkbox_on_off(expense['noCareEndDate'])
                        })
       end
     end

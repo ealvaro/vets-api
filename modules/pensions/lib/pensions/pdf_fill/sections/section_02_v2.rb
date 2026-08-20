@@ -120,40 +120,7 @@ module Pensions
             'mobilePhone' => expand_phone_number(form_data['mobilePhone'])
           }
         )
-        handle_street_overflow(form_data['veteranAddress'])
-      end
-
-      private
-
-      ##
-      # Handles street address overflow by combining street lines if limits are exceeded
-      # or if a third street line is present
-      #
-      # @param address [Hash] The veteran's address hash containing street fields
-      #
-      # @return [Hash, nil] The updated address hash with combined street lines if overflow occurs,
-      #                     or nil if the address is blank
-      #
-      # @note This method modifies the `address` hash in place
-      #
-      def handle_street_overflow(address)
-        return if address.blank?
-
-        street, street2, street3 = address.values_at('street', 'street2', 'street3')
-
-        if street3.present? ||
-           street&.length&.>(STREET_LIMIT) ||
-           street2&.length&.>(STREET_2_LIMIT)
-          address.merge!(
-            {
-              'street' => nil,
-              'street2' => nil,
-              'street3' => [street, street2, street3].compact.join("\n")
-            }
-          )
-        else
-          address.delete('street3')
-        end
+        handle_street_overflow(form_data['veteranAddress'], STREET_LIMIT, STREET_2_LIMIT)
       end
     end
   end

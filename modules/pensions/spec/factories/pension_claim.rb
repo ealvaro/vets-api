@@ -223,18 +223,6 @@ FactoryBot.define do
             },
             {
               childInHousehold: true,
-              childAddress: {
-                street: '123 8th st',
-                city: 'Hadley',
-                country: 'USA',
-                state: 'ME',
-                postalCode: '01050'
-              },
-              personWhoLivesWithChild: {
-                first: 'Joe',
-                middle: 'Middle',
-                last: 'Smith'
-              },
               childPlaceOfBirth: 'Tallahassee, FL',
               childSocialSecurityNumber: '333224444',
               childRelationship: 'BIOLOGICAL',

@@ -8,6 +8,10 @@ module Pensions
     class Section6V2 < Section
       # Character limit for location of current marriage city
       CITY_CHAR_LIMIT = 18
+      # Character limit for street
+      STREET_LIMIT = 30
+      # Character limit for street2
+      STREET_2_LIMIT = 5
 
       # Section configuration hash
       KEY = {
@@ -147,12 +151,13 @@ module Pensions
         # 6m
         'spouseAddress' => {
           'street' => {
-            limit: 30,
+            limit: STREET_LIMIT,
             question_num: 6,
             question_suffix: 'M',
             question_label: 'Spouse Mailing Address Street',
             question_text: 'SPOUSE MAILING ADDRESS STREET',
-            key: 'spouse_street_1'
+            key: 'spouse_street_1',
+            hide_from_overflow: true
           },
           'street2' => {
             limit: 5,
@@ -160,7 +165,16 @@ module Pensions
             question_suffix: 'M',
             question_label: 'Spouse Mailing Address Apt Number',
             question_text: 'SPOUSE MAILING ADDRESS APT NUMBER',
-            key: 'spouse_street_2'
+            key: 'spouse_street_2',
+            hide_from_overflow: true
+          },
+          'street3' => {
+            limit: 0,
+            question_num: 6,
+            question_suffix: 'M',
+            question_label: 'Spouse Mailing Address Street',
+            question_text: 'SPOUSE MAILING ADDRESS STREET',
+            key: 'spouse_street_1'
           },
           'city' => {
             limit: 18,
@@ -228,7 +242,7 @@ module Pensions
       # @note This method modifies `form_data` by removing spouse keys if not married
       #
       def skip_when_not_married?(form_data)
-        return false if yes?(form_data['maritalStatus'], MARITAL_STATUS.values_at('MARRIED', 'SEPARATED'))
+        return false if form_data['maritalStatus'].in?(MARITAL_STATUS.values_at('MARRIED', 'SEPARATED'))
 
         spouse_keys = KEY.keys - ['maritalStatus']
 
@@ -360,6 +374,7 @@ module Pensions
             'country' => address['country']&.slice(0, 2)
           }
         )
+        handle_street_overflow(address, STREET_LIMIT, STREET_2_LIMIT)
       end
     end
   end

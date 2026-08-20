@@ -20,25 +20,25 @@ module Pensions
               limit: 12,
               question_num: 7,
               question_suffix: 'A',
-              question_label: 'Who Were You Married To? (First Name)',
-              question_text: 'WHO WERE YOU MARRIED TO? (FIRST NAME)',
               key: "previous_spouse_first_name[#{ITERATOR}]"
             },
             'middle' => {
               question_num: 7,
               question_suffix: 'A',
-              question_label: 'Who Were You Married To? (Middle Name)',
-              question_text: 'WHO WERE YOU MARRIED TO? (MIDDLE NAME)',
               key: "previous_spouse_middle_name[#{ITERATOR}]"
             },
             'last' => {
               limit: 18,
               question_num: 7,
               question_suffix: 'A',
-              question_label: 'Who Were You Married To? (Last Name)',
-              question_text: 'WHO WERE YOU MARRIED TO? (LAST NAME)',
               key: "previous_spouse_last_name[#{ITERATOR}]"
             }
+          },
+          # 7a overflow
+          'spouseFullNameOverflow' => {
+            question_num: 7,
+            question_label: "Previous Spouse's Full Name",
+            question_text: 'PREVIOU SPOUSE\'S FULL NAME'
           },
           # 7b
           'reasonForSeparation' => {
@@ -84,7 +84,7 @@ module Pensions
           },
           'dateRangeOfMarriageOverflow' => {
             question_num: 7,
-            question_suffix: 'C-D',
+            question_suffix: 'A',
             question_label: 'What Are The Dates Of The Previous Marriage?',
             question_text: 'WHAT ARE THE DATES OF THE PREVIOUS MARRIAGE?'
           },
@@ -122,25 +122,26 @@ module Pensions
               limit: 12,
               question_num: 7,
               question_suffix: 'B',
-              question_label: 'Who Was Your Spouse Married To? (First Name)',
-              question_text: 'WHO WAS YOUR SPOUSE MARRIED TO? (FIRST NAME)',
               key: "spouses_previous_spouse_first_name[#{ITERATOR}]"
             },
             'middle' => {
               question_num: 7,
               question_suffix: 'B',
-              question_label: 'Who Was Your Spouse Married To? (Middle Name)',
-              question_text: 'WHO WAS YOUR SPOUSE MARRIED TO? (MIDDLE NAME)',
               key: "spouses_previous_spouse_middle_name[#{ITERATOR}]"
             },
             'last' => {
               limit: 18,
               question_num: 7,
               question_suffix: 'B',
-              question_label: 'Who Was Your Spouse Married To? (Last Name)',
-              question_text: 'WHO WAS YOUR SPOUSE MARRIED TO? (LAST NAME)',
               key: "spouses_previous_spouse_last_name[#{ITERATOR}]"
             }
+          },
+          # 7n overflow
+          'spouseFullNameOverflow' => {
+            question_num: 7,
+            question_suffix: 'B',
+            question_label: "Previous Spouse's Full Name",
+            question_text: 'PREVIOU SPOUSE\'S FULL NAME'
           },
           # 7o
           'reasonForSeparation' => {
@@ -276,6 +277,7 @@ module Pensions
               'reasonForSeparationOverflow' => marriage['reasonForSeparation']&.humanize
             }
           )
+          marriage['spouseFullNameOverflow'] = marriage['spouseFullName'].values.compact.join(' ')
         end
       end
     end

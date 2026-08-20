@@ -34,16 +34,18 @@ module Pensions
         value ? 0 : 1
       end
 
+      # Default yes values for #yes? helper
+      DEFAULT_YES_VALUES = [0, 'Yes'].freeze
+
       ##
-      # Human readable alias for calling #zero? on a radio value
+      # V2: Human readable alias for calculating if checkbox or radio marked yes
       #
       # @param value [Object]
-      # @param yes_value [Object] default zero
       #
       # @return [Boolean]
       #
-      def yes?(value, yes_values = [0])
-        value.in?(yes_values)
+      def yes?(value)
+        value.in?(DEFAULT_YES_VALUES)
       end
 
       ##
@@ -112,21 +114,47 @@ module Pensions
       #
       # @param value [Object]
       #
-      # @return [String] '1' if truthy, 'Off' if falsy
+      # @return [String] '1' or 'Yes' if truthy, 'Off' if falsy
       #
       def to_checkbox_on_off(value)
-        value ? '1' : 'Off'
+        yes_or_one = Pensions.use_v2? ? 'Yes' : '1'
+        value ? yes_or_one : 'Off'
       end
 
       ##
-      # Convert a given values truthiness to a checkbox on/off version 2
+      # Handles street address overflow by combining street lines if limits are exceeded
+      # or if a third street line is present
       #
-      # @param value [Object]
+      # @param address [Hash] The veteran's address hash containing street fields
+      # @param limit [Array<Integers>]
       #
-      # @return [String] 'Yes' if truthy, 'Off' if falsy
+      # @return [Hash, nil] The updated address hash with combined street lines if overflow occurs,
+      #                     or nil if the address is blank
       #
-      def to_checkbox_on_off_v2(value)
-        value ? 'Yes' : 'Off'
+      # @note This method modifies the `address` hash in place
+      #
+      def handle_street_overflow(address, *limits)
+        return if address.blank?
+
+        street_limit, street_limit2 = limits
+
+        return if street_limit.blank? || street_limit2.blank?
+
+        street, street2, street3 = address.values_at('street', 'street2', 'street3')
+
+        if street3.present? ||
+           street&.length&.>(street_limit) ||
+           street2&.length&.>(street_limit2)
+          address.merge!(
+            {
+              'street' => nil,
+              'street2' => nil,
+              'street3' => [street, street2, street3].compact.join("\n")
+            }
+          )
+        else
+          address.delete('street3')
+        end
       end
     end
   end
