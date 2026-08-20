@@ -256,7 +256,6 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
 
   describe '.champva_eligibility_summary' do
     let(:transaction_uuid) { SecureRandom.uuid }
-    let(:representative) { double('record', transaction_uuid:) }
     let(:user) { double('user', id: 1) }
 
     context 'when ivc_champva_ves_eligibility_on_demand is disabled' do
@@ -265,7 +264,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       end
 
       it 'returns empty/nil defaults' do
-        expect(described_class.champva_eligibility_summary(representative, user)).to eq([[], nil, nil, nil])
+        expect(described_class.champva_eligibility_summary(transaction_uuid, user)).to eq([[], nil, nil, nil])
       end
     end
 
@@ -289,7 +288,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           mail_status_date: Time.zone.parse('2026-01-09T22:55:57Z')
         )
 
-        applicants, = described_class.champva_eligibility_summary(representative, user)
+        applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
 
         expect(applicants.first['letters']).to eq(
           [
@@ -321,7 +320,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         )
         IvcChampvaSponsor.create!(transaction_uuid:, first_name: 'John', last_name: 'Smith')
 
-        applicants, sponsor = described_class.champva_eligibility_summary(representative, user)
+        applicants, sponsor = described_class.champva_eligibility_summary(transaction_uuid, user)
 
         expect(applicants.first).to include(
           'firstName' => 'Jane',
@@ -335,7 +334,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         IvcChampvaApplicant.create!(transaction_uuid:, applicant_icn: '1', person_type: 'BENEFICIARY',
                                     eligibility_resolved: true, ves_status_updated_date: Date.new(2026, 7, 1))
 
-        _applicants, _sponsor, decided, ves_date = described_class.champva_eligibility_summary(representative, user)
+        _applicants, _sponsor, decided, ves_date = described_class.champva_eligibility_summary(transaction_uuid, user)
         expect(decided).to be(true)
         expect(ves_date).to eq('2026-07-01')
       end
@@ -351,7 +350,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           ves_eligibility_reason: 'No current school letter'
         )
 
-        applicants, = described_class.champva_eligibility_summary(representative, user)
+        applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
         expect(applicants.length).to eq(1)
         expect(applicants.first).to eq(
           'firstName' => 'Jane',
@@ -378,8 +377,121 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           ves_eligibility_reason: 'child married'
         )
 
-        applicants, = described_class.champva_eligibility_summary(representative, user)
+        applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
         expect(applicants.first['vesEligibilityReason']).to start_with("Jane's not eligible for CHAMPVA benefits")
+      end
+    end
+  end
+
+  describe '.build_claim_response' do
+    let(:user) { double('user', id: 1, first_name: 'John', last_name: 'Veteran') }
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:cst_champva_custom_content, user).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:ivc_champva_ves_eligibility_on_demand, user).and_return(true)
+    end
+
+    context 'when a file upload has inserted a newer IvcChampvaForm row with no transaction_uuid' do
+      # Regression coverage for a reported bug: application decision cards
+      # vanished after uploading a file on the Files tab and navigating back to
+      # Status, until a hard refresh.
+      it 'still returns cst_champva_applicants and application_decided from the resolved transaction' do
+        form_uuid = SecureRandom.uuid
+        resolved_transaction_uuid = SecureRandom.uuid
+
+        original_form = create(
+          :ivc_champva_form,
+          form_uuid:,
+          transaction_uuid: resolved_transaction_uuid,
+          updated_at: 1.hour.ago
+        )
+        create(
+          :ivc_champva_applicant,
+          transaction_uuid: resolved_transaction_uuid,
+          applicant_first_name: 'Jane',
+          applicant_last_name: 'Smith',
+          eligibility_resolved: true,
+          ves_eligibility_status: 'ELIGIBLE'
+        )
+
+        # Simulates the new IvcChampvaForm row inserted by a Files-tab upload:
+        # same claim (form_uuid), no transaction_uuid, more recently updated.
+        upload_form = create(
+          :ivc_champva_form,
+          form_uuid:,
+          transaction_uuid: nil,
+          updated_at: Time.current
+        )
+
+        dto = described_class.build_claim_response([original_form, upload_form], user)
+
+        expect(dto.cst_champva_applicants).not_to be_empty
+        expect(dto.application_decided).to be(true)
+      end
+
+      it 'still reflects complete status and a close_date rather than reverting to claimReceived' do
+        form_uuid = SecureRandom.uuid
+        resolved_transaction_uuid = SecureRandom.uuid
+
+        original_form = create(
+          :ivc_champva_form,
+          form_uuid:,
+          transaction_uuid: resolved_transaction_uuid,
+          updated_at: 1.hour.ago
+        )
+        create(
+          :ivc_champva_applicant,
+          transaction_uuid: resolved_transaction_uuid,
+          eligibility_resolved: true,
+          ves_eligibility_status: 'ELIGIBLE'
+        )
+        upload_form = create(
+          :ivc_champva_form,
+          form_uuid:,
+          transaction_uuid: nil,
+          updated_at: Time.current
+        )
+
+        dto = described_class.build_claim_response([original_form, upload_form], user)
+
+        expect(dto.status).to eq('complete')
+        expect(dto.close_date).not_to be_nil
+        expect(dto.decision_letter_sent).to be(true)
+      end
+
+      it 'returns the applicant data when the original (non-blank) transaction_uuid row is representative' do
+        form_uuid = SecureRandom.uuid
+        resolved_transaction_uuid = SecureRandom.uuid
+
+        original_form = create(
+          :ivc_champva_form,
+          form_uuid:,
+          transaction_uuid: resolved_transaction_uuid,
+          updated_at: Time.current
+        )
+        create(
+          :ivc_champva_applicant,
+          transaction_uuid: resolved_transaction_uuid,
+          applicant_first_name: 'Jane',
+          applicant_last_name: 'Smith',
+          eligibility_resolved: true,
+          ves_eligibility_status: 'ELIGIBLE'
+        )
+
+        dto = described_class.build_claim_response([original_form], user)
+
+        expect(dto.cst_champva_applicants).not_to be_empty
+        expect(dto.application_decided).to be(true)
+      end
+
+      it 'still returns empty/nil eligibility data when no row for the form_uuid carries a transaction_uuid' do
+        form_uuid = SecureRandom.uuid
+        upload_form = create(:ivc_champva_form, form_uuid:, transaction_uuid: nil)
+
+        dto = described_class.build_claim_response([upload_form], user)
+
+        expect(dto.cst_champva_applicants).to eq([])
+        expect(dto.application_decided).to be_nil
       end
     end
   end

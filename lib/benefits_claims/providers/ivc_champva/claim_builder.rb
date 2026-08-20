@@ -32,10 +32,11 @@ module BenefitsClaims
         def self.build_claim_response(records, user = nil)
           records = Array(records)
           representative = pick_representative(records)
-          all_resolved = IvcChampvaApplicant.all_resolved_for?(representative&.transaction_uuid)
+          eligibility_transaction_uuid = transaction_uuid_for(records, representative)
+          all_resolved = IvcChampvaApplicant.all_resolved_for?(eligibility_transaction_uuid)
           status = status_for(all_resolved)
           champva_applicants, champva_sponsor, application_decided, ves_status_updated_date =
-            champva_eligibility_summary(representative, user)
+            champva_eligibility_summary(eligibility_transaction_uuid, user)
 
           BenefitsClaims::Responses::ClaimResponse.new(
             **claim_response_attributes(records, representative, status, user, all_resolved),
@@ -67,6 +68,13 @@ module BenefitsClaims
 
         def self.pick_representative(records)
           records.max_by(&:updated_at)
+        end
+
+        # Prefer latest row with a transaction_uuid. file-upload rows have none (FormRecorder#insert_form).
+        def self.transaction_uuid_for(records, representative)
+          return representative.transaction_uuid if representative&.transaction_uuid.present?
+
+          records.select { |record| record.transaction_uuid.present? }.max_by(&:updated_at)&.transaction_uuid
         end
 
         def self.claim_type_for(form_number)
@@ -147,10 +155,8 @@ module BenefitsClaims
 
         # Single applicant/sponsor path: consumed at the response root (cstChampvaApplicants/
         # cstChampvaSponsor) rather than duplicated under claimStatusMeta.
-        def self.champva_eligibility_summary(representative, user)
+        def self.champva_eligibility_summary(transaction_uuid, user)
           return [[], nil, nil, nil] unless ves_eligibility_on_demand?(user)
-
-          transaction_uuid = representative&.transaction_uuid
           return [[], nil, nil, nil] if transaction_uuid.blank?
 
           applicants = applicants_for(transaction_uuid)
