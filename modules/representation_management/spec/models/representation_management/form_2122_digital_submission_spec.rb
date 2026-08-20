@@ -255,7 +255,7 @@ RSpec.describe RepresentationManagement::Form2122DigitalSubmission, type: :model
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
           .with(:arc_appoint_a_representative_use_accredited_models).and_return(true)
-        subject.representative_id = accredited_individual.id
+        subject.representative_id = accredited_individual.registration_number
       end
 
       context 'when an active any_request accreditation exists' do

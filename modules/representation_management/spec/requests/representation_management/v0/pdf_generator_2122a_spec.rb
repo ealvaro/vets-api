@@ -80,7 +80,7 @@ RSpec.describe 'RepresentationManagement::V0::PdfGenerator2122a', type: :request
             }
           },
           representative: {
-            id: representative.id
+            id: representative.registration_number
           }
         }
       }

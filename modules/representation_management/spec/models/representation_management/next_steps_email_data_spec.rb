@@ -138,7 +138,7 @@ RSpec.describe RepresentationManagement::NextStepsEmailData, type: :model do
     it 'returns the entity for accredited_individual' do
       accredited_individual = create(:accredited_individual)
       next_steps_email_data = described_class.new(entity_type: 'individual',
-                                                  entity_id: accredited_individual.id)
+                                                  entity_id: accredited_individual.registration_number)
       expect(next_steps_email_data.entity).to eq(accredited_individual)
     end
 
@@ -174,12 +174,12 @@ RSpec.describe RepresentationManagement::NextStepsEmailData, type: :model do
       attorney = create(:accredited_individual, individual_type: 'attorney')
       claims_agent = create(:accredited_individual, individual_type: 'claims_agent')
       representative = create(:accredited_individual, individual_type: 'representative')
-      next_steps_email_data_attorney = described_class
-                                       .new(entity_type: 'individual', entity_id: attorney.id)
-      next_steps_email_data_claims_agent = described_class
-                                           .new(entity_type: 'individual', entity_id: claims_agent.id)
-      next_steps_email_data_representative = described_class
-                                             .new(entity_type: 'individual', entity_id: representative.id)
+      next_steps_email_data_attorney =
+        described_class.new(entity_type: 'individual', entity_id: attorney.registration_number)
+      next_steps_email_data_claims_agent =
+        described_class.new(entity_type: 'individual', entity_id: claims_agent.registration_number)
+      next_steps_email_data_representative =
+        described_class.new(entity_type: 'individual', entity_id: representative.registration_number)
       expect(next_steps_email_data_attorney.entity_display_type).to eq('attorney')
       expect(next_steps_email_data_claims_agent.entity_display_type).to eq('claims agent')
       expect(next_steps_email_data_representative.entity_display_type).to eq('VSO representative')
@@ -239,7 +239,7 @@ RSpec.describe RepresentationManagement::NextStepsEmailData, type: :model do
     it 'returns the entity name for accredited_individual' do
       accredited_individual = create(:accredited_individual)
       next_steps_email_data = described_class.new(entity_type: 'individual',
-                                                  entity_id: accredited_individual.id)
+                                                  entity_id: accredited_individual.registration_number)
       expect(next_steps_email_data.entity_name).to eq(accredited_individual.full_name)
     end
 

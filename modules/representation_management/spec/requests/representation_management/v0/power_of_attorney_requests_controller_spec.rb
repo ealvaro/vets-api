@@ -320,7 +320,7 @@ RSpec.describe 'RepresentationManagement::V0::PowerOfAttorneyRequests', type: :r
       let(:accredited_organization) { create(:accredited_organization, can_accept_digital_poa_requests: true) }
       let(:accredited_individual) { create(:accredited_individual) }
       let(:submission_organization_id) { accredited_organization.poa_code }
-      let(:submission_representative_id) { accredited_individual.id }
+      let(:submission_representative_id) { accredited_individual.registration_number }
       let(:poa_request) do
         OpenStruct.new(id: 'efd18b43-4421-4539-941a-7397fadfe5dc',
                        created_at: '2025-02-21T00:00:00.000000000Z'.to_datetime,

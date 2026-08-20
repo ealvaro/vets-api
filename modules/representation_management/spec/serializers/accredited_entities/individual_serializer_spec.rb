@@ -31,8 +31,8 @@ describe RepresentationManagement::AccreditedEntities::IndividualSerializer, typ
   let(:data) { subject.serializable_hash.with_indifferent_access['data'] }
   let(:attributes) { data['attributes'] }
 
-  it 'includes id' do
-    expect(data['id']).to eq(individual.id)
+  it 'includes id as the registration number' do
+    expect(data['id']).to eq(individual.registration_number)
   end
 
   it 'includes individual_type' do

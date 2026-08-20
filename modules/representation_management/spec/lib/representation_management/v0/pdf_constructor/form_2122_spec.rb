@@ -54,7 +54,7 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
       claimant_phone: '5555555555',
       claimant_email: 'claimant@example.com',
       organization_id: accredited_organization.poa_code,
-      representative_id: representative.id,
+      representative_id: representative.registration_number,
       record_consent: true,
       consent_limits: %w[DRUG_ABUSE HIV SICKLE_CELL],
       consent_address_change: true
@@ -175,7 +175,7 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
       email: 'representative@example.com'
     )
 
-    form = RepresentationManagement::Form2122Data.new(data.merge(representative_id: long_rep.id))
+    form = RepresentationManagement::Form2122Data.new(data.merge(representative_id: long_rep.registration_number))
 
     Tempfile.create do |tempfile|
       tempfile.binmode

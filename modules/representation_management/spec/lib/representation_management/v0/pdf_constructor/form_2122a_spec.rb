@@ -54,7 +54,7 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122a do
       claimant_zip_code_suffix: '6789',
       claimant_phone: '5555555555',
       claimant_email: 'claimant@example.com',
-      representative_id: representative.id,
+      representative_id: representative.registration_number,
 
       record_consent: true,
       consent_limits: %w[

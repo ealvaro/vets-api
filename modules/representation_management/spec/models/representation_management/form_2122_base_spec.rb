@@ -220,7 +220,7 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       context 'when representative is an instance of AccreditedIndividual' do
         it 'returns #phone of the representative' do
           representative = create(:accredited_individual, phone: '5555555555')
-          subject.representative_id = representative.id
+          subject.representative_id = representative.registration_number
           expect(subject.representative_phone).to eq(representative.phone)
         end
       end
@@ -244,13 +244,13 @@ RSpec.describe RepresentationManagement::Form2122Base, type: :model do
       context 'when representative is an instance of AccreditedIndividual' do
         it 'returns #individual_type of the representative' do
           representative = create(:accredited_individual, individual_type: 'attorney')
-          subject.representative_id = representative.id
+          subject.representative_id = representative.registration_number
           expect(subject.representative_individual_type).to eq(representative.individual_type)
         end
 
         it 'returns "agent" if individual_type includes "agent"' do
           representative = create(:accredited_individual, individual_type: 'claims_agent')
-          subject.representative_id = representative.id
+          subject.representative_id = representative.registration_number
           expect(subject.representative_individual_type).to eq('agent')
         end
       end

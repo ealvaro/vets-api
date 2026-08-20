@@ -18,7 +18,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
           form_name: 'Form Name',
           form_number: '21-22',
           entity_type: 'individual',
-          entity_id: accredited_individual.id
+          entity_id: accredited_individual.registration_number
         }
       }
     end

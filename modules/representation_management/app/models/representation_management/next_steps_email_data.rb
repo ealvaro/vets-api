@@ -78,7 +78,7 @@ module RepresentationManagement
     end
 
     def find_representative
-      AccreditedIndividual.find_by(id: entity_id) ||
+      AccreditedIndividual.find_by(registration_number: entity_id) ||
         Veteran::Service::Representative.find_by(representative_id: entity_id)
     end
 

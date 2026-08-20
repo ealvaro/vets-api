@@ -11,7 +11,7 @@ RSpec.describe 'Next Steps Email', openapi_spec: 'modules/representation_managem
            poa_code: SwaggerSharedComponents::V0.representative[:organization_id],
            name: 'Veterans Organization')
     create(:accredited_individual,
-           id: SwaggerSharedComponents::V0.representative[:id])
+           registration_number: SwaggerSharedComponents::V0.representative[:id])
   end
 
   path '/representation_management/v0/next_steps_email' do

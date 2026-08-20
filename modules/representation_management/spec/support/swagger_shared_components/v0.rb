@@ -30,7 +30,7 @@ module SwaggerSharedComponents
         form_name: 'Form 21-22',
         form_number: '21-22',
         entity_type: 'individual',
-        entity_id: '8c3b3b53-02a1-4dbd-bd23-2b556f5ef635'
+        entity_id: '86753'
       }
     end
 
@@ -82,7 +82,7 @@ module SwaggerSharedComponents
 
     def self.representative
       {
-        id: '8c3b3b53-02a1-4dbd-bd23-2b556f5ef635',
+        id: '86753',
         organization_id: 'A12'
       }
     end
@@ -134,7 +134,7 @@ module SwaggerSharedComponents
             form_name: { type: :string, example: 'Form 21-22' },
             form_number: { type: :string, example: '21-22' },
             entity_type: { type: :string, example: 'individual' },
-            entity_id: { type: :string, example: '8c3b3b53-02a1-4dbd-bd23-2b556f5ef635' }
+            entity_id: { type: :string, example: '86753' }
           },
           required: %w[email_address first_name form_name form_number entity_type entity_id]
         }
@@ -227,8 +227,8 @@ module SwaggerSharedComponents
         properties: {
           id: {
             type: :string,
-            example: '8c3b3b53-02a1-4dbd-bd23-2b556f5ef635',
-            description: 'This is an AccreditedIndividual#id or a Veteran::Service::Representative#representative_id'
+            example: '86753',
+            description: 'This is an AccreditedIndividual#registration_number or a Veteran::Service::Representative#representative_id'
           },
           organization_id: {
             type: :string,

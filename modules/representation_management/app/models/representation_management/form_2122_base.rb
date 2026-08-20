@@ -188,7 +188,9 @@ module RepresentationManagement
 
     def find_representative
       if appoint_accredited_models_enabled?
-        AccreditedIndividual.find_by(id: representative_id)
+        # representative_id is the value the FE forwards from the appoint search result id,
+        # which IndividualSerializer sets to the registration number (not the UUID primary key).
+        AccreditedIndividual.find_by(registration_number: representative_id)
       else
         Veteran::Service::Representative.find_by(representative_id:)
       end

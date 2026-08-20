@@ -5,6 +5,13 @@ module RepresentationManagement
     class IndividualSerializer
       include JSONAPI::Serializer
 
+      # AccreditedIndividual uses a UUID primary key, but the appoint-a-representative flow
+      # (FE submit -> representative_id -> accredited_individual_registration_number) expects
+      # the entity id to be the registration number, matching the legacy
+      # Veteran::Service::Representative contract (primary_key = :representative_id) and the
+      # OrganizationSerializer's `set_id :poa_code`.
+      set_id :registration_number
+
       attributes :first_name, :last_name, :full_name,
                  :address_line1,
                  :address_line2, :address_line3, :address_type,
