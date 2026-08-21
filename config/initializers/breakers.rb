@@ -168,6 +168,7 @@ Rails.application.reloader.to_prepare do
     BEP::Claims::Configuration.instance.breakers_service,
     BEP::Persons::Configuration.instance.breakers_service,
     Chip::Configuration.instance.breakers_service,
+    TravelClaim::Configuration.instance.breakers_service,
     ContentionClassification::Configuration.instance.breakers_service,
     DecisionReview::PdfValidation::Configuration.instance.breakers_service,
     DisabilityMaxRatings::Configuration.instance.breakers_service,

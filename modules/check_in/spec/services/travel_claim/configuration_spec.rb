@@ -11,6 +11,16 @@ RSpec.describe TravelClaim::Configuration do
     end
   end
 
+  describe '#breakers_service' do
+    it 'is registered on the global Breakers client' do
+      expect(Breakers.client.services).to include(subject.breakers_service)
+    end
+
+    it 'uses the BTSSS service name' do
+      expect(subject.breakers_service.name).to eq('BTSSS-API')
+    end
+  end
+
   describe '#base_path' do
     it 'has a base path' do
       expect(subject.base_path).to be_present
