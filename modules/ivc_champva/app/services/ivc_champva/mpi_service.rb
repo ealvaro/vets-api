@@ -67,6 +67,7 @@ module IvcChampva
       # Handle different field structures for veterans vs applicants
       name_field = person_type == 'veteran' ? 'full_name' : 'applicant_name'
       dob_field = person_type == 'veteran' ? 'date_of_birth' : 'applicant_dob'
+      ssn_field = person_type == 'veteran' ? 'ssn_or_tin' : 'applicant_ssn'
 
       return nil unless person_data[name_field]
 
@@ -74,7 +75,7 @@ module IvcChampva
         first_name: person_data.dig(name_field, 'first'),
         last_name: person_data.dig(name_field, 'last'),
         birth_date: format_date(person_data[dob_field]),
-        ssn: person_data['ssn_or_tin'],
+        ssn: person_data[ssn_field],
         person_type:
       }
     rescue => e

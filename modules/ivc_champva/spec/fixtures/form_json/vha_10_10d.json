@@ -47,14 +47,14 @@
         "middle": "C",
         "last": "Onceler"
       },
-      "ssn_or_tin": "123456644",
-      "applicant_gender": { "gender": "F" },
+      "applicant_ssn": "123456644",
+      "applicant_gender": "F",
       "applicant_email_address": "email@address.com",
       "applicant_phone": "6543219877",
       "applicant_dob": "1978-03-04",
       "applicant_medicare_status": { "eligibility": "enrolled" },
       "applicant_has_ohi": { "has_ohi": "no" },
-      "applicant_relationship_to_sponsor": { "relationship_to_veteran": "spouse" }
+      "applicant_relationship_to_sponsor": "spouse"
     },
     {
       "applicant_address": {
@@ -70,14 +70,14 @@
         "middle": "D",
         "last": "Twos"
       },
-      "ssn_or_tin": "123664444",
-      "applicant_gender": { "gender": "M" },
+      "applicant_ssn": "123664444",
+      "applicant_gender": "M",
       "applicant_email_address": "mailme@domain.com",
       "applicant_phone": "2345698777",
       "applicant_dob": "1985-03-10",
       "applicant_medicare_status": { "eligibility": "enrolled" },
       "applicant_has_ohi": { "has_ohi": "yes" },
-      "applicant_relationship_to_sponsor": { "relationship_to_veteran": "spouse" }
+      "applicant_relationship_to_sponsor": "spouse"
     },
     {
       "applicant_address": {
@@ -93,14 +93,14 @@
         "middle": "D",
         "last": "Simpson"
       },
-      "ssn_or_tin": "123664444",
-      "applicant_gender": { "gender": "M" },
+      "applicant_ssn": "123664444",
+      "applicant_gender": "M",
       "applicant_email_address": "mailme@homer.com",
       "applicant_phone": "2345698777",
       "applicant_dob": "1985-03-10",
       "applicant_medicare_status": { "eligibility": "enrolled" },
       "applicant_has_ohi": { "has_ohi": "yes" },
-      "applicant_relationship_to_sponsor": { "relationship_to_veteran": "spouse" }
+      "applicant_relationship_to_sponsor": "spouse"
     },
     {
       "applicant_address": {
@@ -116,8 +116,8 @@
         "middle": "W",
         "last": "Wolf"
       },
-      "ssn_or_tin": "123664444",
-      "applicant_gender": { "gender": "M" },
+      "applicant_ssn": "123664444",
+      "applicant_gender": "M",
       "applicant_email_address": "mailme@logan.com",
       "applicant_phone": "2345698777",
       "applicant_dob": "1999-03-10",
@@ -125,7 +125,7 @@
       "applicant_has_ohi": { "has_ohi": "yes" },
       "is_enrolled_in_medicare": true,
       "has_other_health_insurance": true,
-      "applicant_relationship_to_sponsor": { "relationship_to_veteran": "spouse" }
+      "applicant_relationship_to_sponsor": "spouse"
     },
     {
       "applicant_address": {
@@ -141,8 +141,8 @@
         "middle": "W",
         "last": "Storm"
       },
-      "ssn_or_tin": "123664444",
-      "applicant_gender": { "gender": "F" },
+      "applicant_ssn": "123664444",
+      "applicant_gender": "F",
       "applicant_email_address": "mailme@Maria.com",
       "applicant_phone": "2345698777",
       "applicant_dob": "1959-03-10",
@@ -150,7 +150,7 @@
       "applicant_has_ohi": { "has_ohi": "yes" },
       "is_enrolled_in_medicare": true,
       "has_other_health_insurance": true,
-      "applicant_relationship_to_sponsor": { "relationship_to_veteran": "spouse" }
+      "applicant_relationship_to_sponsor": "spouse"
     }
   ],
   "supporting_docs": [

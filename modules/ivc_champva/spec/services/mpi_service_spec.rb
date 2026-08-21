@@ -53,7 +53,7 @@ RSpec.describe IvcChampva::MPIService do
         # Use form data but with invalid SSNs to trigger not found responses
         form_data.tap do |data|
           data['veteran']['ssn_or_tin'] = '000000000'
-          data['applicants'].each { |applicant| applicant['ssn_or_tin'] = '000000000' }
+          data['applicants'].each { |applicant| applicant['applicant_ssn'] = '000000000' }
         end
       end
 
@@ -117,6 +117,28 @@ RSpec.describe IvcChampva::MPIService do
         )
 
         service.validate_profiles(veteran_with_mm_dd_yyyy_date)
+      end
+
+      it 'reads applicant SSN from applicant_ssn rather than ssn_or_tin' do
+        applicant_data = {
+          'applicants' => [
+            {
+              'applicant_name' => { 'first' => 'Jane', 'last' => 'Smith' },
+              'applicant_dob' => '1990-05-01',
+              'applicant_ssn' => '987654321',
+              'ssn_or_tin' => '111111111'
+            }
+          ]
+        }
+
+        expect(mock_mpi_service).to receive(:find_profile_by_attributes).with(
+          first_name: 'Jane',
+          last_name: 'Smith',
+          birth_date: '1990-05-01',
+          ssn: '987654321'
+        )
+
+        service.validate_profiles(applicant_data)
       end
     end
   end

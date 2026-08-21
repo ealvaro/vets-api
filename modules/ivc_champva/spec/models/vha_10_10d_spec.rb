@@ -87,7 +87,8 @@ RSpec.describe IvcChampva::VHA1010d do
 
     it 'produces the full metadata.json body from the fixture data' do
       applicant_props = fixture_data['applicants'].map do |app|
-        { applicant_name: app['applicant_name'], applicant_dob: app['applicant_dob'] }.to_json
+        { applicant_ssn: app['applicant_ssn'], applicant_name: app['applicant_name'],
+          applicant_dob: app['applicant_dob'] }.to_json
       end
 
       expect(form.metadata).to eq(

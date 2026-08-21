@@ -99,20 +99,15 @@ describe IvcChampva::VesDataFormatter do
             'postal_code' => '56790',
             'street_combined' => '456 Circle Street '
           },
-          'applicant_ssn' => { 'ssn' => '345345345' },
+          'applicant_ssn' => '345345345',
           'applicant_phone' => '5555551234',
-          'applicant_gender' => { 'gender' => 'MALE' },
+          'applicant_gender' => 'MALE',
           'applicant_dob' => '2000-01-01',
           'applicant_name' => { 'first' => 'Johnny', 'middle' => 'T', 'last' => 'Alvin' },
           'applicant_medicare_status' => { 'eligibility' => 'enrolled' },
           'applicant_has_ohi' => { 'has_ohi' => 'yes' },
-          'ssn_or_tin' => '345345345',
-          'applicant_relationship_to_sponsor' => {
-            'relationship_to_veteran' => 'child'
-          },
-          'applicant_relationship_origin' => {
-            'relationship_to_veteran' => 'blood'
-          },
+          'applicant_relationship_to_sponsor' => 'child',
+          'applicant_relationship_origin' => 'blood',
           'applicant_supporting_documents' => []
         }
       ],
@@ -445,7 +440,7 @@ describe IvcChampva::VesDataFormatter do
   describe 'beneficiary childtype not in accepted values' do
     it 'raises an exception' do
       possible_values = IvcChampva::VesDataFormatter::CHILDTYPES.join(', ')
-      @parsed_form_data_copy['applicants'][0]['applicant_relationship_origin']['relationship_to_veteran'] = 'INVALID'
+      @parsed_form_data_copy['applicants'][0]['applicant_relationship_origin'] = 'INVALID'
 
       expect do
         IvcChampva::VesDataFormatter.format_for_request(@parsed_form_data_copy, form_uuid:)
@@ -457,7 +452,7 @@ describe IvcChampva::VesDataFormatter do
   describe 'beneficiary gender not in accepted values' do
     it 'raises an exception' do
       possible_values = IvcChampva::VesDataFormatter::GENDERS.join(', ')
-      @parsed_form_data_copy['applicants'][0]['applicant_gender']['gender'] = 'INVALID'
+      @parsed_form_data_copy['applicants'][0]['applicant_gender'] = 'INVALID'
 
       expect do
         IvcChampva::VesDataFormatter.format_for_request(@parsed_form_data_copy, form_uuid:)
@@ -661,97 +656,6 @@ describe IvcChampva::VesDataFormatter do
       result = IvcChampva::VesDataFormatter.extract_certification_address(cert)
 
       expect(result['city']).to eq('Fallback')
-    end
-  end
-
-  describe 'nested data structure backwards compatibility (String or object)' do
-    describe '.extract_flat_or_nested' do
-      it 'returns nil when the field is nil' do
-        expect(IvcChampva::VesDataFormatter.extract_flat_or_nested(nil, 'gender')).to be_nil
-      end
-
-      it 'returns the flat value when the field is a String' do
-        expect(IvcChampva::VesDataFormatter.extract_flat_or_nested('male', 'gender')).to eq('male')
-      end
-
-      it 'returns the nested value when the field is a Hash' do
-        expect(IvcChampva::VesDataFormatter.extract_flat_or_nested({ 'gender' => 'male' }, 'gender')).to eq('male')
-      end
-    end
-
-    describe '.extract_gender' do
-      it 'handles a flat String value' do
-        expect(IvcChampva::VesDataFormatter.extract_gender({ 'applicant_gender' => 'female' })).to eq('female')
-      end
-
-      it 'handles a nested Hash value' do
-        applicant = { 'applicant_gender' => { 'gender' => 'female' } }
-        expect(IvcChampva::VesDataFormatter.extract_gender(applicant)).to eq('female')
-      end
-    end
-
-    describe '.extract_relationship_to_veteran' do
-      it 'handles a flat applicant_relationship_to_sponsor String' do
-        applicant = { 'applicant_relationship_to_sponsor' => 'child' }
-        expect(IvcChampva::VesDataFormatter.extract_relationship_to_veteran(applicant)).to eq('child')
-      end
-
-      it 'handles a nested applicant_relationship_to_sponsor Hash' do
-        applicant = { 'applicant_relationship_to_sponsor' => { 'relationship_to_veteran' => 'child' } }
-        expect(IvcChampva::VesDataFormatter.extract_relationship_to_veteran(applicant)).to eq('child')
-      end
-    end
-
-    describe '.extract_relationship_origin' do
-      it 'handles a flat applicant_relationship_origin String' do
-        applicant = { 'applicant_relationship_origin' => 'blood' }
-        expect(IvcChampva::VesDataFormatter.extract_relationship_origin(applicant)).to eq('blood')
-      end
-
-      it 'handles a nested applicant_relationship_origin Hash' do
-        applicant = { 'applicant_relationship_origin' => { 'relationship_to_veteran' => 'adoption' } }
-        expect(IvcChampva::VesDataFormatter.extract_relationship_origin(applicant)).to eq('adoption')
-      end
-    end
-
-    describe '.map_beneficiary' do
-      let(:base_applicant) do
-        {
-          'applicant_name' => { 'first' => 'Johnny', 'last' => 'Alvin' },
-          'ssn_or_tin' => '345345345',
-          'applicant_dob' => '2000-01-01'
-        }
-      end
-
-      before { allow(SecureRandom).to receive(:uuid).and_return('12345678-1234-5678-1234-567812345678') }
-
-      it 'maps gender, relationship, and childtype from flat String values' do
-        applicant = base_applicant.merge(
-          'applicant_gender' => 'male',
-          'applicant_relationship_to_sponsor' => 'child',
-          'applicant_relationship_origin' => 'blood'
-        )
-
-        beneficiary = IvcChampva::VesDataFormatter.map_beneficiary(applicant)
-
-        expect(beneficiary[:gender]).to eq('MALE')
-        expect(beneficiary[:relationship_to_sponsor]).to eq('CHILD')
-        expect(beneficiary[:child_type]).to eq('NATURAL')
-      end
-
-      it 'maps gender, relationship, and childtype from nested Hash values' do
-        applicant = base_applicant.merge(
-          'applicant_gender' => { 'gender' => 'male' },
-          'applicant_relationship_to_sponsor' => { 'relationship_to_veteran' => 'child' },
-          'applicant_relationship_origin' => { 'relationship_to_veteran' => 'blood' }
-        )
-
-        beneficiary = IvcChampva::VesDataFormatter.map_beneficiary(applicant)
-
-        expect(beneficiary[:gender]).to eq('MALE')
-        expect(beneficiary[:relationship_to_sponsor]).to eq('CHILD')
-        expect(beneficiary[:child_type]).to eq('NATURAL')
-      end
     end
   end
 
@@ -1197,13 +1101,13 @@ describe IvcChampva::VesDataFormatter do
         data = Marshal.load(Marshal.dump(extended_form_data))
         data['applicants'] << {
           'applicant_name' => { 'first' => 'Jane', 'last' => 'Doe' },
-          'ssn_or_tin' => '987654321',
+          'applicant_ssn' => '987654321',
           'applicant_address' => {
             'country' => 'USA', 'street_combined' => '789 Oak St',
             'city' => 'Townville', 'state' => 'CA', 'postal_code' => '90210'
           },
           'applicant_dob' => '1990-05-15',
-          'applicant_gender' => { 'gender' => 'female' },
+          'applicant_gender' => 'female',
           'applicant_relationship_to_sponsor' => 'spouse',
           'medicare' => [{ 'medicare_plan_type' => 'ab', 'medicare_number' => 'ABC123' }]
         }

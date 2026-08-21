@@ -24,9 +24,7 @@
           "is_encrypted": false
         }
       ],
-      "applicant_relationship_origin": {
-        "relationship_to_veteran": "blood"
-      },
+      "applicant_relationship_origin": "blood",
       "applicant_email_address": "johnny@alvin.gov",
       "applicant_address": {
         "country": "USA",
@@ -38,15 +36,9 @@
       },
       "applicant_ssn": "345345345",
       "applicant_phone": "555-555-1234",
-      "applicant_gender": {
-        "gender": "male"
-      },
-      "applicant_relationship_to_sponsor": {
-        "relationship_to_veteran": "child"
-      },
-      "applicant_dependent_status": {
-        "status": "enrolled"
-      },
+      "applicant_gender": "male",
+      "applicant_relationship_to_sponsor": "child",
+      "applicant_dependent_status": "enrolled",
       "applicant_enrolled_in_ohi": false,
       "applicant_dob": "01-04-2003",
       "applicant_name": {
@@ -56,7 +48,6 @@
         "suffix": "Jr."
       },
       "shares_address_with": "not-shared",
-      "ssn_or_tin": "345345345",
       "applicant_supporting_documents": [],
       "medicare": [
         {
