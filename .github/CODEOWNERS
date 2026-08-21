@@ -2335,6 +2335,7 @@ spec/sidekiq/vha_notification/send_mst_consent_job_spec.rb @software/disability-
 spec/sidekiq/vre/submit1900_job_spec.rb @software/benefits-non-disability
 spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/govcio-vfep-codereviewers
 spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/govcio-vfep-codereviewers
+spec/simple_cov_helper_spec.rb @software/va-platform-backend
 spec/simplecov_helper.rb @software/va-platform-backend
 spec/spec_helper.rb @software/va-platform-backend
 spec/spupport/vcr_cassettes/user/get_facilities_empty.yml @software/vfs-facilities-frontend
