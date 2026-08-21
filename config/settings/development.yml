@@ -1443,6 +1443,7 @@ sharepoint:
     sharepoint_graph_url: https://graph.microsoft.com
     site_id: fake_site_id
     tenant_id: fake_sharepoint_tenant_id
+    verify_ssl: true
 shrine:
   claims:
     access_key_id: ~

@@ -15,6 +15,7 @@ require 'share_point/service'
 #     drive_id: <your_drive_id>
 #     site_id: <your_site_id>
 #     tenant_id: <your_tenant_id>
+#     verify_ssl: false
 # ```
 # 2. Start a local port forward to BOTH the SharePoint authentication and Graph API endpoints:
 # ```bash
@@ -40,15 +41,6 @@ RSpec.describe SharePoint::Service do
     allow(service).to receive(:auth_connection).and_wrap_original do |original, *args|
       conn = original.call(*args)
       conn.headers['Host'] = 'login.microsoftonline.com'
-      conn.ssl.verify = false
-      conn
-    end
-  end
-
-  def modified_sharepoint_file_connection(service)
-    allow(service).to receive(:sharepoint_file_connection).and_wrap_original do |original, *args|
-      conn = original.call(*args)
-      conn.ssl.verify = false
       conn
     end
   end
@@ -104,7 +96,6 @@ RSpec.describe SharePoint::Service do
     context 'when the upload succeeds' do
       before do
         modified_auth_connection(service)
-        modified_sharepoint_file_connection(service)
       end
 
       it 'returns a successful response and increments the success StatsD metric' do

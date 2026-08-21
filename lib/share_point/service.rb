@@ -107,6 +107,7 @@ module SharePoint
         conn.response :json
         conn.options.open_timeout = 10
         conn.options.timeout = 30
+        conn.ssl.verify = verify_ssl?
         conn.response :betamocks if mock_enabled?
         conn.adapter Faraday.default_adapter
       end
@@ -117,6 +118,7 @@ module SharePoint
         conn.use(:breakers, service_name:)
         conn.options.open_timeout = 10
         conn.options.timeout = 30
+        conn.ssl.verify = verify_ssl?
         conn.response :betamocks if mock_enabled?
         conn.adapter Faraday.default_adapter
       end
@@ -131,6 +133,12 @@ module SharePoint
 
     def mock_enabled?
       ActiveModel::Type::Boolean.new.cast(settings.mock)
+    end
+
+    def verify_ssl?
+      return true if settings.verify_ssl.nil?
+
+      ActiveModel::Type::Boolean.new.cast(settings.verify_ssl)
     end
 
     def encode_sharepoint_path(path)
