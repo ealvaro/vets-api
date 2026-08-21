@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_224744) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -327,8 +327,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_224744) do
     t.string "claimant_city_ciphertext", null: false
     t.string "claimant_state_code_bidx", null: false
     t.string "claimant_state_code_ciphertext", null: false
-    t.string "claimant_zip_code_bidx", null: false
-    t.string "claimant_zip_code_ciphertext", null: false
+    t.string "claimant_zip_code_bidx"
+    t.string "claimant_zip_code_ciphertext"
     t.text "data_ciphertext", null: false
     t.text "encrypted_kms_key"
     t.boolean "needs_kms_rotation", default: false, null: false

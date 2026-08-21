@@ -188,6 +188,29 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Cr
 
           expect(monitoring).to have_received(:track_count).with('ar.poa.request.pathway.org_first')
         end
+
+        context 'with an international veteran address and no zip code' do
+          let(:form_data) do
+            data = super().deep_dup
+            data['dependent'] = nil
+            data['veteran']['address']['country'] = 'FRA'
+            data['veteran']['address']['stateCode'] = 'NA'
+            data['veteran']['address']['zipCode'] = nil
+            data['veteran']['address']['zipCodeSuffix'] = nil
+            data
+          end
+
+          it 'creates a form successfully' do
+            expect { subject.call }.to change(AccreditedRepresentativePortal::PowerOfAttorneyForm, :count).by(1)
+          end
+
+          it 'persists a nil claimant_zip_code for derived location fields' do
+            result = subject.call
+
+            expect(result[:errors]).to be_nil
+            expect(result[:request].power_of_attorney_form.claimant_zip_code).to be_nil
+          end
+        end
       end
 
       context 'when there are errors' do

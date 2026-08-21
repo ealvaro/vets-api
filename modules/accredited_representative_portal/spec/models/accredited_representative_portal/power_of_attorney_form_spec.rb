@@ -78,6 +78,32 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyForm, type: :model
         expect(form.claimant_state_code).to eq('IL')
         expect(form.claimant_zip_code).to eq('62704')
       end
+
+      it 'preserves a nil veteran zip code' do
+        bad_data = form.parsed_data.deep_dup
+        bad_data['veteran']['address']['zipCode'] = nil
+
+        form.data = bad_data.to_json
+        form.instance_variable_set(:@parsed_data, nil)
+        form.validate
+
+        expect(form.claimant_zip_code).to be_nil
+      end
+    end
+
+    context 'with dependent claimant and nil zip code' do
+      let(:trait) { :with_dependent_claimant }
+
+      it 'preserves a nil dependent zip code' do
+        bad_data = form.parsed_data.deep_dup
+        bad_data['dependent']['address']['zipCode'] = nil
+
+        form.data = bad_data.to_json
+        form.instance_variable_set(:@parsed_data, nil)
+        form.validate
+
+        expect(form.claimant_zip_code).to be_nil
+      end
     end
   end
 

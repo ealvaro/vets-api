@@ -120,6 +120,43 @@ RSpec.describe RepresentationManagement::PowerOfAttorneyRequestService::Orchestr
       end
     end
 
+    context 'when claimant is veteran with an international address and no zip code' do
+      let(:dependent) { false }
+
+      before do
+        data[:claimant_first_name] = nil
+        data[:claimant_middle_initial] = nil
+        data[:claimant_last_name] = nil
+        data[:claimant_date_of_birth] = nil
+        data[:claimant_relationship] = nil
+        data[:claimant_address_line1] = nil
+        data[:claimant_address_line2] = nil
+        data[:claimant_city] = nil
+        data[:claimant_state_code] = nil
+        data[:claimant_country] = nil
+        data[:claimant_zip_code] = nil
+        data[:claimant_zip_code_suffix] = nil
+        data[:claimant_phone] = nil
+        data[:claimant_email] = nil
+
+        data[:veteran_country] = 'FRA'
+        data[:veteran_state_code] = 'NA'
+        data[:veteran_zip_code] = nil
+        data[:veteran_zip_code_suffix] = nil
+      end
+
+      it 'creates a new AccreditedRepresentativePortal::PowerOfAttorneyForm' do
+        expect { subject.call }.to change(AccreditedRepresentativePortal::PowerOfAttorneyForm, :count).by(1)
+      end
+
+      it 'returns a created request without errors' do
+        result = subject.call
+
+        expect(result[:errors]).to be_nil
+        expect(result[:request]).to be_a(AccreditedRepresentativePortal::PowerOfAttorneyRequest)
+      end
+    end
+
     context 'when there is an error destroying the form' do
       before do
         allow(InProgressForm).to receive(:form_for_user).and_raise(StandardError, 'test')
