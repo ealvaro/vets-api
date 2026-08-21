@@ -24,6 +24,21 @@ RSpec.describe HealthCareApplication, type: :model do
     end
   end
 
+  describe 'associations' do
+    it { is_expected.to belong_to(:user_account).optional }
+
+    it 'can be associated with a user_account' do
+      user_account = create(:user_account)
+      health_care_application.update!(user_account:)
+
+      expect(health_care_application.reload.user_account).to eq(user_account)
+    end
+
+    it 'is valid without a user_account' do
+      expect(build(:health_care_application, user_account: nil)).to be_valid
+    end
+  end
+
   describe 'schema' do
     it 'is deep frozen' do
       expect do

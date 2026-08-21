@@ -42,6 +42,9 @@ module V0
     def create
       health_care_application.google_analytics_client_id = params[:ga_client_id]
       health_care_application.user = current_user
+      if current_user && Flipper.enabled?(:hca_link_user_account_to_ez_application, current_user)
+        health_care_application.user_account = current_user.user_account
+      end
 
       begin
         result = health_care_application.process!

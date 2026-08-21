@@ -446,12 +446,22 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
               expect(JSON.parse(response.body)).to eq(body)
             end
           end
+
+          it 'does not associate the application with a user_account', run_at: '2017-01-31' do
+            expect(HealthCareApplication).to receive(:user_icn).twice.and_return('123')
+            VCR.use_cassette('hca/submit_anon', match_requests_on: [:body]) do
+              subject
+              expect(HealthCareApplication.last.user_account).to be_nil
+            end
+          end
         end
       end
 
       context 'while authenticated', :skip_mvi do
         let!(:in_progress_form) { create(:in_progress_form, user_uuid: current_user.uuid, form_id: '1010ez') }
         let(:current_user) { build(:user, :mhv) }
+        # build(:user, :mhv) above doesn't create a user_verification, so persist one for current_user to resolve.
+        let!(:user_verification) { create(:mhv_user_verification, mhv_uuid: current_user.mhv_credential_uuid) }
         let(:body) do
           {
             'formSubmissionId' => 436_426_340,
@@ -477,6 +487,36 @@ RSpec.describe 'V0::HealthCareApplications', type: %i[request serializer] do
 
             subject
             expect(JSON.parse(response.body)).to eq(body)
+          end
+        end
+
+        it 'associates the application with the current user\'s user_account', run_at: '2017-01-31' do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:hca_link_user_account_to_ez_application,
+                                                    anything).and_return(true)
+          VCR.use_cassette('hca/submit_auth', match_requests_on: [:body]) do
+            allow_any_instance_of(HealthCareApplication).to receive(:prefill_fields)
+
+            expect(current_user.user_account).to be_present
+
+            subject
+
+            expect(HealthCareApplication.last.user_account).to eq(current_user.user_account)
+          end
+        end
+
+        it 'does not associate the user_account when the flag is disabled', run_at: '2017-01-31' do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?).with(:hca_link_user_account_to_ez_application,
+                                                    anything).and_return(false)
+          VCR.use_cassette('hca/submit_auth', match_requests_on: [:body]) do
+            allow_any_instance_of(HealthCareApplication).to receive(:prefill_fields)
+
+            expect(current_user.user_account).to be_present
+
+            subject
+
+            expect(HealthCareApplication.last.user_account).to be_nil
           end
         end
       end
