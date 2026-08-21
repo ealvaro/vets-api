@@ -2344,5 +2344,5 @@ xlsx_file_fetcher:
     app_id: <%= ENV['xlsx_file_fetcher__github_app__app_id'] %>
     base_uri: https://api.va.ghe.com
     org: software
-    private_key: <%= ENV['xlsx_file_fetcher__github_app__private_key'] %>
+    private_key: <%= ENV['xlsx_file_fetcher__github_app__private_key']&.dump %>
     repo: software/va.gov-team-sensitive
