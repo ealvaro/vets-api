@@ -18,6 +18,8 @@ module MyHealth
       include MyHealth::RxGroupingHelperV2
       include JsonApiPaginationLinks
 
+      before_action :authorize_prescriptions
+
       service_tag 'mhv-medications'
 
       ACTIVE_STATUSES_V1 = [
@@ -475,6 +477,19 @@ module MyHealth
         rescue JSON::ParserError
           raise Common::Exceptions::InvalidFieldValue.new('orders', 'Invalid JSON format')
         end
+      end
+
+      def authorize_prescriptions
+        if current_user.icn.blank?
+          Rails.logger.info('RX ACCESS DENIED',
+                            denial_reason: 'missing_icn',
+                            sign_in_service: current_user.identity&.sign_in&.dig(:service_name),
+                            va_patient: current_user.va_patient?)
+          raise Common::Exceptions::Forbidden, detail: 'You do not have access to prescriptions'
+        end
+        return if current_user.authorize(:mhv_prescriptions, :access?)
+
+        raise Common::Exceptions::Forbidden, detail: 'You do not have access to prescriptions'
       end
     end
   end

@@ -60,7 +60,7 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
         sign_in_as(invalid_user, stub_mhv_account: true)
       end
 
-      it 'returns 403 Forbidden when icn is missing' do
+      it 'denies access when icn is missing' do
         get '/my_health/v1/medical_records/self_entered'
 
         expect(invalid_user.icn).to be_nil
@@ -69,6 +69,46 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
 
         json = JSON.parse(response.body)
         expect(json['errors'].first['detail']).to eq('You do not have access to self-entered information')
+      end
+    end
+
+    context 'when user is not LOA3 verified' do
+      let(:unverified_user) do
+        build(:user, :mhv, loa: { current: LOA::TWO, highest: LOA::TWO })
+      end
+
+      before do
+        allow_any_instance_of(User).to receive(:mhv_user_account).and_return(double(patient: true))
+        allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+        sign_in_as(unverified_user, stub_mhv_account: true)
+      end
+
+      context 'allergies endpoint' do
+        before { get '/my_health/v1/medical_records/self_entered/allergies' }
+
+        include_examples 'for user account level', message: 'You do not have access to self-entered information'
+      end
+
+      context 'index endpoint' do
+        before { get '/my_health/v1/medical_records/self_entered' }
+
+        include_examples 'for user account level', message: 'You do not have access to self-entered information'
+      end
+    end
+
+    context 'when user is not a patient' do
+      let(:non_patient_user) { build(:user, :mhv, authn_context: LOA::IDME_LOA3_VETS) }
+
+      before do
+        allow_any_instance_of(User).to receive(:mhv_user_account).and_return(double(patient: false))
+        allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+        sign_in_as(non_patient_user, stub_mhv_account: true)
+      end
+
+      context 'allergies endpoint' do
+        before { get '/my_health/v1/medical_records/self_entered/allergies' }
+
+        include_examples 'for user account level', message: 'You do not have access to self-entered information'
       end
     end
   end

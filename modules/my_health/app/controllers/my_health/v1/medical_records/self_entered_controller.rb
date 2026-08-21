@@ -92,7 +92,8 @@ module MyHealth
         end
 
         def authorize
-          raise_access_denied if current_user.mhv_correlation_id.blank? || current_user.icn.blank?
+          raise_access_denied if current_user.icn.blank?
+          raise_access_denied unless current_user.authorize(:mhv_medical_records, :access?)
         end
 
         def raise_access_denied

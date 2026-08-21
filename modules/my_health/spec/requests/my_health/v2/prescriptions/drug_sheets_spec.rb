@@ -15,7 +15,8 @@ RSpec.describe 'MyHealth::V2::Prescriptions::DrugSheets', type: :request do
   end
 
   before do
-    allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: va_patient))
+    allow_any_instance_of(User).to receive(:mhv_user_account).and_return(double(patient: va_patient,
+                                                                                champ_va: false))
     allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
     allow(Rx::Client).to receive(:new).and_return(authenticated_client)
     sign_in_as(current_user, stub_mhv_account: true)
@@ -28,8 +29,8 @@ RSpec.describe 'MyHealth::V2::Prescriptions::DrugSheets', type: :request do
     end
 
     before do
-      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(OpenStruct.new(patient: false,
-                                                                                          champ_va: false))
+      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(double(patient: false,
+                                                                                  champ_va: false))
       post '/my_health/v2/prescriptions/drug_sheets/search', params: { ndc: '00013264681' }
     end
 

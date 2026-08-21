@@ -5,6 +5,7 @@ require 'unified_health_data/prescription_service'
 require 'mhv/prescriptions/refill_request_tracker'
 require 'unique_user_events'
 require 'support/shared_contexts/uhd_security_endpoint'
+require 'support/shared_examples_for_mhv'
 
 RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
   include_context 'uhd legacy security endpoint'
@@ -34,6 +35,98 @@ RSpec.describe 'MyHealth::V2::Prescriptions', type: :request do
 
   before do
     sign_in_as(current_user, stub_mhv_account: true)
+  end
+
+  context 'when user is unauthorized' do
+    let(:unverified_user) do
+      build(:user, :mhv, :no_vha_facilities, authn_context: LOA::IDME_LOA3_VETS, va_patient: false,
+                                             sign_in: { service_name: SignIn::Constants::Auth::IDME })
+    end
+
+    before do
+      allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(
+        double(patient: false, champ_va: false)
+      )
+      sign_in_as(unverified_user)
+    end
+
+    context 'GET /my_health/v2/prescriptions' do
+      before { get '/my_health/v2/prescriptions', headers: }
+
+      include_examples 'for user account level', message: 'You do not have access to prescriptions'
+    end
+
+    context 'GET /my_health/v2/prescriptions/list_refillable_prescriptions' do
+      before { get '/my_health/v2/prescriptions/list_refillable_prescriptions', headers: }
+
+      include_examples 'for user account level', message: 'You do not have access to prescriptions'
+    end
+
+    context 'GET /my_health/v2/prescriptions/refillable_count' do
+      before { get '/my_health/v2/prescriptions/refillable_count', headers: }
+
+      include_examples 'for user account level', message: 'You do not have access to prescriptions'
+    end
+
+    context 'POST /my_health/v2/prescriptions/refill' do
+      before do
+        post '/my_health/v2/prescriptions/refill',
+             params: [{ stationNumber: '123', id: '456' }].to_json, headers:
+      end
+
+      include_examples 'for user account level', message: 'You do not have access to prescriptions'
+    end
+
+    context 'GET /my_health/v2/prescriptions/:id' do
+      before { get '/my_health/v2/prescriptions/12345?station_number=123', headers: }
+
+      include_examples 'for user account level', message: 'You do not have access to prescriptions'
+    end
+  end
+
+  context 'when user has no ICN' do
+    let(:no_icn_user) do
+      build(:user, :mhv, icn: nil, authn_context: LOA::IDME_LOA3_VETS,
+                         sign_in: { service_name: SignIn::Constants::Auth::IDME })
+    end
+
+    before do
+      allow_any_instance_of(User).to receive(:mhv_correlation_id).and_return('12345678901')
+      allow_any_instance_of(User).to receive(:icn).and_return(nil)
+      sign_in_as(no_icn_user)
+    end
+
+    it 'returns 403 Forbidden' do
+      get('/my_health/v2/prescriptions', headers:)
+
+      expect(response).to have_http_status(:forbidden)
+
+      json = JSON.parse(response.body)
+      expect(json['errors'].first['detail']).to eq('You do not have access to prescriptions')
+    end
+  end
+
+  context 'when user is a ChampVA beneficiary (not a patient)' do
+    let(:champ_va_user) do
+      build(:user, :mhv, authn_context: LOA::IDME_LOA3_VETS,
+                         sign_in: { service_name: SignIn::Constants::Auth::IDME })
+    end
+
+    before do
+      allow_any_instance_of(User).to receive(:mhv_user_account).and_return(
+        double(patient: false, champ_va: true)
+      )
+      allow_any_instance_of(UnifiedHealthData::PrescriptionService).to receive(:get_prescriptions)
+        .and_return({ prescriptions: [], metadata: {} })
+      sign_in_as(champ_va_user)
+    end
+
+    it 'allows access to prescriptions for ChampVA users' do
+      get('/my_health/v2/prescriptions', headers:)
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe 'POST /my_health/v2/prescriptions/refill' do
