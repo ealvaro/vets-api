@@ -2816,6 +2816,10 @@ features:
     actor_type: user
     description: Enables new page design of Sign In modal and USiP
     enable_in_development: false
+  signed_in_devices_widget_enabled:
+    actor_type: user
+    description: Enables the Signed-in devices widget, allowing users to view and manage their active sign-in sessions (Identity)
+    enable_in_development: true
   confirm_contact_email_interstitial_enabled:
     actor_type: user
     description: Enables users with emails tied to MHV classic accounts to be redirected to the confirm contact email interstitial page (Identity)
