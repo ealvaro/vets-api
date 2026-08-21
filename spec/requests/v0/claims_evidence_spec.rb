@@ -9,6 +9,9 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
   let(:valid_doc_type_id) { 34 } # Correspondence (L023)
   let(:sc_id) { 'SC10879' }
   let(:ce_success) { build(:claims_evidence_service_files_response, :success) }
+  # Ownership tags prefixed onto every metric. The success counter below asserts the literal
+  # values; everywhere else we reference the constant so the tag list lives in one place.
+  let(:base_tags) { V0::ClaimsEvidenceController::STATSD_TAGS }
 
   before do
     allow(Common::VirusScan).to receive(:scan).and_return(true)
@@ -68,7 +71,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(file: nil)
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:missing_file']
+              'api.claims_evidence.validation.failure', tags: base_tags + ['reason:missing_file']
             )
           end
 
@@ -93,7 +96,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(file: 'not-a-file')
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:invalid_file']
+              'api.claims_evidence.validation.failure', tags: base_tags + ['reason:invalid_file']
             )
           end
 
@@ -118,7 +121,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(documentTypeId: nil)
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:missing_document_type_id']
+              'api.claims_evidence.validation.failure', tags: base_tags + ['reason:missing_document_type_id']
             )
           end
         end
@@ -133,7 +136,8 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(documentTypeId: 9999)
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:unsupported_document_type_id']
+              'api.claims_evidence.validation.failure',
+              tags: base_tags + ['reason:unsupported_document_type_id']
             )
           end
         end
@@ -153,7 +157,8 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(documentTypeId: '34abc')
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:malformed_document_type_id']
+              'api.claims_evidence.validation.failure',
+              tags: base_tags + ['reason:malformed_document_type_id']
             )
           end
         end
@@ -201,13 +206,62 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             post_upload
           end
 
-          it 'increments the upload success statsd counter tagged with documentTypeId' do
+          it 'increments the success counter tagged with documentTypeId and logs the document type name' do
             allow(StatsD).to receive(:increment).and_call_original
+            allow(Rails.logger).to receive(:info)
+
             post_upload
+
             expect(StatsD).to have_received(:increment).with(
               'api.claims_evidence.upload.success',
-              tags: ["document_type_id:#{valid_doc_type_id}"]
+              tags: ['service:claims-evidence',
+                     'team:benefits-management-tools',
+                     'itportfolio:benefits-delivery',
+                     'dependency:claims-evidence-api',
+                     "document_type_id:#{valid_doc_type_id}"]
             )
+            expect(Rails.logger).to have_received(:info).with(
+              'ClaimsEvidenceController#create upload success',
+              document_type: 'Correspondence'
+            )
+          end
+
+          # The upload is done and the record is saved before this telemetry runs, so a broken
+          # metric or log must not fail the request or report it as a failure.
+          context 'and the success telemetry itself fails' do
+            it 'counts the success once and no failure when the logger raises after the counter' do
+              allow(StatsD).to receive(:increment).and_call_original
+              allow(Rails.logger).to receive(:info).and_call_original
+              allow(Rails.logger).to receive(:info)
+                .with('ClaimsEvidenceController#create upload success', any_args)
+                .and_raise(StandardError, 'logger down')
+
+              post_upload
+
+              expect(response).to have_http_status(:ok)
+              expect(JSON.parse(response.body)['uuid']).to eq('c30626c9-954d-4dd1-9f70-1e38756d9d97')
+              expect(StatsD).to have_received(:increment).with(
+                'api.claims_evidence.upload.success', anything
+              )
+              expect(StatsD).not_to have_received(:increment).with(
+                'api.claims_evidence.upload.failure', anything
+              )
+            end
+
+            it 'still returns 200 when the counter raises, even though the metric is lost' do
+              allow(StatsD).to receive(:increment).and_call_original
+              allow(StatsD).to receive(:increment)
+                .with('api.claims_evidence.upload.success', anything)
+                .and_raise(StandardError, 'statsd down')
+
+              post_upload
+
+              expect(response).to have_http_status(:ok)
+              expect(JSON.parse(response.body)['uuid']).to eq('c30626c9-954d-4dd1-9f70-1e38756d9d97')
+              expect(StatsD).not_to have_received(:increment).with(
+                'api.claims_evidence.upload.failure', anything
+              )
+            end
           end
 
           it 'persists a SUCCESS EvidenceSubmission with caseflow_claim_id and file metadata' do
@@ -230,7 +284,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom'))
             end
 
-            it 'still returns 200 (the file is already in eFolder)' do
+            it 'still returns 200 because the document is already in the eFolder' do
               post_upload
               expect(response).to have_http_status(:ok)
             end
@@ -239,7 +293,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               allow(StatsD).to receive(:increment).and_call_original
               post_upload
               expect(StatsD).to have_received(:increment)
-                .with('api.claims_evidence.persist.failure', tags: ['error_class:StandardError'])
+                .with('api.claims_evidence.persist.failure', tags: base_tags + ['error_class:StandardError'])
             end
 
             it 'logs the failure with a scrubbed message and error_class' do
@@ -258,6 +312,57 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
                   error: '[scrubbed]'
                 )
               )
+            end
+
+            it 'captures the data needed to recreate the EvidenceSubmission by hand' do
+              expect { post_upload }.to change(PersonalInformationLog, :count).by(1)
+
+              pii_log = PersonalInformationLog.last
+              expect(pii_log.error_class).to eq('ClaimsEvidenceController#persist_evidence_submission')
+              expect(pii_log.data).to include(
+                'caseflow_claim_id' => sc_id,
+                'user_account_id' => user.user_account_uuid,
+                'icn' => user.icn,
+                'document_type_id' => valid_doc_type_id,
+                'document_type' => 'Correspondence',
+                'file_name' => 'doctors-note.pdf',
+                'upload_status' => BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+                'claims_evidence_uuid' => ce_success.body['uuid'],
+                'claims_evidence_current_version_uuid' => ce_success.body['currentVersionUuid']
+              )
+              expect(pii_log.data['file_size']).to be > 0
+            end
+
+            context 'when the backfill capture also fails' do
+              before do
+                allow(PersonalInformationLog).to receive(:create).and_raise(StandardError.new('db down'))
+              end
+
+              it 'still returns 200 rather than 500 a document that was filed successfully' do
+                post_upload
+                expect(response).to have_http_status(:ok)
+              end
+
+              it 'increments the unrecoverable counter and logs the CE uuid so the document can still be traced' do
+                allow(StatsD).to receive(:increment).and_call_original
+                allow(Rails.logger).to receive(:error)
+
+                post_upload
+
+                expect(StatsD).to have_received(:increment)
+                  .with('api.claims_evidence.persist.unrecoverable',
+                        tags: base_tags + ['error_class:StandardError'])
+                expect(Rails.logger).to have_received(:error).with(
+                  'ClaimsEvidenceController#capture_submission_for_backfill failed',
+                  hash_including(
+                    supplemental_claim_id: sc_id,
+                    user_account_uuid: user.user_account_uuid,
+                    document_type_id: valid_doc_type_id,
+                    claims_evidence_uuid: ce_success.body['uuid'],
+                    error_class: 'StandardError'
+                  )
+                )
+              end
             end
           end
         end
@@ -296,7 +401,8 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(supplementalClaimId: nil)
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:missing_supplemental_claim_id']
+              'api.claims_evidence.validation.failure',
+              tags: base_tags + ['reason:missing_supplemental_claim_id']
             )
           end
         end
@@ -328,7 +434,8 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             allow(StatsD).to receive(:increment).and_call_original
             post_upload(supplementalClaimId: 'foo')
             expect(StatsD).to have_received(:increment).with(
-              'api.claims_evidence.validation.failure', tags: ['reason:malformed_supplemental_claim_id']
+              'api.claims_evidence.validation.failure',
+              tags: base_tags + ['reason:malformed_supplemental_claim_id']
             )
           end
         end
@@ -354,8 +461,36 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             post_upload
             expect(StatsD).to have_received(:increment).with(
               'api.claims_evidence.upload.failure',
-              tags: ['reason:virus', "document_type_id:#{valid_doc_type_id}"]
+              tags: base_tags + ['reason:virus', "document_type_id:#{valid_doc_type_id}"]
             )
+          end
+        end
+
+        context 'when CE returns a success status with a body we cannot build a response from' do
+          let(:malformed_response) { double(reason_phrase: 'OK', status: 200, body: 'not-a-hash') }
+
+          before do
+            allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+              .to receive(:upload)
+              .and_return(malformed_response)
+          end
+
+          it 'counts the request once, as a failure, rather than as both a success and a failure' do
+            allow(StatsD).to receive(:increment).and_call_original
+
+            post_upload
+
+            expect(StatsD).not_to have_received(:increment).with(
+              'api.claims_evidence.upload.success', anything
+            )
+            expect(StatsD).to have_received(:increment).with(
+              'api.claims_evidence.upload.failure',
+              tags: base_tags + ['error_class:TypeError', "document_type_id:#{valid_doc_type_id}"]
+            )
+          end
+
+          it 'still persists the EvidenceSubmission because the document is already in the eFolder' do
+            expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
           end
         end
 
@@ -402,8 +537,34 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             post_upload
             expect(StatsD).to have_received(:increment).with(
               'api.claims_evidence.upload.failure',
-              tags: ['error_class:Common::Client::Errors::ClientError',
-                     "document_type_id:#{valid_doc_type_id}"]
+              tags: base_tags + ['error_class:Common::Client::Errors::ClientError',
+                                 "document_type_id:#{valid_doc_type_id}"]
+            )
+          end
+        end
+
+        context 'when staging the file fails before the CE call' do
+          before do
+            file # build the fixture upload before stubbing the copy it relies on
+            allow(IO).to receive(:copy_stream).and_raise(Errno::ENOSPC)
+          end
+
+          it 'increments the upload failure counter with error_class' do
+            allow(StatsD).to receive(:increment).and_call_original
+            post_upload
+            expect(StatsD).to have_received(:increment).with(
+              'api.claims_evidence.upload.failure',
+              tags: base_tags + ['error_class:Errno::ENOSPC', "document_type_id:#{valid_doc_type_id}"]
+            )
+          end
+        end
+
+        context 'when param validation fails' do
+          it 'does not increment the upload failure counter' do
+            allow(StatsD).to receive(:increment).and_call_original
+            post_upload(documentTypeId: 999)
+            expect(StatsD).not_to have_received(:increment).with(
+              'api.claims_evidence.upload.failure', anything
             )
           end
         end
