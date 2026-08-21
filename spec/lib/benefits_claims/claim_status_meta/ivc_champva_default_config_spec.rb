@@ -137,6 +137,15 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
   describe 'overview section' do
     subject(:overview) { config['overview'] }
 
+    it 'has title and description' do
+      expect(overview['title']).to eq('Overview of the application process')
+      expect(overview['description']).to include('CHAMPVA benefits')
+    end
+
+    it 'has currentStepPrefix for the step date line' do
+      expect(overview['currentStepPrefix']).to eq('Your application moved to this step on')
+    end
+
     it 'has two steps with phase, header, and description' do
       expect(overview['steps'].length).to eq(2)
       overview['steps'].each do |step|
@@ -146,28 +155,103 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       end
     end
 
-    it 'step 1 has a descriptionDateTemplate with a {date} placeholder' do
-      template = overview.dig('steps', 0, 'descriptionDateTemplate')
-      expect(template).to be_present
-      expect(template).to include('{date}')
+    it 'steps have sequential phase numbers' do
+      phases = overview['steps'].map { |s| s['phase'] }
+      expect(phases).to eq([1, 2])
     end
 
-    it 'step 1 description and descriptionDateTemplate include the processing timeline sentence' do
-      description = overview.dig('steps', 0, 'description')
-      template = overview.dig('steps', 0, 'descriptionDateTemplate')
-      expect(description).to include('5 business days')
-      expect(template).to include('5 business days')
+    describe 'step 1 — Application received' do
+      subject(:step1) { overview.dig('steps', 0) }
+
+      it 'has the correct header' do
+        expect(step1['header']).to eq('Step 1: Application received')
+      end
+
+      it 'description includes processing timeline' do
+        expect(step1['description']).to include('5 business days')
+      end
+
+      it 'has a descriptionDateTemplate with {date} placeholder' do
+        expect(step1['descriptionDateTemplate']).to include('{date}')
+        expect(step1['descriptionDateTemplate']).to include('5 business days')
+      end
+
+      it 'has a link to the CHAMPVA what-to-do-after-applying resource' do
+        expect(step1['linkUrl']).to include('what-to-do-after-applying-for-champva-benefits')
+        expect(step1['linkText']).to be_present
+      end
+
+      it 'step 1 link is an absolute external URL (rendered as va-link by FE)' do
+        expect(step1['linkUrl']).to match(%r{\Ahttps?://})
+      end
+
+      it 'does not have noteText or upload link (removed per Figma mock)' do
+        expect(step1['noteText']).to be_nil
+        expect(step1['uploadLinkText']).to be_nil
+        expect(step1['uploadLinkUrl']).to be_nil
+      end
+
+      it 'does not have details array (removed per Figma mock)' do
+        expect(step1['details']).to be_nil
+      end
     end
 
-    it 'currentStepByStatus covers pending, claimReceived, vbms, and complete' do
-      expect(overview['currentStepByStatus'].keys).to match_array(%w[pending claimReceived vbms complete])
+    describe 'step 2 — Application decided' do
+      subject(:step2) { overview.dig('steps', 1) }
+
+      it 'has the correct header' do
+        expect(step2['header']).to eq('Step 2: Application decided')
+      end
+
+      it 'description directs applicant to the Status tab' do
+        expect(step2['description']).to include('Status tab')
+      end
+
+      it 'does not contain old decision copy (regression guard)' do
+        expect(step2['description']).not_to eq('We made a decision on your application.')
+      end
+
+      it 'has a link to the Status tab with relative URL (rendered as BasicLink by FE)' do
+        expect(step2['linkUrl']).to eq('../status')
+        expect(step2['linkText']).to be_present
+      end
+
+      it 'details are present and mention decision letter and welcome letter' do
+        expect(step2['details']).to be_an(Array).and have_attributes(length: be >= 1)
+        details_text = step2['details'].join
+        expect(details_text).to include('decision letter')
+        expect(details_text).to include('welcome letter')
+      end
+
+      it 'does not have a descriptionDateTemplate (no date in step 2 description)' do
+        expect(step2['descriptionDateTemplate']).to be_nil
+      end
+
+      it 'does not have uploadLinkUrl (no file upload in step 2)' do
+        expect(step2['uploadLinkUrl']).to be_nil
+      end
+
+      it 'does not have noteText (no note block in step 2)' do
+        expect(step2['noteText']).to be_nil
+      end
     end
 
-    it 'step 1 has noteText, uploadLinkText, and uploadLinkUrl for supporting document guidance' do
-      step1 = overview.dig('steps', 0)
-      expect(step1['noteText']).to be_present
-      expect(step1['uploadLinkText']).to be_present
-      expect(step1['uploadLinkUrl']).to be_present
+    describe 'currentStepByStatus — VES-driven step mapping' do
+      subject(:step_map) { overview['currentStepByStatus'] }
+
+      it 'covers all expected statuses' do
+        expect(step_map.keys).to match_array(%w[pending claimReceived vbms complete])
+      end
+
+      it 'maps Step 1 (In Progress) statuses to phase 1' do
+        expect(step_map['claimReceived']).to eq(1)
+        expect(step_map['pending']).to eq(1)
+      end
+
+      it 'maps Step 2 (Closed/decided) statuses to phase 2' do
+        expect(step_map['complete']).to eq(2)
+        expect(step_map['vbms']).to eq(2)
+      end
     end
   end
 end

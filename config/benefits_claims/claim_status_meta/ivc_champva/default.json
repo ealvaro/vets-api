@@ -72,22 +72,18 @@
         "header": "Step 1: Application received",
         "description": "We received your application. We typically review applications within 5 business days.",
         "descriptionDateTemplate": "We received your application on {date}. We typically review applications within 5 business days.",
-        "details": [
-          "If we need more information, we'll mail you a letter."
-        ],
         "linkText": "Learn more about what to do after you apply for CHAMPVA benefits",
-        "linkUrl": "https://www.va.gov/resources/what-to-do-after-applying-for-champva-benefits/",
-        "noteText": "You can submit supporting documents while we review your application. But this may delay our decision.",
-        "uploadLinkText": "Upload supporting documents",
-        "uploadLinkUrl": "../files"
+        "linkUrl": "https://www.va.gov/resources/what-to-do-after-applying-for-champva-benefits/"
       },
       {
         "phase": 2,
         "header": "Step 2: Application decided",
-        "description": "We made a decision on your application.",
+        "description": "You'll be able to review our decision on the Status tab for this application.",
         "details": [
-          "We'll send you a decision letter for each applicant by mail. They should arrive within 7 to 10 business days."
-        ]
+          "We'll also mail you a copy of your decision letter. If you're eligible for CHAMPVA, we'll send you a welcome letter and CHAMPVA ID card in the mail."
+        ],
+        "linkText": "Check the Status tab for this application",
+        "linkUrl": "../status"
       }
     ],
     "currentStepByStatus": {
