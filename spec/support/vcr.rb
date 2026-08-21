@@ -47,6 +47,8 @@ VCR.configure do |c|
   c.filter_sensitive_data('<MHV_SM_HOST>') { Settings.mhv.api_gateway.hosts.sm_patient }
   c.filter_sensitive_data('<MHV_SM_X_API_KEY>') { Settings.mhv.sm.x_api_key }
   c.filter_sensitive_data('<MPI_URL>') { IdentitySettings.mvi.url }
+  c.filter_sensitive_data('<ORACLE_HEALTH_OAUTH_URI>') { IdentitySettings.oracle_health.oauth.uri }
+  c.filter_sensitive_data('<ORACLE_HEALTH_TENANT_ID>') { IdentitySettings.oracle_health.oauth.tenant_id }
   c.filter_sensitive_data('<PD_TOKEN>') { Settings.maintenance.pagerduty_api_token }
   c.filter_sensitive_data('<OGC_ATTORNEY_EXCEL_LIST_URI>') do
     Settings.representation_management.ogc_attorney_excel_list_uri

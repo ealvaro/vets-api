@@ -36,6 +36,14 @@ logingov:
   oauth_url: https://idp.int.identitysandbox.gov
   redirect_uri: http://localhost:3000/v0/sign_in/callback
 
+oracle_health:
+  oauth:
+    client_id: ~
+    client_secret: ~
+    uri: https://authorization.cerner.ehr.gov
+    tenant_id: 00224df3-b096-4cdb-852c-cbc83c0d3b06
+    mock: true
+
 map_services:
   appointments_client_id: 74b3145e1354555e
   chatbot_client_id: 2bb9803acfc3

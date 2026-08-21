@@ -1,0 +1,53 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<ORACLE_HEALTH_OAUTH_URI>/tenants/<ORACLE_HEALTH_TENANT_ID>/protocols/oauth2/profiles/smart-v1/token"
+    body:
+      encoding: UTF-8
+      string: grant_type=client_credentials&scope=system%2FPatient.read+system%2FPatient.write
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/x-www-form-urlencoded
+      User-Agent:
+      - Vets.gov Agent
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 500
+      message: ''
+    headers:
+      Expect-Ct:
+      - enforce, max-age=30
+      Www-Authenticate:
+      - Basic realm="CernerCare"
+      Access-Control-Allow-Methods:
+      - OPTIONS, POST
+      Access-Control-Allow-Origin:
+      - "*"
+      Access-Control-Allow-Headers:
+      - Content-Type, Authorization, Accept, Cerner-Correlation-Id
+      Cache-Control:
+      - no-store
+      Pragma:
+      - no-cache
+      Cerner-Correlation-Id:
+      - '09169e06-1c53-4bde-8dbb-0a2843230e00'
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '282'
+      Date:
+      - Tue, 04 Aug 2026 20:07:23 GMT
+      Server:
+      - cloud_authorization_server1
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+    body:
+      encoding: UTF-8
+      string: ''
+  recorded_at: Thu, 13 Aug 2026 21:36:34 GMT
+recorded_with: VCR 6.4.0

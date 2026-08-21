@@ -17,6 +17,10 @@ logingov:
   oauth_public_key: /srv/vets-api/secret/logingov_oauth_pub.pem
   redirect_uri: https://staging-api.va.gov/v0/sign_in/callback
 
+oracle_health:
+  oauth:
+    mock: false
+
 map_services:
   client_cert_path: /srv/vets-api/secret/mobile-application-platform-lowers.pem
   client_key_path: /srv/vets-api/secret/mobile-application-platform-lowers-key.pem

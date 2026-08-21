@@ -33,6 +33,13 @@
         :uid_location: url
         :uid_locator: '\/api\/v1\/awards\/pension\/(.+)'
 
+- :name: "Oracle Health"
+  :base_uri: <%= "#{URI(IdentitySettings.oracle_health.oauth.uri).host}:#{URI(IdentitySettings.oracle_health.oauth.uri).port}" %>
+  :endpoints:
+    - :method: :post
+      :path: <%= "/tenants/#{IdentitySettings.oracle_health.oauth.tenant_id}/protocols/oauth2/profiles/smart-v1/token" %>
+      :file_path: "oracle_health/oauth/default"
+
 #CRM API GET endpoint
 - :name: "CRM API GET endpoint"
   :base_uri: <%= "#{URI(Settings.ask_va_api.crm_api.base_url).host}:#{URI(Settings.ask_va_api.crm_api.base_url).port}" %>

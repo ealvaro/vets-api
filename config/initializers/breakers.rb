@@ -89,6 +89,7 @@ require 'medical_records/phr_mgr/configuration'
 require 'medical_records/user_eligibility/configuration'
 require 'mhv/aal/configuration'
 require 'mhv/account_creation/configuration'
+require 'oracle_health/o_auth/configuration'
 require 'res/configuration'
 require 'sign_in/idme/configuration'
 require 'sign_in/logingov/configuration'
@@ -201,6 +202,7 @@ Rails.application.reloader.to_prepare do
     UserEligibility::Configuration.instance.breakers_service,
     AAL::Configuration.instance.breakers_service,
     MHV::AccountCreation::Configuration.instance.breakers_service,
+    OracleHealth::OAuth::Configuration.instance.breakers_service,
     RES::Configuration.instance.breakers_service,
     SignIn::Idme::Configuration.instance.breakers_service,
     SignIn::Logingov::Configuration.instance.breakers_service,

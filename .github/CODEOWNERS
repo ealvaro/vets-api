@@ -1121,6 +1121,7 @@ lib/mms @software/bio-huntridge
 lib/mpi @software/octo-identity
 lib/okta/directory_service.rb @software/lighthouse-pivot
 lib/olive_branch_patch.rb @software/va-platform-backend
+lib/oracle_health @software/octo-identity
 lib/pagerduty @software/va-platform-backend
 lib/pcpg @software/benefits-non-disability
 lib/pdf_fill @software/health-apps-backend
@@ -1797,6 +1798,7 @@ spec/lib/mpi @software/octo-identity
 spec/lib/okta @software/lighthouse-pivot
 spec/lib/okta/directory_service_spec.rb @software/lighthouse-pivot
 spec/lib/olive_branch_patch_spec.rb @software/va-platform-backend
+spec/lib/oracle_health @software/octo-identity
 spec/lib/pagerduty @software/va-platform-backend
 spec/lib/pcpg @software/benefits-non-disability
 spec/lib/pdf_fill @software/health-apps-backend
@@ -2651,6 +2653,7 @@ spec/support/vcr_cassettes/mr_client @software/vfs-mhv-integration
 spec/support/vcr_cassettes/mulesoft @software/health-apps-backend
 spec/support/vcr_cassettes/my_va @software/vfs-authenticated-experience-backend
 spec/support/vcr_cassettes/okta @software/lighthouse-pivot
+spec/support/vcr_cassettes/oracle_health @software/octo-identity
 spec/support/vcr_cassettes/pagerduty @software/va-platform-backend
 spec/support/vcr_cassettes/phr_mgr_client @software/vfs-mhv-integration
 spec/support/vcr_cassettes/preneeds @software/bah-mbs-selfserv @software/va-platform-backend

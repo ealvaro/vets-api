@@ -20,6 +20,11 @@ logingov:
   oauth_url: https://secure.login.gov
   redirect_uri: https://api.va.gov/v0/sign_in/callback
 
+oracle_health:
+  oauth:
+    tenant_id: ~
+    mock: false
+
 map_services:
   appointments_client_id: 3cf08c719c8c69eb
   chatbot_client_id: 2bb9803acfc3
