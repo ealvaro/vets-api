@@ -881,7 +881,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_224744) do
     t.boolean "json_api_compatibility", default: true, null: false
     t.text "logout_redirect_uri"
     t.boolean "oidc", default: false, null: false
-    t.boolean "pkce"
     t.text "redirect_uri", null: false
     t.interval "refresh_token_duration", null: false
     t.string "service_levels", default: ["ial1", "ial2", "loa1", "loa3", "min"], array: true
