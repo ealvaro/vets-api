@@ -4,6 +4,7 @@ require 'claims_api/v2/error/lighthouse_error_handler'
 require 'bgs_service/veteran_representative_service'
 require 'bgs_service/vnp_ptcpnt_addrs_service'
 require 'bgs_service/vnp_ptcpnt_phone_service'
+require 'concurrent-ruby'
 require_relative 'concerns/gatherer_utilities'
 
 module ClaimsApi
@@ -33,33 +34,95 @@ module ClaimsApi
         private
 
         def gather_poa_data
-          data = gather_read_all_veteran_representative_data
-          vnp_find_addrs_data = gather_vnp_addrs_data('veteran')
-          data.merge!(vnp_find_addrs_data)
+          promises = build_all_promises(Datadog::Tracing.active_trace&.to_digest)
 
-          if @metadata.dig('veteran', 'vnp_phone_id')
-            vnp_find_phone_data = gather_vnp_phone_data('veteran')
-            data.merge!(vnp_find_phone_data)
-          end
+          # Await all futures uniformly. If 2+ reject, Concurrent::MultipleErrors wraps them;
+          # the rescue below unwraps to a single underlying exception (first in list) so callers
+          # keep seeing a normal domain error rather than a concurrent-ruby wrapper.
+          Concurrent::Promises.zip(*promises.values.compact).value!
+
+          data = promises[:read_all].value!
+          data.merge!(promises[:vet_addrs].value!)
+          data.merge!(promises[:vet_phone].value!) if promises[:vet_phone]
 
           data.merge!('registration_number' => @registration_number.to_s)
-          data.merge!('claimant' => gather_claimant_data) if @claimant.present?
-
-          if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
-            form_attributes = @metadata['form_attributes']
-            data.merge!('form_attributes' => form_attributes) if form_attributes.present?
+          if @claimant.present?
+            data.merge!('claimant' => build_claimant_data(promises[:clm_addrs].value!,
+                                                          promises[:clm_phone]&.value!))
           end
+
+          merge_form_attributes!(data) if Flipper.enabled?(:lighthouse_claims_api_poa_request_pdf_form_update)
 
           data
+        rescue Concurrent::MultipleErrors => e
+          raise e.errors.first
         end
 
-        def gather_claimant_data
-          claimant_data = gather_vnp_addrs_data('claimant')
+        # All promises begin executing on construction; .value! in gather_poa_data blocks for each result.
+        def build_all_promises(trace_digest)
+          {
+            read_all: read_all_representative_promise(trace_digest),
+            vet_addrs: veteran_addrs_promise(trace_digest),
+            vet_phone: @metadata.dig('veteran', 'vnp_phone_id') ? veteran_phone_promise(trace_digest) : nil,
+            clm_addrs: @claimant.present? ? claimant_addrs_promise(trace_digest) : nil,
+            clm_phone: claimant_phone_promise_if_needed(trace_digest)
+          }
+        end
 
-          if @metadata.dig('claimant', 'vnp_phone_id')
-            claimant_phone_data = gather_vnp_phone_data('claimant')
-            claimant_data.merge!(claimant_phone_data)
+        def claimant_phone_promise_if_needed(trace_digest)
+          return nil unless @claimant.present? && @metadata.dig('claimant', 'vnp_phone_id')
+
+          claimant_phone_promise(trace_digest)
+        end
+
+        def merge_form_attributes!(data)
+          form_attributes = @metadata['form_attributes']
+          data.merge!('form_attributes' => form_attributes) if form_attributes.present?
+        end
+
+        def read_all_representative_promise(trace_digest)
+          Concurrent::Promises.future do
+            Datadog::Tracing.continue_trace!(trace_digest) do
+              gather_read_all_veteran_representative_data
+            end
           end
+        end
+
+        def veteran_addrs_promise(trace_digest)
+          Concurrent::Promises.future do
+            Datadog::Tracing.continue_trace!(trace_digest) do
+              gather_vnp_addrs_data('veteran')
+            end
+          end
+        end
+
+        def veteran_phone_promise(trace_digest)
+          Concurrent::Promises.future do
+            Datadog::Tracing.continue_trace!(trace_digest) do
+              gather_vnp_phone_data('veteran')
+            end
+          end
+        end
+
+        def claimant_addrs_promise(trace_digest)
+          Concurrent::Promises.future do
+            Datadog::Tracing.continue_trace!(trace_digest) do
+              gather_vnp_addrs_data('claimant')
+            end
+          end
+        end
+
+        def claimant_phone_promise(trace_digest)
+          Concurrent::Promises.future do
+            Datadog::Tracing.continue_trace!(trace_digest) do
+              gather_vnp_phone_data('claimant')
+            end
+          end
+        end
+
+        def build_claimant_data(addrs_data, phone_data)
+          claimant_data = addrs_data
+          claimant_data.merge!(phone_data) if phone_data
 
           claimant_data.merge!('claimant_id' => claimant_icn)
 

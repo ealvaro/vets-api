@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative '../../../support/bgs_client_spec_helpers'
 
 describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablishmentDataGatherer do
+  # Body-matched SOAP cassettes for the dependent BGS calls, so VCR can distinguish
+  # veteran vs claimant same-URL requests when they fire concurrently.
+  include BGSClientSpecHelpers
+
   subject { described_class.new(proc_id:, registration_number:, metadata:, veteran:, claimant:) }
 
   let(:veteran) do
@@ -112,7 +117,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
       end
 
       it 'returns the expect data object for a veteran request with claimant' do
-        VCR.use_cassette(
+        use_soap_cassette(
           'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
         ) do
           res = subject.gather_data
@@ -263,7 +268,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
           end
 
           it 'does not call phone validation or gathering methods for the dependent' do
-            VCR.use_cassette(
+            use_soap_cassette(
               'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent_no_phone'
             ) do
               expect_any_instance_of(ClaimsApi::VnpPtcpntPhoneService)
@@ -311,7 +316,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
       end
 
       it 'does not include birth_date in claimant gathered data' do
-        VCR.use_cassette(
+        use_soap_cassette(
           'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
         ) do
           res = subject.gather_data
@@ -387,7 +392,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
         end
 
         it 'includes birth_date in claimant gathered data' do
-          VCR.use_cassette(
+          use_soap_cassette(
             'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
           ) do
             res = subject.gather_data
@@ -410,7 +415,7 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
         end
 
         it 'does not include birth_date in claimant gathered data' do
-          VCR.use_cassette(
+          use_soap_cassette(
             'claims_api/power_of_attorney_request_service/decide/data_gatherer/poa_data_gather_dependent'
           ) do
             res = subject.gather_data
@@ -457,6 +462,24 @@ describe ClaimsApi::PowerOfAttorneyRequestService::DataGatherer::PoaAutoEstablis
           expect(res).not_to have_key('form_attributes')
         end
       end
+    end
+  end
+
+  context 'when multiple concurrent BGS calls fail' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_request_pdf_form_update).and_return(false)
+
+      allow_any_instance_of(ClaimsApi::VeteranRepresentativeService)
+        .to receive(:read_all_veteran_representatives)
+        .and_raise(Common::Exceptions::BadGateway)
+
+      allow_any_instance_of(ClaimsApi::VnpPtcpntAddrsService)
+        .to receive(:vnp_ptcpnt_addrs_find_by_primary_key)
+        .and_raise(Common::Exceptions::BadGateway)
+    end
+
+    it 'unwraps Concurrent::MultipleErrors and re-raises the first underlying exception' do
+      expect { subject.gather_data }.to raise_error(Common::Exceptions::BadGateway)
     end
   end
 end

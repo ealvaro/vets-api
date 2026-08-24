@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative '../../support/bgs_client_spec_helpers'
 
 describe ClaimsApi::PowerOfAttorneyRequestService::AcceptedDecisionHandler do
+  # Body-matched SOAP cassettes so VCR can distinguish veteran vs claimant
+  # same-URL BGS calls when the data gatherer fires them concurrently.
+  include BGSClientSpecHelpers
+
   subject { described_class.new(proc_id:, poa_code:, registration_number:, metadata:, veteran:, claimant:) }
 
   let(:clazz) { described_class }
@@ -117,7 +122,8 @@ describe ClaimsApi::PowerOfAttorneyRequestService::AcceptedDecisionHandler do
         ClaimsApi::PowerOfAttorneyRequestService::DataMapper::IndividualDataMapper
       ).to receive(:representative_type).and_return('ATTORNEY')
 
-      VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/valid_accepted_dependent') do
+      VCR.use_cassette('claims_api/power_of_attorney_request_service/decide/valid_accepted_dependent',
+                       match_requests_on: BGSClientSpecHelpers::VCR_OPTIONS[:match_requests_on]) do
         res = subject.call
 
         expect(res).to eq([returned_data, individual_type])
