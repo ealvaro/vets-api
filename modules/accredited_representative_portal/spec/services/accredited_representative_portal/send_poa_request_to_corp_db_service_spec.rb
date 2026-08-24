@@ -180,23 +180,106 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
         allow(poa_request.power_of_attorney_form).to receive(:parsed_data).and_return(parsed_data)
       end
 
-      it 'handles nil optional fields correctly' do
+      it 'omits nil optional fields instead of sending them as null' do
         described_class.call(poa_request)
 
         expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
           vet = payload[:data][:attributes][:veteran]
 
-          # Optional fields
-          expect(vet[:address][:addressLine2]).to be_nil
-          expect(vet[:address][:zipCodeSuffix]).to be_nil
+          # Optional fields should be omitted entirely, not sent as null,
+          # since Lighthouse's schema validation rejects null for typed/enum/pattern fields.
+          expect(vet[:address]).not_to have_key(:addressLine2)
+          expect(vet[:address]).not_to have_key(:zipCodeSuffix)
           expect(vet[:address][:countryCode]).to eq('US') # default
-          expect(vet[:insuranceNumber]).to be_nil
+          expect(vet).not_to have_key(:insuranceNumber)
           expect(vet[:phone]).not_to have_key(:phoneNumberExt)
 
           # Consent fields
           auth = payload[:data][:attributes]
           expect(auth[:consentAddressChange]).to be(false)
           expect(auth[:consentLimits]).to eq([])
+        end
+      end
+    end
+
+    context 'when optional fields are blank strings' do
+      let(:parsed_data) do
+        {
+          'veteran' => {
+            'serviceNumber' => '',
+            'serviceBranch' => '',
+            'address' => {
+              'addressLine1' => '2719 Hyperion Ave',
+              'addressLine2' => '',
+              'city' => 'Los Angeles',
+              'stateCode' => 'CA',
+              'zipCode' => '92264',
+              'zipCodeSuffix' => ''
+            },
+            'phone' => '5555551234',
+            'email' => 'test@test.com',
+            'insuranceNumber' => ''
+          },
+          'authorizations' => {
+            'recordDisclosureLimitations' => [],
+            'addressChange' => false
+          }
+        }
+      end
+
+      before do
+        allow(poa_request.power_of_attorney_form).to receive(:parsed_data).and_return(parsed_data)
+      end
+
+      it 'omits blank string optional fields instead of sending them as empty strings' do
+        described_class.call(poa_request)
+
+        expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
+          vet = payload[:data][:attributes][:veteran]
+
+          expect(vet).not_to have_key(:serviceNumber)
+          expect(vet).not_to have_key(:serviceBranch)
+          expect(vet).not_to have_key(:insuranceNumber)
+          expect(vet[:address]).not_to have_key(:addressLine2)
+          expect(vet[:address]).not_to have_key(:zipCodeSuffix)
+        end
+      end
+    end
+
+    context 'when the veteran has no phone number' do
+      let(:parsed_data) do
+        {
+          'veteran' => {
+            'serviceNumber' => '123678453',
+            'serviceBranch' => 'ARMY',
+            'address' => {
+              'addressLine1' => '2719 Hyperion Ave',
+              'city' => 'Los Angeles',
+              'stateCode' => 'CA',
+              'zipCode' => '92264'
+            },
+            'phone' => nil,
+            'email' => 'test@test.com',
+            'insuranceNumber' => '1234567890'
+          },
+          'authorizations' => {
+            'recordDisclosureLimitations' => [],
+            'addressChange' => false
+          }
+        }
+      end
+
+      before do
+        allow(poa_request.power_of_attorney_form).to receive(:parsed_data).and_return(parsed_data)
+      end
+
+      it 'omits the phone attribute entirely rather than sending blank digits' do
+        described_class.call(poa_request)
+
+        expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
+          vet = payload[:data][:attributes][:veteran]
+
+          expect(vet).not_to have_key(:phone)
         end
       end
     end

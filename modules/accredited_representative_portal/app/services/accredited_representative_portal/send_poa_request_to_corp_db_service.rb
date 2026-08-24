@@ -46,7 +46,7 @@ module AccreditedRepresentativePortal
         phone: phone_payload(veteran['phone']),
         email: veteran['email'],
         insuranceNumber: veteran['insuranceNumber']
-      }
+      }.compact_blank
     end
 
     def claimant_payload
@@ -70,11 +70,13 @@ module AccreditedRepresentativePortal
         zipCode: address['zipCode'],
         zipCodeSuffix: address['zipCodeSuffix'],
         countryCode: address['countryCode'] || 'US'
-      }
+      }.compact_blank
     end
 
     def phone_payload(phone)
       digits = (phone || '').gsub(/\D/, '')
+      return nil if digits.blank?
+
       {
         areaCode: digits[0, 3],
         phoneNumber: digits[3, 7]
