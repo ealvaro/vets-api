@@ -1557,6 +1557,7 @@ spec/factories/user_profile_attributes.rb @software/vfs-authenticated-experience
 spec/factories/user_verifications.rb @software/octo-identity
 spec/factories/users.rb @software/octo-identity
 spec/factories/va_profile @software/vfs-authenticated-experience-backend
+spec/factories/va0803.rb @software/govcio-vfep-codereviewers
 spec/factories/va0810.rb @software/govcio-vfep-codereviewers
 spec/factories/va0839.rb @software/govcio-vfep-codereviewers
 spec/factories/va0976.rb @software/govcio-vfep-codereviewers
@@ -1637,6 +1638,7 @@ spec/fixtures/pdf_fill/21-674 @software/benefits-lifestage
 spec/fixtures/pdf_fill/21-674-V2 @software/benefits-lifestage
 spec/fixtures/pdf_fill/21P-0969 @software/benefits-lifestage
 spec/fixtures/pdf_fill/21P-530a @software/benefits-optimization-aquia
+spec/fixtures/pdf_fill/22-0803 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-0810 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10215 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10216 @software/govcio-vfep-codereviewers

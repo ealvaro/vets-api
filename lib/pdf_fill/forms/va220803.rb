@@ -13,6 +13,24 @@ module PdfFill
         'withdrawFromYellowRibbonProgram' => 'Withdrawal of Yellow Ribbon agreement'
       }.freeze
 
+      # Template PDF is 2 pages; overflow pages start at page 3.
+      START_PAGE = 3
+
+      # question_number matches the real printed question number on the 22-0803 form:
+      # 11 = Remarks, under Part III - Test Information.
+      QUESTION_KEY = [
+        { question_number: '11', question_text: 'Remarks' }
+      ].freeze
+
+      # Groups overflow questions under the printed form's Part heading so the overflow
+      # page renders a section header above the entry.
+      SECTIONS = [
+        {
+          label: 'Part III - Test Information',
+          question_nums: %w[11]
+        }
+      ].freeze
+
       KEY = {
         'bill_type_chapter_30' => {
           key: 'bill_type_chapter_30'

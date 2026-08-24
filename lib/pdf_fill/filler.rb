@@ -349,7 +349,11 @@ module PdfFill
             use_hexapdf: fill_options.fetch(:use_hexapdf, false),
             # Let forms that stamp a dynamic (LOA-based) authentication footer opt out of the
             # built-in hardcoded-IAL2 footer on overflow pages. Defaults to false (unchanged).
-            omit_footer: fill_options.fetch(:omit_footer, false)
+            omit_footer: fill_options.fetch(:omit_footer, false),
+            # Opt-in overrides for the "attachment" wording used in the overflow placeholder
+            # text and page header. Defaults preserve the original wording for every other form.
+            placeholder_text: fill_options[:placeholder_text],
+            header_label: fill_options[:header_label]
           )
         else
           ExtrasGenerator.new(use_hexapdf: fill_options.fetch(:use_hexapdf, false))

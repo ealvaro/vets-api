@@ -137,6 +137,39 @@ describe PdfFill::Filler, type: :model do
     end
   end
 
+  describe '#make_hash_converter' do
+    subject { described_class.make_hash_converter(form_id, form_class, submit_date, fill_options) }
+
+    let(:form_id) { '22-0803' }
+    let(:form_class) { PdfFill::Forms::Va220803 }
+    let(:submit_date) { nil }
+
+    context 'when extras_redesign is enabled' do
+      let(:fill_options) { { extras_redesign: true } }
+
+      it 'builds an ExtrasGeneratorV2 with the default placeholder text and header label' do
+        extras_generator = subject.extras_generator
+
+        expect(extras_generator).to be_a(PdfFill::ExtrasGeneratorV2)
+        expect(extras_generator.placeholder_text).to eq('See attachment')
+        expect(extras_generator.header_label).to eq('ATTACHMENT')
+      end
+    end
+
+    context 'when placeholder_text and header_label fill_options are given' do
+      let(:fill_options) do
+        { extras_redesign: true, placeholder_text: 'See additional page', header_label: 'ADDITIONAL PAGE' }
+      end
+
+      it 'passes the overrides through to ExtrasGeneratorV2' do
+        extras_generator = subject.extras_generator
+
+        expect(extras_generator.placeholder_text).to eq('See additional page')
+        expect(extras_generator.header_label).to eq('ADDITIONAL PAGE')
+      end
+    end
+  end
+
   describe '#stamp_form' do
     subject { described_class.stamp_form(file_path, submit_date) }
 
