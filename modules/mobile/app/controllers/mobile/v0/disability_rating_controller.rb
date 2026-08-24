@@ -18,7 +18,7 @@ module Mobile
       end
 
       def disability_rating_adapter
-        Mobile::V0::Adapters::DisabilityRating.new
+        Mobile::V0::Adapters::DisabilityRating.new(@current_user)
       end
     end
   end

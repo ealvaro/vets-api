@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
+require 'disability_compensation/service_connected'
 require 'lighthouse/veteran_verification/service'
 
 module V0
   # Controller for fetching rated disabilities from Lighthouse Veteran Verification API.
   # Retrieves disability ratings for authenticated veterans and filters to active ratings only.
   class RatedDisabilitiesController < ApplicationController
+    include DisabilityCompensation::ServiceConnected
     service_tag 'disability-rating'
     before_action { authorize :lighthouse, :access? }
 
@@ -20,6 +22,9 @@ module V0
       # We only want active ratings
       if response.dig('data', 'attributes', 'individual_ratings')
         remove_inactive_ratings!(response['data']['attributes']['individual_ratings'])
+        if Flipper.enabled?(:suppress_nsc_rating_percentage_web, @current_user)
+          suppress_nsc_rating_percentages!(response['data']['attributes']['individual_ratings'])
+        end
       end
 
       # LH returns the ICN of the Veteran in the data.id field
@@ -52,6 +57,10 @@ module V0
     # @return [Array<Hash>] Array with only active ratings (mutated in place)
     def remove_inactive_ratings!(ratings)
       ratings.select! { |rating| active?(rating) }
+    end
+
+    def suppress_nsc_rating_percentages!(ratings)
+      ratings.each { |rating| rating['rating_percentage'] = nil unless service_connected?(rating['decision']) }
     end
 
     # Returns the Lighthouse Veteran Verification service instance.

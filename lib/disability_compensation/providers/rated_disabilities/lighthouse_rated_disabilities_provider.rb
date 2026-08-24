@@ -2,10 +2,12 @@
 
 require 'disability_compensation/providers/rated_disabilities/rated_disabilities_provider'
 require 'disability_compensation/responses/rated_disabilities_response'
+require 'disability_compensation/service_connected'
 require 'lighthouse/veteran_verification/service'
 
 class LighthouseRatedDisabilitiesProvider
   include RatedDisabilitiesProvider
+  include DisabilityCompensation::ServiceConnected
 
   # @param [string] :icn icn of the user
   def initialize(icn)
@@ -57,7 +59,9 @@ class LighthouseRatedDisabilitiesProvider
           effective_date: rated_disability['effective_date'],
           rated_disability_id: rated_disability['disability_rating_id'],
           rating_decision_id: 0,
-          rating_percentage: rated_disability['rating_percentage'],
+          rating_percentage: if service_connected?(rated_disability['decision'])
+                               rated_disability['rating_percentage']
+                             end,
           # TODO: figure out if this is important
           related_disability_date: DateTime.now
         )
@@ -66,14 +70,7 @@ class LighthouseRatedDisabilitiesProvider
   end
 
   def decision_code_transform(decision_code_text)
-    service_connected = decision_code_text&.downcase == 'Service Connected'.downcase ||
-                        decision_code_text&.downcase == '1151 Granted'.downcase
-
-    if service_connected
-      'SVCCONNCTED'
-    else
-      'NOTSVCCON'
-    end
+    service_connected?(decision_code_text) ? 'SVCCONNCTED' : 'NOTSVCCON'
   end
 
   private

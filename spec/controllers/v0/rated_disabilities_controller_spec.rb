@@ -46,6 +46,53 @@ RSpec.describe V0::RatedDisabilitiesController, type: :controller do
         parsed_body = JSON.parse(response.body)
         expect(parsed_body.dig('data', 'id')).to eq('')
       end
+
+      context 'when suppress_nsc_rating_percentage_web is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:suppress_nsc_rating_percentage_web,
+                                                    instance_of(User)).and_return(true)
+        end
+
+        it 'preserves rating_percentage for service-connected disabilities' do
+          VCR.use_cassette('lighthouse/veteran_verification/show/200_response') do
+            get(:show)
+          end
+
+          parsed_body = JSON.parse(response.body)
+          sc = parsed_body.dig('data', 'attributes', 'individual_ratings')
+                          .find { |r| r['decision'] == 'Service Connected' }
+          expect(sc['rating_percentage']).to eq(50)
+        end
+
+        it 'suppresses rating_percentage for non-service-connected disabilities' do
+          VCR.use_cassette('lighthouse/veteran_verification/show/200_response') do
+            get(:show)
+          end
+
+          parsed_body = JSON.parse(response.body)
+          nsc = parsed_body.dig('data', 'attributes', 'individual_ratings')
+                           .find { |r| r['decision'] == 'Not Service Connected' }
+          expect(nsc['rating_percentage']).to be_nil
+        end
+      end
+
+      context 'when suppress_nsc_rating_percentage_web is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:suppress_nsc_rating_percentage_web,
+                                                    instance_of(User)).and_return(false)
+        end
+
+        it 'returns rating_percentage for non-service-connected disabilities' do
+          VCR.use_cassette('lighthouse/veteran_verification/show/200_response') do
+            get(:show)
+          end
+
+          parsed_body = JSON.parse(response.body)
+          nsc = parsed_body.dig('data', 'attributes', 'individual_ratings')
+                           .find { |r| r['decision'] == 'Not Service Connected' }
+          expect(nsc['rating_percentage']).not_to be_nil
+        end
+      end
     end
 
     context 'when not authorized' do

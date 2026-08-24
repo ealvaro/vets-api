@@ -20,6 +20,52 @@ RSpec.describe LighthouseRatedDisabilitiesProvider do
 
   it_behaves_like 'rated disabilities provider'
 
+  describe 'rating_percentage suppression' do
+    let(:raw_response) do
+      {
+        'data' => {
+          'attributes' => {
+            'combined_disability_rating' => 60,
+            'individual_ratings' => [
+              { 'diagnostic_text' => 'Tinnitus', 'decision' => 'Service Connected',
+                'diagnostic_type_code' => '6260', 'hyph_diagnostic_type_code' => nil,
+                'effective_date' => '2020-01-01', 'disability_rating_id' => '1', 'rating_percentage' => 10 },
+              { 'diagnostic_text' => 'Hearing Loss', 'decision' => 'Not Service Connected',
+                'diagnostic_type_code' => '6100', 'hyph_diagnostic_type_code' => nil,
+                'effective_date' => '2020-01-01', 'disability_rating_id' => '2', 'rating_percentage' => 0 },
+              { 'diagnostic_text' => 'Back Injury', 'decision' => '1151 Granted',
+                'diagnostic_type_code' => '5237', 'hyph_diagnostic_type_code' => nil,
+                'effective_date' => '2020-01-01', 'disability_rating_id' => '3', 'rating_percentage' => 20 }
+            ]
+          }
+        }
+      }
+    end
+
+    before do
+      allow_any_instance_of(VeteranVerification::Service)
+        .to receive(:get_rated_disabilities)
+        .and_return(raw_response)
+    end
+
+    it 'preserves rating_percentage for service connected disabilities' do
+      result = @provider.get_rated_disabilities.rated_disabilities.find { |d| d.decision_text == 'Service Connected' }
+      expect(result.rating_percentage).to eq(10)
+    end
+
+    it 'nils out rating_percentage for non-service-connected disabilities' do
+      result = @provider.get_rated_disabilities.rated_disabilities.find do |d|
+        d.decision_text == 'Not Service Connected'
+      end
+      expect(result.rating_percentage).to be_nil
+    end
+
+    it 'preserves rating_percentage for 1151 Granted disabilities' do
+      result = @provider.get_rated_disabilities.rated_disabilities.find { |d| d.decision_text == '1151 Granted' }
+      expect(result.rating_percentage).to eq(20)
+    end
+  end
+
   it 'retrieves rated disabilities from the Lighthouse API' do
     VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
       response = @provider.get_rated_disabilities('', '')

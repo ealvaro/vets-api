@@ -3202,6 +3202,14 @@ features:
     actor_type: user
     description: Enables sleep apnea supplies to be ordered in the supply reorder tool / MDOT.
     enable_in_development: true
+  suppress_nsc_rating_percentage_mobile:
+    actor_type: user
+    description: When enabled, suppresses rating_percentage for non-service-connected disabilities in the mobile disability rating response
+    enable_in_development: false
+  suppress_nsc_rating_percentage_web:
+    actor_type: user
+    description: When enabled, suppresses rating_percentage for non-service-connected disabilities in the vets-website rated disabilities response
+    enable_in_development: false
   toe_dup_contact_info_call:
     actor_type: user
     description: Flag to use contact info call and modal

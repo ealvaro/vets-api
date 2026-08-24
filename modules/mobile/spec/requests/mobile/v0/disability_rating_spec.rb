@@ -102,32 +102,87 @@ RSpec.describe 'Mobile::V0::DisabilityRating', type: :request do
     end
 
     context 'with a valid response that includes service connected and not connected' do
-      before do
-        VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
-          VCR.use_cassette('mobile/lighthouse_disability_rating/200_Not_Connected_response') do
-            get '/mobile/v0/disability-rating', params: nil, headers: sis_headers
+      context 'when suppress_nsc_rating_percentage_mobile is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:suppress_nsc_rating_percentage_mobile,
+                                                    instance_of(Flipper::Actor)).and_return(true)
+          VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+            VCR.use_cassette('mobile/lighthouse_disability_rating/200_Not_Connected_response') do
+              get '/mobile/v0/disability-rating', params: nil, headers: sis_headers
+            end
           end
+        end
+
+        it 'rates service connected disabilities as an integer' do
+          service_connnected = response.parsed_body.dig('data', 'attributes', 'individualRatings')[0]
+          expect(service_connnected).to eq({
+                                             'decision' => 'Service Connected',
+                                             'effectiveDate' => '2018-03-29T00:00:00.000+00:00',
+                                             'ratingPercentage' => 50,
+                                             'diagnosticText' => 'Diabetes'
+                                           })
+        end
+
+        it 'rates non service connected disabilities as null' do
+          not_service_connnected = response.parsed_body.dig('data', 'attributes', 'individualRatings')[1]
+          expect(not_service_connnected).to eq({
+                                                 'decision' => 'Not Service Connected',
+                                                 'effectiveDate' => '2018-03-27T00:00:00.000+00:00',
+                                                 'ratingPercentage' => nil,
+                                                 'diagnosticText' => 'Diabetes'
+                                               })
         end
       end
 
-      it 'rates service connected disabilities as an integer' do
-        service_connnected = response.parsed_body.dig('data', 'attributes', 'individualRatings')[0]
-        expect(service_connnected).to eq({
-                                           'decision' => 'Service Connected',
-                                           'effectiveDate' => '2018-03-29T00:00:00.000+00:00',
-                                           'ratingPercentage' => 50,
-                                           'diagnosticText' => 'Diabetes'
-                                         })
+      context 'when suppress_nsc_rating_percentage_mobile is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:suppress_nsc_rating_percentage_mobile,
+                                                    instance_of(Flipper::Actor)).and_return(false)
+          VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+            VCR.use_cassette('mobile/lighthouse_disability_rating/200_Not_Connected_response') do
+              get '/mobile/v0/disability-rating', params: nil, headers: sis_headers
+            end
+          end
+        end
+
+        it 'returns rating_percentage for non-service-connected disabilities' do
+          not_service_connected = response.parsed_body.dig('data', 'attributes', 'individualRatings')[1]
+          expect(not_service_connected['decision']).to eq('Not Service Connected')
+          expect(not_service_connected['ratingPercentage']).not_to be_nil
+        end
+      end
+    end
+
+    context 'with a 1151 Granted disability' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:suppress_nsc_rating_percentage_mobile,
+                                                  instance_of(Flipper::Actor)).and_return(true)
+        allow_any_instance_of(VeteranVerification::Service).to receive(:get_rated_disabilities).and_return(
+          {
+            'data' => {
+              'attributes' => {
+                'combined_disability_rating' => 20,
+                'individual_ratings' => [
+                  {
+                    'decision' => '1151 Granted',
+                    'effective_date' => '2020-01-01',
+                    'rating_end_date' => nil,
+                    'rating_percentage' => 20,
+                    'diagnostic_type_code' => '5237',
+                    'diagnostic_text' => 'Back Injury'
+                  }
+                ]
+              }
+            }
+          }
+        )
+        get '/mobile/v0/disability-rating', params: nil, headers: sis_headers
       end
 
-      it 'rates non service connected disabilities as null' do
-        not_service_connnected = response.parsed_body.dig('data', 'attributes', 'individualRatings')[1]
-        expect(not_service_connnected).to eq({
-                                               'decision' => 'Not Service Connected',
-                                               'effectiveDate' => '2018-03-27T00:00:00.000+00:00',
-                                               'ratingPercentage' => 50,
-                                               'diagnosticText' => 'Diabetes'
-                                             })
+      it 'preserves rating_percentage for 1151 Granted disabilities' do
+        rating = response.parsed_body.dig('data', 'attributes', 'individualRatings')[0]
+        expect(rating['decision']).to eq('1151 Granted')
+        expect(rating['ratingPercentage']).to eq(20)
       end
     end
 
