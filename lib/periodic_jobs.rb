@@ -201,9 +201,6 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   # Daily find Cemeteries caching
   mgr.register('15 2 * * *', 'Form21p530a::FindCemeteriesJob')
 
-  # TODO: Document this job
-  mgr.register('30 2 * * *', 'Identity::UserAcceptableVerifiedCredentialTotalsJob')
-
   # TODO: Document these jobs
   mgr.register('0 16 * * *', 'VANotify::InProgressForms')
   mgr.register('0 1 * * *', 'VANotify::ClearStaleInProgressRemindersSent')

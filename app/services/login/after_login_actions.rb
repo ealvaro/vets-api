@@ -15,7 +15,6 @@ module Login
 
       Login::UserCredentialEmailUpdater.new(credential_email: current_user.email,
                                             user_verification: current_user.user_verification).perform
-      Login::UserAcceptableVerifiedCredentialUpdater.new(user_account: @current_user.user_account).perform
       id_mismatch_validations
       current_user.provision_cerner_async(source: :ssoe)
       Identity::LogUserVeteranStatusJob.perform_async(current_user.uuid)

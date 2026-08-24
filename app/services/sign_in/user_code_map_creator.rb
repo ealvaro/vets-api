@@ -38,7 +38,6 @@ module SignIn
 
     def perform
       create_credential_email
-      create_user_acceptable_verified_credential
       create_terms_code_container if needs_accepted_terms_of_use?
       create_code_container
 
@@ -50,10 +49,6 @@ module SignIn
     def create_credential_email
       Login::UserCredentialEmailUpdater.new(credential_email:,
                                             user_verification:).perform
-    end
-
-    def create_user_acceptable_verified_credential
-      Login::UserAcceptableVerifiedCredentialUpdater.new(user_account:).perform
     end
 
     def create_terms_code_container

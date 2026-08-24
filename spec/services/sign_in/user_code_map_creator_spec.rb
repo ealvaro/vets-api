@@ -45,7 +45,6 @@ RSpec.describe SignIn::UserCodeMapCreator do
     let(:sign_in) { { service_name:, auth_broker:, client_id: } }
     let(:login_code) { 'some-login-code' }
     let(:expected_last_signed_in) { '2023-1-1' }
-    let(:expected_avc_at) { '2023-1-1' }
     let(:request_ip) { '123.456.78.90' }
     let(:first_name) { Faker::Name.first_name }
     let(:last_name) { Faker::Name.last_name }
@@ -66,12 +65,6 @@ RSpec.describe SignIn::UserCodeMapCreator do
       expect { subject }.to change(UserCredentialEmail, :count)
       user_credential_email = UserCredentialEmail.last
       expect(user_credential_email.credential_email).to eq(csp_email)
-    end
-
-    it 'creates a user acceptable verified credential email with expected attributes' do
-      expect { subject }.to change(UserAcceptableVerifiedCredential, :count)
-      user_acceptable_verified_credential = UserAcceptableVerifiedCredential.last
-      expect(user_acceptable_verified_credential.acceptable_verified_credential_at).to eq(expected_avc_at)
     end
 
     it 'calls Login::UserVerifier with expected arguments' do

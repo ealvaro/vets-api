@@ -398,7 +398,6 @@ app/models/transaction_notification.rb @software/vfs-authenticated-experience-ba
 app/models/triage_group_info.rb @software/mhv-secure-messaging-fe
 app/models/triage_team_cache.rb @software/mhv-secure-messaging-fe
 app/models/triage_team.rb @software/mhv-secure-messaging-fe
-app/models/user_acceptable_verified_credential.rb @software/octo-identity
 app/models/user_account.rb @software/octo-identity
 app/models/user_action_event.rb @software/octo-identity
 app/models/user_action.rb @software/octo-identity
@@ -1546,7 +1545,6 @@ spec/factories/spool_file_events.rb @software/govcio-vfep-codereviewers
 spec/factories/supporting_evidence_attachment.rb @software/disability-benefits
 spec/factories/tooltips.rb @software/vfs-mhv-integration
 spec/factories/triage_teams.rb @software/mhv-secure-messaging-fe
-spec/factories/user_acceptable_verified_credentials.rb @software/octo-identity
 spec/factories/user_accounts.rb @software/octo-identity
 spec/factories/user_action_events.rb @software/octo-identity
 spec/factories/user_actions.rb @software/octo-identity
@@ -2027,7 +2025,6 @@ spec/models/supporting_evidence_attachment_spec.rb @software/disability-benefits
 spec/models/terms_of_use_agreement_spec.rb @software/octo-identity
 spec/models/tooltip_spec.rb @software/vfs-mhv-integration
 spec/models/triage_team_spec.rb @software/mhv-secure-messaging-fe
-spec/models/user_acceptable_verified_credential_spec.rb @software/octo-identity
 spec/models/user_account_spec.rb @software/octo-identity
 spec/models/user_action_event_spec.rb @software/octo-identity
 spec/models/user_action_spec.rb @software/octo-identity
