@@ -21,9 +21,9 @@ module RepresentationManagement
         # We enable it in testing to compare the field values of the pdf, specifically the checkbox values.
         #
         # @param data [Hash] Data to fill in pdf form with
-        # @param flatten [Boolean] True if the pdf should be flattened. Default is true. False is only used for testing.
+        # @param flatten [Boolean] True if the pdf should be flattened. Default is false.
         #
-        def construct(data, flatten: true)
+        def construct(data, flatten: false)
           set_template_path
           fill_and_combine_pdf(data, flatten:)
         end
@@ -151,10 +151,10 @@ module RepresentationManagement
         # We enable it in testing to compare the field values of the pdf, specifically the checkbox values.
         #
         # @param data [Hash] Data to fill in pdf form with
-        # @param flatten [Boolean] True if the pdf should be flattened. Default is true. False is only used for testing.
+        # @param flatten [Boolean] True if the pdf should be flattened. Default is false.
         #
-        def fill_and_combine_pdf(data, flatten: true)
-          pdftk = PdfForms.new(Settings.binaries.pdftk)
+        def fill_and_combine_pdf(data, flatten: false)
+          pdftk = PdfForms.new(Settings.binaries.pdftk, need_appearances: true, drop_xfa: true)
           template_tempfile = fill_template_form(pdftk, data, flatten:)
           # Only combine PDFs if needed.  Otherwise directly write the template to the output tempfile.
           if next_steps_page?
@@ -205,9 +205,9 @@ module RepresentationManagement
         #
         # @param pdftk [PdfForms] The pdftk object to fill in the pdf form
         # @param data [Hash] Data to fill in pdf form with
-        # @param flatten [Boolean] True if the pdf should be flattened. Default is true. False is only used for testing.
+        # @param flatten [Boolean] True if the pdf should be flattened. Default is false.
         #
-        def fill_template_form(pdftk, data, flatten: true)
+        def fill_template_form(pdftk, data, flatten: false)
           tempfile = Tempfile.new
           # This is the point where the flatten option is actually used, not just passed down the method chain.
           pdftk.fill_form(@template_path, tempfile.path, template_options(data), flatten:)
