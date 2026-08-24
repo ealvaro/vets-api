@@ -6,9 +6,11 @@ account:
 accredited_representative_portal:
   allow_list:
     github:
-      access_token: ~
+      app_id: ~
       base_uri: ~
+      org: ~
       path: ~
+      private_key: ~
       repo: ~
   frontend_base_url: http://localhost:3001/representative
   lighthouse:

@@ -2,6 +2,7 @@
 
 require 'base64'
 require 'csv'
+require 'github/installation_token_generator'
 
 module AccreditedRepresentativePortal
   module SetupAccreditedStagingUsers
@@ -93,14 +94,22 @@ namespace :accredited_representative_portal do
     config = Settings.accredited_representative_portal.allow_list.github
 
     api_endpoint = config.base_uri.to_s
-    access_token = config.access_token.to_s
+    app_id = config.app_id.to_s
+    private_key = config.private_key.to_s
+    org = config.org.to_s
     repo = config.repo.to_s
     path = config.path.to_s
 
     raise ArgumentError, 'GitHub allow_list config missing base_uri' if api_endpoint.blank?
-    raise ArgumentError, 'GitHub allow_list config missing access_token' if access_token.blank?
+    raise ArgumentError, 'GitHub allow_list config missing app_id' if app_id.blank?
+    raise ArgumentError, 'GitHub allow_list config missing private_key' if private_key.blank?
+    raise ArgumentError, 'GitHub allow_list config missing org' if org.blank?
     raise ArgumentError, 'GitHub allow_list config missing repo' if repo.blank?
     raise ArgumentError, 'GitHub allow_list config missing path' if path.blank?
+
+    access_token = Github::InstallationTokenGenerator
+                   .new(app_id:, private_key:, api_endpoint:)
+                   .generate(org:)
 
     client = Octokit::Client.new(api_endpoint:, access_token:)
 

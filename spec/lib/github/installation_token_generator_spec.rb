@@ -10,7 +10,7 @@ RSpec.describe Github::InstallationTokenGenerator do
   let(:private_key) { rsa_key.to_pem }
   let(:app_id) { '123456' }
   let(:api_endpoint) { 'https://api.va.ghe.com' }
-  let(:installation) { double(id: 789) }
+  let(:installation) { double(id: 789) } # Sawyer::Resource has no static methods to verify against
 
   describe '#initialize' do
     it 'raises if app_id is missing' do

@@ -5,9 +5,11 @@ account:
 accredited_representative_portal:
   allow_list:
     github:
-      access_token: some_fake_token
+      app_id: fake_app_id
       base_uri: https://not.real.com
+      org: fake_org
       path: not_real.csv
+      private_key: fake_private_key
       repo: faked/fakeness
   frontend_base_url: http://localhost:3001/representative
   lighthouse:

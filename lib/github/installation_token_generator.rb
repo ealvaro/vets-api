@@ -22,7 +22,6 @@ module Github
 
       client = app_client
       installation = client.find_organization_installation(org)
-
       client.create_app_installation_access_token(
         installation.id, accept: 'application/vnd.github+json'
       )[:token]

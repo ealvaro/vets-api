@@ -6,9 +6,11 @@ account:
 accredited_representative_portal:
   allow_list:
     github:
-      access_token: <%= ENV['accredited_representative_portal__allow_list__github__access_token'] %>
+      app_id: <%= ENV['accredited_representative_portal__allow_list__github__app_id'] %>
       base_uri: https://api.va.ghe.com
+      org: software
       path: <%= ENV['accredited_representative_portal__allow_list__github__path'] %>
+      private_key: <%= ENV['accredited_representative_portal__allow_list__github__private_key'] %>
       repo: software/va.gov-team-sensitive
   frontend_base_url: <%= ENV['accredited_representative_portal__frontend_base_url'] %>
   lighthouse:
