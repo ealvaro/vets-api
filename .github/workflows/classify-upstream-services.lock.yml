@@ -56,7 +56,7 @@
 #   - aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # 254c19bd240aabef8777f48595e9d2d7b972184b
 #   - aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # d979d5b3a71173a29b74b5b88418bfda9437d885
 #   - github/gh-aw-actions/setup@6aab9e5b5c91c615506061f09bedd81a23babe3c # v0.86.2
-#   - ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626
+#   - ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b
 #   - slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # 45a88b9581bfab2566dc881e2cd66d334e621e2c
 #   - software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # 47689845c2a46848eb5455078d9261c8dfe5e521
 #
@@ -467,7 +467,7 @@ jobs:
           echo "BUNDLE_VA__GHE__COM=x-access-token:$GH_AW_EXPR_32CF5ADA" >> $GITHUB_ENV
           echo "BUNDLE_ENTERPRISE__CONTRIBSYS__COM=$GH_AW_SECRETS_BUNDLE_ENTERPRISE__CONTRIBSYS__COM" >> $GITHUB_ENV
       - name: Set up Ruby
-        uses: ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b
         with:
           bundler-cache: false
           ruby-version: 3.3.12
