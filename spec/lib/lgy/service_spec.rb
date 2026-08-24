@@ -59,6 +59,22 @@ describe LGY::Service do
   describe '#coe_status' do
     before { allow(StatsD).to receive(:increment) }
 
+    it 'raises an ArgumentError when EDIPI is missing' do
+      service = described_class.new(icn: user.icn)
+
+      expect do
+        service.coe_status
+      end.to raise_error(ArgumentError, 'no EDIPI passed in for LGY API request.')
+    end
+
+    it 'raises an ArgumentError when ICN is missing' do
+      service = described_class.new(edipi: user.edipi)
+
+      expect do
+        service.coe_status
+      end.to raise_error(ArgumentError, 'no ICN passed in for LGY API request.')
+    end
+
     context 'when get_determination is eligible and get_application is a 404' do
       it 'returns eligible and reference number' do
         VCR.use_cassette 'lgy/determination_eligible' do

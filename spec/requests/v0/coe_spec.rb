@@ -10,6 +10,54 @@ Rspec.describe 'V0::Coe', type: :request do
     before { sign_in_as user }
 
     describe 'GET v0/coe/status' do
+      context 'when the user is authorized' do
+        it 'allows the request to reach the action' do
+          service_instance = instance_double(LGY::Service, coe_status: { status: 'ELIGIBLE' })
+          allow(LGY::Service).to receive(:new).and_return(service_instance)
+
+          get '/v0/coe/status'
+
+          expect(response).to have_http_status(:ok)
+          expect(LGY::Service).to have_received(:new)
+        end
+      end
+
+      context 'when the user is not authorized because not loa3' do
+        let(:user) { create(:evss_user, :loa1, icn: '123498767V234859') }
+
+        it 'returns forbidden without calling the action' do
+          expect(LGY::Service).not_to receive(:new)
+
+          get '/v0/coe/status'
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
+      context 'when the user is not authorized because missing icn' do
+        let(:user) { build(:evss_user, :loa3, icn: nil) }
+
+        it 'returns forbidden without calling the action' do
+          expect(LGY::Service).not_to receive(:new)
+
+          get '/v0/coe/status'
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
+      context 'when the user is not authorized because missing edipi' do
+        let(:user) { build(:evss_user, :loa3, edipi: nil) }
+
+        it 'returns forbidden without calling the action' do
+          expect(LGY::Service).not_to receive(:new)
+
+          get '/v0/coe/status'
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
       context 'when determination is eligible and application is 404' do
         it 'response code is 200' do
           VCR.use_cassette 'lgy/determination_eligible' do

@@ -2,6 +2,6 @@
 
 CoePolicy = Struct.new(:user, :coe) do
   def access?
-    user.loa3? && user.edipi.present?
+    user.loa3? && user.edipi.present? && user.icn.present?
   end
 end

@@ -6,6 +6,8 @@ module V0
   class CoeController < ApplicationController
     service_tag 'home-loan-status'
 
+    before_action(only: :status) { authorize(:coe, :access?) }
+
     def status
       coe_status = lgy_service.coe_status
 

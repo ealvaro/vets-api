@@ -16,6 +16,8 @@ module LGY
 
     # rubocop:disable Metrics/MethodLength
     def coe_status
+      throw_error_unless_edipi_and_icn_present
+
       if get_determination.body['status'] == 'ELIGIBLE' && get_application.status == 404
         increment_coe_status_counter(:eligible)
         { status: 'ELIGIBLE', reference_number: get_determination.body['reference_number'] }
@@ -56,6 +58,12 @@ module LGY
         nil
       end
     end
+
+    def throw_error_unless_edipi_and_icn_present
+      raise ArgumentError, 'no EDIPI passed in for LGY API request.' if @edipi.blank?
+      raise ArgumentError, 'no ICN passed in for LGY API request.' if @icn.blank?
+    end
+    private :throw_error_unless_edipi_and_icn_present
     # rubocop:enable Metrics/MethodLength
 
     def get_determination
