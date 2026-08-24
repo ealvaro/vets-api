@@ -68,12 +68,13 @@ RSpec.describe ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController, type: :
   end
 
   describe '#add_file_number_to_headers' do
-    it 'looks up the file number for the target veteran and merges it into headers' do
+    it 'validates no duplicate BIRLS ids, looks up the file number, and merges it into headers' do
       veteran_double = double(ssn: '796130115', participant_id: '600043201')
       lookup_service = instance_double(ClaimsApi::VeteranFileNumberLookupService)
       allow(controller).to receive(:target_veteran).and_return(veteran_double)
       allow(ClaimsApi::VeteranFileNumberLookupService).to receive(:new)
         .with('796130115', '600043201').and_return(lookup_service)
+      expect(lookup_service).to receive(:validate_no_duplicate_birls_ids!).with(veteran_double)
       allow(lookup_service).to receive(:check_file_number_exists!).and_return('123456789')
 
       headers = { 'existing_header' => 'value' }
