@@ -10,8 +10,11 @@ module Mobile
       include Sidekiq::Job
 
       STATSD_KEY_PREFIX = 'worker.mobile.v0.upload_survey_response'
+      CSV_TIME_ZONE = 'Eastern Time (US & Canada)'
 
       sidekiq_options(retry: 5, unique_for: 1.day)
+
+      MOJIBAKE_MARKERS = /Ã|â|Â/
 
       sidekiq_retries_exhausted do |msg, ex|
         error_class = msg['error_class'] || ex&.class&.to_s
@@ -106,18 +109,17 @@ module Mobile
       def build_csv_data(survey_responses) # rubocop:disable Metrics/MethodLength
         survey_responses_array = survey_responses
         question_keys = []
-        question_fields = {}
+        question_labels = {}
+        question_has_alt_values = {}
         metadata_keys = []
 
-        # Establish all unique question keys, their fields, and metadata keys across all survey responses
+        # Establish all unique question keys, labels, alt_value presence, and metadata keys.
         survey_responses_array.each do |survey_response|
           survey_response.survey_data.each do |question_key, question_data|
             question_keys << question_key unless question_keys.include?(question_key)
 
-            field_keys = question_fields[question_key] ||= []
-            question_data.each_key do |field_key|
-              field_keys << field_key unless field_keys.include?(field_key)
-            end
+            question_labels[question_key] ||= sanitize_csv_text(question_data['label'])
+            question_has_alt_values[question_key] ||= question_data['alt_value'].present?
           end
           survey_response.metadata&.each_key do |metadata_key|
             metadata_keys << metadata_key unless metadata_keys.include?(metadata_key)
@@ -127,9 +129,9 @@ module Mobile
         # Build CSV headers based on data above
         headers = ['uuid']
         question_keys.each do |question_key|
-          question_fields[question_key].each do |field_key|
-            headers << "#{question_key}_#{field_key}"
-          end
+          question_label = question_labels[question_key]
+          headers << (question_label.present? ? "(#{question_key}) #{question_label}" : question_key)
+          headers << "(#{question_key}) Alt Value" if question_has_alt_values[question_key]
         end
         metadata_keys.each { |metadata_key| headers << metadata_key }
         headers << 'submitted_at'
@@ -142,18 +144,29 @@ module Mobile
 
             question_keys.each do |question_key|
               question_data = survey_data_hash[question_key] || {}
-              question_fields[question_key].each do |field_key|
-                row << question_data[field_key]
-              end
+              row << sanitize_csv_text(question_data['value'])
+              row << sanitize_csv_text(question_data['alt_value']) if question_has_alt_values[question_key]
             end
 
             metadata_hash = survey_response.metadata || {}
-            metadata_keys.each { |metadata_key| row << metadata_hash[metadata_key] }
-            row << survey_response.created_at.iso8601
+            metadata_keys.each { |metadata_key| row << sanitize_csv_text(metadata_hash[metadata_key]) }
+            row << survey_response.created_at.in_time_zone(CSV_TIME_ZONE).iso8601
 
             csv << row
           end
         end
+      end
+
+      def sanitize_csv_text(value)
+        return value unless value.is_a?(String)
+        return value unless value.match?(MOJIBAKE_MARKERS)
+
+        repaired = value.encode('Windows-1252', invalid: :replace, undef: :replace, replace: '')
+                        .force_encoding('UTF-8')
+
+        repaired.valid_encoding? ? repaired : value
+      rescue Encoding::UndefinedConversionError, Encoding::InvalidByteSequenceError
+        value
       end
     end
   end

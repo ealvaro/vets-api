@@ -43,7 +43,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
     end
 
     context 'when upload succeeds with single question' do
-      it 'uploads flattened CSV for the survey type and deletes only uploaded rows' do
+      it 'uploads CSV for the survey type and deletes only uploaded rows' do
         uuid1 = SecureRandom.uuid
         uuid2 = SecureRandom.uuid
         Mobile::SurveyResponse.create!(
@@ -102,14 +102,12 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         # Verify CSV structure
         rows = CSV.parse(captured_csv)
-        expect(rows[0]).to eq(%w[uuid q01_type q01_label q01_value os submitted_at])
+        expect(rows[0]).to eq(['uuid', '(q01) How was your experience?', 'os', 'submitted_at'])
 
         # Verify first data row contains flattened values
         expect(rows[1][0]).to eq(uuid1)
-        expect(rows[1][1]).to eq('free_response')
-        expect(rows[1][2]).to eq('How was your experience?')
-        expect(rows[1][3]).to eq('Great')
-        expect(rows[1][4]).to eq('iOS')
+        expect(rows[1][1]).to eq('Great')
+        expect(rows[1][2]).to eq('iOS')
         expect(captured_path).to eq('DEV ONLY/test/Survey Responses/give_feedback')
         expect(captured_filename).to match(/\Agive_feedback_\d{8}_\d{9}\.csv\z/)
 
@@ -179,7 +177,7 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
     end
 
     context 'when survey has multiple questions' do
-      it 'flattens all questions and metadata into columns' do
+      it 'includes all question value columns and metadata columns' do
         uuid = SecureRandom.uuid
         Mobile::SurveyResponse.create!(
           survey_type: 'giveFeedback',
@@ -214,26 +212,21 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         rows = CSV.parse(captured_csv)
 
-        # Verify headers include all flattened columns in insertion order
-        expect(rows[0]).to eq(%w[uuid q01_type q01_label q01_value
-                                 q02_type q02_label q02_value
-                                 os app_version submitted_at])
+        # Verify headers include all question value columns in insertion order.
+        expect(rows[0]).to eq(['uuid', '(q01) Question 1', '(q02) Question 2',
+                               'os', 'app_version', 'submitted_at'])
 
         # Verify data row has correct values
         expect(rows[1][0]).to eq(uuid)
-        expect(rows[1][1]).to eq('multiple_choice')
-        expect(rows[1][2]).to eq('Question 1')
-        expect(rows[1][3]).to eq('Yes')
-        expect(rows[1][4]).to eq('free_response')
-        expect(rows[1][5]).to eq('Question 2')
-        expect(rows[1][6]).to eq('Some answer')
-        expect(rows[1][7]).to eq('iOS')
-        expect(rows[1][8]).to eq('1.0.0')
+        expect(rows[1][1]).to eq('Yes')
+        expect(rows[1][2]).to eq('Some answer')
+        expect(rows[1][3]).to eq('iOS')
+        expect(rows[1][4]).to eq('1.0.0')
       end
     end
 
     context 'when questions include additional dynamic fields' do
-      it 'includes required and extra columns for each question' do
+      it 'includes only question value columns for each question' do
         uuid = SecureRandom.uuid
         Mobile::SurveyResponse.create!(
           survey_type: 'giveFeedback',
@@ -271,21 +264,88 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         rows = CSV.parse(captured_csv)
 
-        expect(rows[0]).to eq(%w[uuid q01_type q01_label q01_value q01_answer_code
-                                 q02_type q02_label q02_value q02_min q02_max
-                                 os submitted_at])
+        expect(rows[0]).to eq(['uuid', '(q01) Question 1', '(q02) Question 2',
+                               'os', 'submitted_at'])
 
         expect(rows[1][0]).to eq(uuid)
-        expect(rows[1][1]).to eq('multiple_choice')
-        expect(rows[1][2]).to eq('Question 1')
-        expect(rows[1][3]).to eq('Yes')
-        expect(rows[1][4]).to eq('A1')
-        expect(rows[1][5]).to eq('rating')
-        expect(rows[1][6]).to eq('Question 2')
-        expect(rows[1][7]).to eq('5')
-        expect(rows[1][8]).to eq('1')
-        expect(rows[1][9]).to eq('5')
-        expect(rows[1][10]).to eq('iOS')
+        expect(rows[1][1]).to eq('Yes')
+        expect(rows[1][2]).to eq('5')
+        expect(rows[1][3]).to eq('iOS')
+      end
+    end
+
+    context 'when text values contain mojibake characters' do
+      it 'repairs common UTF-8/Windows-1252 mojibake in CSV output' do
+        uuid = SecureRandom.uuid
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: uuid,
+          survey_data: {
+            'q01' => {
+              'type' => 'free_response',
+              'label' => 'What was wrong?',
+              'value' => 'I donâ€™t use the app'
+            }
+          },
+          metadata: { 'os' => 'iOS â€” beta' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+        captured_csv = nil
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv) do |csv_data, _path, _filename|
+          captured_csv = csv_data
+          response
+        end
+
+        subject.perform
+
+        rows = CSV.parse(captured_csv)
+        expect(rows[1][1]).to eq('I don’t use the app')
+        expect(rows[1][2]).to eq('iOS — beta')
+      end
+    end
+
+    context 'when a question contains alt_values' do
+      it 'creates an additional alt_value column for that question' do
+        uuid = SecureRandom.uuid
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: uuid,
+          survey_data: {
+            'q01' => {
+              'type' => 'multiple_choice',
+              'label' => 'Overall satisfaction',
+              'value' => 'Satisfied',
+              'alt_value' => '4'
+            }
+          },
+          metadata: { 'os' => 'iOS' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+        captured_csv = nil
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv) do |csv_data, _path, _filename|
+          captured_csv = csv_data
+          response
+        end
+
+        subject.perform
+
+        rows = CSV.parse(captured_csv)
+
+        expect(rows[0]).to eq(['uuid', '(q01) Overall satisfaction', '(q01) Alt Value', 'os', 'submitted_at'])
+        expect(rows[1][0]).to eq(uuid)
+        expect(rows[1][1]).to eq('Satisfied')
+        expect(rows[1][2]).to eq('4')
+        expect(rows[1][3]).to eq('iOS')
       end
     end
 
@@ -432,6 +492,41 @@ RSpec.describe Mobile::V0::UploadSurveyResponseJob, type: :job do
 
         expect(Mobile::SurveyResponse.where(survey_type: 'giveFeedback').count).to eq(0)
         expect(Mobile::SurveyResponse.where(survey_type: 'intercept').count).to eq(0)
+      end
+    end
+
+    context 'when exporting submitted_at timestamp' do
+      it 'formats submitted_at in Eastern Time' do
+        uuid = SecureRandom.uuid
+        Mobile::SurveyResponse.create!(
+          survey_type: 'giveFeedback',
+          user_uuid: uuid,
+          created_at: Time.utc(2026, 1, 15, 16, 30, 0),
+          survey_data: {
+            'q01' => {
+              'type' => 'free_response',
+              'label' => 'How was your experience?',
+              'value' => 'Great'
+            }
+          },
+          metadata: { 'os' => 'iOS' }
+        )
+
+        response = instance_double(Faraday::Response, success?: true, status: 201)
+        captured_csv = nil
+
+        expect(SharePoint::Service).to receive(:new)
+          .with(sharepoint_feature: :mobile_survey_storage)
+          .and_return(service)
+        expect(service).to receive(:upload_csv) do |csv_data, _path, _filename|
+          captured_csv = csv_data
+          response
+        end
+
+        subject.perform
+
+        rows = CSV.parse(captured_csv)
+        expect(rows[1][3]).to eq('2026-01-15T11:30:00-05:00')
       end
     end
   end

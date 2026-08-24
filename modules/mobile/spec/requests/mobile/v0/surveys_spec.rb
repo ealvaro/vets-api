@@ -54,6 +54,21 @@ RSpec.describe 'Mobile::V0::Surveys', type: :request do
         expect(survey_response.metadata).to eq(metadata)
       end
 
+      it 'normalizes nested survey_data keys from camelCase to snake_case on persistence' do
+        params = valid_params.deep_dup
+        params['surveyData']['q01']['altValue'] = '4'
+
+        post '/mobile/v0/survey', params:, headers: sis_headers, as: :json
+
+        expect(response).to have_http_status(:no_content)
+
+        survey_response = Mobile::SurveyResponse.last
+        q01 = survey_response.survey_data['q01']
+
+        expect(q01).to include('alt_value' => '4')
+        expect(q01).not_to have_key('altValue')
+      end
+
       it 'allows for empty metadata' do
         params = valid_params.dup
         params['metadata'] = {}

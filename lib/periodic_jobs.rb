@@ -180,7 +180,7 @@ PERIODIC_JOBS = lambda { |mgr| # rubocop:disable Metrics/BlockLength
   mgr.register('0 13 * * 1', 'Mobile::V0::WeeklyMaintenanceWindowLogger')
 
   # Uploads mobile survey responses to SharePoint and deletes from the database
-  mgr.register('0 3 1 * *', 'Mobile::V0::UploadSurveyResponseJob')
+  mgr.register('0 0 1 * *', 'Mobile::V0::UploadSurveyResponseJob')
 
   # Temporarily uploads mobile intercept survey responses to SharePoint on daily basis
   mgr.register('0 3 * * *', 'Mobile::V0::UploadSurveyResponseJob',
