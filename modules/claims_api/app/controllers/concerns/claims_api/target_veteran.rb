@@ -78,7 +78,7 @@ module ClaimsApi
         return false if reps.count > 1
 
         rep = reps.first
-        veteran_poa_code = ClaimsApi::PoaLookupService.new(target_veteran)&.power_of_attorney&.code
+        veteran_poa_code = ClaimsApi::PoaLookupService.new(target_veteran).power_of_attorney&.code
 
         return false if veteran_poa_code.blank?
 

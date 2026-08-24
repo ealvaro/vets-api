@@ -66,7 +66,7 @@ module ClaimsApi
 
     def bgs_org_service
       external_key = "#{@user.first_name} #{@user.last_name}"
-      @bgs_itf_service ||= ClaimsApi::OrgWebService.new(
+      @bgs_org_service ||= ClaimsApi::OrgWebService.new(
         external_uid: @user.mpi_icn,
         external_key: external_key.presence || @user.mpi_icn
       )

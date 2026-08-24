@@ -4,162 +4,160 @@ module ClaimsApi
   module PoaVerification
     extend ActiveSupport::Concern
 
-    included do # rubocop:disable Metrics/BlockLength
-      #
-      # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
-      # @param poa_code [String] poa code to validate
-      #
-      # @raise [Common::Exceptions::InvalidFieldValue] if provided poa code does not exist in OGC dataset
-      def validate_poa_code!(poa_code)
-        return if valid_poa_code?(poa_code)
+    #
+    # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
+    # @param poa_code [String] poa code to validate
+    #
+    # @raise [Common::Exceptions::InvalidFieldValue] if provided poa code does not exist in OGC dataset
+    def validate_poa_code!(poa_code)
+      return if valid_poa_code?(poa_code)
 
-        raise ::Common::Exceptions::InvalidFieldValue.new('poaCode', poa_code)
-      end
+      raise ::Common::Exceptions::InvalidFieldValue.new('poaCode', poa_code)
+    end
 
-      #
-      # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
-      # @param poa_code [String] poa code to validate
-      #
-      # @return [Boolean] True if valid poa code, False if not
-      def valid_poa_code?(poa_code)
-        ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)', poa_code).any?
-      end
+    #
+    # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
+    # @param poa_code [String] poa code to validate
+    #
+    # @return [Boolean] True if valid poa code, False if not
+    def valid_poa_code?(poa_code)
+      ClaimsApi::AccreditationTables.representative.where('? = ANY(poa_codes)', poa_code).any?
+    end
 
-      #
-      # Validate poa code provided matches one of the poa codes associated with the @current_user
-      # @param poa_code [String] poa code to match to @current_user
-      #
-      # @raise [Common::Exceptions::InvalidFieldValue] if provided poa code is not associated with @current_user
-      def validate_poa_code_for_current_user!(poa_code)
-        return if valid_poa_code_for_current_user?(poa_code)
+    #
+    # Validate poa code provided matches one of the poa codes associated with the @current_user
+    # @param poa_code [String] poa code to match to @current_user
+    #
+    # @raise [Common::Exceptions::InvalidFieldValue] if provided poa code is not associated with @current_user
+    def validate_poa_code_for_current_user!(poa_code)
+      return if valid_poa_code_for_current_user?(poa_code)
 
-        error_msg = 'Veterans making requests do not need to include identifying headers ' \
-                    "such as 'X-VA-First-Name'. Please resubmit without extraneous headers"
-        raise ::Common::Exceptions::UnprocessableEntity.new(detail: error_msg) if target_veteran_is_current_user?
+      error_msg = 'Veterans making requests do not need to include identifying headers ' \
+                  "such as 'X-VA-First-Name'. Please resubmit without extraneous headers"
+      raise ::Common::Exceptions::UnprocessableEntity.new(detail: error_msg) if target_veteran_is_current_user?
 
-        raise ::Common::Exceptions::InvalidFieldValue.new('poaCode', poa_code)
-      end
+      raise ::Common::Exceptions::InvalidFieldValue.new('poaCode', poa_code)
+    end
 
-      #
-      # Request headers are only required if the issuer of the request is *not* the target veteran.
-      # If a request is made that unnneccesarily includes headers, we need to check and issue a failure.
-      #
-      # @return [Boolean] True if current user == request header identity, false if not
-      def target_veteran_is_current_user?
-        # Certain users might have inconsistencies in naming, so use SSN as a more reliable indicator
-        @current_user.ssn == request.headers.fetch('X-VA-SSN')
-      end
+    #
+    # Request headers are only required if the issuer of the request is *not* the target veteran.
+    # If a request is made that unnecessarily includes headers, we need to check and issue a failure.
+    #
+    # @return [Boolean] True if current user == request header identity, false if not
+    def target_veteran_is_current_user?
+      # Certain users might have inconsistencies in naming, so use SSN as a more reliable indicator
+      @current_user.ssn == request.headers.fetch('X-VA-SSN')
+    end
 
-      #
-      # Validate poa code provided matches one of the poa codes associated with the @current_user
-      # @param poa_code [String] poa code to match to @current_user
-      #
-      # @return [Boolean] True if valid poa code, False if not
-      def valid_poa_code_for_current_user?(poa_code)
-        return false if @current_user.first_name.nil? || @current_user.last_name.nil?
-        return false unless valid_poa_code?(poa_code)
+    #
+    # Validate poa code provided matches one of the poa codes associated with the @current_user
+    # @param poa_code [String] poa code to match to @current_user
+    #
+    # @return [Boolean] True if valid poa code, False if not
+    def valid_poa_code_for_current_user?(poa_code)
+      return false if @current_user.first_name.nil? || @current_user.last_name.nil?
+      return false unless valid_poa_code?(poa_code)
 
-        reps_by_first_and_last_name = ClaimsApi::AccreditationTables.representative.all_for_user(
-          first_name: @current_user.first_name,
-          last_name: @current_user.last_name
-        )
+      reps_by_first_and_last_name = ClaimsApi::AccreditationTables.representative.all_for_user(
+        first_name: @current_user.first_name,
+        last_name: @current_user.last_name
+      )
 
-        exactly_one_rep_match?(reps_by_first_and_last_name, poa_code) ||
-          find_by_suffix(poa_code) ||
-          find_by_middle_initial(poa_code) ||
-          find_by_poa_code(poa_code) ||
-          find_by_email(poa_code) ||
-          handle_not_found(reps_by_first_and_last_name, poa_code)
-      end
+      exactly_one_rep_match?(reps_by_first_and_last_name, poa_code) ||
+        find_by_suffix(poa_code) ||
+        find_by_middle_initial(poa_code) ||
+        find_by_poa_code(poa_code) ||
+        find_by_email(poa_code) ||
+        handle_not_found(reps_by_first_and_last_name, poa_code)
+    end
 
-      #
-      # Verify @current_user is a valid power of attorney for the Veteran being acted on
-      #
-      # @raise [Common::Exceptions::Unauthorized] if Veteran is not associated to one of the @current_user's poa codes
-      def verify_power_of_attorney!
-        return if token.client_credentials_token?
+    #
+    # Verify @current_user is a valid power of attorney for the Veteran being acted on
+    #
+    # @raise [Common::Exceptions::Unauthorized] if Veteran is not associated to one of the @current_user's poa codes
+    def verify_power_of_attorney!
+      return if token.client_credentials_token?
 
-        target_veteran_to_verify = ClaimsApi::PoaLookupService.new(target_veteran)
-        poa_code_to_verify = target_veteran_to_verify.power_of_attorney.try(:code)
-        valid_poa_code_for_current_user?(poa_code_to_verify)
-      rescue ::Common::Exceptions::UnprocessableEntity
-        raise
-      rescue ::Common::Exceptions::Unauthorized => e
-        ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
-        raise e, detail: 'Cannot validate Power of Attorney'
-      rescue => e
-        ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
-        raise e
-      end
+      target_veteran_to_verify = ClaimsApi::PoaLookupService.new(target_veteran)
+      poa_code_to_verify = target_veteran_to_verify.power_of_attorney.try(:code)
+      valid_poa_code_for_current_user?(poa_code_to_verify)
+    rescue ::Common::Exceptions::UnprocessableEntity
+      raise
+    rescue ::Common::Exceptions::Unauthorized => e
+      ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
+      raise e, detail: 'Cannot validate Power of Attorney'
+    rescue => e
+      ClaimsApi::Logger.log 'poa_verification', level: :error, message: e.message, error_class: e.class.name
+      raise e
+    end
 
-      def poa_code_in_organization?(poa_code)
-        ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code).present?
-      end
+    def poa_code_in_organization?(poa_code)
+      ClaimsApi::AccreditationTables.organization.find_by(poa: poa_code).present?
+    end
 
-      private
+    private
 
-      def exactly_one_rep_match?(reps, poa_code)
-        reps.first.poa_codes.include?(poa_code) if reps.count == 1
-      end
+    def exactly_one_rep_match?(reps, poa_code)
+      reps.first.poa_codes.include?(poa_code) if reps.count == 1
+    end
 
-      def find_by_suffix(poa_code)
-        return false if @current_user.suffix.blank?
+    def find_by_suffix(poa_code)
+      return false if @current_user.suffix.blank?
 
-        last_name_with_suffix = "#{@current_user.last_name} #{@current_user.suffix}"
-        reps_by_suffix = ClaimsApi::AccreditationTables.representative.all_for_user(
-          first_name: @current_user.first_name,
-          last_name: last_name_with_suffix
-        )
+      last_name_with_suffix = "#{@current_user.last_name} #{@current_user.suffix}"
+      reps_by_suffix = ClaimsApi::AccreditationTables.representative.all_for_user(
+        first_name: @current_user.first_name,
+        last_name: last_name_with_suffix
+      )
 
-        exactly_one_rep_match?(reps_by_suffix, poa_code)
-      end
+      exactly_one_rep_match?(reps_by_suffix, poa_code)
+    end
 
-      def find_by_middle_initial(poa_code)
-        return false if @current_user.middle_name.blank?
+    def find_by_middle_initial(poa_code)
+      return false if @current_user.middle_name.blank?
 
-        middle_initial = @current_user.middle_name[0]
-        reps_by_middle_initial = ClaimsApi::AccreditationTables.representative.all_for_user(
-          first_name: @current_user.first_name,
-          last_name: @current_user.last_name,
-          middle_initial:
-        )
+      middle_initial = @current_user.middle_name[0]
+      reps_by_middle_initial = ClaimsApi::AccreditationTables.representative.all_for_user(
+        first_name: @current_user.first_name,
+        last_name: @current_user.last_name,
+        middle_initial:
+      )
 
-        exactly_one_rep_match?(reps_by_middle_initial, poa_code)
-      end
+      exactly_one_rep_match?(reps_by_middle_initial, poa_code)
+    end
 
-      def find_by_poa_code(poa_code)
-        reps_by_poa_code = ClaimsApi::AccreditationTables.representative.all_for_user(
-          first_name: @current_user.first_name,
-          last_name: @current_user.last_name,
-          poa_code:
-        )
+    def find_by_poa_code(poa_code)
+      reps_by_poa_code = ClaimsApi::AccreditationTables.representative.all_for_user(
+        first_name: @current_user.first_name,
+        last_name: @current_user.last_name,
+        poa_code:
+      )
 
-        exactly_one_rep_match?(reps_by_poa_code, poa_code)
-      end
+      exactly_one_rep_match?(reps_by_poa_code, poa_code)
+    end
 
-      def find_by_email(poa_code)
-        return false if @current_user.email.blank?
+    def find_by_email(poa_code)
+      return false if @current_user.email.blank?
 
-        reps_by_email = ::Veteran::Service::Representative.where(
-          'lower(first_name) = ? AND lower(last_name) = ? AND lower(email) = ?',
-          @current_user.first_name&.downcase,
-          @current_user.last_name&.downcase,
-          @current_user.email&.downcase
-        )
+      reps_by_email = ::Veteran::Service::Representative.where(
+        'lower(first_name) = ? AND lower(last_name) = ? AND lower(email) = ?',
+        @current_user.first_name&.downcase,
+        @current_user.last_name&.downcase,
+        @current_user.email&.downcase
+      )
 
-        exactly_one_rep_match?(reps_by_email, poa_code)
-      end
+      exactly_one_rep_match?(reps_by_email, poa_code)
+    end
 
-      def handle_not_found(reps, poa_code)
-        ClaimsApi::Logger.log 'poa_verification',
-                              message: "Found 0 reps for POA code #{poa_code}" \
-                                       " out of #{reps.size} possible matches (found by name).",
-                              level: :warn, poa_code:, rep_count: reps.size, current_users_uuid: @current_user.uuid
-        raise ::Common::Exceptions::UnprocessableEntity, detail: 'Ambiguous VSO Representative Results' if reps.size > 1
+    def handle_not_found(reps, poa_code)
+      ClaimsApi::Logger.log 'poa_verification',
+                            message: "Found 0 reps for POA code #{poa_code}" \
+                                     " out of #{reps.size} possible matches (found by name).",
+                            level: :warn, poa_code:, rep_count: reps.size, current_users_uuid: @current_user.uuid
+      raise ::Common::Exceptions::UnprocessableEntity, detail: 'Ambiguous VSO Representative Results' if reps.size > 1
 
-        # Intentionally does not raise in other cases. Doing so would break some shared behavior.
-        false
-      end
+      # Intentionally does not raise in other cases. Doing so would break some shared behavior.
+      false
     end
   end
 end
