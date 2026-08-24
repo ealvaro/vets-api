@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "description": "Schema for Lighthouse VeteransHealth get_observation response - a single FHIR R4 Observation resource",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resourceType", "id", "status", "code"],
+  "properties": {
+    "resourceType": { "type": "string", "enum": ["Observation"] },
+    "id": { "type": "string" },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lastUpdated": { "type": "string" }
+      }
+    },
+    "status": { "type": "string" },
+    "category": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "coding": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "system": { "type": "string" },
+                "code": { "type": "string" },
+                "display": { "type": "string" }
+              }
+            }
+          },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coding": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "system": { "type": "string" },
+              "code": { "type": "string" },
+              "display": { "type": "string" }
+            }
+          }
+        },
+        "text": { "type": "string" }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reference": { "type": "string" },
+        "display": { "type": "string" }
+      }
+    },
+    "effectiveDateTime": { "type": "string" },
+    "issued": { "type": "string" },
+    "performer": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reference": { "type": "string" },
+          "display": { "type": "string" }
+        }
+      }
+    },
+    "valueQuantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "type": "string" },
+        "system": { "type": "string" },
+        "code": { "type": "string" }
+      }
+    }
+  }
+}

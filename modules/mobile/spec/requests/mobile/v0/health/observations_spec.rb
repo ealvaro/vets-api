@@ -65,4 +65,49 @@ RSpec.describe 'Mobile::V0::Health::Observations', type: :request do
     expect(response).to be_successful
     expect(response.parsed_body['data']).to eq(observation_response)
   end
+
+  describe 'schema contract validation' do
+    let(:user_account) { create(:user_account) }
+
+    before do
+      user.user_account_uuid = user_account.id
+      user.save!
+    end
+
+    context 'when in staging' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+      end
+
+      it 'validates the schema for get_observation' do
+        VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+          VCR.use_cassette('rrd/lighthouse_observation') do
+            get '/mobile/v0/health/observations/I2-ILWORI4YUOUAR5H2GCH6ATEFRM000000', headers: sis_headers
+          end
+        end
+
+        expect(response).to be_successful
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.last.status).to eq('success')
+      end
+    end
+
+    context 'when in production' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('production')
+      end
+
+      it 'does not validate the schema for get_observation' do
+        VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+          VCR.use_cassette('rrd/lighthouse_observation') do
+            get '/mobile/v0/health/observations/I2-ILWORI4YUOUAR5H2GCH6ATEFRM000000', headers: sis_headers
+          end
+        end
+
+        expect(response).to be_successful
+        SchemaContract::ValidationJob.drain
+        expect(SchemaContract::Validation.count).to eq(0)
+      end
+    end
+  end
 end

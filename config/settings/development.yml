@@ -1399,6 +1399,7 @@ schema_contract:
   get_demographics: modules/mobile/app/schemas/get_demographics.json
   lighthouse_get_immunizations: modules/mobile/app/schemas/lighthouse_get_immunizations.json
   lighthouse_get_location: modules/mobile/app/schemas/lighthouse_get_location.json
+  lighthouse_veterans_health_get_observation: modules/mobile/app/schemas/lighthouse_veterans_health_get_observation.json
   message_history: modules/mobile/app/schemas/message_history.json
   message_show: modules/mobile/app/schemas/message_show.json
   message_signature: modules/mobile/app/schemas/message_signature.json
