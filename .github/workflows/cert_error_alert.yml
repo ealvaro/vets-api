@@ -5,9 +5,9 @@ name: Certificate Error Alert
 # Tracks software/va.gov-team#147416.
 
 on:
-  workflow_run:
-    workflows: ["Build, Push, & Deploy"]
-    types: [completed]
+  # workflow_run:
+  #   workflows: ["Build, Push, & Deploy"]
+  #   types: [completed]
   workflow_dispatch:
     inputs:
       run_id:
