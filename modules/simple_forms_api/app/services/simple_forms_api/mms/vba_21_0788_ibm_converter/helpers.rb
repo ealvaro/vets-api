@@ -130,7 +130,7 @@ module SimpleFormsApi
 
           [name['first'], name['middle'], name['last']]
             .reject { |part| part.to_s.empty? }
-            .join(', ')
+            .join(' ')
         end
 
         # ---------- Addresses ----------

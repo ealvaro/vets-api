@@ -92,7 +92,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA210788IbmConverter do
     end
 
     it 'formats the veteran name as FIRST, MIDDLE, LAST' do
-      expect(described_class.convert(form)['VETERAN_NAME']).to eq('John, David, Doe')
+      expect(described_class.convert(form)['VETERAN_NAME']).to eq('John David Doe')
     end
 
     it 'strips dashes from the SSN' do

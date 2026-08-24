@@ -55,14 +55,19 @@ module SimpleFormsApi
           block = form.data['address']
           return '' unless block.is_a?(Hash)
 
-          line1 = [block['street'], block['street2']].reject { |s| s.to_s.empty? }.join(' ')
-          city_state_zip = [
+          street_city_state = [
+            block['street'],
+            block['street2'],
             block['city'],
-            block['state'],
-            block['postal_code']
-          ].reject { |s| s.to_s.empty? }.join(', ').sub(/, (\S+)\z/, ' \1')
+            block['state']
+          ].reject { |s| s.to_s.empty? }.join(', ')
 
-          [line1, city_state_zip, block['country']].reject { |s| s.to_s.empty? }.join(' ')
+          zip_country = [
+            block['postal_code'],
+            block['country']
+          ].reject { |s| s.to_s.empty? }.join(' ')
+
+          "#{street_city_state} #{zip_country}".strip
         end
 
         def normalize_last_4_ssn(ssn)

@@ -109,7 +109,7 @@ RSpec.describe SimpleFormsApi::Mms::VBA108678IbmConverter do
 
     it 'flattens the address block with city/state ZIP and country' do
       expect(described_class.convert(form)['VETERAN_ADDRESS_FULL_BLOCK']).to eq(
-        '123 Main St Apt 4B Springfield, PA 22150 USA'
+        '123 Main St, Apt 4B, Springfield, PA 22150 USA'
       )
     end
 
