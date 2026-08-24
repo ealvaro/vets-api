@@ -11,15 +11,13 @@ module V0
     before_action :check_feature_enabled
     before_action { authorize :claims_evidence, :access? }
 
-    STATSD_METRIC_PREFIX = 'api.claims_evidence'
-    STATSD_TAGS = [
-      'service:claims-evidence',
-      'team:benefits-management-tools',
-      'itportfolio:benefits-delivery',
-      'dependency:claims-evidence-api'
-    ].freeze
-    # Supported Claims Evidence document types, keyed by documentTypeId.
-    # Values are the human-readable VBMS document type labels.
+    STATSD_METRIC_PREFIX = ClaimsEvidence::Metrics::PREFIX
+    STATSD_TAGS = ClaimsEvidence::Metrics::TAGS
+
+    # Internal signal, translated to a 422 in #create.
+    class DuplicateUpload < StandardError; end
+
+    # documentTypeId => VBMS document type label
     DOCUMENT_TYPES = {
       26 => 'Buddy/Lay Statement',
       29 => 'Civilian Police Reports',
@@ -47,13 +45,14 @@ module V0
     }.freeze
 
     def create
-      uploaded_file = params[:file]
-      validate_uploaded_file!(uploaded_file)
-
+      # Separate locals, not one struct: if a later parse fails, the failure log still
+      # has whatever the earlier ones established.
+      uploaded_file = parse_uploaded_file
       doc_type_id = parse_document_type_id
       sc_id = parse_supplemental_claim_id
 
-      copy_and_upload(uploaded_file, doc_type_id, sc_id)
+      upload = build_upload_request(uploaded_file, doc_type_id, sc_id)
+      copy_and_upload(upload, claim_upload_slot(upload))
     rescue ClaimsEvidenceApi::Service::Files::VirusFound => e
       increment_upload_failure(doc_type_id, reason: 'virus')
       log_upload_failure(e, uploaded_file, doc_type_id, sc_id)
@@ -61,6 +60,10 @@ module V0
         detail: 'We were unable to process your file. Please try again.',
         source: 'ClaimsEvidenceController#create'
       )
+    rescue DuplicateUpload
+      # Translate the internal signal into the response; unhandled it would render a 500.
+      raise Common::Exceptions::UnprocessableEntity.new(detail: 'DOC_UPLOAD_DUPLICATE',
+                                                        source: self.class.name)
     rescue => e
       # sc_id is the last thing param validation sets, so its presence means the failure came
       # from the upload itself; validation failures already counted validation.failure.
@@ -70,6 +73,47 @@ module V0
     end
 
     private
+
+    def build_upload_request(uploaded_file, doc_type_id, sc_id)
+      ClaimsEvidence::UploadRequest.new(
+        file: uploaded_file,
+        doc_type_id:,
+        sc_id:,
+        file_name: File.basename(uploaded_file.original_filename.to_s),
+        file_size: uploaded_file.tempfile.size,
+        document_type: DOCUMENT_TYPES[doc_type_id]
+      )
+    end
+
+    # @return [ClaimsEvidence::DuplicateCheck] holding the lease, for the caller to release
+    def claim_upload_slot(upload)
+      duplicate_check = ClaimsEvidence::DuplicateCheck.new(current_user: @current_user, upload:)
+
+      raise_duplicate(upload, detected_by: 'db') if duplicate_check.presumed_duplicate?
+      raise_duplicate(upload, detected_by: 'lock') unless duplicate_check.acquire_lock
+
+      duplicate_check
+    end
+
+    def raise_duplicate(upload, detected_by:)
+      increment_upload_failure(upload.doc_type_id, reason: 'duplicate', detected_by:)
+      raise DuplicateUpload
+    end
+
+    def parse_uploaded_file
+      uploaded_file = params[:file]
+      if uploaded_file.blank?
+        increment_validation_failure('missing_file')
+        raise Common::Exceptions::ParameterMissing, 'file'
+      end
+
+      unless uploaded_file.class.name.include?('UploadedFile')
+        increment_validation_failure('invalid_file')
+        raise Common::Exceptions::InvalidFieldValue.new('file', uploaded_file.class.name)
+      end
+
+      uploaded_file
+    end
 
     def log_upload_failure(error, uploaded_file, doc_type_id, sc_id)
       is_uploaded_file = uploaded_file&.class&.name&.include?('UploadedFile')
@@ -92,24 +136,31 @@ module V0
       routing_error unless Flipper.enabled?(:cst_supplemental_claims_evidence_upload, @current_user)
     end
 
-    def copy_and_upload(uploaded_file, doc_type_id, sc_id)
-      original_filename = File.basename(uploaded_file.original_filename.to_s)
-      prefix = File.basename(original_filename, '.*').to_s[0, 50].presence || 'claims-evidence'
-      Tempfile.create([prefix, File.extname(original_filename)]) do |tmp|
+    def copy_and_upload(upload, duplicate_check)
+      evidence_accepted = false
+      prefix = File.basename(upload.file_name, '.*').to_s[0, 50].presence || 'claims-evidence'
+      Tempfile.create([prefix, File.extname(upload.file_name)]) do |tmp|
         tmp.binmode
-        uploaded_file.tempfile.rewind
-        IO.copy_stream(uploaded_file.tempfile, tmp)
+        upload.file.tempfile.rewind
+        IO.copy_stream(upload.file.tempfile, tmp)
         tmp.flush
-        ce_response = ce_service.upload(tmp.path, provider_data: build_provider_data(doc_type_id))
+        ce_response = ce_service.upload(tmp.path, provider_data: build_provider_data(upload.doc_type_id))
+        # Set the moment Claims Evidence takes the file: from here on nothing may release
+        # the lease, because the document is in the eFolder whatever happens next.
+        evidence_accepted = true
 
         # Order matters: save the record first, since the file is already in the eFolder. Build the
         # payload before counting success, so a response body we can't read is only counted as a failure.
-        persist_evidence_submission(original_filename, sc_id, doc_type_id, tmp, ce_response)
+        # Once the row exists the first layer takes over. If it didn't, hold the lease.
+        duplicate_check.release_lock if persist_evidence_submission(upload, ce_response)
         payload = build_upload_response_payload(ce_response.body)
-        log_upload_success(doc_type_id)
-
+        log_upload_success(upload.doc_type_id)
         render json: payload, status: ce_response.status
       end
+    rescue
+      # The file never reached Claims Evidence, so free the lease for an immediate retry.
+      duplicate_check.release_lock unless evidence_accepted
+      raise
     end
 
     def build_upload_response_payload(response_body)
@@ -139,18 +190,6 @@ module V0
 
     def increment_validation_failure(reason)
       StatsD.increment("#{STATSD_METRIC_PREFIX}.validation.failure", tags: STATSD_TAGS + ["reason:#{reason}"])
-    end
-
-    def validate_uploaded_file!(uploaded_file)
-      if uploaded_file.blank?
-        increment_validation_failure('missing_file')
-        raise Common::Exceptions::ParameterMissing, 'file'
-      end
-
-      return if uploaded_file.class.name.include?('UploadedFile')
-
-      increment_validation_failure('invalid_file')
-      raise Common::Exceptions::InvalidFieldValue.new('file', uploaded_file.class.name)
     end
 
     def parse_document_type_id
@@ -196,19 +235,22 @@ module V0
 
     # Never fail the upload response because of a persistence miss:
     # the file is already in the eFolder.
-    def persist_evidence_submission(file_name, sc_id, doc_type_id, tmp, ce_response)
-      document_type = DOCUMENT_TYPES[doc_type_id]
-      file_size = File.size(tmp.path)
+    def persist_evidence_submission(upload, ce_response)
       EvidenceSubmission.create!(
-        caseflow_claim_id: sc_id,
+        caseflow_claim_id: upload.sc_id,
         user_account: @current_user.user_account,
         upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
-        file_size:,
+        file_size: upload.file_size,
         delete_date: 60.days.from_now,
-        template_metadata: { personalisation: { file_name:, document_type: } }.to_json
+        template_metadata: { personalisation: { file_name: upload.file_name,
+                                                document_type_id: upload.doc_type_id,
+                                                document_type: upload.document_type } }.to_json
       )
     rescue => e
-      log_persist_failure(e, { file_name:, sc_id:, doc_type_id:, file_size:, ce_response: })
+      log_persist_failure(e, { file_name: upload.file_name, sc_id: upload.sc_id,
+                               doc_type_id: upload.doc_type_id, file_size: upload.file_size,
+                               ce_response: })
+      nil # StatsD.increment returns truthy; nil stops the caller releasing the lease
     end
 
     def log_persist_failure(error, context)

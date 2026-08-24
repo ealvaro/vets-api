@@ -12,7 +12,8 @@ FactoryBot.define do
   factory :cst_sc_evidence_submission, class: 'EvidenceSubmission' do
     transient do
       file_name { 'doctors-note.pdf' }
-      document_type { 'Correspondence' }
+      document_type_id { 34 }
+      document_type { V0::ClaimsEvidenceController::DOCUMENT_TYPES[document_type_id] }
     end
 
     association :user_account, factory: :user_account
@@ -21,7 +22,7 @@ FactoryBot.define do
     upload_status { BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS] }
     file_size { 1234 }
     delete_date { DateTime.now.utc + 60.days }
-    template_metadata { { personalisation: { file_name:, document_type: } }.to_json }
+    template_metadata { { personalisation: { file_name:, document_type_id:, document_type: } }.to_json }
   end
 
   factory :bd_evidence_submission_for_deletion, class: 'EvidenceSubmission' do

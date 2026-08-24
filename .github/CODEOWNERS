@@ -524,6 +524,7 @@ app/services/bgs/uploaded_document_service.rb @software/benefits-lifestage
 app/services/claim_fast_tracking @software/disability-benefits
 app/services/claim_fast_tracking/constants.rb @software/disability-benefits
 app/services/claim_fast_tracking/diagnostic_codes.rb @software/disability-benefits
+app/services/claims_evidence @software/benefits-management-tools-be
 app/services/debt_transaction_log_service.rb @software/vsa-debt-resolution
 app/services/debt_transaction_log/ @software/vsa-debt-resolution
 app/services/email_verification_callback.rb @software/vfs-authenticated-experience-backend
@@ -1387,6 +1388,7 @@ spec/controllers/v0/benefits_reference_data_controller_spec.rb @software/va-plat
 spec/controllers/v0/chatbot @software/vfs-virtual-agent-chatbot
 spec/controllers/v0/claim_documents_controller_spec.rb @software/benefits-lifestage
 spec/controllers/v0/claim_letters_controller_spec.rb @software/benefits-management-tools-be
+spec/controllers/v0/claims_evidence_controller_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/concerns/evss_deprecation_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/concerns/multi_provider_support_spec.rb @software/benefits-management-tools-be
 spec/controllers/v0/datadog_action_controller_spec.rb @software/va-platform-backend
@@ -2221,6 +2223,7 @@ spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authentic
 spec/services/bgs @software/benefits-lifestage
 spec/services/bgs/payment_service_spec.rb @software/vsa-debt-resolution
 spec/services/claim_fast_tracking @software/disability-benefits
+spec/services/claims_evidence @software/benefits-management-tools-be
 spec/services/debt_transaction_log_service_spec.rb @software/vsa-debt-resolution
 spec/services/email_verification_callback_spec.rb @software/vfs-authenticated-experience-backend
 spec/services/email_verification_service_spec.rb @software/vfs-authenticated-experience-backend

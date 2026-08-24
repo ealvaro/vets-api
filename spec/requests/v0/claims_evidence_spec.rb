@@ -276,6 +276,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             expect(es.delete_date).to be_within(1.minute).of(60.days.from_now)
             metadata = JSON.parse(es.template_metadata)
             expect(metadata.dig('personalisation', 'file_name')).to eq('doctors-note.pdf')
+            expect(metadata.dig('personalisation', 'document_type_id')).to eq(valid_doc_type_id)
             expect(metadata.dig('personalisation', 'document_type')).to eq('Correspondence')
           end
 
@@ -364,6 +365,311 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
                 )
               end
             end
+          end
+        end
+
+        context 'when a prior EvidenceSubmission exists' do
+          let(:file_size) { file.tempfile.size }
+          let(:base_attrs) do
+            {
+              user_account: user.user_account,
+              caseflow_claim_id: sc_id,
+              upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+              file_size:,
+              file_name: 'doctors-note.pdf',
+              document_type_id: valid_doc_type_id,
+              document_type: 'Correspondence'
+            }
+          end
+          let(:submission_attrs) { base_attrs }
+          let!(:existing_submission) { create(:cst_sc_evidence_submission, **submission_attrs) }
+
+          before do
+            allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+              .to receive(:upload)
+              .and_return(ce_success)
+          end
+
+          shared_examples 'allows the upload' do
+            it 'returns 200 and persists a new EvidenceSubmission' do
+              expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+          end
+
+          # user_account, caseflow_claim_id, upload_status, file_size, file_name, document_type_id
+          context 'and it matches on all six criteria' do
+            it 'returns 422' do
+              post_upload
+              expect(response).to have_http_status(:unprocessable_entity)
+            end
+
+            it 'responds with the DOC_UPLOAD_DUPLICATE detail' do
+              post_upload
+              expect(response.body).to include('DOC_UPLOAD_DUPLICATE')
+            end
+
+            it 'increments the upload failure counter with reason:duplicate detected_by:db' do
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+              expect(StatsD).to have_received(:increment).with(
+                'api.claims_evidence.upload.failure',
+                tags: base_tags + ['reason:duplicate', 'detected_by:db', "document_type_id:#{valid_doc_type_id}"]
+              )
+            end
+
+            it 'does not emit an error-level failure log' do
+              allow(Rails.logger).to receive(:error).and_call_original
+              post_upload
+              expect(Rails.logger).not_to have_received(:error).with(
+                'ClaimsEvidenceController#create upload failed', anything
+              )
+            end
+
+            it 'does not send the file to Claims Evidence' do
+              expect_any_instance_of(ClaimsEvidenceApi::Service::Files).not_to receive(:upload)
+              post_upload
+            end
+
+            it 'does not persist another EvidenceSubmission' do
+              expect { post_upload }.not_to change(EvidenceSubmission, :count)
+            end
+
+            it 'does not increment the upload success counter' do
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+              expect(StatsD).not_to have_received(:increment).with(
+                'api.claims_evidence.upload.success', anything
+              )
+            end
+          end
+
+          context 'and the file size differs' do
+            let(:submission_attrs) { base_attrs.merge(file_size: file_size + 1) }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and the file name differs' do
+            let(:submission_attrs) { base_attrs.merge(file_name: 'other-note.pdf') }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and the document type id differs' do
+            let(:submission_attrs) { base_attrs.merge(document_type_id: 80, document_type: 'Photographs') }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and the supplemental claim differs' do
+            let(:submission_attrs) { base_attrs.merge(caseflow_claim_id: 'SC99999') }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and it belongs to a different user' do
+            let(:submission_attrs) { base_attrs.merge(user_account: create(:user_account)) }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and its upload_status is not SUCCESS' do
+            let(:submission_attrs) do
+              base_attrs.merge(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:FAILED])
+            end
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and its template_metadata is nil' do
+            before { existing_submission.update!(template_metadata: nil) }
+
+            it_behaves_like 'allows the upload'
+          end
+
+          context 'and its template_metadata is not valid JSON' do
+            before { existing_submission.update!(template_metadata: 'not json') }
+
+            it_behaves_like 'allows the upload'
+          end
+        end
+
+        context 'with the upload lock' do
+          let(:cache) { ActiveSupport::Cache::MemoryStore.new }
+
+          before do
+            allow(Rails).to receive(:cache).and_return(cache)
+            allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+              .to receive(:upload)
+              .and_return(ce_success)
+          end
+
+          context 'when the upload succeeded but persistence failed' do
+            before { allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom')) }
+
+            it 'rejects a retry of the same file' do
+              post_upload
+              expect(response).to have_http_status(:ok)
+              expect(EvidenceSubmission.count).to eq(0)
+
+              post_upload
+
+              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response.body).to include('DOC_UPLOAD_DUPLICATE')
+            end
+
+            it 'does not send the file to Claims Evidence a second time' do
+              post_upload
+
+              expect_any_instance_of(ClaimsEvidenceApi::Service::Files).not_to receive(:upload)
+              post_upload
+            end
+
+            it 'tags the rejection detected_by:lock' do
+              post_upload
+
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+
+              expect(StatsD).to have_received(:increment).with(
+                'api.claims_evidence.upload.failure',
+                tags: base_tags + ['reason:duplicate', 'detected_by:lock', "document_type_id:#{valid_doc_type_id}"]
+              )
+            end
+
+            it 'does not emit an error-level failure log' do
+              post_upload
+
+              allow(Rails.logger).to receive(:error).and_call_original
+              post_upload
+
+              expect(Rails.logger).not_to have_received(:error).with(
+                'ClaimsEvidenceController#create upload failed', anything
+              )
+            end
+          end
+
+          context 'when the upload and persistence both succeed' do
+            it 'releases the lock so subsequent duplicates are caught by the DB check' do
+              post_upload
+              expect(response).to have_http_status(:ok)
+
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+
+              expect(response).to have_http_status(:unprocessable_entity)
+              expect(StatsD).to have_received(:increment).with(
+                'api.claims_evidence.upload.failure',
+                tags: base_tags + ['reason:duplicate', 'detected_by:db', "document_type_id:#{valid_doc_type_id}"]
+              )
+            end
+          end
+
+          context 'when the upload itself failed' do
+            it 'releases the lock so the same file can be retried' do
+              allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+                .to receive(:upload)
+                .and_raise(build(:claims_evidence_service_files_error, :error))
+
+              post_upload
+              expect(response).to have_http_status(:service_unavailable)
+
+              allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+                .to receive(:upload)
+                .and_return(ce_success)
+
+              expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+          end
+
+          # The file is in the eFolder but nothing recorded it, so the lease is the only
+          # thing standing between the Veteran and a duplicate. It must survive the error.
+          context 'when the request fails after Claims Evidence accepted the file' do
+            # Metrics and logs deliberately rescue themselves, so the response body is the
+            # only thing left that can fail once the file has been accepted. Persistence
+            # fails too, otherwise the row would exist and releasing the lease is correct.
+            let(:malformed_response) { double(reason_phrase: 'OK', status: 200, body: 'not-a-hash') }
+
+            before do
+              allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom'))
+              allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+                .to receive(:upload)
+                .and_return(malformed_response)
+            end
+
+            it 'keeps the lease, so a retry is rejected rather than uploaded twice' do
+              post_upload
+              expect(response).to have_http_status(:internal_server_error)
+
+              post_upload
+
+              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response.body).to include('DOC_UPLOAD_DUPLICATE')
+            end
+          end
+
+          context 'when Redis is unavailable' do
+            before { allow(cache).to receive(:write).and_return(nil) }
+
+            it 'still allows the upload' do
+              expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+
+            it 'increments the duplicate check skipped counter' do
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+              expect(StatsD).to have_received(:increment)
+                .with('api.claims_evidence.duplicate_check.skipped', tags: base_tags)
+            end
+
+            it 'still rejects a file that already landed on the claim' do
+              post_upload
+              expect(response).to have_http_status(:ok)
+
+              expect { post_upload }.not_to change(EvidenceSubmission, :count)
+              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response.body).to include('DOC_UPLOAD_DUPLICATE')
+            end
+          end
+
+          # The upload and the DB row both succeeded; only the lease cleanup broke. The
+          # Veteran must not see a 500 for a request that did everything it was asked to.
+          context 'when Redis raises while the lease is being released' do
+            before { allow(cache).to receive(:delete).and_raise(ConnectionPool::TimeoutError.new('no slot')) }
+
+            it 'still returns 200 and persists the submission' do
+              expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+
+            it 'does not count the upload as a failure' do
+              allow(StatsD).to receive(:increment).and_call_original
+              post_upload
+              expect(StatsD).not_to have_received(:increment).with(
+                'api.claims_evidence.upload.failure', anything
+              )
+            end
+          end
+
+          context 'when Redis raises while the lease is being acquired' do
+            before { allow(cache).to receive(:write).and_raise(ConnectionPool::TimeoutError.new('no slot')) }
+
+            it 'still allows the upload' do
+              expect { post_upload }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+          end
+
+          it 'does not block a different file on the same claim' do
+            post_upload
+            expect(response).to have_http_status(:ok)
+
+            expect { post_upload(file: fixture_file_upload('spec/fixtures/files/va.gif', 'image/gif')) }
+              .to change(EvidenceSubmission, :count).by(1)
+            expect(response).to have_http_status(:ok)
           end
         end
 

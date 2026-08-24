@@ -31,7 +31,9 @@ RSpec.describe EvidenceSubmission, type: :model do
       row.reload
       expect(row.template_metadata).to be_a(String)
       expect(JSON.parse(row.template_metadata))
-        .to eq('personalisation' => { 'file_name' => 'note.pdf', 'document_type' => 'Correspondence' })
+        .to eq('personalisation' => { 'file_name' => 'note.pdf',
+                                      'document_type_id' => 34,
+                                      'document_type' => 'Correspondence' })
     end
   end
 end
