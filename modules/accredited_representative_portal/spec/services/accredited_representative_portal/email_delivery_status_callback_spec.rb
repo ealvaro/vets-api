@@ -23,14 +23,15 @@ RSpec.describe AccreditedRepresentativePortal::EmailDeliveryStatusCallback do
     { tags: { 'function' => 'callback_status_email', 'service' => 'va_notify' } }
   end
 
-  def build_notification(status:, metadata: base_metadata)
+  def build_notification(status:, metadata: base_metadata, to: nil, status_reason: nil)
     VANotify::Notification.new(
       notification_id: SecureRandom.uuid,
       status:,
       notification_type: 'email',
-      status_reason: nil,
+      status_reason:,
       callback_metadata: metadata,
-      source_location: 'spec_location'
+      source_location: 'spec_location',
+      to:
     )
   end
 
@@ -66,6 +67,99 @@ RSpec.describe AccreditedRepresentativePortal::EmailDeliveryStatusCallback do
 
     include_examples 'a failed delivery status', 'permanent-failure'
     include_examples 'a failed delivery status', 'temporary-failure'
+
+    context 'when the recipient is a known Staging placeholder address' do
+      let(:fake_email) { 'representative-123@example.com' }
+      let(:tags_with_recipient_type) do
+        { tags: confirmation_mail_tags[:tags].merge('recipient_type' => 'test') }
+      end
+
+      AccreditedRepresentativePortal::EmailDeliveryStatusCallback::ADDRESS_FAILURE_STATUS_REASONS.each do |reason|
+        context "and status_reason is \"#{reason}\"" do
+          %w[permanent-failure temporary-failure].each do |status|
+            it "adds the recipient_type:test tag to the #{status} metric" do
+              expect(StatsD).to receive(:increment).with(
+                "api.vanotify.notifications.#{status}",
+                tags_with_recipient_type
+              )
+
+              described_class.call(
+                build_notification(status:, to: fake_email, status_reason: reason)
+              )
+            end
+          end
+        end
+      end
+
+      context 'but the failure is unrelated to the address' do
+        it 'does not add the recipient_type:test tag' do
+          expect(StatsD).to receive(:increment).with(
+            'api.vanotify.notifications.permanent-failure',
+            confirmation_mail_tags
+          )
+
+          described_class.call(
+            build_notification(status: 'permanent-failure', to: fake_email, status_reason: 'VA Notify technical error')
+          )
+        end
+      end
+
+      context 'when delivered' do
+        it 'does not add the recipient_type:test tag' do
+          expect(StatsD).to receive(:increment).with(
+            'api.vanotify.notifications.delivered',
+            confirmation_mail_tags
+          )
+          expect(StatsD).to receive(:increment).with(
+            'silent_failure_avoided',
+            confirmation_mail_tags
+          )
+
+          described_class.call(build_notification(status: 'delivered', to: fake_email))
+        end
+      end
+
+      context 'but reading the recipient address raises an error' do
+        let(:unreadable_notification) do
+          build_notification(
+            status: 'permanent-failure', to: fake_email,
+            status_reason: 'Email address is in invalid format'
+          ).tap do |notification|
+            allow(notification).to receive(:to).and_raise(StandardError, 'boom')
+          end
+        end
+
+        it 'treats the recipient as not fake' do
+          expect(described_class.fake_email_address?(unreadable_notification)).to be(false)
+        end
+
+        it 'does not add the recipient_type:test tag and still reports the failure' do
+          expect(StatsD).to receive(:increment).with(
+            'api.vanotify.notifications.permanent-failure',
+            confirmation_mail_tags
+          )
+
+          described_class.call(unreadable_notification)
+        end
+      end
+    end
+
+    context 'when the recipient is a real address' do
+      it 'does not add the recipient_type:test tag even with an address-related failure reason' do
+        expect(StatsD).to receive(:increment).with(
+          'api.vanotify.notifications.permanent-failure',
+          confirmation_mail_tags
+        )
+
+        described_class.call(
+          build_notification(
+            status: 'permanent-failure',
+            to: 'real.representative@va.gov',
+            status_reason: 'Email address is in invalid format'
+          )
+        )
+      end
+    end
 
     context 'when status is unrecognized' do
       it 'logs a warning and increments other metric' do

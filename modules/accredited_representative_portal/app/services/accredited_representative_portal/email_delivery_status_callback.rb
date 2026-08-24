@@ -9,8 +9,22 @@
 #
 module AccreditedRepresentativePortal
   class EmailDeliveryStatusCallback
+    # Matches the placeholder addresses generated in Staging by
+    # Representatives::Update#build_fake_email_attributes (e.g. "representative-123@example.com").
+    FAKE_EMAIL_PATTERN = /\Arepresentative-[^@]+@example\.com\z/i
+
+    # VA Notify status_reasons that indicate the failure was specifically caused by an
+    # undeliverable/invalid recipient address, per the Error Status Reason Mapping table:
+    # https://va.ghe.com/software/vanotify-team/blob/main/Support/error_status_reason_mapping.md
+    ADDRESS_FAILURE_STATUS_REASONS = [
+      'Failed to deliver email due to hard bounce',
+      'Email address is in invalid format',
+      'Temporarily failed to deliver email due to soft bounce'
+    ].freeze
+
     def self.call(notification)
       tags = extract_tags(notification)
+      tags = tags.merge('recipient_type' => 'test') if fake_email_failure?(notification)
       base_metric = 'api.vanotify.notifications'
 
       case notification.status
@@ -21,6 +35,24 @@ module AccreditedRepresentativePortal
       else
         report_other(notification, base_metric, tags)
       end
+    end
+
+    # Only tags a failure as coming from a known Staging placeholder address when the failure
+    # reason itself is address-related. This avoids masking unrelated bugs (e.g. template or
+    # provider errors) that happen to occur while sending to a fake address.
+    def self.fake_email_failure?(notification)
+      address_related_failure?(notification) && fake_email_address?(notification)
+    end
+
+    def self.fake_email_address?(notification)
+      FAKE_EMAIL_PATTERN.match?(notification.to.to_s)
+    rescue
+      false
+    end
+
+    def self.address_related_failure?(notification)
+      %w[permanent-failure temporary-failure].include?(notification.status) &&
+        ADDRESS_FAILURE_STATUS_REASONS.include?(notification.status_reason)
     end
 
     def self.extract_tags(notification)
