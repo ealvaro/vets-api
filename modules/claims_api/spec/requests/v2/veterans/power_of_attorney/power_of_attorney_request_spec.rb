@@ -106,6 +106,14 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorneyRequest', type: :
                 expect(response).to have_http_status(:created)
               end
             end
+
+            context 'when the claimant has duplicate participant IDs in MPI' do
+              it_behaves_like 'returns 422 for claimant with duplicate participant IDs' do
+                let(:submit_path) { request_path }
+                let(:submit_scopes) { scopes }
+                let(:submit_params) { valid_request_hash.to_json }
+              end
+            end
           end
 
           context 'when the request data does not pass schema validation' do

@@ -68,6 +68,14 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122', type: :request do
               end
             end
 
+            context 'when Veteran has multiple BIRLS IDs' do
+              it_behaves_like 'returns 422 for veteran with duplicate BIRLS IDs' do
+                let(:submit_path) { appoint_organization_path }
+                let(:submit_scopes) { scopes }
+                let(:submit_params) { data.to_json }
+              end
+            end
+
             context 'and the PoaUpdater fails for a veteran submission' do
               before do
                 allow(Flipper).to receive(:enabled?).with(:claims_api_use_update_poa_relationship).and_return(true)
@@ -815,9 +823,29 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::2122', type: :request do
                           .to receive(:validate_poa_code_exists!)
                         expect_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
                           .to receive(:validate_dependent_by_participant_id!)
+                        expect_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+                          .to receive(:validate_mpi_duplicate_ids!)
 
                         post validate2122_path, params: request_body, headers: auth_header
                       end
+                    end
+                  end
+
+                  it_behaves_like 'returns 422 for claimant with duplicate participant IDs' do
+                    let(:vcr_cassette) { 'claims_api/mpi/find_candidate/valid_icn_full' }
+                    let(:submit_path) { validate2122_path }
+                    let(:submit_scopes) { %w[claim.write claim.read] }
+                    let(:submit_params) do
+                      json = JSON.parse(request_body)
+                      json['data']['attributes']['claimant'] = {
+                        'claimantId' => '1013062086V794840',
+                        'address' => {
+                          'addressLine1' => '123 main st', 'city' => 'anytown',
+                          'stateCode' => 'OR', 'countryCode' => 'US', 'zipCode' => '12345'
+                        },
+                        'relationship' => 'Child'
+                      }
+                      json.to_json
                     end
                   end
                 end

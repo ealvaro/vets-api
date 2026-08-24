@@ -52,6 +52,7 @@ module ClaimsApi
       def validate_claimant(service:, base:)
         validate_poa_code(service:, base:)
         validate_dependent(service:)
+        validate_mpi_duplicate_claimant_ids(service:)
       end
 
       def validate_poa_code(service:, base:)
@@ -69,6 +70,15 @@ module ClaimsApi
         collect_error_messages(
           source: '/claimant/claimantId',
           detail: ClaimsApi::DependentClaimantVerificationService::CLAIMANT_NOT_A_DEPENDENT_ERROR_MESSAGE
+        )
+      end
+
+      def validate_mpi_duplicate_claimant_ids(service:)
+        service.validate_mpi_duplicate_ids!
+      rescue ::Common::Exceptions::UnprocessableEntity
+        collect_error_messages(
+          source: '/claimant/claimantId',
+          detail: ClaimsApi::DependentClaimantVerificationService::DUPLICATE_PARTICIPANT_ID_ERROR_MESSAGE
         )
       end
 

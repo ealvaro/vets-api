@@ -28,9 +28,8 @@ module ClaimsApi
           poa_code = form_attributes.dig('serviceOrganization', 'poaCode')
           validate_poa_code!(poa_code)
           validate_poa_code_for_current_user!(poa_code) if header_request? && !token.client_credentials_token?
-          file_number = ClaimsApi::VeteranFileNumberLookupService.new(
-            target_veteran.ssn, veteran_participant_id
-          ).check_file_number_exists!
+          file_number_lookup_service.validate_no_duplicate_birls_ids!(target_veteran)
+          file_number = file_number_lookup_service.check_file_number_exists!
           claimant_information = validate_dependent_claimant!(poa_code:)
 
           primary_identifier = {}
@@ -191,6 +190,7 @@ module ClaimsApi
 
           service.validate_poa_code_exists!
           service.validate_dependent_by_participant_id!
+          service.validate_mpi_duplicate_ids!
 
           {
             'claimant_participant_id' => service.claimant_participant_id,
@@ -279,6 +279,11 @@ module ClaimsApi
 
         def veteran_participant_id
           target_veteran.participant_id
+        end
+
+        def file_number_lookup_service
+          @file_number_lookup_service ||= ClaimsApi::VeteranFileNumberLookupService.new(target_veteran.ssn,
+                                                                                        veteran_participant_id)
         end
 
         def check_request_ssn_matches_mpi(req_headers)

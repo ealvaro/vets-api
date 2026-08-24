@@ -8,6 +8,7 @@ require_relative 'support/stub_claims_api_auth_token'
 require_relative 'support/stub_claims_api_poa_lookup'
 require_relative 'support/bgs_client_spec_helpers'
 require_relative 'support/shared_examples/dependent_claimant_headers'
+require_relative 'support/shared_examples/poa_mpi_duplicate_checks'
 require 'bd/bd'
 require 'evss_service/base'
 

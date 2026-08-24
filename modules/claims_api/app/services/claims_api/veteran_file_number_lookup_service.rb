@@ -9,11 +9,21 @@ module ClaimsApi
     UNABLE_TO_LOCATE_ERROR_MESSAGE = "Unable to locate Veteran's File Number in Master Person Index (MPI). " \
                                      'Please submit an issue at ask.va.gov ' \
                                      'or call 1-800-MyVA411 (800-698-2411) for assistance.'
+    DUPLICATE_BIRLS_ERROR_MESSAGE = 'Veteran has multiple active BIRLS file numbers in Master Person Index (MPI). ' \
+                                    'Please submit an issue at ask.va.gov or call 1-800-MyVA411 (800-698-2411) ' \
+                                    'for assistance.'
     BGS_ERROR_MESSAGE = "A BGS failure occurred while trying to retrieve Veteran 'FileNumber'"
 
     def initialize(veteran_ssn, participant_id)
       @veteran_ssn = veteran_ssn
       @participant_id = participant_id
+    end
+
+    def validate_no_duplicate_birls_ids!(veteran)
+      birls_ids = veteran&.mpi&.birls_ids || []
+      return unless birls_ids.size > 1
+
+      raise ::Common::Exceptions::UnprocessableEntity.new(detail: DUPLICATE_BIRLS_ERROR_MESSAGE)
     end
 
     def check_file_number_exists!

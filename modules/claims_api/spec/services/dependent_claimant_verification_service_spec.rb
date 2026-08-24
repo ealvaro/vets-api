@@ -227,4 +227,117 @@ Rspec.describe ClaimsApi::DependentClaimantVerificationService do
       end
     end
   end
+
+  describe '#validate_mpi_duplicate_ids!' do
+    let(:valid_participant_id) { 600052699 } # rubocop:disable Style/NumericLiterals
+
+    before do
+      allow(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return true
+      allow_any_instance_of(ClaimsApi::V2::BenefitsDocuments::Service)
+        .to receive(:get_auth_token).and_return('some-value-here')
+    end
+
+    context 'when claimant_ssn and claimant_birth_date are not set (no dependent match yet)' do
+      subject do
+        described_class.new(veteran_participant_id: valid_participant_id, claimant_first_name: 'any',
+                            claimant_last_name: 'name')
+      end
+
+      it 'returns early without calling MPI' do
+        expect(MPI::Service).not_to receive(:new)
+        expect { subject.validate_mpi_duplicate_ids! }.not_to raise_error
+      end
+    end
+
+    context 'when claimant has been matched as a dependent' do
+      subject do
+        described_class.new(veteran_participant_id: valid_participant_id,
+                            claimant_first_name: 'margie', claimant_last_name: 'CURTIS')
+      end
+
+      before do
+        subject.instance_variable_set(:@claimant_ssn, '796163672')
+        subject.instance_variable_set(:@claimant_birth_date, '1953-02-11T00:00:00-06:00')
+      end
+
+      context 'when MPI returns a profile with one participant_id' do
+        let(:mpi_profile) { build(:mpi_profile, participant_ids: ['600052700']) }
+        let(:profile_response) { build(:find_profile_response, profile: mpi_profile) }
+
+        before do
+          allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes).and_return(profile_response)
+        end
+
+        it 'does not raise an error' do
+          expect { subject.validate_mpi_duplicate_ids! }.not_to raise_error
+        end
+      end
+
+      context 'when MPI returns a profile with multiple participant_ids' do
+        let(:mpi_profile) { build(:mpi_profile, participant_ids: %w[600052700 600099999]) }
+        let(:profile_response) { build(:find_profile_response, profile: mpi_profile) }
+
+        before do
+          allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes).and_return(profile_response)
+        end
+
+        it 'raises UnprocessableEntity with the duplicate participant ID message' do
+          expect { subject.validate_mpi_duplicate_ids! }.to raise_error(
+            Common::Exceptions::UnprocessableEntity
+          ) do |error|
+            expect(error.errors.first[:detail]).to include(
+              ClaimsApi::DependentClaimantVerificationService::DUPLICATE_PARTICIPANT_ID_ERROR_MESSAGE
+            )
+          end
+        end
+      end
+
+      context 'when MPI returns nil (no profile found)' do
+        before do
+          allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes).and_return(nil)
+        end
+
+        it 'does not raise an error' do
+          expect { subject.validate_mpi_duplicate_ids! }.not_to raise_error
+        end
+      end
+
+      context 'when MPI raises an exception' do
+        before do
+          allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes)
+            .and_raise(RuntimeError, 'MPI unavailable')
+        end
+
+        it 'logs a warning and does not raise an error' do
+          expect(ClaimsApi::Logger).to receive(:log).with(
+            'dependent_claimant_verification_service',
+            level: :warn,
+            message: 'MPI lookup failed: RuntimeError'
+          )
+          expect { subject.validate_mpi_duplicate_ids! }.not_to raise_error
+        end
+      end
+    end
+
+    context 'when validate_dependent_by_participant_id! is called first (integration path)' do
+      subject do
+        described_class.new(veteran_participant_id: valid_participant_id,
+                            claimant_first_name: 'margie', claimant_last_name: 'CURTIS')
+      end
+
+      let(:mpi_profile) { build(:mpi_profile, participant_ids: %w[600052700 600099999]) }
+      let(:profile_response) { build(:find_profile_response, profile: mpi_profile) }
+
+      before do
+        allow_any_instance_of(MPI::Service).to receive(:find_profile_by_attributes).and_return(profile_response)
+      end
+
+      it 'raises after dependent is matched and MPI detects duplicates' do
+        VCR.use_cassette('claims_api/bgs/person_web_service/find_dependents_by_ptcpnt_id_one_dependent') do
+          subject.validate_dependent_by_participant_id!
+          expect { subject.validate_mpi_duplicate_ids! }.to raise_error(Common::Exceptions::UnprocessableEntity)
+        end
+      end
+    end
+  end
 end

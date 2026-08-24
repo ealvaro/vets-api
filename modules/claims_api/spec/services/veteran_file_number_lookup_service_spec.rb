@@ -66,4 +66,48 @@ RSpec.describe ClaimsApi::VeteranFileNumberLookupService do
       end
     end
   end
+
+  describe '#validate_no_duplicate_birls_ids!' do
+    context 'when veteran is nil' do
+      it 'does not raise' do
+        expect { service.validate_no_duplicate_birls_ids!(nil) }.not_to raise_error
+      end
+    end
+
+    context 'when veteran mpi is nil' do
+      let(:veteran) { OpenStruct.new(mpi: nil) }
+
+      it 'does not raise' do
+        expect { service.validate_no_duplicate_birls_ids!(veteran) }.not_to raise_error
+      end
+    end
+
+    context 'when veteran has no BIRLS IDs' do
+      let(:veteran) { OpenStruct.new(mpi: OpenStruct.new(birls_ids: [])) }
+
+      it 'does not raise' do
+        expect { service.validate_no_duplicate_birls_ids!(veteran) }.not_to raise_error
+      end
+    end
+
+    context 'when veteran has exactly one BIRLS ID' do
+      let(:veteran) { OpenStruct.new(mpi: OpenStruct.new(birls_ids: ['796043735'])) }
+
+      it 'does not raise' do
+        expect { service.validate_no_duplicate_birls_ids!(veteran) }.not_to raise_error
+      end
+    end
+
+    context 'when veteran has multiple BIRLS IDs' do
+      let(:veteran) { OpenStruct.new(mpi: OpenStruct.new(birls_ids: %w[796043735 123456789])) }
+
+      it 'raises UnprocessableEntity with the duplicate BIRLS message' do
+        expect { service.validate_no_duplicate_birls_ids!(veteran) }.to raise_error(
+          Common::Exceptions::UnprocessableEntity
+        ) do |error|
+          expect(error.errors.first[:detail]).to include('multiple active BIRLS file numbers')
+        end
+      end
+    end
+  end
 end

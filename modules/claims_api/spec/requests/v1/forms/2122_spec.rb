@@ -219,6 +219,20 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
               end
             end
 
+            context 'when Veteran has multiple BIRLS IDs' do
+              it 'returns a 422' do
+                mock_acg(scopes) do |auth_header|
+                  allow_any_instance_of(MPIData).to receive(:birls_ids).and_return(%w[111222333 444555666])
+                  allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+                    .to receive(:check_request_ssn_matches_mpi).and_return(nil)
+                  post path, params: data, headers: headers.merge(auth_header)
+                  expect(response).to have_http_status(:unprocessable_content)
+                  expect(JSON.parse(response.body)['errors'][0]['detail'])
+                    .to include('multiple active BIRLS file numbers')
+                end
+              end
+            end
+
             context 'and the PoaUpdater fails, and updates the POA status to errored' do
               # enable feature toggle for ManageRepresentativeService in the PoaUpdater
               before do
@@ -732,6 +746,37 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
             poa_id = parsed['data']['id']
             poa = ClaimsApi::PowerOfAttorney.find(poa_id)
             expect(poa.auth_headers).not_to have_key('dependent')
+          end
+        end
+      end
+
+      context 'when the claimant has duplicate participant IDs in MPI' do
+        include_context 'stub validation methods'
+
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_dependent_claimants).and_return(true)
+          # restore the real method so the service chain below runs naturally
+          allow_any_instance_of(ClaimsApi::V1::Forms::PowerOfAttorneyController)
+            .to receive(:validate_dependent_claimant!).and_call_original
+          allow_any_instance_of(ClaimsApi::DependentClaimantVerificationService)
+            .to receive(:validate_poa_code_exists!).and_return(nil)
+          allow_any_instance_of(ClaimsApi::PersonWebService)
+            .to receive(:find_dependents_by_ptcpnt_id)
+            .and_return({ number_of_records: 1,
+                          dependent: [{ first_nm: 'Jane', last_nm: 'Doe', ptcpnt_id: '999888777',
+                                        ssn_nbr: '123456789', brthdy_dt: '1990-01-01' }] })
+          mpi_profile = build(:mpi_profile, participant_ids: %w[600052700 600099999])
+          allow_any_instance_of(MPI::Service)
+            .to receive(:find_profile_by_attributes)
+            .and_return(build(:find_profile_response, profile: mpi_profile))
+        end
+
+        it 'returns a 422 with the duplicate participant ID error' do
+          mock_acg(scopes) do |auth_header|
+            post path, params: data_with_claimant, headers: headers.merge(auth_header)
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(JSON.parse(response.body)['errors'][0]['detail'])
+              .to include('multiple active Participant IDs')
           end
         end
       end

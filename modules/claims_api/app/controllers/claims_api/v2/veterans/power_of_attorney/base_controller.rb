@@ -203,10 +203,14 @@ module ClaimsApi
 
         # This matches the addition in the V1 and used in the dependent assignmment service
         def add_file_number_to_headers(headers)
-          file_number = ClaimsApi::VeteranFileNumberLookupService.new(
-            target_veteran.ssn, target_veteran.participant_id
-          ).check_file_number_exists!
+          file_number_lookup_service.validate_no_duplicate_birls_ids!(target_veteran)
+          file_number = file_number_lookup_service.check_file_number_exists!
           headers.merge!({ file_number: })
+        end
+
+        def file_number_lookup_service
+          @file_number_lookup_service ||= ClaimsApi::VeteranFileNumberLookupService.new(target_veteran.ssn,
+                                                                                        target_veteran.participant_id)
         end
 
         def validation_success(form_number)
