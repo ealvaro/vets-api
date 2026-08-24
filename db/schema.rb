@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_155107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -1908,6 +1908,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_120000) do
     t.jsonb "user_data_ciphertext", comment: "encrypted data that can be used to identify the associated user"
     t.index ["claim_group_guid"], name: "index_saved_claim_groups_on_claim_group_guid"
     t.index ["needs_kms_rotation"], name: "index_saved_claim_groups_on_needs_kms_rotation"
+    t.index ["saved_claim_id"], name: "index_saved_claim_groups_on_saved_claim_id"
   end
 
   create_table "saved_claims", id: :serial, force: :cascade do |t|
