@@ -2090,6 +2090,15 @@ features:
       window without a dispense and how long refills actually take to fill.
       Has no effect on refill classification.
     enable_in_development: true
+  mhv_medications_stuck_status_logging:
+    actor_type: user
+    description: >-
+      Measurement-only logging for prescriptions stuck in "submitted" (never
+      dispensed past the submitted window) or "refill in process" (past the
+      refill window after a dispense date). When enabled, emits StatsD counters
+      and structured logs (no PII/PHI) tagged by source_ehr and day bucket.
+      Has no effect on prescription classification.
+    enable_in_development: true
   mhv_mmi_refill_status_bandaid_temp:
     actor_type: user
     description: >-

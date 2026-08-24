@@ -4,9 +4,11 @@ require_relative 'base_service'
 require_relative 'constants'
 require_relative 'models/prescription'
 require_relative 'adapters/prescriptions_adapter'
+require_relative 'concerns/prescription_stuck_status_logging'
 
 module UnifiedHealthData
   class PrescriptionService < UnifiedHealthData::BaseService
+    include UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging
     # Display statuses that count as "in progress" for list-summary logging.
     # Downstream APIs return these VistA-style statuses (never the literal "In progress").
     # Keep in sync with MyHealth::V2::PrescriptionsController::IN_PROGRESS_STATUSES_V1.
@@ -140,6 +142,7 @@ module UnifiedHealthData
       summary = prescription_status_summary(prescriptions)
       Rails.logger.info(prescription_list_log_payload(result, current_only, summary))
       emit_prescription_list_statsd(summary)
+      log_stuck_status_metrics(prescriptions)
     rescue => e
       Rails.logger.warn(
         'UHD prescriptions summary logging failed',

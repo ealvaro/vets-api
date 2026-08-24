@@ -10,6 +10,7 @@ require_relative 'oracle_health_refill_helper'
 require_relative 'oracle_health_refill_window_logging_helper'
 require_relative 'oracle_health_renewal_flow_helper'
 require_relative 'oracle_health_renewability_helper'
+require_relative 'oracle_health_stuck_status_logging_helper'
 require_relative 'oracle_health_task_helper'
 require_relative 'oracle_health_tracking_helper'
 
@@ -24,6 +25,7 @@ module UnifiedHealthData
       include OracleHealthRefillWindowLoggingHelper
       include OracleHealthRenewalFlowHelper
       include OracleHealthRenewabilityHelper
+      include OracleHealthStuckStatusLoggingHelper
       include OracleHealthTaskHelper
       include OracleHealthTrackingHelper
 
@@ -113,6 +115,9 @@ module UnifiedHealthData
 
         # Measurement-only instrumentation (flag-guarded, side-effect-free wrt classification)
         log_refill_window_measurement(resource, attributes, dispenses_data)
+
+        # Flag-guarded: catches OH "submitted" refills stuck past the in-flight window before OH collapses them.
+        log_oh_submitted_stuck(resource, dispenses_data)
 
         attributes
       end
