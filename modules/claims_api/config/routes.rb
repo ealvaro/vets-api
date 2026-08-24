@@ -66,6 +66,12 @@ ClaimsApi::Engine.routes.draw do
     end
   end
 
+  namespace :v3, defaults: { format: 'json' } do
+    namespace :veterans do
+      post '/:veteranId/526', to: 'disability_compensation#submit'
+    end
+  end
+
   namespace :docs do
     mount Rswag::Ui::Engine => 'swagger'
 
