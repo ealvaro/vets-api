@@ -581,7 +581,7 @@ paths:
               schema:
                 type: object
                 description: |
-                  The returned object is a <a target="_blank" href='https://va.ghe.com/software/mhv-np-common-api/blob/development/src/main/java/gov/va/med/mhv/common/api/dto/PatientDTO.java'>PatientDTO object</a>.
+                  The returned object contains patient account information including treatment facilities.
           description: OK
         '401':
           content:
@@ -607,7 +607,7 @@ paths:
               schema:
                 type: object
                 description: |
-                  The returned object is a <a target="_blank" href='https://va.ghe.com/software/mhv-np-bluebutton-api/blob/development/mhv-bluebutton-portal-data-jpa/src/main/java/gov/va/med/mhv/bluebutton/model/phr/PhrDemographics.java'>PhrDemographics object</a>.
+                  The returned object contains self-entered demographic information.
           description: OK
         '401':
           content:
@@ -661,9 +661,9 @@ paths:
                     type: array
                     description: |
                       A list of self-entered health information objects. Each object will be a self-entered type, such as:
-                      - <a target="_blank" href='https://va.ghe.com/software/mhv-np-getcare-api/blob/development/mhv-getcare-portal-api/src/main/java/gov/va/med/mhv/getcare/common/dto/HealthInsuranceDTO.java'>HealthInsuranceDTO</a>
-                      - <a target="_blank" href='https://va.ghe.com/software/mhv-np-health-history-api/blob/development/mhv-health-history-portal-api/src/main/java/gov/va/med/mhv/health/dto/MilitaryHistoryDTO.java'>MilitaryHistoryDTO</a>
-                      - <a target="_blank" href='https://va.ghe.com/software/mhv-np-health-history-api/blob/development/mhv-health-history-portal-api/src/main/java/gov/va/med/mhv/health/dto/ImmunizationDTO.java'>ImmunizationDTO</a>
+                      - Health Insurance
+                      - Military History
+                      - Immunization
                     items:
                       type: object
                       properties:
