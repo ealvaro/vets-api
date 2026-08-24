@@ -1276,9 +1276,8 @@ GEM
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
     will_paginate (4.0.1)
-    with_advisory_lock (7.5.0)
+    with_advisory_lock (7.6.0)
       activerecord (>= 7.2)
-      zeitwerk (>= 2.7)
     xmldsig (0.3.2)
       nokogiri
     xmlenc (0.8.0)
@@ -1289,7 +1288,7 @@ GEM
     xmlmapper (0.8.1)
       nokogiri (~> 1.11)
     yard (0.9.45)
-    zeitwerk (2.8.2)
+    zeitwerk (2.8.3)
 
 PLATFORMS
   aarch64-linux
