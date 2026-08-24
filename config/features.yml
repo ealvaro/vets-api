@@ -2889,6 +2889,10 @@ features:
     actor_type: user
     description: Utilizes the Enrollment System's eeSummary REST API
     enable_in_development: true
+  va_notify_in_progress_forms_stagger:
+    actor_type: user
+    description: If enabled, VANotify::InProgressForms staggers reminder enqueues across a one-hour window instead of enqueuing them all at once.
+    enable_in_development: false
   va_notify_push_notifications:
     actor_type: user
     description: Enables initialization of push notification client in VA Notify
