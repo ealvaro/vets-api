@@ -33,12 +33,26 @@ module AccreditedRepresentativePortal
       end
 
       def call
-        perform_transaction
+        # Step 1: commit the acceptance row on its own, short-lived transaction.
+        # This is where the unique-index lock on power_of_attorney_request_id
+        # is taken. Committing immediately means any concurrent Accept attempt
+        # for the same request fails fast with RecordNotUnique (or, under
+        # contention, LockWaitTimeout) instead of queuing behind an open
+        # transaction for the duration of the Lighthouse call below.
+        @resolution = create_acceptance
+
+        # Step 2: everything from here on is outside the DB transaction that
+        # held the lock. A slow or failing Lighthouse call can no longer make
+        # other requests wait on this row.
+        response = submit_form
+        form_submission = create_form_submission!(response.body)
+        enqueue_form_processing(form_submission)
+        form_submission
       rescue Common::Exceptions::ResourceNotFound => e
         handle_resource_not_found(e)
       rescue ActiveRecord::RecordInvalid => e
         handle_record_invalid(e)
-      rescue ActiveRecord::RecordNotUnique => e
+      rescue ActiveRecord::RecordNotUnique, ActiveRecord::LockWaitTimeout => e
         handle_already_resolved(e)
       rescue *TRANSIENT_ERROR_TYPES, Faraday::TimeoutError => e
         handle_transient_error(e)
@@ -49,16 +63,6 @@ module AccreditedRepresentativePortal
       end
 
       private
-
-      def perform_transaction
-        ActiveRecord::Base.transaction do
-          @resolution = create_acceptance
-          response = submit_form
-          form_submission = create_form_submission!(response.body)
-          enqueue_form_processing(form_submission)
-          form_submission
-        end
-      end
 
       def create_acceptance
         PowerOfAttorneyRequestDecision.create_acceptance!(
@@ -97,6 +101,9 @@ module AccreditedRepresentativePortal
       def handle_fatal_error(error)
         error_message = error.respond_to?(:detail) ? error.detail : error.message
         log_enqueue_failure(error, error_message)
+        # @resolution is already committed at this point (Step 1 above), so
+        # this error form submission correctly records a failure against a
+        # real, persisted acceptance rather than one that might roll back.
         create_error_form_submission(error_message, {})
         raise Error.new(error_message, :not_found)
       end
@@ -104,6 +111,9 @@ module AccreditedRepresentativePortal
       def handle_unexpected_error(error)
         Rails.logger.error("Unexpected error in Accept#call: #{error.class} - #{error.message}")
         Rails.logger.error(error.backtrace.join("\n")) if error.backtrace
+        # Only meaningful if create_acceptance already succeeded; if it
+        # raised, @resolution is nil and poa_request association is still
+        # valid, so this call is safe either way.
         create_error_form_submission(error.message, {})
         raise
       end
