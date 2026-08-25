@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class GIDSController < ApplicationController
+  include InstitutionsHelper
   service_tag 'gibill-comparison'
   skip_before_action :authenticate
 

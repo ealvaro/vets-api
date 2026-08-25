@@ -12,7 +12,9 @@ module V1
       end
 
       def show
-        render json: service.get_institution_details_v1(scrubbed_params)
+        response = service.get_institution_details_v1(scrubbed_params)
+        remove_sco_contact_details!(response)
+        render json: response
       end
 
       def children

@@ -155,6 +155,7 @@ app/controllers/v1/post911_gi_bill_statuses_controller.rb @software/govcio-vfep-
 app/controllers/v1/profile @software/vfs-authenticated-experience-backend
 app/controllers/v1/sessions_controller.rb @software/octo-identity
 app/helpers/parameter_filter_helper.rb @software/va-platform-backend
+app/helpers/institutions_helper.rb @software/govcio-vfep-codereviewers
 app/mailers/application_mailer.rb @software/va-platform-backend
 app/mailers/bio_submission_status_report_mailer.rb @software/benefits-optimization-aquia
 app/mailers/create_daily_spool_files_mailer.rb @software/va-platform-backend
@@ -2150,6 +2151,7 @@ spec/requests/v1/facility_accounts_spec.rb @software/vsa-debt-resolution
 spec/requests/v1/gi/lcpe/exams_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/v1/gi/lcpe/lacs_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/v1/gi/version_public_exports_spec.rb @software/govcio-vfep-codereviewers
+spec/requests/v1/gi/institutions_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/v1/medical_copays_spec.rb @software/vsa-debt-resolution
 spec/requests/v1/post911_gi_bill_status_spec.rb @software/govcio-vfep-codereviewers
 spec/requests/va_profile @software/vfs-authenticated-experience-backend

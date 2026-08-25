@@ -45,6 +45,21 @@ RSpec.describe 'V0::GI::Institutions', type: :request do
     expect(response).to match_response_schema('gi/institution')
   end
 
+  it 'strips SCO email and phone from institution details' do
+    VCR.use_cassette('gi_client/gets_the_institution_details_with_vsco') do
+      get '/v0/gi/institutions/11902614'
+    end
+
+    scos = JSON.parse(response.body).dig('data', 'attributes', 'versioned_school_certifying_officials')
+    expect(scos).to be_present
+    scos.each do |sco|
+      expect(sco).not_to have_key('email')
+      expect(sco).not_to have_key('phone_number')
+      expect(sco).not_to have_key('phone_area_code')
+      expect(sco).not_to have_key('phone_extension')
+    end
+  end
+
   it 'responds to GET #show when camel-inflected' do
     VCR.use_cassette('gi_client/gets_the_institution_details') do
       get '/v0/gi/institutions/11902614', headers: inflection_header
