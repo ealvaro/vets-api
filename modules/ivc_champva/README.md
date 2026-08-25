@@ -53,7 +53,7 @@ The system includes an email notification service that sends confirmation emails
 The module supports merging 10-10d CHAMPVA applications with Other Health Insurance (OHI) forms through the `submit_champva_app_merged` endpoint, which automatically generates and attaches 10-7959c forms as supporting documents when applicants indicate they have other health insurance.
 
 ### Combined PDF Flow for FMP
-The module includes a feature for Foreign Medical Program (FMP) claims that combines all submitted documents into a single PDF before submission to PEGA. When the `champva_fmp_single_file_upload` feature flag is enabled and a form 10-7959f-2 (FMP Claim) is submitted:
+The module includes a feature for Foreign Medical Program (FMP) claims that combines all submitted documents into a single PDF before submission to PEGA. When a form 10-7959f-2 (FMP Claim) is submitted:
 
 1. The system collects all PDFs associated with the submission, including:
    - The main form (10-7959f-2)
@@ -91,7 +91,6 @@ Current feature flags used to control functionality:
 | Flag | Purpose | Notes |
 |------|---------|-------|
 | `champva_send_to_ves` | Enables sending form submission data to the VES API | Long-running feature flag pending integration signoff from VES team |
-| `champva_fmp_single_file_upload` | Enables combining FMP form and supporting docs into a single PDF | Only applies to form 10-7959f-2 | |
 | `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads |
 | `champva_claims_insurance_dates` | Uses the 12/31/2027 OMB revision of 10-7959A (requires `champva_form_versioning`); shared with FE | Adds beneficiary email, OHI effective/termination dates, signer email on the PDF and in Pega metadata |
 | `champva_send_7959c_to_ves` | Routes standalone 10-7959c (OHI) submissions to VES | 10-10d always routes to VES regardless of this flag |

@@ -92,23 +92,12 @@ module IvcChampva
       end
 
       def get_ivc_forms(form_uuid, file_names)
-        forms = if file_names.any? { |name| IvcChampva::FileNaming.combined_pdf?(name) }
-                  # For merged/combined PDFs, update all records for this submission
-                  # (Pega only sees the single combined file, but we have individual records)
-                  fetch_forms_by_uuid(form_uuid)
-                else
-                  forms_query(form_uuid, file_names)
-                end
-
-        # Add VES JSON files to the collection (Pega doesn't send VES JSON file names in callback)
-        # TODO: this doesn't cover the indexed OHI "_ohi_ves_N.json" files, but they are no longer being persisted
-        # anyways.  Flagging for removal alondside champva_bypass_persisting_ves_json_to_database feature flag.
-        ves_json_forms = fetch_forms_by_uuid(form_uuid).where('file_name LIKE ?', '%_ves.json')
-        if ves_json_forms.any?
-          Rails.logger.info "Adding #{ves_json_forms.count} VES JSON file(s) to update for form_uuid: #{form_uuid}"
-          forms + ves_json_forms.to_a
+        if file_names.any? { |name| IvcChampva::FileNaming.combined_pdf?(name) }
+          # For merged/combined PDFs, update all records for this submission
+          # (Pega only sees the single combined file, but we have individual records)
+          fetch_forms_by_uuid(form_uuid)
         else
-          forms
+          forms_query(form_uuid, file_names)
         end
       end
 

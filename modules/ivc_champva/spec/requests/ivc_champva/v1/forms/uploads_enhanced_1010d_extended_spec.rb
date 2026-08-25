@@ -88,7 +88,6 @@ RSpec.describe 'IvcChampva::V1::Uploads — 10-10D supplemental docs-only resubm
     allow(Flipper).to receive(:enabled?).with(:champva_send_7959c_to_ves, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_send_ves_to_pega, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_mpi_validation, any_args).and_return(false)
-    allow(Flipper).to receive(:enabled?).with(:champva_store_request_json, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_update_metadata_keys, any_args).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:champva_form_versioning, any_args).and_return(false)
 

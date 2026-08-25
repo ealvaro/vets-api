@@ -16,7 +16,7 @@ module IvcChampva
     # @param [Hash] options Optional arguments:
     #   - :insert_db_row [Boolean] whether to record the uploads and S3 responses in the database (default: false)
     #   - :current_user [User] The current user, used for feature flags
-    #   - :parsed_form_data [Hash] Original form data for storage (when feature flag enabled)
+    #   - :parsed_form_data [Hash] Original form data for storage
     #
     # @return [IvcChampva::FileUploader]
     #
@@ -27,9 +27,7 @@ module IvcChampva
       @insert_db_row = options.fetch(:insert_db_row, false)
       @current_user = options[:current_user]
       @merge_map = {}
-      @parsed_form_data = if options[:parsed_form_data] && Flipper.enabled?(:champva_store_request_json, @current_user)
-                            options[:parsed_form_data]
-                          end
+      @parsed_form_data = options[:parsed_form_data]
       @form_recorder = IvcChampva::FormRecorder.new(
         @metadata, @form_id,
         current_user: @current_user,
@@ -80,13 +78,13 @@ module IvcChampva
       return false if Flipper.enabled?(:form1010d_enhanced_flow_enabled, @current_user) &&
                       @metadata['docType']&.start_with?('10-10D-SUPPLEMENTAL')
 
-      Flipper.enabled?(:champva_bypass_metadata_json_file_for_1010d, @current_user) && @form_id == 'vha_10_10d'
+      @form_id == 'vha_10_10d'
     end
 
     ##
-    # Determines whether to handle uploads iteratively or as a combined PDF based on form type and feature flag.
+    # Determines whether to handle uploads iteratively or as a combined PDF based on form type.
     def handle_combined_or_iterative_uploads
-      if Flipper.enabled?(:champva_fmp_single_file_upload, @current_user) && @form_id == 'vha_10_7959f_2'
+      if @form_id == 'vha_10_7959f_2'
         handle_combined_uploads
       else
         apply_document_combining
@@ -109,11 +107,10 @@ module IvcChampva
     end
 
     ##
-    # Handles iterative uploading of files for standard claims (non-FMP or when feature flag is off)
+    # Handles iterative uploading of files for standard (non-FMP) claims
     #
     # @return [Array<Array<Integer, String>>] Array of arrays containing status codes and error messages
     def handle_iterative_uploads
-      bypass_ves_json_flag = Flipper.enabled?(:champva_bypass_persisting_ves_json_to_database, @current_user)
       @metadata['attachment_ids'].zip(@file_paths).map do |attachment_id, file_path|
         next if file_path.blank?
 
@@ -124,10 +121,11 @@ module IvcChampva
         file_name = File.basename(file_path).gsub('-tmp', '')
         response_status = upload(file_name, file_path,
                                  IvcChampva::DataTransformations.metadata_for_s3(@metadata, attachment_id, file_path))
-        # When bypassing, VES/OHI JSON files are ingested by VES (not Pega) and must not be
-        # persisted, otherwise they linger without a Pega status and skew reconciliation.
-        skip_ves_json = bypass_ves_json_flag && IvcChampva::FileNaming.ves_json?(file_name)
-        @form_recorder.insert_form(file_name, response_status) if @insert_db_row && !skip_ves_json
+        # VES/OHI JSON files are ingested by VES (not Pega) and must not be persisted,
+        # otherwise they linger without a Pega status and skew reconciliation.
+        if @insert_db_row && !IvcChampva::FileNaming.ves_json?(file_name)
+          @form_recorder.insert_form(file_name, response_status)
+        end
 
         @form_recorder.insert_combined_docs(file_path, @merge_map, insert_db_row: @insert_db_row)
 

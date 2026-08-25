@@ -21,40 +21,20 @@ describe IvcChampva::FileUploader do
   let(:uploader) { IvcChampva::FileUploader.new(form_id, metadata, file_paths, insert_db_row:) }
 
   describe '#initialize' do
-    context 'when champva_store_request_json flipper is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_store_request_json, current_user).and_return(true)
-      end
-
-      it 'stores parsed_form_data when provided' do
-        uploader_with_data = IvcChampva::FileUploader.new(
-          form_id, metadata, file_paths,
-          insert_db_row:, current_user:, parsed_form_data:
-        )
-        expect(uploader_with_data.instance_variable_get(:@parsed_form_data)).to eq(parsed_form_data)
-      end
-
-      it 'stores nil when parsed_form_data is not provided' do
-        uploader_without_data = IvcChampva::FileUploader.new(
-          form_id, metadata, file_paths,
-          insert_db_row:, current_user:
-        )
-        expect(uploader_without_data.instance_variable_get(:@parsed_form_data)).to be_nil
-      end
+    it 'stores parsed_form_data when provided' do
+      uploader_with_data = IvcChampva::FileUploader.new(
+        form_id, metadata, file_paths,
+        insert_db_row:, current_user:, parsed_form_data:
+      )
+      expect(uploader_with_data.instance_variable_get(:@parsed_form_data)).to eq(parsed_form_data)
     end
 
-    context 'when champva_store_request_json flipper is disabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:champva_store_request_json, current_user).and_return(false)
-      end
-
-      it 'does not store parsed_form_data even when provided' do
-        uploader_with_data = IvcChampva::FileUploader.new(
-          form_id, metadata, file_paths,
-          insert_db_row:, current_user:, parsed_form_data:
-        )
-        expect(uploader_with_data.instance_variable_get(:@parsed_form_data)).to be_nil
-      end
+    it 'stores nil when parsed_form_data is not provided' do
+      uploader_without_data = IvcChampva::FileUploader.new(
+        form_id, metadata, file_paths,
+        insert_db_row:, current_user:
+      )
+      expect(uploader_without_data.instance_variable_get(:@parsed_form_data)).to be_nil
     end
   end
 
@@ -62,8 +42,6 @@ describe IvcChampva::FileUploader do
     context 'when all PDF uploads succeed' do
       before do
         allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
-                                                  @current_user).and_return(false)
       end
 
       it 'generates and uploads meta JSON' do
@@ -72,45 +50,11 @@ describe IvcChampva::FileUploader do
       end
     end
 
-    context 'when all PDF uploads succeed for form 10-10d' do
+    context 'when form is 10-10d' do
       let(:form_id) { 'vha_10_10d' }
 
       before do
         allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
-                                                  @current_user).and_return(false)
-      end
-
-      it 'generates and uploads meta JSON' do
-        expect(uploader).to receive(:generate_and_upload_meta_json).and_return([200, nil])
-        uploader.handle_uploads
-      end
-    end
-
-    context 'when champva_bypass_metadata_json_file_for_1010d flipper is enabled and form is not 10-10d' do
-      let(:form_id) { 'vha_10_7959c' }
-
-      before do
-        allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
-                                                  @current_user).and_return(true)
-        allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled,
-                                                  @current_user).and_return(false)
-      end
-
-      it 'generates and uploads meta JSON' do
-        expect(uploader).to receive(:generate_and_upload_meta_json).and_return([200, nil])
-        uploader.handle_uploads
-      end
-    end
-
-    context 'when champva_bypass_metadata_json_file_for_1010d flipper is enabled and form is 10-10d' do
-      let(:form_id) { 'vha_10_10d' }
-
-      before do
-        allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_metadata_json_file_for_1010d,
-                                                  @current_user).and_return(true)
         allow(Flipper).to receive(:enabled?).with(:form1010d_enhanced_flow_enabled,
                                                   @current_user).and_return(false)
       end
@@ -156,7 +100,7 @@ describe IvcChampva::FileUploader do
       end
     end
 
-    context 'when FMP single file upload flipper is enabled' do
+    context 'when form is FMP 10-7959f-2' do
       let(:form_id) { 'vha_10_7959f_2' }
       let(:combined_pdf_path) { File.join('tmp/', "#{metadata['uuid']}_#{form_id}_combined.pdf") }
       let(:file_paths) do
@@ -166,7 +110,6 @@ describe IvcChampva::FileUploader do
       end
 
       before do
-        allow(Flipper).to receive(:enabled?).with(:champva_fmp_single_file_upload, @current_user).and_return(true)
         allow(FileUtils).to receive(:rm_f)
       end
 
@@ -361,11 +304,9 @@ describe IvcChampva::FileUploader do
     let(:insert_db_row) { true }
     let(:form_recorder) { uploader.instance_variable_get(:@form_recorder) }
 
-    context 'when champva_bypass_persisting_ves_json_to_database is enabled' do
+    context 'with a VES JSON file' do
       before do
         allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
-                                                  @current_user).and_return(true)
       end
 
       it 'uploads the _ves.json file but does not insert it into the database' do
@@ -373,26 +314,6 @@ describe IvcChampva::FileUploader do
         expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
         expect(form_recorder).to receive(:insert_form).with('file2.png', [200])
         expect(form_recorder).not_to receive(:insert_form).with(
-          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json',
-          [200]
-        )
-
-        uploader.send(:handle_iterative_uploads)
-      end
-    end
-
-    context 'when champva_bypass_persisting_ves_json_to_database is disabled' do
-      before do
-        allow(uploader).to receive(:upload).and_return([200])
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
-                                                  @current_user).and_return(false)
-      end
-
-      it 'uploads the _ves.json file and inserts it into the database' do
-        expect(uploader).to receive(:upload).exactly(3).times
-        expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
-        expect(form_recorder).to receive(:insert_form).with('file2.png', [200])
-        expect(form_recorder).to receive(:insert_form).with(
           '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json',
           [200]
         )
@@ -416,30 +337,12 @@ describe IvcChampva::FileUploader do
 
       before { allow(uploader).to receive(:upload).and_return([200]) }
 
-      it 'does not persist VES or OHI VES JSON when bypass is enabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
-                                                  @current_user).and_return(true)
-
+      it 'does not persist VES or OHI VES JSON' do
         expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
         expect(form_recorder).not_to receive(:insert_form).with(
           '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json', [200]
         )
         expect(form_recorder).not_to receive(:insert_form).with(
-          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ohi_ves_0.json', [200]
-        )
-
-        uploader.send(:handle_iterative_uploads)
-      end
-
-      it 'persists OHI VES JSON when bypass is disabled' do
-        allow(Flipper).to receive(:enabled?).with(:champva_bypass_persisting_ves_json_to_database,
-                                                  @current_user).and_return(false)
-
-        expect(form_recorder).to receive(:insert_form).with('file1.pdf', [200])
-        expect(form_recorder).to receive(:insert_form).with(
-          '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ves.json', [200]
-        )
-        expect(form_recorder).to receive(:insert_form).with(
           '4171e61a-03b5-49f3-8717-dbf340310473_vha_10_10d_ohi_ves_0.json', [200]
         )
 
