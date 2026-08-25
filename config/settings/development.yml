@@ -189,12 +189,14 @@ check_in:
     client_number_oh: ~
     client_secret: ~
     e_subscription_key: ~
+    open_timeout: 15
     redis_token_expiry: 3540
     s_subscription_key: ~
     scope: ~
     service_name: BTSSS-API
     subscription_key: ~
     tenant_id: abcdefgh-1234-5678-12345-11e8b8ce491e
+    timeout: 90
     travel_pay_client_id: ~
     travel_pay_client_secret: secret
     travel_pay_client_secret_oh: secret

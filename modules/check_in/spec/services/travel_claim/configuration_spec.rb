@@ -5,6 +5,29 @@ require 'rails_helper'
 RSpec.describe TravelClaim::Configuration do
   subject { described_class.instance }
 
+  describe '#request_options' do
+    it 'uses travel_pay Faraday timeout defaults' do
+      expect(subject.request_options).to eq(open_timeout: 15, timeout: 90)
+    end
+
+    it 'applies the timeouts on Faraday connections' do
+      connection = subject.connection
+
+      expect(connection.options.open_timeout).to eq(15)
+      expect(connection.options.timeout).to eq(90)
+    end
+
+    context 'with custom timeout settings' do
+      before do
+        allow(Settings.check_in.travel_reimbursement_api_v2).to receive_messages(open_timeout: 20, timeout: 120)
+      end
+
+      it 'uses the custom timeout values' do
+        expect(subject.request_options).to eq(open_timeout: 20, timeout: 120)
+      end
+    end
+  end
+
   describe '#service_name' do
     it 'has a service name' do
       expect(subject.service_name).to eq('BTSSS-API')

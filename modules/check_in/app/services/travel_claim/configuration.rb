@@ -12,10 +12,6 @@ module TravelClaim
   class Configuration < Common::Client::Configuration::REST
     include Singleton
 
-    # Override default timeouts to handle multiple external API calls in travel claims submission
-    self.open_timeout = 30  # Connection establishment timeout
-    self.read_timeout = 30  # Response timeout for external API calls
-
     ##
     # @!attribute [w] server_url
     #   @return [String, nil] Custom server URL that overrides the default base_path
@@ -42,6 +38,19 @@ module TravelClaim
     #
     def service_name
       Settings.check_in.travel_reimbursement_api_v2.service_name
+    end
+
+    ##
+    # Faraday timeouts from Settings.check_in.travel_reimbursement_api_v2.
+    # Defaults match the travel_pay module (open_timeout 15, timeout 90).
+    #
+    # @return [Hash] open_timeout and timeout values
+    #
+    def request_options
+      {
+        open_timeout: Settings.check_in.travel_reimbursement_api_v2.open_timeout,
+        timeout: Settings.check_in.travel_reimbursement_api_v2.timeout
+      }
     end
 
     ##
