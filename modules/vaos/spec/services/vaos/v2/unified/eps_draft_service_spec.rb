@@ -94,14 +94,14 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
           .to raise_error(Common::Exceptions::UnprocessableEntity)
       end
 
-      it 'increments a StatsD counter tagged eps_draft_referral_already_used' do
+      it 'increments the shared failure counter with error_type:eps_draft_referral_already_used' do
         expect { service.create_for_referral(referral) }
           .to raise_error(Common::Exceptions::UnprocessableEntity)
 
         expect(StatsD).to have_received(:increment)
           .with(
-            'api.vaos.unified_eps_draft.eps_draft_referral_already_used',
-            tags: ['provider_type:eps']
+            "#{described_class::STATSD_KEY_PREFIX}.failure",
+            tags: ['provider_type:eps', 'error_type:eps_draft_referral_already_used']
           )
       end
     end
@@ -145,14 +145,16 @@ RSpec.describe VAOS::V2::Unified::EpsDraftService do
           .to raise_error(Common::Exceptions::BadGateway)
       end
 
-      it 'increments a StatsD counter tagged eps_draft_existing_appointment_check_failed' do
+      it 'increments the shared failure counter with error_type:eps_draft_existing_appointment_check_failed' do
         expect { service.create_for_referral(referral) }
           .to raise_error(Common::Exceptions::BadGateway)
 
+        # Same metric name as the "already used" case above, differing only by tag.
+        # That is what makes draft failures aggregatable into a single count.
         expect(StatsD).to have_received(:increment)
           .with(
-            'api.vaos.unified_eps_draft.eps_draft_existing_appointment_check_failed',
-            tags: ['provider_type:eps']
+            "#{described_class::STATSD_KEY_PREFIX}.failure",
+            tags: ['provider_type:eps', 'error_type:eps_draft_existing_appointment_check_failed']
           )
       end
     end

@@ -104,15 +104,15 @@ module VAOS
                             Flipper.enabled?(:va_online_scheduling_parallel_travel_claims, user)
 
         if parallelize_fetch
-          # Track that parallel execution path is being used
-          StatsD.increment('appointments.fetch.parallel')
+          # Track which execution path is being used. One metric, one tag, so the two
+          # strategies can be compared in a single query.
+          StatsD.increment("#{STATSD_KEY_PREFIX}.get_appointments.fetch_strategy", tags: ['strategy:parallel'])
           # Fetch appointments and travel claims in parallel
           response, travel_claims_result = fetch_appointments_and_claims_parallel(
             start_date, end_date, statuses, pagination_params, tp_client
           )
         else
-          # Track that sequential execution path is being used
-          StatsD.increment('appointments.fetch.sequential')
+          StatsD.increment("#{STATSD_KEY_PREFIX}.get_appointments.fetch_strategy", tags: ['strategy:sequential'])
           # Original sequential behavior
           response = send_appointments_request(start_date, end_date, __method__, pagination_params, statuses)
           travel_claims_result = nil
@@ -232,12 +232,12 @@ module VAOS
 
         eps_start = Time.current
         eps_appointments = fetch_and_normalize_eps_appointments(referral_number)
-        StatsD.histogram('vaos.get_active_appointments_for_referral.eps_duration',
+        StatsD.histogram("#{STATSD_KEY_PREFIX}.get_active_appointments_for_referral.eps_duration",
                          (Time.current - eps_start) * 1000)
 
         vaos_appointments = fetch_and_normalize_vaos_appointments(referral_number)
 
-        StatsD.histogram('vaos.get_active_appointments_for_referral.duration',
+        StatsD.histogram("#{STATSD_KEY_PREFIX}.get_active_appointments_for_referral.duration",
                          (Time.current - start_time) * 1000)
 
         log_status_discrepancies(eps_appointments, vaos_appointments, referral_number)
@@ -261,16 +261,16 @@ module VAOS
       #   a VAOS lookup that returned no active appointments.
       #
       def active_appointment_for_referral?(referral_number)
-        StatsD.measure('vaos.active_appointment_for_referral.duration') do
+        StatsD.measure("#{STATSD_KEY_PREFIX}.active_appointment_for_referral.duration") do
           vaos_appointments = fetch_and_normalize_vaos_appointments(referral_number)
           if vaos_appointments.any? { |appt| appt[:status] == 'active' }
-            StatsD.increment('vaos.active_appointment_for_referral.eps_skipped')
+            StatsD.increment("#{STATSD_KEY_PREFIX}.active_appointment_for_referral.eps_skipped")
             next true
           end
 
           next false if Flipper.enabled?(:va_online_scheduling_referral_list_vaos_appointments_only, user)
 
-          eps_appointments = StatsD.measure('vaos.get_active_appointments_for_referral.eps_duration') do
+          eps_appointments = StatsD.measure("#{STATSD_KEY_PREFIX}.active_appointment_for_referral.eps_duration") do
             fetch_and_normalize_eps_appointments(referral_number)
           end
           eps_appointments.any? { |appt| appt[:status] == 'active' }
@@ -557,7 +557,10 @@ module VAOS
         @memoized_all_vaos_appointments ||= begin
           backend_start = Time.current
           response = get_all_appointments({})
-          StatsD.histogram('vaos.get_active_appointments_for_referral.vaos_duration',
+          # Emitted from both referral lookup paths (#get_active_appointments_for_referral and
+          # #active_appointment_for_referral?), once per service instance because of the memo above.
+          # It measures the shared VAOS fetch, not either caller specifically.
+          StatsD.histogram("#{STATSD_KEY_PREFIX}.get_active_appointments_for_referral.vaos_duration",
                            (Time.current - backend_start) * 1000)
           response
         end
@@ -1793,7 +1796,7 @@ module VAOS
 
       def merge_all_travel_claims(start_date, end_date, appointments, tp_client)
         # Track sequential travel claims fetch duration for comparison with parallel approach
-        StatsD.measure('appointments.sequential_fetch.travel_claims_service.duration') do
+        StatsD.measure("#{STATSD_KEY_PREFIX}.get_appointments.sequential_fetch.travel_claims_service.duration") do
           service = TravelPay::ClaimAssociationService.new(user, tp_client)
           service.associate_appointments_to_claims(
             {

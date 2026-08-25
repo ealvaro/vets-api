@@ -8,7 +8,6 @@ module VAOS
       include VAOS::CommunityCareConstants
 
       REFERRAL_DETAIL_VIEW_METRIC = "#{STATSD_PREFIX}.referral_detail.access".freeze
-      REFERRAL_STATIONID_METRIC = "#{STATSD_PREFIX}.referral_station_id.access".freeze
 
       # GET /v2/referrals
       # Fetches a list of referrals for the current user

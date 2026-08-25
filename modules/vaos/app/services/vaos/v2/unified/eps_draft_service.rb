@@ -107,6 +107,9 @@ module VAOS
           )
         end
 
+        # +error_class+ is a stable snake_case identifier for the failure, not a Ruby
+        # class name. It doubles as the +PersonalInformationLog#error_class+ column
+        # value and as the +error_type+ metric tag, so the two stay correlatable.
         def log_personal_information_error(error_class, referral_number, failure_reason)
           # +create+ (not +create!+) so a logging hiccup never breaks the main
           # flow.
@@ -118,9 +121,12 @@ module VAOS
               failure_reason:
             }.compact
           )
+          # The failure kind is a tag rather than part of the metric name, so every
+          # draft failure aggregates into one count. Matches the sibling emitter in
+          # VAOS::V2::Unified::BaseBookingService#log_booking_failure.
           StatsD.increment(
-            "#{STATSD_KEY_PREFIX}.#{error_class}",
-            tags: ['provider_type:eps']
+            "#{STATSD_KEY_PREFIX}.failure",
+            tags: ['provider_type:eps', "error_type:#{error_class}"]
           )
         end
 

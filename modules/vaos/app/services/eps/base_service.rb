@@ -10,6 +10,18 @@ module Eps
     include Eps::TokenAuthentication
     include VAOS::CommunityCareConstants
 
+    # Two StatsD prefixes are in scope in every subclass, and they are not
+    # interchangeable:
+    #
+    #   STATSD_KEY_PREFIX ('api.eps')  - EPS client call metrics. Applied for you by
+    #                                    with_monitoring, which appends '.total' / '.fail'.
+    #                                    Do not interpolate it by hand.
+    #   STATSD_PREFIX     ('api.vaos') - app-level metrics we emit directly, from
+    #                                    VAOS::CommunityCareConstants. See the note there.
+    #
+    # Choosing the wrong one produces a metric name that nothing queries, and Datadog
+    # reports no data rather than an error, so the mistake is invisible until someone
+    # notices an empty widget.
     STATSD_KEY_PREFIX = 'api.eps'
     REDIS_TOKEN_KEY = REDIS_CONFIG[:eps_access_token][:namespace]
     REDIS_TOKEN_TTL = REDIS_CONFIG[:eps_access_token][:each_ttl]

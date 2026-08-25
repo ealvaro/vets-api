@@ -2,6 +2,16 @@
 
 module Eps
   class ProviderService < BaseService
+    # These two use STATSD_PREFIX ('api.vaos'), NOT the STATSD_KEY_PREFIX ('api.eps')
+    # this class inherits from Eps::BaseService. That is deliberate and load-bearing:
+    # the live metrics are
+    #
+    #   vets_api.statsd.api_vaos_provider_service_no_params
+    #   vets_api.statsd.api_vaos_provider_service_no_self_schedulable
+    #
+    # 'api.eps.provider_service.*' has never been emitted. Do not "correct" the prefix
+    # here without repointing the dashboards that query the api_vaos_* names.
+    #
     # StatsD metrics for provider service calls with no parameters
     PROVIDER_SERVICE_NO_PARAMS_METRIC = "#{STATSD_PREFIX}.provider_service.no_params".freeze
     # StatsD metric for when providers are found but none are self-schedulable

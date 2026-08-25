@@ -837,6 +837,39 @@ describe VAOS::V2::AppointmentsService do
           end
         end
 
+        it 'emits the fetch_strategy metric tagged strategy:parallel' do
+          allow(StatsD).to receive(:increment)
+
+          VCR.use_cassette('travel_pay/200_search_claims_by_appt_date_range', match_requests_on: %i[method path]) do
+            VCR.use_cassette('vaos/v2/appointments/get_appointments_200_with_facilities_200',
+                             allow_playback_repeats: true, match_requests_on: %i[method path], tag: :force_utf8) do
+              subject.get_appointments(start_date2, end_date2, nil, {}, { travel_pay_claims: true })
+            end
+          end
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.get_appointments.fetch_strategy', tags: ['strategy:parallel'])
+        end
+
+        it 'emits fetch_strategy tagged strategy:sequential and measures the sequential travel claims fetch' do
+          allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_parallel_travel_claims,
+                                                    user).and_return(false)
+          allow(StatsD).to receive(:increment)
+          allow(StatsD).to receive(:measure).and_call_original
+
+          VCR.use_cassette('travel_pay/200_search_claims_by_appt_date_range', match_requests_on: %i[method path]) do
+            VCR.use_cassette('vaos/v2/appointments/get_appointments_200_with_facilities_200',
+                             allow_playback_repeats: true, match_requests_on: %i[method path], tag: :force_utf8) do
+              subject.get_appointments(start_date2, end_date2, nil, {}, { travel_pay_claims: true })
+            end
+          end
+
+          expect(StatsD).to have_received(:increment)
+            .with('api.vaos.get_appointments.fetch_strategy', tags: ['strategy:sequential'])
+          expect(StatsD).to have_received(:measure)
+            .with('api.vaos.get_appointments.sequential_fetch.travel_claims_service.duration')
+        end
+
         it 'handles travel claims service errors gracefully without failing the appointment request' do
           allow_any_instance_of(TravelPay::ClaimAssociationService)
             .to receive(:fetch_claims_by_date)
@@ -2082,9 +2115,9 @@ describe VAOS::V2::AppointmentsService do
         end
 
         expect(StatsD).to have_received(:histogram)
-          .with('vaos.get_active_appointments_for_referral.eps_duration', anything).once
+          .with('api.vaos.get_active_appointments_for_referral.eps_duration', anything).once
         expect(StatsD).to have_received(:histogram)
-          .with('vaos.get_active_appointments_for_referral.vaos_duration', anything).once
+          .with('api.vaos.get_active_appointments_for_referral.vaos_duration', anything).once
       end
     end
 
@@ -2112,7 +2145,7 @@ describe VAOS::V2::AppointmentsService do
 
         expect(appointments_service).to have_received(:get_all_appointments).once
         expect(StatsD).to have_received(:histogram)
-          .with('vaos.get_active_appointments_for_referral.vaos_duration', anything).once
+          .with('api.vaos.get_active_appointments_for_referral.vaos_duration', anything).once
       end
     end
   end
@@ -2159,9 +2192,9 @@ describe VAOS::V2::AppointmentsService do
         expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(true)
         expect(appointments_service).not_to have_received(:fetch_and_normalize_eps_appointments)
         expect(StatsD).to have_received(:increment)
-          .with('vaos.active_appointment_for_referral.eps_skipped')
+          .with('api.vaos.active_appointment_for_referral.eps_skipped')
         expect(StatsD).to have_received(:measure)
-          .with('vaos.active_appointment_for_referral.duration')
+          .with('api.vaos.active_appointment_for_referral.duration')
       end
     end
 
@@ -2179,9 +2212,9 @@ describe VAOS::V2::AppointmentsService do
         expect(appointments_service.active_appointment_for_referral?('ref-123')).to be(true)
         expect(appointments_service).to have_received(:fetch_and_normalize_eps_appointments).with('ref-123')
         expect(StatsD).to have_received(:measure)
-          .with('vaos.get_active_appointments_for_referral.eps_duration')
+          .with('api.vaos.active_appointment_for_referral.eps_duration')
         expect(StatsD).to have_received(:measure)
-          .with('vaos.active_appointment_for_referral.duration')
+          .with('api.vaos.active_appointment_for_referral.duration')
       end
     end
 
