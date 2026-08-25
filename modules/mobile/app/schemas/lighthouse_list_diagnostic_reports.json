@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["resourceType", "type", "entry"],
+  "properties": {
+    "resourceType": { "type": "string", "enum": ["Bundle"] },
+    "type": { "type": "string" },
+    "total": { "type": "integer" },
+    "link": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["relation", "url"],
+        "properties": {
+          "relation": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "entry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["resource"],
+        "properties": {
+          "fullUrl": { "type": "string" },
+          "resource": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "category", "code", "result"],
+            "properties": {
+              "resourceType": { "type": "string" },
+              "id": { "type": "string" },
+              "status": { "type": "string" },
+              "category": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["text"],
+                  "properties": {
+                    "coding": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "system": { "type": "string" },
+                          "code": { "type": "string" },
+                          "display": { "type": "string" }
+                        }
+                      }
+                    },
+                    "text": { "type": "string" }
+                  }
+                }
+              },
+              "code": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["text"],
+                "properties": {
+                  "text": { "type": "string" }
+                }
+              },
+              "subject": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "reference": { "type": "string" },
+                  "display": { "type": "string" }
+                }
+              },
+              "effectiveDateTime": { "type": "string" },
+              "issued": { "type": "string" },
+              "result": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["reference"],
+                  "properties": {
+                    "reference": { "type": "string" },
+                    "display": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "search": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

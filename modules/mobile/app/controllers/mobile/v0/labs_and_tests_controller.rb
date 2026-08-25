@@ -19,7 +19,9 @@ module Mobile
       #
       def index
         response = client.list_diagnostic_reports(params)
-        diagnostic_reports = response.body['entry'].map do |entry|
+        body = response.body
+        validate_response_schema(body, 'lighthouse_list_diagnostic_reports')
+        diagnostic_reports = body['entry'].map do |entry|
           Mobile::V0::Adapters::DiagnosticReport.new.parse(entry['resource'])
         end
 
@@ -30,6 +32,15 @@ module Mobile
 
       def client
         @client ||= Lighthouse::VeteransHealth::Client.new(current_user.icn)
+      end
+
+      def validate_response_schema(body, contract_name)
+        # check for successful response structure
+        return if !body.is_a?(Hash) || body['resourceType'] != 'Bundle'
+
+        SchemaContract::ValidationInitiator.call_with_body(
+          user: current_user, body:, contract_name:
+        )
       end
     end
   end
