@@ -53,7 +53,10 @@ module Flipper
         end
 
         context 'when vsp_environment is staging' do
-          before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
+          before do
+            allow(Settings).to receive(:vsp_environment).and_return('staging')
+            allow(Rails.env).to receive_messages(test?: false, development?: false)
+          end
 
           it 'enables features with enable_in_staging: true and leaves others disabled' do
             allow_any_instance_of(described_class).to receive(:features_config).and_return(
@@ -74,7 +77,10 @@ module Flipper
         end
 
         context 'when vsp_environment is sandbox' do
-          before { allow(Settings).to receive(:vsp_environment).and_return('sandbox') }
+          before do
+            allow(Settings).to receive(:vsp_environment).and_return('sandbox')
+            allow(Rails.env).to receive_messages(test?: false, development?: false)
+          end
 
           it 'does not auto-enable features with enable_in_staging: true' do
             allow_any_instance_of(described_class).to receive(:features_config).and_return(
