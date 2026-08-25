@@ -18,10 +18,10 @@ module MedicalCopays
         @user = user
       end
 
-      def facility_accounts
+      def facility_accounts(status: nil)
         require_payment_history!
 
-        facilities = with_metrics(:index) { builder.build_facility_accounts }
+        facilities = with_metrics(:index) { builder.build_facility_accounts(status:) }
         { total_current_balance: FacilityAccount.sum_balances(facilities), facilities: }
       end
 

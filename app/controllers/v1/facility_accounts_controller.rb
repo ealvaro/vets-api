@@ -7,7 +7,8 @@ module V1
     before_action :authorize_icn
 
     def index
-      render json: MedicalCopays::FacilityAccounts::FacilityAccountSerializer.index(**service.facility_accounts)
+      facility_accounts = service.facility_accounts(status: facility_accounts_params[:status])
+      render json: MedicalCopays::FacilityAccounts::FacilityAccountSerializer.index(**facility_accounts), status: :ok
     end
 
     def show
@@ -18,6 +19,10 @@ module V1
     end
 
     private
+
+    def facility_accounts_params
+      params.permit(:status)
+    end
 
     def authorize_icn
       raise Common::Exceptions::Forbidden, detail: 'User ICN is required' if current_user.icn.blank?

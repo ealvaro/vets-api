@@ -13,8 +13,8 @@ RSpec.describe 'V1::FacilityAccounts', type: :request do
     allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(false)
   end
 
-  def get_facilities
-    get '/v1/medical_copays/facilities'
+  def get_facilities(params = {})
+    get '/v1/medical_copays/facilities', params:
   end
 
   def get_facility_account(station_id = '757')
@@ -77,6 +77,45 @@ RSpec.describe 'V1::FacilityAccounts', type: :request do
 
       expect(response).to have_http_status(:bad_gateway)
       expect(response.parsed_body['errors'].first).to include('code' => '502')
+    end
+
+    context 'with a status query param' do
+      let(:builder) { instance_double(MedicalCopays::FacilityAccounts::LighthouseBuilder) }
+
+      before do
+        allow(MedicalCopays::FacilityAccounts::LighthouseBuilder).to receive(:new).and_return(builder)
+      end
+
+      it 'passes the status to the builder' do
+        allow(builder).to receive(:build_facility_accounts).with(status: 'issued').and_return([facility_account])
+
+        get_facilities(status: 'issued')
+
+        expect(response).to have_http_status(:ok)
+        expect(builder).to have_received(:build_facility_accounts).with(status: 'issued')
+      end
+
+      it 'passes nil when no status param is given' do
+        allow(builder).to receive(:build_facility_accounts).with(status: nil).and_return([facility_account])
+
+        get_facilities
+
+        expect(builder).to have_received(:build_facility_accounts).with(status: nil)
+      end
+    end
+
+    context 'when a Cerner user passes a status param' do
+      before do
+        allow(MedicalCopays::CernerFacilities).to receive(:cerner_copay_user?).and_return(true)
+        stub_builder(MedicalCopays::FacilityAccounts::VBSBuilder, facility_account(is_cerner: true))
+      end
+
+      it 'accepts the request and returns facility accounts (VBS ignores status)' do
+        get_facilities(status: 'issued')
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['facilities'].first['isCerner']).to be true
+      end
     end
   end
 

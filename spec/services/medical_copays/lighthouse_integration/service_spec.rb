@@ -967,6 +967,30 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
     end
   end
 
+  describe '#entry_has_vista_status?' do
+    let(:service) { described_class.new('123456789V123456') }
+
+    def entry_with_vista_status(status)
+      { 'resource' => { '_status' => { 'valueCodeableConcept' => { 'text' => status } } } }
+    end
+
+    it 'returns true when the VistA status text matches' do
+      expect(service.send(:entry_has_vista_status?, entry_with_vista_status('ACTIVE'), 'ACTIVE')).to be true
+    end
+
+    it 'returns false when the VistA status text does not match' do
+      expect(service.send(:entry_has_vista_status?, entry_with_vista_status('INACTIVE'), 'ACTIVE')).to be false
+    end
+
+    it 'returns false when the _status extension is absent' do
+      expect(service.send(:entry_has_vista_status?, {}, 'ACTIVE')).to be false
+    end
+
+    it 'is case-sensitive' do
+      expect(service.send(:entry_has_vista_status?, entry_with_vista_status('active'), 'ACTIVE')).to be false
+    end
+  end
+
   describe '#parse_status_filter' do
     let(:service) { described_class.new('123456789V123456') }
 
@@ -1033,6 +1057,54 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
       expect(bundle['entry']).to be_empty
       expect(bundle['total']).to eq(0)
     end
+
+    context "when statuses include 'active'" do
+      def entry_with_status(id, fhir_status, vista_status = nil)
+        entry = { 'id' => id, 'resource' => { 'status' => fhir_status } }
+        entry['resource']['_status'] = { 'valueCodeableConcept' => { 'text' => vista_status } } if vista_status
+        entry
+      end
+
+      let(:bundle) do
+        {
+          'entry' => [
+            entry_with_status('issued-active', 'issued', 'ACTIVE'),
+            entry_with_status('balanced-inactive', 'balanced'),
+            entry_with_status('balanced-active', 'balanced', 'ACTIVE'),
+            entry_with_status('draft-inactive', 'draft'),
+            entry_with_status('draft-active', 'draft', 'ACTIVE')
+          ],
+          'total' => 5
+        }
+      end
+
+      it 'includes entries with resource status of balanced or issued' do
+        service.send(:apply_status_filter!, bundle, %w[active])
+
+        returned_entry_ids = bundle['entry'].map { |e| e['id'] }
+        expect(returned_entry_ids).to include('issued-active', 'balanced-active')
+      end
+
+      it 'excludes entries with resource status of balanced or issued but not VistA ACTIVE' do
+        service.send(:apply_status_filter!, bundle, %w[active])
+
+        returned_entry_ids = bundle['entry'].map { |e| e['id'] }
+        expect(returned_entry_ids).not_to include('balanced-inactive')
+      end
+
+      it 'excludes entries that are neither balanced/issued nor VistA ACTIVE' do
+        service.send(:apply_status_filter!, bundle, %w[active])
+
+        returned_entry_ids = bundle['entry'].map { |e| e['id'] }
+        expect(returned_entry_ids).not_to include('draft-inactive', 'draft-active')
+      end
+
+      it 'updates the total to match the filtered entry count' do
+        service.send(:apply_status_filter!, bundle, %w[active])
+
+        expect(bundle['total']).to eq(2)
+      end
+    end
   end
 
   describe '#invoices_for_organization' do
@@ -1096,6 +1168,61 @@ RSpec.describe MedicalCopays::LighthouseIntegration::Service do
           entered_date: '2025-05-14T15:00:00Z'
         )
       )
+    end
+  end
+
+  describe '#collect_invoices_in_range' do
+    let(:service) { described_class.new('123456789V123456') }
+    let(:invoice_svc) { instance_double(Lighthouse::HealthcareCostAndCoverage::Invoice::Service) }
+    let(:now) { Time.current.utc }
+
+    before do
+      allow(service).to receive(:invoice_service).and_return(invoice_svc)
+    end
+
+    def range_entry(fhir_status, vista_status: nil)
+      entry = { 'resource' => { 'date' => now.iso8601, 'status' => fhir_status } }
+      entry['resource']['_status'] = { 'valueCodeableConcept' => { 'text' => vista_status } } if vista_status
+      entry
+    end
+
+    context "when status is 'active'" do
+      let(:entries) do
+        [
+          range_entry('balanced'),
+          range_entry('balanced', vista_status: 'ACTIVE'),
+          range_entry('issued'),
+          range_entry('issued', vista_status: 'ACTIVE'),
+          range_entry('draft', vista_status: 'ACTIVE'),
+          range_entry('cancelled'),
+          range_entry('draft')
+        ]
+      end
+
+      before do
+        allow(invoice_svc).to receive(:list)
+          .with(count: 50, page: 1, status: 'active')
+          .and_return({ 'entry' => entries })
+      end
+
+      it 'collects entries with a FHIR status of balanced or issued and VistA ACTIVE' do
+        result = service.send(:collect_invoices_in_range, 7, status: 'active')
+
+        collected_statuses = result['entries'].map { |e| e.dig('resource', 'status') }
+        expect(collected_statuses).to include('balanced', 'issued')
+        collected_vista_statuses = result['entries'].map do |e|
+          e.dig('resource', '_status', 'valueCodeableConcept', 'text')
+        end
+        expect(collected_vista_statuses).to all(eq('ACTIVE'))
+      end
+
+      it 'excludes entries that are neither balanced/issued nor VistA ACTIVE' do
+        result = service.send(:collect_invoices_in_range, 6, status: 'active')
+
+        expect(result['entries'].length).to eq(2)
+        collected_statuses = result['entries'].map { |e| e.dig('resource', 'status') }
+        expect(collected_statuses).not_to include('cancelled')
+      end
     end
   end
 end

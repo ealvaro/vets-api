@@ -11,8 +11,8 @@ module MedicalCopays
         @lighthouse_service = lighthouse_service
       end
 
-      def build_facility_accounts
-        invoices = @lighthouse_service.list_months.entries
+      def build_facility_accounts(status: nil)
+        invoices = @lighthouse_service.list_months(status:).entries
         grouped = invoices.group_by { |invoice| get_station_id(invoice.facility_id) }
         log_unresolved(grouped.delete(nil))
         grouped.map { |station_id, station_invoices| account_for_station(station_id, station_invoices) }

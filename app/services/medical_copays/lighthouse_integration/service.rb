@@ -28,7 +28,7 @@ module MedicalCopays
       MAX_SUMMARY_PAGES = 20
       DEFAULT_MONTH_COUNT = 6
       DEFAULT_INVOICE_COUNT = 50
-      ALLOWED_INVOICE_STATUSES = %w[draft issued balanced cancelled entered-in-error].freeze
+      ALLOWED_INVOICE_STATUSES = %w[draft issued balanced cancelled entered-in-error active].freeze
 
       def initialize(icn)
         @icn = icn
@@ -108,6 +108,15 @@ module MedicalCopays
 
       private
 
+      def entry_has_vista_status?(entry, status)
+        entry.dig('resource', '_status', 'valueCodeableConcept', 'text') == status
+      end
+
+      def entry_is_fhir_vista_active?(entry)
+        %w[balanced issued].include?(entry.dig('resource', 'status')) &&
+          entry_has_vista_status?(entry, 'ACTIVE')
+      end
+
       def parse_status_filter(status)
         return nil if status.blank?
 
@@ -120,7 +129,11 @@ module MedicalCopays
 
         entries = raw_bundle['entry'] || []
         raw_bundle['entry'] = entries.select do |entry|
-          statuses.include?(entry.dig('resource', 'status'))
+          if statuses.include?('active')
+            entry_is_fhir_vista_active?(entry)
+          else
+            statuses.include?(entry.dig('resource', 'status'))
+          end
         end
         raw_bundle['total'] = raw_bundle['entry'].length
         raw_bundle
@@ -156,7 +169,11 @@ module MedicalCopays
 
             # TODO: Remove client-side filter once Lighthouse HCCC honors the
             # `status` FHIR search parameter.
-            next if allowed_statuses&.exclude?(entry.dig('resource', 'status'))
+            if allowed_statuses&.include?('active')
+              next unless entry_is_fhir_vista_active?(entry)
+            elsif allowed_statuses&.exclude?(entry.dig('resource', 'status'))
+              next
+            end
 
             collected_entries << entry
           end

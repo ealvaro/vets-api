@@ -7,7 +7,7 @@ module MedicalCopays
         @vbs_service = vbs_service
       end
 
-      def build_facility_accounts
+      def build_facility_accounts(*)
         grouped = statements.group_by { |statement| get_station_id(statement) }.except(nil)
         grouped.map do |station_id, station_statements|
           latest = station_statements.max_by { |statement| statement_date_for(statement) }
