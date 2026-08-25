@@ -11,15 +11,20 @@ module DecisionReviews
 
     STATSD_KEY_PREFIX = 'worker.decision_review.delete_secondary_appeal_forms'
 
+    BATCH_SIZE = 1000
+
     def perform
       return unless enabled?
 
-      deleted_secondary_forms = SecondaryAppealForm.where(delete_date: ..DateTime.now).destroy_all
+      total_deleted = 0
+      SecondaryAppealForm.where(delete_date: ..DateTime.now).in_batches(of: BATCH_SIZE) do |batch|
+        total_deleted += batch.destroy_all.size
+      end
 
-      StatsD.increment("#{STATSD_KEY_PREFIX}.count", deleted_secondary_forms.size)
+      StatsD.increment("#{STATSD_KEY_PREFIX}.count", total_deleted)
 
       Rails.logger.info('DecisionReviews::DeleteSecondaryAppealFormsJob completed successfully',
-                        secondary_forms_deleted: deleted_secondary_forms.size)
+                        secondary_forms_deleted: total_deleted)
 
       nil
     rescue => e
