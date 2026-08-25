@@ -1552,7 +1552,7 @@ module VAOS
         appointment[:future] = future?(appointment)
       end
 
-      def set_type_of_care(appointment)
+      def set_type_of_care(appointment, log_rate = 0.001)
         # Compensation and Pension appointments
         if cnp?(appointment)
           appointment[:type_of_care] = 'Claim exam'
@@ -1561,7 +1561,7 @@ module VAOS
         elsif VAOS::AppointmentsHelper.cerner?(appointment)
           appointment[:type_of_care] = appointment[:description]
         else
-          log_type_of_care_failure(appointment)
+          log_type_of_care_failure(appointment, log_rate)
         end
       end
 
@@ -1602,7 +1602,9 @@ module VAOS
         Rails.logger.warn("VAOS appointment id #{appointment[:id]} modality cannot be determined", context)
       end
 
-      def log_type_of_care_failure(appointment)
+      def log_type_of_care_failure(appointment, log_rate)
+        return if rand > log_rate # sample logs to reduce log volume
+
         context = {
           service_category_text: appointment.dig(:service_category, 0, :text),
           service_type: appointment[:service_type],

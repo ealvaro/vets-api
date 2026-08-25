@@ -3926,7 +3926,7 @@ describe VAOS::V2::AppointmentsService do
       allow(Rails.logger).to receive(:warn)
       appt = build(:appointment_form_v2, :va_booked).attributes
       appt[:service_type] = 'unknownServiceType'
-      subject.send(:set_type_of_care, appt)
+      subject.send(:set_type_of_care, appt, 1)
       expect(appt[:type_of_care]).to be_nil
       expect(Rails.logger).to have_received(:warn).with(
         "VAOS appointment id #{appt[:id]} type of care cannot be determined", any_args
