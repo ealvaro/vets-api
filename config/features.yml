@@ -4111,3 +4111,7 @@ features:
   enable_686_674_benefits_intake_dpdf:
     actor_type: user
     description: Enables using the digital pdf service for generating 686/674 pdfs in the BenefitsIntakeJob
+  va_dependents_new_child_quick_fix: 
+    actor_type: user
+    description: Enable temporary fix to clarify add child/student distinction in 686c-674
+
