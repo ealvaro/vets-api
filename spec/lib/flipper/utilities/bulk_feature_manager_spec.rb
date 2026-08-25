@@ -52,6 +52,41 @@ module Flipper
           expect(manager.enabled_features).to include('f_one', 'f_two')
         end
 
+        context 'when vsp_environment is staging' do
+          before { allow(Settings).to receive(:vsp_environment).and_return('staging') }
+
+          it 'enables features with enable_in_staging: true and leaves others disabled' do
+            allow_any_instance_of(described_class).to receive(:features_config).and_return(
+              'features' => {
+                'f_staging_on' => { 'enable_in_staging' => true },
+                'f_staging_off' => { 'enable_in_staging' => false },
+                'f_no_flag' => {}
+              }
+            )
+
+            manager.setup
+
+            expect(memory.enabled?('f_staging_on')).to be true
+            expect(memory.enabled?('f_staging_off')).to be false
+            expect(memory.enabled?('f_no_flag')).to be false
+            expect(manager.enabled_features).to contain_exactly('f_staging_on')
+          end
+        end
+
+        context 'when vsp_environment is sandbox' do
+          before { allow(Settings).to receive(:vsp_environment).and_return('sandbox') }
+
+          it 'does not auto-enable features with enable_in_staging: true' do
+            allow_any_instance_of(described_class).to receive(:features_config).and_return(
+              'features' => { 'f_sandbox' => { 'enable_in_staging' => true } }
+            )
+
+            manager.setup
+
+            expect(memory.enabled?('f_sandbox')).to be false
+          end
+        end
+
         it 'removes orphaned features present in Flipper but absent from config' do
           memory.add('orphan_x')
 

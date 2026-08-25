@@ -2448,6 +2448,7 @@ features:
     actor_type: user
     description: Toggle for the new PDF form alignment update
     enable_in_development: true
+    enable_in_staging: true
   piv_signin_enabled:
     actor_type: user
     description: Enable piv login rollout for accredited rep team.
@@ -3321,6 +3322,7 @@ features:
     actor_type: user
     description: Align digital form with PDF form
     enable_in_development: true
+    enable_in_staging: true
   pension_form_enabled:
     actor_type: user
     description: Enable the pension form
