@@ -35,7 +35,7 @@ module SignIn
       current_user.user_verification_id = user_verification.id
       current_user.save && user_identity.save
       current_user.invalidate_mpi_cache
-      current_user.validate_mpi_profile
+      validate_mpi_profile
       current_user.provision_cerner_async(source: :sis)
       Identity::LogUserVeteranStatusJob.perform_async(current_user.uuid)
       set_cerner_eligibility_cookie
@@ -55,6 +55,15 @@ module SignIn
 
     def validate_account_and_session
       raise Errors::SessionNotFoundError.new message: 'Invalid Session Handle' unless session
+    end
+
+    def validate_mpi_profile
+      current_user.validate_mpi_profile
+    rescue MPI::Errors::AccountLockedError => e
+      error = Errors::MPILockedAccountError.new(message: e.message, code: Constants::ErrorCode::MPI_LOCKED_ACCOUNT)
+      context = { icn: user_account.icn, safe_keys: [:icn] }
+      SignIn::Logger.new(prefix: self.class).error('mpi locked account', exception: error, context:)
+      raise error
     end
 
     def set_cerner_eligibility_cookie

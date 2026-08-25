@@ -20,6 +20,8 @@ module SignIn
       @current_user.present?
     rescue Errors::AccessTokenExpiredError => e
       render json: { errors: e }, status: :forbidden
+    rescue Errors::MPILockedAccountError
+      render json: { errors: 'Unauthorized' }, status: :unauthorized
     rescue Errors::StandardError => e
       handle_authenticate_error(e)
     end
@@ -30,6 +32,8 @@ module SignIn
       @current_user.present?
     rescue Errors::AccessTokenExpiredError => e
       render json: { errors: e }, status: :forbidden unless skip_expiration_check
+    rescue Errors::MPILockedAccountError
+      render json: { errors: 'Unauthorized' }, status: :unauthorized
     rescue Errors::StandardError
       nil
     end

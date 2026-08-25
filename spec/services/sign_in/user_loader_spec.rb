@@ -122,24 +122,44 @@ RSpec.describe SignIn::UserLoader do
         end
 
         context 'when validating the user\'s MPI profile' do
-          context 'and the MPI profile has a deceased date' do
-            let(:deceased_date) { '20020202' }
-            let(:expected_error) { MPI::Errors::AccountLockedError }
-            let(:expected_error_message) { 'Death Flag Detected' }
+          let(:expected_error) { SignIn::Errors::MPILockedAccountError }
+          let(:expected_error_code) { SignIn::Constants::ErrorCode::MPI_LOCKED_ACCOUNT }
+          let(:expected_log) { 'mpi locked account' }
+          let(:expected_log_context) { { icn: user_icn, safe_keys: [:icn] } }
 
-            it 'raises an MPI locked account error' do
+          shared_examples 'mpi locked account' do
+            it 'catches the MPI account locked error and re-raises it as a SiS MPILockedAccountError' do
               expect { subject }.to raise_error(expected_error, expected_error_message)
             end
+
+            it 'raises an error carrying the MPI locked account code' do
+              expect { subject }.to raise_error(expected_error) do |error|
+                expect(error.code).to eq(expected_error_code)
+              end
+            end
+
+            it 'logs the locked account as an expected denial' do
+              expect_any_instance_of(SignIn::Logger).to receive(:error).with(
+                expected_log,
+                exception: an_object_having_attributes(code: expected_error_code),
+                context: expected_log_context
+              )
+              expect { subject }.to raise_error(expected_error)
+            end
+          end
+
+          context 'and the MPI profile has a deceased date' do
+            let(:deceased_date) { '20020202' }
+            let(:expected_error_message) { 'Death Flag Detected' }
+
+            it_behaves_like 'mpi locked account'
           end
 
           context 'and the MPI profile has an id theft flag' do
             let(:id_theft_flag) { true }
-            let(:expected_error) { MPI::Errors::AccountLockedError }
             let(:expected_error_message) { 'Theft Flag Detected' }
 
-            it 'raises an MPI locked account error' do
-              expect { subject }.to raise_error(expected_error, expected_error_message)
-            end
+            it_behaves_like 'mpi locked account'
           end
         end
 

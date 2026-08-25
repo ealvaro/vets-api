@@ -129,25 +129,31 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
 
       context 'and the MPI profile has a deceased date' do
         let(:deceased_date) { '20020202' }
-        let(:expected_error) { 'Death Flag Detected' }
+        let(:mpi_locked_reason) { 'Death Flag Detected' }
+        let(:generic_error_json) { { 'errors' => 'Unauthorized' } }
 
-        it 'raises an MPI locked account error' do
-          response = subject
-          expect(response).to have_http_status(:internal_server_error)
-          error_body = JSON.parse(response.body)['errors'].first
-          expect(error_body['meta']['exception']).to eq(expected_error)
+        it 'renders a generic error body that does not reveal the death flag' do
+          expect(JSON.parse(subject.body)).to eq(generic_error_json)
+          expect(subject.body).not_to include(mpi_locked_reason)
+        end
+
+        it 'returns unauthorized status' do
+          expect(subject).to have_http_status(:unauthorized)
         end
       end
 
       context 'and the MPI profile has an id theft flag' do
         let(:id_theft_flag) { true }
-        let(:expected_error) { 'Theft Flag Detected' }
+        let(:mpi_locked_reason) { 'Theft Flag Detected' }
+        let(:generic_error_json) { { 'errors' => 'Unauthorized' } }
 
-        it 'raises an MPI locked account error' do
-          response = subject
-          expect(response).to have_http_status(:internal_server_error)
-          error_body = JSON.parse(response.body)['errors'].first
-          expect(error_body['meta']['exception']).to eq(expected_error)
+        it 'renders a generic error body that does not reveal the theft flag' do
+          expect(JSON.parse(subject.body)).to eq(generic_error_json)
+          expect(subject.body).not_to include(mpi_locked_reason)
+        end
+
+        it 'returns unauthorized status' do
+          expect(subject).to have_http_status(:unauthorized)
         end
       end
     end
@@ -319,25 +325,31 @@ RSpec.describe SignIn::ApplicationController, type: :controller do
     shared_context 'mpi profile validation' do
       context 'and the MPI profile has a deceased date' do
         let(:deceased_date) { '20020202' }
-        let(:expected_error) { 'Death Flag Detected' }
+        let(:mpi_locked_reason) { 'Death Flag Detected' }
+        let(:generic_error_json) { { 'errors' => 'Unauthorized' } }
 
-        it 'raises an MPI locked account error' do
-          response = subject
-          expect(response).to have_http_status(:internal_server_error)
-          error_body = JSON.parse(response.body)['errors'].first
-          expect(error_body['meta']['exception']).to eq(expected_error)
+        it 'renders a generic error body that does not reveal the death flag' do
+          expect(JSON.parse(subject.body)).to eq(generic_error_json)
+          expect(subject.body).not_to include(mpi_locked_reason)
+        end
+
+        it 'returns unauthorized status' do
+          expect(subject).to have_http_status(:unauthorized)
         end
       end
 
       context 'and the MPI profile has an id theft flag' do
         let(:id_theft_flag) { true }
-        let(:expected_error) { 'Theft Flag Detected' }
+        let(:mpi_locked_reason) { 'Theft Flag Detected' }
+        let(:generic_error_json) { { 'errors' => 'Unauthorized' } }
 
-        it 'raises an MPI locked account error' do
-          response = subject
-          expect(response).to have_http_status(:internal_server_error)
-          error_body = JSON.parse(response.body)['errors'].first
-          expect(error_body['meta']['exception']).to eq(expected_error)
+        it 'renders a generic error body that does not reveal the theft flag' do
+          expect(JSON.parse(subject.body)).to eq(generic_error_json)
+          expect(subject.body).not_to include(mpi_locked_reason)
+        end
+
+        it 'returns unauthorized status' do
+          expect(subject).to have_http_status(:unauthorized)
         end
       end
     end
