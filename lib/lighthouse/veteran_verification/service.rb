@@ -20,17 +20,28 @@ module VeteranVerification
     # @option options [string] :host a base host for the Lighthouse API call
     # @option options [string] :invoker where this method was called from
     def get_rated_disabilities(icn, lighthouse_client_id = nil, lighthouse_rsa_key_path = nil, options = {})
+      raise ArgumentError, 'icn is required' if icn.blank?
+
       endpoint = 'disability_rating'
-      config
-        .get(
-          "#{endpoint}/#{icn}",
-          lighthouse_client_id,
-          lighthouse_rsa_key_path,
-          options
-        )
-        .body
+      body = config
+             .get(
+               "#{endpoint}/#{icn}",
+               lighthouse_client_id,
+               lighthouse_rsa_key_path,
+               options
+             )
+             .body
+
+      # Lighthouse occasionally returns a 200 with a non-JSON body; guard here so callers
+      # never .dig into anything but a Hash.
+      raise Common::Exceptions::BadGateway unless body.is_a?(Hash)
+
+      body
     rescue => e
-      handle_error(e, lighthouse_client_id, endpoint, options)
+      # handle_error raises for most errors, but returns some (e.g. Breakers::OutageException)
+      # instead of raising, so we raise here to guarantee callers never get an exception object back
+      # as if it were response data.
+      raise handle_error(e, lighthouse_client_id, endpoint, options)
     end
 
     ##
@@ -38,6 +49,8 @@ module VeteranVerification
     #   see https://developer.va.gov/explore/api/veteran-service-history-and-eligibility/docs
     def get_vet_verification_status(icn, lighthouse_client_id = nil, lighthouse_rsa_key_path = nil,
                                     options = {})
+      raise ArgumentError, 'icn is required' if icn.blank?
+
       endpoint = 'status'
       response = config.get(
         "#{endpoint}/#{icn}",
@@ -49,7 +62,10 @@ module VeteranVerification
       transform_response(response)
     rescue => e
       StatsD.increment(VeteranVerification::Constants::STATSD_VET_VERIFICATION_FAIL_KEY)
-      handle_error(e, lighthouse_client_id, endpoint)
+      # handle_error raises for most errors, but returns some (e.g. Breakers::OutageException)
+      # instead of raising, so we raise here to guarantee callers never get an exception object back
+      # as if it were response data.
+      raise handle_error(e, lighthouse_client_id, endpoint)
     ensure
       StatsD.increment(VeteranVerification::Constants::STATSD_VET_VERIFICATION_TOTAL_KEY)
     end

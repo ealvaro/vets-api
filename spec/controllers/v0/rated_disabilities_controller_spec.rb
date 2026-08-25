@@ -125,6 +125,34 @@ RSpec.describe V0::RatedDisabilitiesController, type: :controller do
       end
     end
 
+    context 'when the Lighthouse circuit breaker is open' do
+      before do
+        mock_service = instance_double(Breakers::Service, name: 'VeteranVerification')
+        mock_outage = instance_double(Breakers::Outage, start_time: Time.zone.now, service: mock_service)
+        error = Breakers::OutageException.new(mock_outage, mock_service)
+        allow_any_instance_of(VeteranVerification::Service).to receive(:get_rated_disabilities).and_raise(error)
+      end
+
+      it 'returns a status of 503 instead of a 500' do
+        get(:show)
+
+        expect(response).to have_http_status(:service_unavailable)
+      end
+    end
+
+    context 'when Lighthouse returns a non-JSON body' do
+      before do
+        allow_any_instance_of(VeteranVerification::Service)
+          .to receive(:get_rated_disabilities).and_raise(Common::Exceptions::BadGateway)
+      end
+
+      it 'returns a status of 502 instead of a 500' do
+        get(:show)
+
+        expect(response).to have_http_status(:bad_gateway)
+      end
+    end
+
     context 'when an unexpected error occurs' do
       let(:error) { StandardError.new('Unexpected service error') }
 

@@ -47,6 +47,32 @@ RSpec.describe VeteranVerification::Service do
             )
           end.to raise_error Common::Exceptions::ServiceError
         end
+
+        it 'raises Breakers::OutageException instead of returning it when the circuit is open' do
+          mock_service = instance_double(Breakers::Service, name: 'VeteranVerification')
+          mock_outage = instance_double(Breakers::Outage, start_time: Time.zone.now)
+          error = Breakers::OutageException.new(mock_outage, mock_service)
+          allow_any_instance_of(VeteranVerification::Configuration).to receive(:get).and_raise(error)
+
+          expect { service.get_rated_disabilities(icn, '', '') }.to raise_error(Breakers::OutageException)
+        end
+
+        it 'raises BadGateway instead of digging into a non-JSON response body' do
+          allow_any_instance_of(VeteranVerification::Configuration)
+            .to receive(:get).and_return(instance_double(Faraday::Response, body: 'not json'))
+
+          expect { service.get_rated_disabilities(icn, '', '') }.to raise_error(Common::Exceptions::BadGateway)
+        end
+
+        it 'raises ArgumentError when icn is nil and never calls Lighthouse' do
+          expect_any_instance_of(VeteranVerification::Configuration).not_to receive(:get)
+          expect { service.get_rated_disabilities(nil, '', '') }.to raise_error(ArgumentError, 'icn is required')
+        end
+
+        it 'raises ArgumentError when icn is blank and never calls Lighthouse' do
+          expect_any_instance_of(VeteranVerification::Configuration).not_to receive(:get)
+          expect { service.get_rated_disabilities('', '', '') }.to raise_error(ArgumentError, 'icn is required')
+        end
       end
 
       describe 'when requesting status' do
@@ -186,6 +212,48 @@ RSpec.describe VeteranVerification::Service do
                 service.get_vet_verification_status(user.icn, '', '')
               end
             end
+          end
+
+          it 'raises Breakers::OutageException instead of returning it when the circuit is open' do
+            mock_service = instance_double(Breakers::Service, name: 'VeteranVerification')
+            mock_outage = instance_double(Breakers::Outage, start_time: Time.zone.now)
+            error = Breakers::OutageException.new(mock_outage, mock_service)
+            allow_any_instance_of(VeteranVerification::Configuration).to receive(:get).and_raise(error)
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_TOTAL_KEY
+            )
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_FAIL_KEY
+            )
+
+            expect { service.get_vet_verification_status(user.icn, '', '') }
+              .to raise_error(Breakers::OutageException)
+          end
+
+          it 'raises ArgumentError when icn is nil and never calls Lighthouse' do
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_TOTAL_KEY
+            )
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_FAIL_KEY
+            )
+            expect_any_instance_of(VeteranVerification::Configuration).not_to receive(:get)
+
+            expect { service.get_vet_verification_status(nil, '', '') }
+              .to raise_error(ArgumentError, 'icn is required')
+          end
+
+          it 'raises ArgumentError when icn is blank and never calls Lighthouse' do
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_TOTAL_KEY
+            )
+            expect(StatsD).to receive(:increment).with(
+              VeteranVerification::Constants::STATSD_VET_VERIFICATION_FAIL_KEY
+            )
+            expect_any_instance_of(VeteranVerification::Configuration).not_to receive(:get)
+
+            expect { service.get_vet_verification_status('', '', '') }
+              .to raise_error(ArgumentError, 'icn is required')
           end
         end
       end

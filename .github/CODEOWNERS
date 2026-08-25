@@ -1114,6 +1114,7 @@ lib/lighthouse/facilities @software/health-apps-backend
 lib/lighthouse/healthcare_cost_and_coverage @software/vsa-debt-resolution
 lib/lighthouse/letters_generator @software/benefits-management-tools-be
 lib/lighthouse/service_exception.rb @software/disability-benefits @software/benefits-management-tools-be
+lib/lighthouse/veteran_verification @software/vfs-authenticated-experience-backend
 lib/lighthouse/veterans_health @software/vfs-mhv-integration
 lib/logging @software/benefits-lifestage
 lib/logging/committee_validation_monitor.rb @software/benefits-optimization-aquia
