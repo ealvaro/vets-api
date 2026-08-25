@@ -129,22 +129,29 @@ module EVSS
 
       def choose_request_body(form526)
         claim_date = form526['claimDate']
-        # if the request is for a PDF, and the claim date is present and valid, use the PDF request body
-        if Flipper.enabled?(:disability_526_add_claim_date_to_lighthouse) &&
-           @pdf_request &&
-           claim_date_valid?(claim_date)
+        # generatePDF and the 526 submit endpoint accept claimDate but are gated by separate flags;
+        # include claimDate when it when present and valid and the respective flag is enabled,
+        # otherwise omit it so we don't trip Lighthouse's validation.
+        if claim_date_valid?(claim_date) && Flipper.enabled?(claim_date_feature_flag)
           lh_request_body = Requests::Form526Pdf.new
-          lh_request_body.claim_date = form526['claimDate']
+          lh_request_body.claim_date = claim_date
           lh_request_body
         else
-          # if the request is not for a PDF, or the claim date is not present or invalid, use the standard request body
-          # that does not include claim_date, otherwise, it will error Lighthouse's validation
           Requests::Form526.new
         end
       rescue => e
-        # If anything goes wrong, rescue to using the non-pdf request
+        # If anything goes wrong, rescue to using the request body without a claim date
         Rails.logger.error("Error transforming Form526 to Lighthouse: #{e.message}")
         Requests::Form526.new
+      end
+
+      # generatePDF (backup) and the primary 526 submit endpoint are toggled independently
+      def claim_date_feature_flag
+        if @pdf_request
+          :disability_526_add_claim_date_to_lighthouse
+        else
+          :disability_526_add_claim_date_to_lighthouse_submit
+        end
       end
 
       # returns "STANDARD_CLAIM_PROCESS", "BDD_PROGRAM", or "FDC_PROGRAM"

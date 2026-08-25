@@ -1218,7 +1218,11 @@ features:
     description: enables improved logging of SavedClaim::DisabilityCompensation::Form526AllClaim save failures
   disability_526_add_claim_date_to_lighthouse:
     actor_type: user
-    description: enables sending the claim date to Lighthouse when submitting a Form 526EZ when present
+    description: enables sending the claim date to Lighthouse when generating the 526 PDF (backup submission path)
+    enable_in_development: true
+  disability_526_add_claim_date_to_lighthouse_submit:
+    actor_type: user
+    description: enables sending the claim date to Lighthouse on the primary 526 submit endpoint
     enable_in_development: true
   disability_526_module_enabled:
     actor_type: user

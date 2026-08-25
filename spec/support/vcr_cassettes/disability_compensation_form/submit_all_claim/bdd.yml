@@ -71,6 +71,7 @@ http_interactions:
           "data": {
             "type": "form/526",
             "attributes": {
+              "claimDate": "2026-01-20",
               "claimantCertification": true,
               "claimProcessType": "BDD_PROGRAM",
               "veteranIdentification": {

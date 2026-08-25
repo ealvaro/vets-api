@@ -587,6 +587,31 @@ RSpec.describe EVSS::DisabilityCompensationForm::SubmitForm526AllClaim, type: :j
           expect(submission.submitted_claim_id).to eq(Form526JobStatus.last.submission.submitted_claim_id)
         end
 
+        it 'sends the submission claim date (created_at, UTC) in the Lighthouse request body' do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_add_claim_date_to_lighthouse_submit).and_return(true)
+          expected_claim_date = submission.created_at.strftime('%Y-%m-%d')
+          expect_any_instance_of(BenefitsClaims::Service).to receive(:submit526).and_wrap_original do |method, *args|
+            expect(args.first.claim_date).to eq(expected_claim_date)
+            method.call(*args)
+          end
+          subject.perform_async(submission.id)
+          described_class.drain
+          expect(Form526JobStatus.last.status).to eq Form526JobStatus::STATUS[:success]
+        end
+
+        it 'does not send a claim date when the submit flag is disabled' do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_add_claim_date_to_lighthouse_submit).and_return(false)
+          expect_any_instance_of(BenefitsClaims::Service).to receive(:submit526).and_wrap_original do |method, *args|
+            expect { args.first.claim_date }.to raise_error(NoMethodError)
+            method.call(*args)
+          end
+          subject.perform_async(submission.id)
+          described_class.drain
+          expect(Form526JobStatus.last.status).to eq Form526JobStatus::STATUS[:success]
+        end
+
         it 'retries UpstreamUnprocessableEntity errors' do
           body = { 'errors' => [{ 'status' => '422', 'title' => 'Backend Service Exception',
                                   'detail' => 'The claim failed to establish' }] }

@@ -177,7 +177,12 @@ module EVSS
         # 1. transform submission data to LH format
         transform_service = EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new
         transaction_id = submission.system_transaction_id
-        body = transform_service.transform(submission.form['form526'])
+        form_data = submission.form['form526']
+        # stamp the veteran's submission date only when the submit-path flag is on (transform also enforces this)
+        if Flipper.enabled?(:disability_526_add_claim_date_to_lighthouse_submit)
+          form_data['form526']['claimDate'] ||= submission.created_at.strftime('%Y-%m-%d')
+        end
+        body = transform_service.transform(form_data)
         # 2. send transformed submission data to LH endpoint
         benefits_claims_service = BenefitsClaims::Service.new(icn)
         raw_response = benefits_claims_service.submit526(body, nil, nil, { transaction_id: })

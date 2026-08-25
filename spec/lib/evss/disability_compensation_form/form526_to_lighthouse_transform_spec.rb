@@ -11,8 +11,7 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
   include ActiveSupport::Testing::TimeHelpers
 
   let(:transformer) { subject }
-  let(:pdf_enabled_transformer) { EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new(pdf_request: true) }
-  let(:pdf_disabled_transformer) { EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new(pdf_request: false) }
+  let(:pdf_transformer) { EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform.new(pdf_request: true) }
 
   def validate_lighthouse_schema(lh_request_body)
     # This validation method mimics the same validation logic used in the actual controller
@@ -63,23 +62,56 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
       expect_no_lighthouse_errors(lh_request_body)
     end
 
-    it 'adds claim_date to the Lighthouse request body if called as a pdf request' do
+    it 'adds claim_date on the submit path when the submit flag is enabled and the date is valid' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse_submit).and_return(true)
       data['form526']['claimDate'] = '2023-07-19' # arbitrary date
-      lh_request_body = pdf_enabled_transformer.transform(data)
+      lh_request_body = transformer.transform(data)
       expect(lh_request_body.class).to eq(Requests::Form526Pdf)
       expect(lh_request_body.claim_date).to eq('2023-07-19')
       expect_no_lighthouse_errors(lh_request_body)
     end
 
-    it 'does not add claim_date to the Lighthouse request body if called as a non-pdf request' do
+    it 'does not add claim_date on the submit path when the submit flag is disabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse_submit).and_return(false)
       data['form526']['claimDate'] = '2023-07-19' # arbitrary date
-      lh_request_body = pdf_disabled_transformer.transform(data)
+      lh_request_body = transformer.transform(data)
       expect(lh_request_body.class).to eq(Requests::Form526)
       expect { lh_request_body.claim_date }.to raise_error(NoMethodError)
       expect_no_lighthouse_errors(lh_request_body)
     end
 
-    it 'does not add claim_date to the Lighthouse request body if called without a pdf flag' do
+    it 'adds claim_date on the pdf path when the pdf flag is enabled and the date is valid' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse).and_return(true)
+      data['form526']['claimDate'] = '2023-07-19' # arbitrary date
+      lh_request_body = pdf_transformer.transform(data)
+      expect(lh_request_body.class).to eq(Requests::Form526Pdf)
+      expect(lh_request_body.claim_date).to eq('2023-07-19')
+      expect_no_lighthouse_errors(lh_request_body)
+    end
+
+    it 'does not add claim_date on the pdf path when the pdf flag is disabled' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse).and_return(false)
+      data['form526']['claimDate'] = '2023-07-19' # arbitrary date
+      lh_request_body = pdf_transformer.transform(data)
+      expect(lh_request_body.class).to eq(Requests::Form526)
+      expect { lh_request_body.claim_date }.to raise_error(NoMethodError)
+      expect_no_lighthouse_errors(lh_request_body)
+    end
+
+    it 'gates the submit path independently: pdf flag on, submit flag off omits claim_date' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse).and_return(true)
+      allow(Flipper).to receive(:enabled?)
+        .with(:disability_526_add_claim_date_to_lighthouse_submit).and_return(false)
       data['form526']['claimDate'] = '2023-07-19' # arbitrary date
       lh_request_body = transformer.transform(data)
       expect(lh_request_body.class).to eq(Requests::Form526)
@@ -116,15 +148,15 @@ RSpec.describe EVSS::DisabilityCompensationForm::Form526ToLighthouseTransform do
     end
 
     # TODO: re-visit once we get clarification on whether claimDate needs to be restored to LH request
-    # context 'when claim_date is provided' do
-    #   let(:claim_date) { Date.new(2023, 7, 19).strftime('%Y-%m-%d') }
-    #
-    #   it 'sets claim_date in the Lighthouse request body' do
-    #     data['form526']['claimDate'] = claim_date
-    #     lh_request_body = transformer.transform(data)
-    #     expect(lh_request_body.claim_date).to eq(claim_date)
-    #   end
-    # end
+    context 'when claim_date is provided' do
+      let(:claim_date) { Date.new(2023, 7, 19).strftime('%Y-%m-%d') }
+
+      it 'sets claim_date in the Lighthouse request body' do
+        data['form526']['claimDate'] = claim_date
+        lh_request_body = transformer.transform(data)
+        expect(lh_request_body.claim_date).to eq(claim_date)
+      end
+    end
 
     it 'verify the LH request body is being populated correctly by default' do
       expect(transformer).to receive(:evss_claims_process_type)
