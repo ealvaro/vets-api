@@ -24,6 +24,19 @@ module MedicalCopays
         build_account(station_id, statement, include_details: true)
       end
 
+      def build_statements(station_id)
+        # A mailed statement always carries an id, which doubles as its PDF lookup key. Records
+        # without one are the placeholders medical_copays_zero_debt appends for facilities with
+        # no debt: nothing was mailed, so there is no document to return.
+        mailed_statements = statements.select do |statement|
+          statement['id'].present? &&
+            get_station_id(statement) == station_id &&
+            mailed_within_six_months?(statement)
+        end
+
+        mailed_statements.map { |statement| build_statement(statement) }.sort_by(&:statement_date).reverse
+      end
+
       private
 
       def statements
@@ -108,6 +121,76 @@ module MedicalCopays
         Date.strptime(posted, '%m%d%Y').iso8601 if posted.present?
       rescue ArgumentError
         nil
+      end
+
+      # CCPC cannot have mailed a statement with no date, so drop the record rather than fail the
+      # whole request the way statement_date_for does. Logged so upstream it stays visible.
+      def mailed_within_six_months?(statement)
+        statement_date_for(statement) > Time.zone.today - 6.months
+      rescue ArgumentError, TypeError # unparseable string, or not a string at all
+        Rails.logger.warn("MedicalCopays::FacilityAccounts undateable statement #{statement['id']}")
+        false
+      end
+
+      def build_statement(statement)
+        statement_date = statement_date_for(statement)
+
+        Statement.new(
+          id: statement['id'],
+          station_id: get_station_id(statement),
+          facility_name: statement.dig('station', 'facilitYDesc'),
+          account_number: statement['accountNumber'],
+          facility_address: facility_address(statement),
+          recipient_address: recipient_address(statement),
+          statement_date:,
+          pay_by_date: statement_date + FacilityAccount::PAYMENT_DUE_DAYS,
+          previous_balance: statement['pHPrevBal'].to_f,
+          new_charges: statement['pHTotCharges'].to_f,
+          payments_and_credits: statement['pHTotCredits'].to_f.abs,
+          statement_balance: statement['pHNewBalance'].to_f,
+          line_items: build_line_items(statement['details'])
+        )
+      end
+
+      # Amounts keep VBS's sign, unlike transactions[] above: ICD field 18 makes the negative the
+      # only marker of a payment or credit, and line items carry no type. Read raw pDTransAmt, not
+      # the pDTransAmtOutput twin description uses — the printed field trails its sign ("16.76- "),
+      # which to_f reads as positive without raising.
+      def build_line_items(details)
+        Array(details).reject { |row| continuation_line?(row) }.map do |row|
+          {
+            date: transaction_date(row['pDDatePosted']),
+            description: row['pDTransDescOutput'],
+            reference_number: row['pDRefNo'].presence,
+            amount: row['pDTransAmt'].to_f
+          }
+        end
+      end
+
+      # line3 is always nil — the station table has no third line, per the ICD and the staging payload.
+      # Kept so facilityAddress and recipientAddress share a shape for FE
+      def facility_address(statement)
+        station = statement['station'].to_h
+
+        {
+          line1: station['staTAddress1'],
+          line2: station['staTAddress2'],
+          line3: station['staTAddress3'],
+          city: station['city'],
+          state: station['state'],
+          zip: station['ziPCdeOutput']
+        }
+      end
+
+      def recipient_address(statement)
+        {
+          line1: statement['pHAddress1'],
+          line2: statement['pHAddress2'],
+          line3: statement['pHAddress3'],
+          city: statement['pHCity'],
+          state: statement['pHState'],
+          zip: statement['pHZipCdeOutput']
+        }
       end
 
       def past_due_balance(statement, due_date, current_balance)

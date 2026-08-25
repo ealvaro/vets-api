@@ -130,6 +130,31 @@ RSpec.describe MedicalCopays::FacilityAccounts::Service do
     end
   end
 
+  describe '#statements' do
+    let(:payment_history_enabled) { true }
+    let(:lighthouse_copays_enabled) { true }
+    # A non-Cerner user with the lighthouse flag on is the one case where #facility_accounts
+    # would pick the Lighthouse builder, so it is the case that proves statements do not.
+    let(:cerner_user) { false }
+
+    let(:statements) do
+      [MedicalCopays::FacilityAccounts::Statement.new(id: 'statement-1', station_id: '757')]
+    end
+
+    before { allow(vbs_builder).to receive(:build_statements).and_return(statements) }
+
+    # Lighthouse has no statement object to reconstruct, so this path bypasses the builder fork and uses VBS directly.
+    it 'asks VBS for the station regardless of the lighthouse flag' do
+      service.statements('757')
+
+      expect(vbs_builder).to have_received(:build_statements).with('757')
+    end
+
+    it 'returns the statements the builder produced, without reshaping them' do
+      expect(service.statements('757')).to eq(statements)
+    end
+  end
+
   describe '#facility_account' do
     let(:payment_history_enabled) { true }
     let(:lighthouse_copays_enabled) { true }

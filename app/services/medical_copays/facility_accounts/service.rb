@@ -33,11 +33,11 @@ module MedicalCopays
         account
       end
 
-      def statements(_station_id)
+      def statements(station_id)
         require_payment_history!
 
-        # TODO: statements representation — VBS data for all users regardless of the
-        # source gate, so it lives here rather than on a builder
+        # VBS for all users — Lighthouse has no statement object to reconstruct.
+        vbs_builder.build_statements(station_id)
       end
 
       private
