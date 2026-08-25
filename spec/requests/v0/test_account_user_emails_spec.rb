@@ -7,13 +7,8 @@ RSpec.describe 'V0::TestAccountUserEmails', type: :request do
     subject { post '/v0/test_account_user_email', params: }
 
     let(:email) { 'some-email' }
-    let(:email_redis_key) { Digest::SHA256.hexdigest(email) }
     let(:params) { { email: } }
     let(:rendered_error) { { 'errors' => 'invalid params' } }
-
-    before do
-      allow(Rails.logger).to receive(:info)
-    end
 
     shared_context 'bad_request' do
       it 'responds with bad request status' do
@@ -46,7 +41,6 @@ RSpec.describe 'V0::TestAccountUserEmails', type: :request do
 
       context 'and email param is not empty' do
         let(:email) { 'some-email' }
-        let(:expected_log_message) { "[V0][TestAccountUserEmailsController] create, key:#{email_redis_key}" }
 
         it 'responds with created status' do
           subject
@@ -54,16 +48,10 @@ RSpec.describe 'V0::TestAccountUserEmails', type: :request do
           assert_response :created
         end
 
-        it 'responds with test_account_user_email_uuid' do
+        it 'responds with an empty body' do
           subject
 
-          expect(JSON.parse(response.body)['test_account_user_email_uuid']).to eq(email_redis_key)
-        end
-
-        it 'makes a create log to rails logger' do
-          subject
-
-          expect(Rails.logger).to have_received(:info).with(expected_log_message)
+          expect(response.body).to be_empty
         end
       end
     end

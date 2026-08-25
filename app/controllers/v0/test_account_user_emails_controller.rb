@@ -5,16 +5,10 @@ module V0
     service_tag 'identity'
     skip_before_action :authenticate
 
-    NAMESPACE = 'test_account_user_email'
-    TTL = 2_592_000
-
     def create
-      email_redis_key = Digest::SHA256.hexdigest(create_params)
-      Rails.cache.write(email_redis_key, create_params, namespace: NAMESPACE, expires_in: TTL)
+      create_params
 
-      Rails.logger.info("[V0][TestAccountUserEmailsController] create, key:#{email_redis_key}")
-
-      render json: { test_account_user_email_uuid: email_redis_key }, status: :created
+      head :created
     rescue
       render json: { errors: 'invalid params' }, status: :bad_request
     end
