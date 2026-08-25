@@ -88,7 +88,7 @@ module UnifiedHealthData
           count = rxs.count { |rx| rx.refill_status == status }
           next unless count.positive?
 
-          StatsD.increment(metric, by: count, tags: ["source_ehr:#{source}"])
+          StatsD.increment(metric, count, tags: ["source_ehr:#{source}"])
         end
       end
 

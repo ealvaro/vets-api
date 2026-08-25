@@ -121,10 +121,10 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
            ])
 
       expect(StatsD).to have_received(:increment).with(
-        'api.uhd.prescriptions.stuck.submitted_total', by: 1, tags: array_including('source_ehr:vista')
+        'api.uhd.prescriptions.stuck.submitted_total', 1, tags: array_including('source_ehr:vista')
       )
       expect(StatsD).to have_received(:increment).with(
-        'api.uhd.prescriptions.stuck.refill_in_process_total', by: 1, tags: array_including('source_ehr:vista')
+        'api.uhd.prescriptions.stuck.refill_in_process_total', 1, tags: array_including('source_ehr:vista')
       )
     end
 
