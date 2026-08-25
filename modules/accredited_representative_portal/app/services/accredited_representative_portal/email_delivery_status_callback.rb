@@ -14,12 +14,20 @@ module AccreditedRepresentativePortal
     FAKE_EMAIL_PATTERN = /\Arepresentative-[^@]+@example\.com\z/i
 
     # VA Notify status_reasons that indicate the failure was specifically caused by an
-    # undeliverable/invalid recipient address, per the Error Status Reason Mapping table:
+    # undeliverable/invalid recipient address. Includes both the legacy phrasing documented
+    # in the Error Status Reason Mapping table:
     # https://va.ghe.com/software/vanotify-team/blob/main/Support/error_status_reason_mapping.md
+    # and the current STATUS_REASON_* constants emitted by notification-api:
+    # https://va.ghe.com/software/notification-api/blob/main/app/constants.py
     ADDRESS_FAILURE_STATUS_REASONS = [
+      # Legacy phrasing
       'Failed to deliver email due to hard bounce',
       'Email address is in invalid format',
-      'Temporarily failed to deliver email due to soft bounce'
+      'Temporarily failed to deliver email due to soft bounce',
+      # Current notification-api phrasing
+      'Undeliverable - Individual unreachable',
+      'Undeliverable - Unable to deliver',
+      'Undeliverable - Individual or carrier has blocked the request'
     ].freeze
 
     def self.call(notification)
