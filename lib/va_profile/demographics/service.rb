@@ -9,6 +9,7 @@ require_relative 'demographic_response'
 require_relative 'preferred_name_response'
 require_relative 'gender_identity_response'
 require 'logging/helper/data_scrubber'
+require 'identity/parsers/gc_ids_constants'
 
 module VAProfile
   module Demographics
@@ -22,14 +23,17 @@ module VAProfile
       # Returns a response object containing the user's preferred name, and gender-identity
       def get_demographics
         with_monitoring do
-          return build_response(401, nil) unless DemographicsPolicy.new(@user).access_update?
+          unless DemographicsPolicy.new(@user).access_update?
+            log_missing_icn
+            return build_response(401, nil)
+          end
 
           response = perform(:get, identity_path)
           build_response(response&.status, response&.body)
         end
       rescue Common::Client::Errors::ClientError => e
         if e.status == 404
-          Rails.logger.error(scrub_pii(e.message), { csp_id_with_aaid:, va_profile: :demographics_not_found })
+          Rails.logger.error(scrub_pii(e.message), demographics_not_found_context)
 
           return build_response(404, nil)
         elsif e.status >= 400 && e.status < 500
@@ -55,7 +59,10 @@ module VAProfile
 
       def post_or_put_data(method, model, path, response_class)
         with_monitoring do
-          raise 'User does not have a valid CSP ID' unless DemographicsPolicy.new(@user).access_update?
+          unless DemographicsPolicy.new(@user).access_update?
+            log_missing_icn
+            raise 'User does not have an ICN'
+          end
 
           model.set_defaults(@user)
           response = perform(method, identity_path(path), model.in_json)
@@ -72,10 +79,8 @@ module VAProfile
         response&.status == 200 && response&.body == {}
       end
 
-      # VA Profile demographic endpoints use the OID (Organizational Identifier), the CSP ID,
-      # and the Assigning Authority ID to identify which person will be updated/retrieved.
       def identity_path(dir = nil)
-        path = "#{OID}/#{ERB::Util.url_encode(csp_id_with_aaid.to_s)}"
+        path = "#{OID}/#{ERB::Util.url_encode(icn_with_aaid.to_s)}"
         dir ? "#{path}/#{dir}" : path
       end
 
@@ -92,21 +97,23 @@ module VAProfile
 
       private
 
-      def csp_id_with_aaid
-        "#{csp_id}#{aaid}"
+      def icn_with_aaid
+        return if @user&.icn.blank?
+
+        "#{@user.icn}#{Identity::Parsers::GCIdsConstants::ICN_ASSIGNING_AUTHORITY_ID}"
       end
 
-      # For now, only valid if CSP (credential service provider) is id.me or login.gov
-      def csp_id
-        return @user&.idme_uuid if @user&.idme_uuid.present?
-
-        @user&.logingov_uuid.presence
+      def demographics_not_found_context
+        { icn_present: @user&.icn.present?, va_profile: :demographics_not_found }
       end
 
-      def aaid
-        return '^PN^200VIDM^USDVA' if @user&.idme_uuid.present?
-
-        '^PN^200VLGN^USDVA' if @user&.logingov_uuid.present?
+      def log_missing_icn
+        StatsD.increment('va_profile.demographics.missing_icn', tags: ['service:demographics'])
+        Rails.logger.warn(
+          event: 'va_profile.demographics.missing_icn',
+          service: 'demographics',
+          user_uuid: @user&.uuid
+        )
       end
 
       def scrub_pii(message)

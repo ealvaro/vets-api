@@ -4,6 +4,7 @@ require_relative 'bio_path_builder'
 require_relative 'configuration'
 require_relative 'health_benefit_bio_response'
 require_relative 'military_occupation_response'
+require 'identity/parsers/gc_ids_constants'
 require 'digest'
 
 module VAProfile
@@ -25,7 +26,7 @@ module VAProfile
         end
 
         def get_health_benefit_bio
-          validate_icn_with_aaid
+          validate_health_benefit_identifier
           path, path_hash, request_body = build_request_params
 
           start_ms = current_time_ms
@@ -54,10 +55,9 @@ module VAProfile
         private
 
         def icn_with_aaid
-          return "#{user.idme_uuid}^PN^200VIDM^USDVA" if user.idme_uuid
-          return "#{user.logingov_uuid}^PN^200VLGN^USDVA" if user.logingov_uuid
+          return if user.icn.blank?
 
-          nil
+          "#{user.icn}#{Identity::Parsers::GCIdsConstants::ICN_ASSIGNING_AUTHORITY_ID}"
         end
 
         def body
@@ -86,10 +86,10 @@ module VAProfile
           "#{OID}/#{ERB::Util.url_encode("#{edipi}#{AAID}")}"
         end
 
-        def validate_icn_with_aaid
+        def validate_health_benefit_identifier
           return if icn_with_aaid
 
-          log_missing_icn_with_aaid
+          log_missing_health_benefit_identifier
           raise Common::Exceptions::BackendServiceException.new('VET360_502', self.class)
         end
 
@@ -119,7 +119,7 @@ module VAProfile
           Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
         end
 
-        def log_missing_icn_with_aaid
+        def log_missing_health_benefit_identifier
           Rails.logger.error(
             event: 'va_profile.health_benefit_bio.missing_icn_with_aaid',
             user_uuid: user.uuid,

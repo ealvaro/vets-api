@@ -30,6 +30,7 @@ RSpec.describe 'Mobile::V0::User', type: :request do
         last_name: 'ANDERSON',
         email: 'va.api.user+idme.008@gmail.com',
         birth_date: '1970-08-12',
+        icn: '1008596379V859838',
         idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef',
         cerner_facility_ids: %w[757 358 999],
         vha_facility_ids: %w[757 358 999]
@@ -251,7 +252,9 @@ RSpec.describe 'Mobile::V0::User', type: :request do
       end
 
       context 'when user object birth_date is nil' do
-        let!(:user) { sis_user(birth_date: nil, idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
+        let!(:user) do
+          sis_user(birth_date: nil, icn: '1008596379V859838', idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef')
+        end
 
         before do
           VCR.use_cassette('mobile/va_profile/demographics/demographics') do
@@ -550,7 +553,9 @@ RSpec.describe 'Mobile::V0::User', type: :request do
       end
 
       context 'when user does not have a vet360_id' do
-        let!(:user) { sis_user(vet360_id: nil, idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
+        let!(:user) do
+          sis_user(vet360_id: nil, icn: '1008596379V859838', idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef')
+        end
 
         it 'enqueues vet360 linking job' do
           expect(Mobile::V0::Vet360LinkingJob).to receive(:perform_async)
@@ -571,10 +576,8 @@ RSpec.describe 'Mobile::V0::User', type: :request do
           expect(Mobile::V0::Vet360LinkingJob).not_to receive(:perform_async)
           allow(Rails.logger).to receive(:warn).and_call_original
 
-          VCR.use_cassette('mobile/va_profile/demographics/demographics') do
-            VCR.use_cassette('lighthouse/facilities/v1/200_facilities_no_ids') do
-              get '/mobile/v0/user', headers: sis_headers
-            end
+          VCR.use_cassette('lighthouse/facilities/v1/200_facilities_no_ids') do
+            get '/mobile/v0/user', headers: sis_headers
           end
           expect(Rails.logger).to have_received(:warn).with('Mobile Vet360LinkingJob skipped - user has no ICN',
                                                             { user_uuid: user.uuid })

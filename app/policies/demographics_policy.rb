@@ -2,10 +2,10 @@
 
 DemographicsPolicy = Struct.new(:user, :gender_identity) do
   def access?
-    user&.idme_uuid.present? || user&.logingov_uuid.present?
+    user&.icn.present?
   end
 
   def access_update?
-    user&.idme_uuid.present? || user&.logingov_uuid.present?
+    user&.icn.present?
   end
 end

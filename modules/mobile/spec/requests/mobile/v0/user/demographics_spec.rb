@@ -107,7 +107,7 @@ RSpec.describe 'Mobile::V0::User::Demographics', type: :request do
   end
 
   describe 'unauthorized user' do
-    let!(:user) { sis_user(idme_uuid: nil, logingov_uuid: nil) }
+    let!(:user) { sis_user(icn: nil, idme_uuid: nil, logingov_uuid: nil) }
 
     context 'returns as expected' do
       before do

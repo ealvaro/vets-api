@@ -6,7 +6,8 @@ RSpec.describe V0::Profile::ContactsController, type: :controller do
   include SchemaMatchers
 
   let(:idme_uuid) { 'dd681e7d6dea41ad8b80f8d39284ef29' }
-  let(:user) { build(:user, :loa3, idme_uuid:) }
+  let(:icn) { '1012667145V762142' }
+  let(:user) { build(:user, :loa3, idme_uuid:, icn:) }
   let(:loa1_user) { build(:user, :loa1) }
   let(:cassette) { 'va_profile/profile/v3/health_benefit_bio_200' }
 

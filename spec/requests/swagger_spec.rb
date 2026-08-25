@@ -1995,7 +1995,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     describe 'profiles', :initiate_vaprofile do
-      let(:mhv_user) { build(:user, :loa3, idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
+      let(:mhv_user) { build(:user, :loa3, :legacy_icn, idme_uuid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef') }
 
       before do
         sign_in_as(mhv_user)
@@ -2459,6 +2459,8 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
     end
 
     describe 'when MVI returns an unexpected response body' do
+      let(:mhv_user) { build(:user, :mhv, middle_name: 'Bob', icn: '123498767V234859') }
+
       it 'supports returning a custom 502 response' do
         allow_any_instance_of(UserIdentity).to receive(:sign_in).and_return({
                                                                               service_name: 'oauth_IDME',
@@ -3333,7 +3335,7 @@ RSpec.describe 'the v0 API documentation', order: :defined, type: %i[apivore req
 
       context 'loa3 user' do
         let(:idme_uuid) { 'dd681e7d6dea41ad8b80f8d39284ef29' }
-        let(:mhv_user) { build(:user, :loa3, idme_uuid:) }
+        let(:mhv_user) { build(:user, :loa3, idme_uuid:, icn: '1012667145V762142') }
 
         it 'returns ok status code' do
           VCR.use_cassette('va_profile/profile/v3/health_benefit_bio_200') do

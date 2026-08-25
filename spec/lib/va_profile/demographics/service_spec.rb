@@ -8,19 +8,14 @@ describe VAProfile::Demographics::Service,  feature: :personal_info,
                                             type: :service do
   subject { described_class.new(user) }
 
-  let(:user) { build(:user, :loa3) }
+  let(:user) { build(:user, :loa3, idme_uuid:, icn:) }
   let(:idme_uuid) { 'b2fab2b5-6af0-45e1-a9e2-394347af91ef' }
-
-  before do
-    allow(user).to receive(:idme_uuid).and_return(idme_uuid)
-  end
+  let(:icn) { '123498767V234859' }
 
   describe '#identity_path' do
-    context 'when a uuid exists' do
-      it 'returns a valid identity path' do
-        path = subject.identity_path
-        expect(path).to eq('2.16.840.1.113883.4.349/b2fab2b5-6af0-45e1-a9e2-394347af91ef%5EPN%5E200VIDM%5EUSDVA')
-      end
+    it 'returns an ICN based identity path' do
+      path = subject.identity_path
+      expect(path).to eq('2.16.840.1.113883.4.349/123498767V234859%5ENI%5E200M%5EUSVHA')
     end
   end
 
@@ -72,8 +67,7 @@ describe VAProfile::Demographics::Service,  feature: :personal_info,
         VCR.use_cassette('va_profile/demographics/demographics_error_404', VCR::MATCH_EVERYTHING) do
           expect(Rails.logger).to receive(:error).with(
             instance_of(String),
-            { csp_id_with_aaid: 'b2fab2b5-6af0-45e1-a9e2-394347af91ef^PN^200VIDM^USDVA',
-              va_profile: :demographics_not_found }
+            { icn_present: true, va_profile: :demographics_not_found }
           )
 
           response = subject.get_demographics
@@ -93,6 +87,24 @@ describe VAProfile::Demographics::Service,  feature: :personal_info,
             expect(e.errors.first.code).to eq('VET360_502')
           end
         end
+      end
+    end
+
+    context 'when the user has no ICN' do
+      before { allow(user).to receive(:icn).and_return(nil) }
+
+      it 'returns an unauthorized response and logs the missing ICN' do
+        allow(StatsD).to receive(:increment).and_call_original
+        allow(Rails.logger).to receive(:warn).and_call_original
+
+        response = subject.get_demographics
+
+        expect(response).not_to be_ok
+        expect(StatsD).to have_received(:increment)
+          .with('va_profile.demographics.missing_icn', tags: ['service:demographics'])
+        expect(Rails.logger).to have_received(:warn).with(
+          hash_including(event: 'va_profile.demographics.missing_icn', service: 'demographics')
+        )
       end
     end
   end
