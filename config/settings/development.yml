@@ -1070,6 +1070,7 @@ mhv:
     pretransitioned_oh_facilities: 612, 357, 555, 757
     renewal_flow_allowed_oh_facilities: ''
     renewal_flow_rollout_oh_facilities: ''
+    vista_suppression_oh_stations: ''
   rx:
     app_token: ~
     base_path: mhv-api/patient/v1/

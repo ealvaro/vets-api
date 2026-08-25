@@ -1049,6 +1049,20 @@ mhv:
     pretransitioned_oh_facilities: <%= ENV['mhv__pretransitioned_oh_facilities'] %>
     renewal_flow_allowed_oh_facilities: <%= ENV['mhv__renewal_flow_allowed_oh_facilities'] %>
     renewal_flow_rollout_oh_facilities: <%= ENV['mhv__renewal_flow_rollout_oh_facilities'] %>
+    # Comma-separated station numbers that have cut over to Oracle Health and whose leftover
+    # VistA prescriptions must stop being offered as refillable/renewable. Curated by hand and
+    # updated at each cutover via Parameter Store; deliberately NOT derived from Drupal's
+    # vamc-ehr.json, which flags whole systems and would suppress child stations that have not
+    # actually migrated. Matched exactly, so list child stations ('668A4') individually.
+    # Empty means the guard cannot fire.
+    #
+    # The ERB output is JSON-escaped deliberately, and this matters more than it looks. Left bare,
+    # YAML 1.1 reads '668,991,998' as the integer 668991998 (commas are legal digit separators),
+    # which parses to one bogus station and silently disables the guard. Wrapping the ERB in plain
+    # quotes fixes that but then fails to boot if the Parameter Store value itself contains a
+    # quote. .to_json always emits a valid, escaped YAML double-quoted scalar, so the value is a
+    # String no matter how it was typed.
+    vista_suppression_oh_stations: <%= ENV['mhv__vista_suppression_oh_stations'].to_s.to_json %>
   rx:
     app_token: <%= ENV['mhv__rx__app_token'] %>
     base_path: <%= ENV['mhv__rx__base_path'] %>

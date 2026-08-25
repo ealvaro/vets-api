@@ -2095,6 +2095,16 @@ features:
       and structured logs (no PII/PHI) tagged by source_ehr and day bucket.
       Has no effect on prescription classification.
     enable_in_development: true
+  mhv_medications_suppress_vista_rx_at_oh_stations:
+    actor_type: user
+    description: >-
+      If enabled, VistA-sourced prescriptions whose station has gone live on Oracle
+      Health (per the curated mhv.oh_facility_checks.vista_suppression_oh_stations
+      setting) are no longer offered as refillable or renewable: both is_refillable and
+      is_renewable are forced to false.
+      The records stay visible as history and their display status is unchanged.
+      With the flag off nothing is evaluated, logged, or counted. Fails open when no
+      stations are configured.    
   mhv_mmi_refill_status_bandaid_temp:
     actor_type: user
     description: >-

@@ -457,6 +457,214 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       end
     end
 
+    context 'with VistA prescriptions at Oracle Health stations' do
+      subject(:parsed) { described_class.new(user).parse(response)[:prescriptions] }
+
+      let(:oh_stations) { '668, 528GQ01' }
+      let(:enforced) { true }
+      let(:vista_medications) { [vista_medication_data.merge('stationNumber' => '668')] }
+      let(:response) do
+        {
+          'vista' => { 'medicationList' => { 'medication' => vista_medications } },
+          'oracle-health' => nil
+        }
+      end
+
+      before do
+        allow(Settings.mhv.oh_facility_checks).to receive(:vista_suppression_oh_stations).and_return(oh_stations)
+        allow(Flipper).to receive(:enabled?).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medications_suppress_vista_rx_at_oh_stations, user).and_return(enforced)
+        allow(StatsD).to receive(:increment)
+        allow(StatsD).to receive(:gauge)
+        allow(Rails.logger).to receive(:info)
+      end
+
+      context 'when the flag is enabled' do
+        it 'suppresses both is_refillable and is_renewable' do
+          rx = parsed.first
+
+          expect(rx.is_refillable).to be(false)
+          expect(rx.is_renewable).to be(false)
+        end
+
+        it 'leaves the prescription in the list with its display status untouched' do
+          rx = parsed.first
+
+          expect(parsed.size).to eq(1)
+          expect(rx.prescription_id).to eq('28148665')
+          expect(rx.refill_status).to eq('active')
+        end
+
+        context 'when the prescription was refillable but not renewable' do
+          let(:vista_medications) do
+            [vista_medication_data.merge('stationNumber' => '668', 'isRefillable' => true,
+                                         'dispStatus' => 'Active', 'refillRemaining' => 5)]
+          end
+
+          it 'flips the true flag and leaves the already-false flag false' do
+            rx = parsed.first
+
+            expect(rx.is_refillable).to be(false)
+            expect(rx.is_renewable).to be(false)
+          end
+        end
+
+        context 'when the prescription was renewable but not refillable' do
+          let(:vista_medications) do
+            [vista_medication_data.merge('stationNumber' => '668', 'isRefillable' => false,
+                                         'dispStatus' => 'Active', 'refillRemaining' => 0)]
+          end
+
+          it 'flips the true flag and leaves the already-false flag false' do
+            rx = parsed.first
+
+            expect(rx.is_refillable).to be(false)
+            expect(rx.is_renewable).to be(false)
+          end
+        end
+
+        context 'when a child station is listed explicitly' do
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => '528GQ01')] }
+
+          it 'suppresses on the exact match' do
+            expect(parsed.first.is_refillable).to be(false)
+          end
+        end
+
+        context 'when only the parent station is listed' do
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => '668A4')] }
+
+          it 'does not suppress the child station' do
+            expect(parsed.first.is_refillable).to be(true)
+          end
+        end
+
+        context 'when the station number carries surrounding whitespace' do
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => ' 668 ')] }
+
+          it 'still matches' do
+            expect(parsed.first.is_refillable).to be(false)
+          end
+        end
+
+        context 'when the child station casing differs from the setting' do
+          let(:oh_stations) { '528gq01' }
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => '528GQ01')] }
+
+          it 'matches case-insensitively' do
+            expect(parsed.first.is_refillable).to be(false)
+          end
+        end
+
+        context 'when the station is not on Oracle Health' do
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => '991')] }
+
+          it 'leaves the prescription untouched' do
+            expect(parsed.first.is_refillable).to be(true)
+          end
+
+          it 'does not emit the detection metric' do
+            parsed
+            expect(StatsD).not_to have_received(:increment)
+              .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+          end
+        end
+
+        context 'when the prescription is sourced from Oracle Health' do
+          let(:response) do
+            {
+              'vista' => nil,
+              'oracle-health' => unified_response['oracle-health']
+            }
+          end
+
+          it 'leaves the prescription untouched' do
+            expect(parsed.first.source_ehr).to eq(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
+            expect(StatsD).not_to have_received(:increment)
+              .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+          end
+        end
+
+        context 'when the station number is blank' do
+          let(:vista_medications) { [vista_medication_data.merge('stationNumber' => nil)] }
+
+          it 'leaves the prescription untouched without raising' do
+            expect(parsed.first.is_refillable).to be(true)
+          end
+        end
+      end
+
+      context 'when the flag is disabled' do
+        let(:enforced) { false }
+
+        it 'leaves both flags unchanged' do
+          rx = parsed.first
+
+          expect(rx.is_refillable).to be(true)
+          expect(rx.is_renewable).to be(false)
+        end
+
+        it 'emits no metrics' do
+          parsed
+
+          expect(StatsD).not_to have_received(:increment)
+            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+          expect(StatsD).not_to have_received(:gauge)
+            .with(described_class::STATSD_OH_STATION_COUNT, anything)
+        end
+      end
+
+      context 'when the flag is enabled and a prescription is suppressed' do
+        it 'emits the detection metric tagged by station' do
+          parsed
+
+          expect(StatsD).to have_received(:increment)
+            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, tags: ['station_number:668'])
+        end
+      end
+
+      context 'when no stations are configured' do
+        let(:oh_stations) { '' }
+
+        it 'fails open and leaves both flags unchanged' do
+          rx = parsed.first
+
+          expect(rx.is_refillable).to be(true)
+          expect(rx.is_renewable).to be(false)
+        end
+
+        it 'emits no detection metric' do
+          parsed
+
+          expect(StatsD).not_to have_received(:increment)
+            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+        end
+
+        it 'gauges the configured station count so a stale list is visible' do
+          parsed
+
+          expect(StatsD).to have_received(:gauge).with(described_class::STATSD_OH_STATION_COUNT, 0)
+        end
+      end
+
+      context 'when the setting arrives from Parameter Store as an integer' do
+        let(:oh_stations) { 668 }
+
+        it 'still matches the station' do
+          expect(parsed.first.is_refillable).to be(false)
+        end
+      end
+
+      context 'when the setting was typed into Parameter Store with quotes' do
+        let(:oh_stations) { '"668", "991"' }
+
+        it 'still matches the station' do
+          expect(parsed.first.is_refillable).to be(false)
+        end
+      end
+    end
+
     context 'with Oracle Health-only data' do
       let(:oracle_only_response) do
         {

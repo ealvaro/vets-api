@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'mhv/oh_facilities_helper/service'
 require_relative 'vista_prescription_adapter'
 require_relative 'oracle_health_prescription_adapter'
 require_relative '../constants'
@@ -23,6 +24,16 @@ module UnifiedHealthData
       # momentarily reports plain "Active" during this handoff. Overridable via
       # Settings.mhv.uhd.cmop_in_process_window_days so the ceiling can be tuned without a deploy.
       CMOP_IN_PROCESS_WINDOW_DEFAULT_DAYS = 15
+
+      # Emitted for every VistA prescription suppressed at a station that is live on Oracle
+      # Health. Only emitted when the feature flag is on, so it doubles as a rollout signal.
+      STATSD_VISTA_RX_AT_OH_STATION = 'api.uhd.vista_rx_at_oh_station.detected'
+      # Gauge of how many stations are configured for suppression. A curated list going stale is
+      # otherwise indistinguishable from "no stations have cut over yet", so alert if this is 0
+      # while the flag is on, or if it has not moved across a known cutover date. Gated with the
+      # rest of the guard: with the flag off the list size has no consequences, and reporting it
+      # anyway would suggest suppression is happening when none is.
+      STATSD_OH_STATION_COUNT = 'api.uhd.vista_rx_at_oh_station.configured_stations'
 
       def initialize(current_user = nil)
         @current_user = current_user
@@ -54,6 +65,8 @@ module UnifiedHealthData
 
         # Exclude certain prescriptions based on business rules
         prescriptions.reject! { |prescription| should_exclude_prescription?(prescription) }
+
+        apply_oh_station_vista_suppression(prescriptions)
 
         # Apply current filtering if requested
         prescriptions = apply_current_filtering(prescriptions) if current_only
@@ -117,6 +130,52 @@ module UnifiedHealthData
         end
 
         false
+      end
+
+      # A station that has gone live on Oracle Health keeps returning its historical VistA records
+      # through UHD, and those records can still carry is_refillable/is_renewable from before the
+      # cutover. Acting on them would submit a refill against an EHR that no longer owns the
+      # prescription, so both affordances are withdrawn. The record itself is left alone: it stays
+      # in the list, keeps its display status, and is not deduplicated against its OH counterpart.
+      #
+      # Entirely flag-gated: with the flag off this emits no metrics and touches nothing. Fails
+      # open twice over, since an empty station list also means the guard cannot fire -- wrongly
+      # blocking a Veteran's refill is worse than the stale record this guards against.
+      def apply_oh_station_vista_suppression(prescriptions)
+        return unless Flipper.enabled?(:mhv_medications_suppress_vista_rx_at_oh_stations, @current_user)
+
+        StatsD.gauge(STATSD_OH_STATION_COUNT, oh_suppression_stations.size)
+        return if oh_suppression_stations.empty?
+
+        prescriptions.each do |rx|
+          next unless vista_source?(rx) && rx.station_number.present?
+
+          station = normalized_station(rx.station_number)
+          next unless oh_suppression_stations.include?(station)
+
+          StatsD.increment(STATSD_VISTA_RX_AT_OH_STATION, tags: ["station_number:#{station}"])
+
+          rx.is_refillable = false
+          rx.is_renewable = false
+        end
+      end
+
+      # Hand-curated station numbers, updated at each cutover via Parameter Store. Matched exactly:
+      # no parent-station fallback, so listing '610' never suppresses '610A4'. Cutovers move 2-4
+      # stations every couple of months, so an explicit list is cheaper to operate and safer than
+      # deriving system-level state from a source that flags whole systems at once.
+      def oh_suppression_stations
+        @oh_suppression_stations ||= MHV::OhFacilitiesHelper::Service.parse_facility_setting(
+          Settings.mhv.oh_facility_checks.vista_suppression_oh_stations
+        ).map { |station| normalized_station(station) }
+      end
+
+      # Child stations carry alphanumeric suffixes ('610A4', '528GQ01'), so casing has to be
+      # normalized on both sides or an exact match silently misses. Stray quotes are dropped too:
+      # the setting is hand-typed into Parameter Store, and someone quoting the list would
+      # otherwise leave a quote welded to the first and last station.
+      def normalized_station(station_number)
+        station_number.to_s.delete('"\'').strip.upcase
       end
 
       def should_exclude_prescription?(prescription)
