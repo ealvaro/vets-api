@@ -123,7 +123,10 @@ module UnifiedHealthData
             format_height(record)
           else
             value = record.dig('valueQuantity', 'value')
-            value ? "#{value}#{units}" : nil
+            return nil unless value
+
+            formatted_value = apply_precision(value, record_type)
+            "#{formatted_value}#{units}"
           end
         end
       rescue
@@ -189,7 +192,7 @@ module UnifiedHealthData
 
           format_height(height_ref)
         when 'WEIGHT'
-          format_extension_value(extensions, '[lb_av]', VITAL_UNIT_DISPLAY_TEXT[:WEIGHT])
+          format_extension_value(extensions, '[lb_av]', VITAL_UNIT_DISPLAY_TEXT[:WEIGHT], record_type)
         when 'TEMPERATURE'
           format_extension_value(extensions, '[degF]', VITAL_UNIT_DISPLAY_TEXT[:TEMPERATURE])
         # if other types with multiple entries, but not specifically differentiated, return the default valueQuantity
@@ -201,14 +204,24 @@ module UnifiedHealthData
         end
       end
 
-      def format_extension_value(extensions, code, units)
+      def format_extension_value(extensions, code, units, record_type = nil)
         ref = extensions.find { |ext| ext.dig('valueQuantity', 'code') == code }
         return nil unless ref
 
         value = ref.dig('valueQuantity', 'value')
         return nil unless value
 
-        "#{value}#{units}"
+        formatted_value = apply_precision(value, record_type)
+        "#{formatted_value}#{units}"
+      end
+
+      def apply_precision(value, record_type)
+        return value unless record_type
+
+        precision = VITAL_DECIMAL_PRECISION[record_type.to_sym]
+        return value unless precision
+
+        value.round(precision)
       end
 
       def find_contained(record, reference, type = nil)

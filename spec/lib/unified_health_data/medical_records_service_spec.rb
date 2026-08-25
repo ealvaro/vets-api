@@ -776,7 +776,7 @@ describe UnifiedHealthData::MedicalRecordsService, type: :service do
               'name' => 'Weight',
               'type' => 'WEIGHT',
               'date' => '2025-08-22T22:16:24Z',
-              'measurement' => '165.35 pounds',
+              'measurement' => '165.4 pounds',
               'location' => 'CHY ANOTHER TEST CLINIC',
               'notes' => []
             }

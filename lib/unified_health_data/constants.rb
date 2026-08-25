@@ -166,6 +166,13 @@ module UnifiedHealthData
     PAIN_SEVERITY: ''
   }.freeze
 
+  # Decimal precision for vital measurements.
+  # nil = no rounding applied.
+  # VHA/Clinical confirmed 1 decimal place is adequate for weight display.
+  VITAL_DECIMAL_PRECISION = {
+    WEIGHT: 1
+  }.freeze
+
   # Backward-compatible alias so existing references to SourceConstants still work.
   SourceConstants = Constants::SourceConstants
 end
