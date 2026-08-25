@@ -16,6 +16,10 @@ module AskVAApi
         UNAUTHENTICATE_ID = '722310000'
         INQUIRY_SOURCE_AVA_ID = '722310000'
 
+        # UTM params joined (in order) with '&' to form ReferralMetadata.
+        # Add new UTM keys here to include them in the payload.
+        UTM_PARAM_KEYS = %i[utm_source utm_medium].freeze
+
         def initialize(inquiry_params:, user: nil)
           @inquiry_params = inquiry_params
           validate_params!
@@ -104,6 +108,7 @@ module AskVAApi
           {
             LevelOfAuthentication: translate_field(:level_of_authentication),
             MedicalCenter: medical_center_guid_lookup,
+            ReferralMetadata: referral_metadata,
             SchoolObj: build_school_object,
             SubmitterQuestion: inquiry_params[:question],
             SubmitterStateOfSchool: build_state_data(:school_obj, :state_abbreviation),
@@ -176,6 +181,10 @@ module AskVAApi
 
         def counselor_info
           inquiry_params[:their_vre_counselor] || inquiry_params[:your_vre_counselor]
+        end
+
+        def referral_metadata
+          UTM_PARAM_KEYS.map { |key| inquiry_params[key] }.compact_blank.join('&').presence
         end
 
         def build_residency_state_data

@@ -94,6 +94,38 @@ RSpec.describe AskVAApi::Inquiries::PayloadBuilder::InquiryPayload do
       end
     end
 
+    context 'when building ReferralMetadata from UTM params' do
+      context 'when both utm_source and utm_medium are present' do
+        let(:params) { inquiry_params[:inquiry].merge(utm_source: 'google', utm_medium: 'cpc') }
+
+        it 'joins them with an ampersand' do
+          expect(builder.call[:ReferralMetadata]).to eq('google&cpc')
+        end
+      end
+
+      context 'when only utm_source is present' do
+        let(:params) { inquiry_params[:inquiry].merge(utm_source: 'google', utm_medium: '') }
+
+        it 'sends the present value without an ampersand' do
+          expect(builder.call[:ReferralMetadata]).to eq('google')
+        end
+      end
+
+      context 'when only utm_medium is present' do
+        let(:params) { inquiry_params[:inquiry].merge(utm_medium: 'cpc') }
+
+        it 'sends the present value without an ampersand' do
+          expect(builder.call[:ReferralMetadata]).to eq('cpc')
+        end
+      end
+
+      context 'when neither is present' do
+        it 'sets ReferralMetadata to nil' do
+          expect(builder.call[:ReferralMetadata]).to be_nil
+        end
+      end
+    end
+
     context 'when user is authenticated and inquiry is about Education benefits and work study' do
       let(:authorized_user) { build(:user, :accountable_with_sec_id, icn: '234', edipi: '123') }
       let(:params) { i_am_veteran_edu[:inquiry] }

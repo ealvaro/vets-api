@@ -87,6 +87,7 @@ RSpec.shared_context 'shared data' do
       IsVeteranDeceased: 'false',
       LevelOfAuthentication: 722_310_001,
       MedicalCenter: '2da51029-6816-e611-9436-0050568d743d',
+      ReferralMetadata: nil,
       SchoolObj: { City: nil,
                    InstitutionName: nil,
                    SchoolFacilityCode: nil,

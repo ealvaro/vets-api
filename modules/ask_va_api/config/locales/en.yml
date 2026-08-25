@@ -44,6 +44,8 @@ en:
           - :topic_id
           - :use_school
           - :use_school_in_profile
+          - :utm_source
+          - :utm_medium
           - :veterans_postal_code
           - :veterans_location_of_residence
           - :who_is_your_question_about
