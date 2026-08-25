@@ -18,15 +18,17 @@ echo "Changed files: $CHANGED_FILES"
 
 check_in_codeowners() {
     local file="$1"
+    local escaped_file
     while [[ "$file" != '.' && "$file" != '/' ]]; do
         echo "Checking CODEOWNERS for: $file"
+        escaped_file=$(printf '%s\n' "$file" | sed 's/\./\\./g')
         # Check for exact match or trailing slash
-        if grep -qE "^\s*${file}(/)?(\s|\$)" .github/CODEOWNERS; then
+        if grep -qE "^[[:space:]]*${escaped_file}(/)?([[:space:]]|\$)" .github/CODEOWNERS; then
             echo "Found in CODEOWNERS: $file"
             return 0
         fi
         # Check for wildcard match
-        if grep -qE "^\s*${file}/\*(\s|\$)" .github/CODEOWNERS; then
+        if grep -qE "^[[:space:]]*${escaped_file}/\*([[:space:]]|\$)" .github/CODEOWNERS; then
             echo "Found in CODEOWNERS as wildcard: ${file}/*"
             return 0
         fi
@@ -39,12 +41,6 @@ check_in_codeowners() {
 }
 
 for FILE in ${CHANGED_FILES}; do
-  # Ignore files starting with a dot
-  if [[ $FILE == .* ]]; then
-    echo "Ignoring file $FILE"
-    continue
-  fi
-
   echo "Checking file: $FILE"
   if ! check_in_codeowners "$FILE"; then
     echo "Error: $FILE (or its parent directories) does not have a CODEOWNERS entry."
