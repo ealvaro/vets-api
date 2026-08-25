@@ -20,7 +20,7 @@ module Mobile
             facilities: true,
             travel_pay_claims: include_claims,
             # Whether service returns avsPdf is based on: flipper state, whether OH, and start date of appt
-            avs: start_date < 1.day.ago.utc
+            avs: start_date < 3.days.ago.utc
           }
 
           # VAOS V2 appointments service accepts pagination params but either it formats them incorrectly

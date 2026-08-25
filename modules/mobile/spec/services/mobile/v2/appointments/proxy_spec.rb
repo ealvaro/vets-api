@@ -53,5 +53,31 @@ RSpec.describe Mobile::V2::Appointments::Proxy do
         )
       end
     end
+
+    context 'avs include param' do
+      context 'when start_date is more than 3 days in the past' do
+        let(:start_date) { 4.days.ago.utc }
+
+        it 'sets avs to true' do
+          subject.get_appointments(start_date:, end_date:, include_pending: true)
+
+          expect(vaos_service).to have_received(:get_appointments).with(
+            start_date, end_date, anything, anything, hash_including(avs: true), anything
+          )
+        end
+      end
+
+      context 'when start_date is less than 3 days in the past' do
+        let(:start_date) { 1.day.ago.utc }
+
+        it 'sets avs to false' do
+          subject.get_appointments(start_date:, end_date:, include_pending: true)
+
+          expect(vaos_service).to have_received(:get_appointments).with(
+            start_date, end_date, anything, anything, hash_including(avs: false), anything
+          )
+        end
+      end
+    end
   end
 end
