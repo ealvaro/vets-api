@@ -6,6 +6,7 @@ account:
 accredited_representative_portal:
   allow_list:
     github:
+      access_token: ~
       app_id: ~
       base_uri: ~
       org: ~
