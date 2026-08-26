@@ -139,7 +139,7 @@ module ClaimsApi
     def find_by_email(poa_code)
       return false if @current_user.email.blank?
 
-      reps_by_email = ::Veteran::Service::Representative.where(
+      reps_by_email = ClaimsApi::AccreditationTables.representative.where(
         'lower(first_name) = ? AND lower(last_name) = ? AND lower(email) = ?',
         @current_user.first_name&.downcase,
         @current_user.last_name&.downcase,

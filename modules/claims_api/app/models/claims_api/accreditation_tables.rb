@@ -7,13 +7,13 @@ module ClaimsApi
     module_function
 
     def representative
-      # return ::ClaimsApi::Representative if use_claims_accreditation_tables?
+      return ::ClaimsApi::Representative if use_claims_accreditation_tables?
 
       ::Veteran::Service::Representative
     end
 
     def organization
-      # return ::ClaimsApi::Organization if use_claims_accreditation_tables?
+      return ::ClaimsApi::Organization if use_claims_accreditation_tables?
 
       ::Veteran::Service::Organization
     end

@@ -7,8 +7,6 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Decide do
   subject { ClaimsApi::PowerOfAttorneyRequestService::Decide.new }
 
   let(:veteran_icn) { '1012861229V078999' }
-  let(:claimant_icn) { '1013093331V548481' }
-
   let(:veteran) do
     OpenStruct.new(
       icn: veteran_icn,
@@ -46,28 +44,58 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Decide do
     )
   end
   let(:lighthouse_id) { '111111' }
+  let(:claimant_icn) { '1013093331V548481' }
+
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+  end
 
   describe '#validate_decide_representative_params!' do
     let(:decision) { 'ACCEPTED' }
     let(:representative_id) { '456' }
     let(:poa_code) { '123' }
 
-    describe 'validating the params' do
-      it 'raises ResourceNotFound error with descriptive message' do
-        expect do
-          subject.validate_decide_representative_params!(poa_code, representative_id)
-        end.to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound)
+    shared_examples 'validates the representative' do
+      describe 'validating the params' do
+        it 'raises ResourceNotFound error with descriptive message' do
+          expect do
+            subject.validate_decide_representative_params!(poa_code, representative_id)
+          end.to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::ResourceNotFound)
+        end
+      end
+
+      context 'registration number and POA code combination belong to a representative' do
+        let!(:rep) { create(rep_factory, representative_id: '456', poa_codes: ['123']) }
+
+        it 'does not raise an error' do
+          expect do
+            subject.validate_decide_representative_params!(poa_code, representative_id)
+          end.not_to raise_error
+        end
       end
     end
 
-    context 'registration number and POA code combination belong to a representative' do
-      let!(:rep) { create(:representative, representative_id: '456', poa_codes: ['123']) }
-
-      it 'does not raise an error' do
-        expect do
-          subject.validate_decide_representative_params!(poa_code, representative_id)
-        end.not_to raise_error
+    context 'when the claims accreditation tables flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
       end
+
+      let(:rep_factory) { :representative }
+
+      include_examples 'validates the representative'
+    end
+
+    context 'when the claims accreditation tables flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+      end
+
+      let(:rep_factory) { :claims_api_representative }
+
+      include_examples 'validates the representative'
     end
   end
 
@@ -97,8 +125,12 @@ describe ClaimsApi::PowerOfAttorneyRequestService::Decide do
 
     context 'without a dependent' do
       let(:request) do
-        create(:claims_api_power_of_attorney_request, veteran_icn:,
-                                                      poa_code: '067', metadata: metadata_without_dependent)
+        create(
+          :claims_api_power_of_attorney_request,
+          veteran_icn:,
+          poa_code: '067',
+          metadata: metadata_without_dependent
+        )
       end
 
       before do

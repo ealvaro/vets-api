@@ -4,14 +4,30 @@ require 'rails_helper'
 
 describe ClaimsApi::AccreditationTables do
   describe '.representative' do
-    it 'routes to the veteran service representative model by default' do
+    it 'routes to the veteran service representative model when the feature flag is disabled' do
+      allow(Flipper).to receive(:enabled?).with(described_class::FLAG).and_return(false)
+
       expect(described_class.representative).to eq(Veteran::Service::Representative)
+    end
+
+    it 'routes to the claims api representative model when the feature flag is enabled' do
+      allow(Flipper).to receive(:enabled?).with(described_class::FLAG).and_return(true)
+
+      expect(described_class.representative).to eq(ClaimsApi::Representative)
     end
   end
 
   describe '.organization' do
-    it 'routes to the veteran service organization model by default' do
+    it 'routes to the veteran service organization model when the feature flag is disabled' do
+      allow(Flipper).to receive(:enabled?).with(described_class::FLAG).and_return(false)
+
       expect(described_class.organization).to eq(Veteran::Service::Organization)
+    end
+
+    it 'routes to the claims api organization model when the feature flag is enabled' do
+      allow(Flipper).to receive(:enabled?).with(described_class::FLAG).and_return(true)
+
+      expect(described_class.organization).to eq(ClaimsApi::Organization)
     end
   end
 

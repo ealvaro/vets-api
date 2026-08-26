@@ -35,6 +35,11 @@ describe ClaimsApi::PowerOfAttorneyRequestService::AcceptedDecisionHandler do
   let(:individual_type) { ClaimsApi::PowerOfAttorney::IND_POA_FORM_NUMBER }
   let(:organization_type) { ClaimsApi::PowerOfAttorney::ORG_POA_FORM_NUMBER }
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+  end
+
   context 'for a valid decide request' do
     let(:proc_id) { '3866592' }
     let(:poa_code) { '083' }
@@ -97,23 +102,48 @@ describe ClaimsApi::PowerOfAttorneyRequestService::AcceptedDecisionHandler do
     end
 
     context 'determines the type' do
-      let(:organization) { create(:organization, poa: 'B12') }
-      let(:representative) { create(:representative, representative_id: '123456783', poa_codes: ['A1Y']) }
+      shared_examples 'determine_type behavior' do
+        it 'correctly for an organization' do
+          subject.instance_variable_set(:@poa_code, organization.poa)
 
-      it 'correctly for an organization' do
-        subject.instance_variable_set(:@poa_code, organization.poa)
+          res = subject.send(:determine_type)
 
-        res = subject.send(:determine_type)
+          expect(res).to eq(organization_type)
+        end
 
-        expect(res).to eq(organization_type)
+        it 'correctly for an individual' do
+          subject.instance_variable_set(:@poa_code, representative.poa_codes.first)
+
+          res = subject.send(:determine_type)
+
+          expect(res).to eq(individual_type)
+        end
       end
 
-      it 'correctly for an individual' do
-        subject.instance_variable_set(:@poa_code, representative.poa_codes.first)
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        end
 
-        res = subject.send(:determine_type)
+        let(:organization) { create(:organization, poa: 'B12') }
+        let(:representative) { create(:representative, representative_id: '123456783', poa_codes: ['A1Y']) }
 
-        expect(res).to eq(individual_type)
+        include_examples 'determine_type behavior'
+      end
+
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+        end
+
+        let(:organization) { create(:claims_api_organization, poa: 'B12') }
+        let(:representative) do
+          create(:claims_api_representative, representative_id: '123456783', poa_codes: ['A1Y'])
+        end
+
+        include_examples 'determine_type behavior'
       end
     end
 

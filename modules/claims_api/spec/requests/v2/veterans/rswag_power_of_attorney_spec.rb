@@ -26,6 +26,11 @@ describe 'PowerOfAttorney',
     'relationship' => 'Spouse'
   }
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+  end
+
   path '/veterans/{veteranId}/power-of-attorney' do
     get 'Retrieves current power of attorney' do
       tags 'Power of Attorney'
@@ -1562,16 +1567,13 @@ describe 'PowerOfAttorney',
       end
       let(:id) { poa.id }
 
-      before do
-        stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
-      end
-
       describe 'Getting a successful response' do
         response '200', 'Valid request response' do
           schema JSON.parse(Rails.root.join('spec', 'support', 'schemas', 'claims_api', 'v2',
                                             'veterans', 'power_of_attorney', 'status.json').read)
 
           before do |example|
+            stub_mpi(build(:mpi_profile, participant_id: veteran_participant_id))
             mock_ccg(scopes) do
               submit_request(example.metadata)
             end

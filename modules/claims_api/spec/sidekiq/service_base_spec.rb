@@ -52,6 +52,11 @@ RSpec.describe ClaimsApi::ServiceBase do
 
   let(:service) { described_class.new }
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+  end
+
   describe '#set_established_state_on_claim' do
     it 'updates claim status as ESTABLISHED' do
       service.send(:set_established_state_on_claim, claim)
@@ -496,38 +501,62 @@ RSpec.describe ClaimsApi::ServiceBase do
     let(:rep_id) { '1234' }
     let(:notification_key) { ClaimsApi::V2::Veterans::PowerOfAttorney::BaseController::VA_NOTIFY_KEY }
 
-    context 'when the VA notify feature flag is enabled' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(true)
+    shared_examples 'vanotify? behavior' do
+      context 'when the VA notify feature flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(true)
+        end
+
+        it 'returns true when feature, header key, and representative all exist' do
+          create(rep_factory, representative_id: rep_id)
+
+          expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(true)
+        end
+
+        it 'returns false when the VA notify key is missing from auth headers' do
+          create(rep_factory, representative_id: rep_id)
+
+          expect(service.send(:vanotify?, { 'unrelated_header' => 'abc123' }, rep_id)).to be(false)
+        end
+
+        it 'returns false when no representative exists for the given rep_id' do
+          expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+        end
       end
 
-      it 'returns true when feature, header key, and representative all exist' do
-        create(:representative, representative_id: rep_id)
+      context 'when the VA notify feature flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(false)
+        end
 
-        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(true)
-      end
+        it 'returns false when the feature flag is disabled' do
+          create(rep_factory, representative_id: rep_id)
 
-      it 'returns false when the VA notify key is missing from auth headers' do
-        create(:representative, representative_id: rep_id)
-
-        expect(service.send(:vanotify?, { 'unrelated_header' => 'abc123' }, rep_id)).to be(false)
-      end
-
-      it 'returns false when no representative exists for the given rep_id' do
-        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+          expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+        end
       end
     end
 
-    context 'when the VA notify feature flag is disabled' do
+    context 'when the claims accreditation tables flag is disabled' do
       before do
-        allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v2_poa_va_notify).and_return(false)
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
       end
 
-      it 'returns false when the feature flag is disabled' do
-        create(:representative, representative_id: rep_id)
+      let(:rep_factory) { :representative }
 
-        expect(service.send(:vanotify?, { notification_key => 'abc123' }, rep_id)).to be(false)
+      include_examples 'vanotify? behavior'
+    end
+
+    context 'when the claims accreditation tables flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
       end
+
+      let(:rep_factory) { :claims_api_representative }
+
+      include_examples 'vanotify? behavior'
     end
   end
 

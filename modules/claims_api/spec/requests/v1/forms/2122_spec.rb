@@ -40,6 +40,8 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
     allow(Flipper).to receive(:enabled?).with(:claims_api_use_person_web_service).and_return true
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_poa_dependent_claimants)
                                         .and_return false
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
   end
 
   describe '#2122' do
@@ -1273,30 +1275,54 @@ RSpec.describe 'ClaimsApi::V1::Forms::2122', type: :request do
         end
 
         context 'when representative is part of an organization' do
-          it "returns the organization's name and phone" do
-            mock_acg(scopes) do |auth_header|
-              allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup_stub)
-              expect(poa_lookup_stub).to receive(:current_poa_code).and_return('A01').exactly(3).times
-              expect(poa_lookup_stub).to receive(:previous_poa_code).and_return(nil)
-              allow(poa_lookup_stub).to receive(:poa_begin_date).and_return(nil)
-              expect(Veteran::Service::Organization).to receive(:find_by).and_return(
-                OpenStruct.new(name: 'Some Great Organization', phone: '555-555-5555')
-              ).twice
+          shared_examples 'returns the organization name and phone' do
+            it "returns the organization's name and phone" do
+              mock_acg(scopes) do |auth_header|
+                allow(ClaimsApi::PoaLookupService).to receive(:new).and_return(poa_lookup_stub)
+                expect(poa_lookup_stub).to receive(:current_poa_code).and_return('A01').exactly(3).times
+                expect(poa_lookup_stub).to receive(:previous_poa_code).and_return(nil)
+                allow(poa_lookup_stub).to receive(:poa_begin_date).and_return(nil)
+                expect(organization_class).to receive(:find_by).and_return(
+                  OpenStruct.new(name: 'Some Great Organization', phone: '555-555-5555')
+                ).twice
 
-              get("#{path}/active", params: nil, headers: headers.merge(auth_header))
+                get("#{path}/active", params: nil, headers: headers.merge(auth_header))
 
-              parsed = JSON.parse(response.body)
+                parsed = JSON.parse(response.body)
 
-              expect(response).to have_http_status(:ok)
-              expect(parsed['data']['attributes']['representative']['service_organization']['organization_name'])
-                .to eq('Some Great Organization')
-              expect(parsed['data']['attributes']['representative']['service_organization']['first_name'])
-                .to be_nil
-              expect(parsed['data']['attributes']['representative']['service_organization']['last_name'])
-                .to be_nil
-              expect(parsed['data']['attributes']['representative']['service_organization']['phone_number'])
-                .to eq('555-555-5555')
+                expect(response).to have_http_status(:ok)
+                expect(parsed['data']['attributes']['representative']['service_organization']['organization_name'])
+                  .to eq('Some Great Organization')
+                expect(parsed['data']['attributes']['representative']['service_organization']['first_name'])
+                  .to be_nil
+                expect(parsed['data']['attributes']['representative']['service_organization']['last_name'])
+                  .to be_nil
+                expect(parsed['data']['attributes']['representative']['service_organization']['phone_number'])
+                  .to eq('555-555-5555')
+              end
             end
+          end
+
+          context 'when the claims accreditation tables flag is disabled' do
+            let(:organization_class) { Veteran::Service::Organization }
+
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+            end
+
+            include_examples 'returns the organization name and phone'
+          end
+
+          context 'when the claims accreditation tables flag is enabled' do
+            let(:organization_class) { ClaimsApi::Organization }
+
+            before do
+              allow(Flipper).to receive(:enabled?)
+                .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+            end
+
+            include_examples 'returns the organization name and phone'
           end
         end
 

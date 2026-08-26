@@ -31,6 +31,8 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       .and_return(nil)
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122a_pdf_form_update).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_2122_pdf_form_update).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
   end
 
   it 'sets retry_for to 48 hours' do
@@ -155,64 +157,93 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
           power_of_attorney.save
         end
 
-        it 'generates e-signatures correctly for a veteran claimant' do
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            final_data = power_of_attorney
-                         .form_data
-                         .deep_merge(
-                           {
-                             'veteran' => {
-                               'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
-                               'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
-                               'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
-                               'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
-                             },
-                             'appointmentDate' => power_of_attorney.created_at,
-                             'text_signatures' => {
-                               individual_coords[:page] => [
-                                 {
-                                   'signature' => 'JESSE GRAY - signed via api.va.gov',
-                                   'x' => individual_coords[:veteran][:x],
-                                   'y' => individual_coords[:veteran][:y]
-                                 },
-                                 {
-                                   'signature' => 'Bob Representative - signed via api.va.gov',
-                                   'x' => individual_coords[:representative][:x],
-                                   'y' => individual_coords[:representative][:y]
-                                 }
-                               ]
-                             },
-                             'representative' => {
-                               'firstName' => 'Bob',
-                               'lastName' => 'Representative'
+        shared_examples 'signs and updates for veteran claimant' do
+          it 'generates e-signatures correctly for a veteran claimant' do
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              final_data = power_of_attorney
+                           .form_data
+                           .deep_merge(
+                             {
+                               'veteran' => {
+                                 'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
+                                 'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
+                                 'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
+                                 'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
+                               },
+                               'appointmentDate' => power_of_attorney.created_at,
+                               'text_signatures' => {
+                                 individual_coords[:page] => [
+                                   {
+                                     'signature' => 'JESSE GRAY - signed via api.va.gov',
+                                     'x' => individual_coords[:veteran][:x],
+                                     'y' => individual_coords[:veteran][:y]
+                                   },
+                                   {
+                                     'signature' => 'Bob Representative - signed via api.va.gov',
+                                     'x' => individual_coords[:representative][:x],
+                                     'y' => individual_coords[:representative][:y]
+                                   }
+                                 ]
+                               },
+                               'representative' => {
+                                 'firstName' => 'Bob',
+                                 'lastName' => 'Representative'
+                               }
                              }
-                           }
-                         )
+                           )
 
-            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-            allow(bd_client).to receive(:upload_document).and_return(true)
-            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
-              .to receive(:construct)
-              .with(final_data, id: power_of_attorney.id)
-              .and_call_original
+              allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+              allow(bd_client).to receive(:upload_document).and_return(true)
+              allow_any_instance_of(
+                BGS::PersonWebService
+              ).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+              expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
+                .to receive(:construct)
+                .with(final_data, id: power_of_attorney.id)
+                .and_call_original
 
-            subject.new.perform(power_of_attorney.id, '2122A', 'post',
-                                rep.id)
+              subject.new.perform(power_of_attorney.id, '2122A', 'post',
+                                  rep.id)
+            end
+          end
+
+          it 'calls the POA updater job upon successful upload' do
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+              allow(bd_client).to receive(:upload_document).and_return(true)
+              allow_any_instance_of(
+                BGS::PersonWebService
+              ).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+
+              expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
+
+              subject.new.perform(power_of_attorney.id, '2122A', 'post',
+                                  rep.id)
+            end
           end
         end
 
-        it 'calls the POA updater job upon successful upload' do
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-            allow(bd_client).to receive(:upload_document).and_return(true)
-            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-
-            expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
-
-            subject.new.perform(power_of_attorney.id, '2122A', 'post',
-                                rep.id)
+        context 'when the claims accreditation tables flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
           end
+
+          include_examples 'signs and updates for veteran claimant'
+        end
+
+        context 'when the claims accreditation tables flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          end
+
+          let(:rep) do
+            create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                               first_name: 'Bob', last_name: 'Representative')
+          end
+
+          include_examples 'signs and updates for veteran claimant'
         end
       end
 
@@ -275,42 +306,67 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
             )
         end
 
-        it 'generates e-signatures correctly for a non-veteran claimant' do
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-            allow(bd_client).to receive(:upload_document).and_return(true)
+        shared_examples 'signs and assigns for non-veteran claimant' do
+          it 'generates e-signatures correctly for a non-veteran claimant' do
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+              allow(bd_client).to receive(:upload_document).and_return(true)
+              allow_any_instance_of(
+                BGS::PersonWebService
+              ).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+              expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
+                .to receive(:construct)
+                .with(data, id: power_of_attorney.id)
+                .and_call_original
+
+              subject.new.perform(power_of_attorney.id, '2122A', 'post',
+                                  rep.id)
+            end
+          end
+
+          it 'calls the PoaAssignDependentClaimantJob job for a dependent filing' do
             allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Individual)
-              .to receive(:construct)
-              .with(data, id: power_of_attorney.id)
-              .and_call_original
+            allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).and_return(true)
+            expect_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform)
+              .with(power_of_attorney.id, rep.id)
 
             subject.new.perform(power_of_attorney.id, '2122A', 'post',
                                 rep.id)
           end
+
+          it 'detects a dependent filing correctly' do
+            result = subject.new.send(:dependent_filing?, power_of_attorney)
+
+            expect(result).to be(true)
+          end
         end
 
-        it 'calls the PoaAssignDependentClaimantJob job for a dependent filing' do
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          allow_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload).and_return(true)
-          expect_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform)
-            .with(power_of_attorney.id, rep.id)
+        context 'when the claims accreditation tables flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+          end
 
-          subject.new.perform(power_of_attorney.id, '2122A', 'post',
-                              rep.id)
+          include_examples 'signs and assigns for non-veteran claimant'
         end
 
-        it 'detects a dependent filing correctly' do
-          result = subject.new.send(:dependent_filing?, power_of_attorney)
+        context 'when the claims accreditation tables flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          end
 
-          expect(result).to be(true)
+          let(:rep) do
+            create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                               first_name: 'Bob', last_name: 'Representative')
+          end
+
+          include_examples 'signs and assigns for non-veteran claimant'
         end
       end
     end
 
     context '2122 veteran claimant' do
-      let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
-
       context 'with lighthouse_claims_api_2122_pdf_form_update disabled' do
         let(:org_coords) { { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } } }
 
@@ -347,71 +403,97 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
           power_of_attorney.save
         end
 
-        it 'generates e-signatures correctly' do
-          data = power_of_attorney
-                 .form_data
-                 .deep_merge(
-                   {
-                     'veteran' => {
-                       'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
-                       'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
-                       'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
-                       'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
-                     },
-                     'appointmentDate' => power_of_attorney.created_at,
-                     'text_signatures' => {
-                       'page2' => [
-                         {
-                           'signature' => 'JESSE GRAY - signed via api.va.gov',
-                           'x' => org_coords[:veteran][:x],
-                           'y' => org_coords[:veteran][:y]
-                         },
-                         {
-                           'signature' => 'Bob Representative - signed via api.va.gov',
-                           'x' => org_coords[:representative][:x],
-                           'y' => org_coords[:representative][:y]
-                         }
-                       ]
-                     },
-                     'serviceOrganization' => {
-                       'firstName' => 'Bob',
-                       'lastName' => 'Representative',
-                       'organizationName' => 'I Help Vets LLC'
+        shared_examples '2122 veteran claimant behavior' do
+          it 'generates e-signatures correctly' do
+            data = power_of_attorney
+                   .form_data
+                   .deep_merge(
+                     {
+                       'veteran' => {
+                         'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
+                         'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
+                         'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
+                         'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
+                       },
+                       'appointmentDate' => power_of_attorney.created_at,
+                       'text_signatures' => {
+                         'page2' => [
+                           {
+                             'signature' => 'JESSE GRAY - signed via api.va.gov',
+                             'x' => org_coords[:veteran][:x],
+                             'y' => org_coords[:veteran][:y]
+                           },
+                           {
+                             'signature' => 'Bob Representative - signed via api.va.gov',
+                             'x' => org_coords[:representative][:x],
+                             'y' => org_coords[:representative][:y]
+                           }
+                         ]
+                       },
+                       'serviceOrganization' => {
+                         'firstName' => 'Bob',
+                         'lastName' => 'Representative',
+                         'organizationName' => 'I Help Vets LLC'
+                       }
                      }
-                   }
-                 )
+                   )
 
-          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-          allow(bd_client).to receive(:upload_document).and_return(true)
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
-              .to receive(:construct)
-              .with(data, id: power_of_attorney.id)
-              .and_call_original
+            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+            allow(bd_client).to receive(:upload_document).and_return(true)
+            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
+                .to receive(:construct)
+                .with(data, id: power_of_attorney.id)
+                .and_call_original
 
-            subject.new.perform(power_of_attorney.id, '2122', 'post',
-                                rep.id)
+              subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                  rep.id)
+            end
+          end
+
+          it 'Calls the POA updater job upon successful upload' do
+            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+              allow(bd_client).to receive(:upload_document).and_return(true)
+              expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
+
+              subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                  rep.id)
+            end
           end
         end
 
-        it 'Calls the POA updater job upon successful upload' do
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-            allow(bd_client).to receive(:upload_document).and_return(true)
-            expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform).with(power_of_attorney.id, rep.id)
-
-            subject.new.perform(power_of_attorney.id, '2122', 'post',
-                                rep.id)
+        context 'when the claims accreditation tables flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
           end
+
+          let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
+
+          include_examples '2122 veteran claimant behavior'
+        end
+
+        context 'when the claims accreditation tables flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          end
+
+          let!(:org) { create(:claims_api_organization, name: 'I Help Vets LLC', poa: poa_code) }
+          let(:rep) do
+            create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                               first_name: 'Bob', last_name: 'Representative')
+          end
+
+          include_examples '2122 veteran claimant behavior'
         end
       end
     end
 
     context '2122 non-veteran claimant' do
-      let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
-
       context 'with lighthouse_claims_api_2122_pdf_form_update disabled' do
         let(:org_coords) { { veteran: { x: 35, y: 240 }, representative: { x: 35, y: 200 } } }
 
@@ -464,66 +546,94 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
           power_of_attorney.save
         end
 
-        it 'generates e-signatures correctly' do
-          data = power_of_attorney
-                 .form_data
-                 .deep_merge(
-                   {
-                     'veteran' => {
-                       'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
-                       'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
-                       'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
-                       'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
-                     },
-                     'text_signatures' => {
-                       'page2' => [
-                         {
-                           'signature' => 'Mitchell Jenkins - signed via api.va.gov',
-                           'x' => org_coords[:veteran][:x],
-                           'y' => org_coords[:veteran][:y]
-                         },
-                         {
-                           'signature' => 'Bob Representative - signed via api.va.gov',
-                           'x' => org_coords[:representative][:x],
-                           'y' => org_coords[:representative][:y]
-                         }
-                       ]
-                     },
-                     'serviceOrganization' => {
-                       'firstName' => 'Bob',
-                       'lastName' => 'Representative',
-                       'organizationName' => 'I Help Vets LLC'
-                     },
-                     'dependent' => {
-                       'first_name' => 'Mitchell',
-                       'last_name' => 'Jenkins'
-                     },
-                     'appointmentDate' => power_of_attorney.created_at
-                   }
-                 )
+        shared_examples '2122 non-veteran claimant behavior' do
+          it 'generates e-signatures correctly' do
+            data = power_of_attorney
+                   .form_data
+                   .deep_merge(
+                     {
+                       'veteran' => {
+                         'firstName' => power_of_attorney.auth_headers['va_eauth_firstName'],
+                         'lastName' => power_of_attorney.auth_headers['va_eauth_lastName'],
+                         'ssn' => power_of_attorney.auth_headers['va_eauth_pnid'],
+                         'birthdate' => power_of_attorney.auth_headers['va_eauth_birthdate']
+                       },
+                       'text_signatures' => {
+                         'page2' => [
+                           {
+                             'signature' => 'Mitchell Jenkins - signed via api.va.gov',
+                             'x' => org_coords[:veteran][:x],
+                             'y' => org_coords[:veteran][:y]
+                           },
+                           {
+                             'signature' => 'Bob Representative - signed via api.va.gov',
+                             'x' => org_coords[:representative][:x],
+                             'y' => org_coords[:representative][:y]
+                           }
+                         ]
+                       },
+                       'serviceOrganization' => {
+                         'firstName' => 'Bob',
+                         'lastName' => 'Representative',
+                         'organizationName' => 'I Help Vets LLC'
+                       },
+                       'dependent' => {
+                         'first_name' => 'Mitchell',
+                         'last_name' => 'Jenkins'
+                       },
+                       'appointmentDate' => power_of_attorney.created_at
+                     }
+                   )
 
-          power_of_attorney.auth_headers.deep_merge!(
-            {
-              'dependent' => {
-                'first_name' => 'Mitchell',
-                'last_name' => 'Jenkins'
+            power_of_attorney.auth_headers.deep_merge!(
+              {
+                'dependent' => {
+                  'first_name' => 'Mitchell',
+                  'last_name' => 'Jenkins'
+                }
               }
-            }
-          )
-          power_of_attorney.save!
+            )
+            power_of_attorney.save!
 
-          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-          allow(bd_client).to receive(:upload_document).and_return(true)
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
-            expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
-              .to receive(:construct)
-              .with(data, id: power_of_attorney.id)
-              .and_call_original
+            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+            allow(bd_client).to receive(:upload_document).and_return(true)
+            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            VCR.use_cassette('claims_api/mpi/find_candidate/valid_icn_full') do
+              expect_any_instance_of(ClaimsApi::V2::PoaPdfConstructor::Organization)
+                .to receive(:construct)
+                .with(data, id: power_of_attorney.id)
+                .and_call_original
 
-            subject.new.perform(power_of_attorney.id, '2122', 'post',
-                                rep.id)
+              subject.new.perform(power_of_attorney.id, '2122', 'post',
+                                  rep.id)
+            end
           end
+        end
+
+        context 'when the claims accreditation tables flag is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+          end
+
+          let!(:org) { create(:organization, name: 'I Help Vets LLC', poa: poa_code) }
+
+          include_examples '2122 non-veteran claimant behavior'
+        end
+
+        context 'when the claims accreditation tables flag is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          end
+
+          let!(:org) { create(:claims_api_organization, name: 'I Help Vets LLC', poa: poa_code) }
+          let(:rep) do
+            create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                               first_name: 'Bob', last_name: 'Representative')
+          end
+
+          include_examples '2122 non-veteran claimant behavior'
         end
       end
     end
@@ -539,111 +649,161 @@ RSpec.describe ClaimsApi::V2::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         allow_any_instance_of(ClaimsApi::V2::PoaFormBuilderJob).to receive(:data).and_return({})
       end
 
-      it 'calls the PoaDocumentService instead of VBMS' do
-        expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
+      shared_examples 'calls the PoaDocumentService instead of VBMS' do
+        it 'calls the PoaDocumentService instead of VBMS' do
+          expect_any_instance_of(ClaimsApi::PoaDocumentService).to receive(:create_upload)
 
-        subject.new.perform(power_of_attorney.id, '2122', 'post',
-                            rep.id)
+          subject.new.perform(power_of_attorney.id, '2122', 'post',
+                              rep.id)
+        end
+      end
+
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        end
+
+        include_examples 'calls the PoaDocumentService instead of VBMS'
+      end
+
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+        end
+
+        let(:rep) do
+          create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                             first_name: 'Bob', last_name: 'Representative')
+        end
+
+        include_examples 'calls the PoaDocumentService instead of VBMS'
       end
     end
 
     describe 'POA update failures' do
-      context 'when the veteran POA updater job fails' do
-        it 'marks the power of attorney as errored and does not generate or upload the PDF' do
-          expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
-            .with(power_of_attorney.id, rep.id).and_raise(Common::Exceptions::ServiceError)
+      shared_examples 'POA update failure behavior' do
+        context 'when the veteran POA updater job fails' do
+          it 'marks the power of attorney as errored and does not generate or upload the PDF' do
+            expect_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
+              .with(power_of_attorney.id, rep.id).and_raise(Common::Exceptions::ServiceError)
 
-          expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
-          expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
-          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+            expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
+            expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
+            expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
 
-          expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
-            .to raise_error(Common::Exceptions::ServiceError)
+            expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
+              .to raise_error(Common::Exceptions::ServiceError)
 
-          power_of_attorney.reload
-          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
-        end
-      end
-
-      context 'when the veteran POA updater job fails to update via ManageRepresentativeService' do
-        # enable flipper to hit the ManageRepresentativeService path
-        before do
-          allow(Flipper).to receive(:enabled?).with(:claims_api_use_update_poa_relationship).and_return(true)
+            power_of_attorney.reload
+            expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+          end
         end
 
-        it 'marks the power of attorney as errored and does not generate or upload the PDF' do
-          # trigger POA update failure path in PoaUpdater
-          allow_any_instance_of(ClaimsApi::ManageRepresentativeService)
-            .to receive(:update_poa_relationship).and_return({})
-          allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
-            .with(power_of_attorney.id, rep.id).and_call_original
+        context 'when the veteran POA updater job fails to update via ManageRepresentativeService' do
+          # enable flipper to hit the ManageRepresentativeService path
+          before do
+            allow(Flipper).to receive(:enabled?).with(:claims_api_use_update_poa_relationship).and_return(true)
+          end
 
-          # expect the PDF generation/upload to not occur
-          expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
-          expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
-          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+          it 'marks the power of attorney as errored and does not generate or upload the PDF' do
+            # trigger POA update failure path in PoaUpdater
+            allow_any_instance_of(ClaimsApi::ManageRepresentativeService)
+              .to receive(:update_poa_relationship).and_return({})
+            allow_any_instance_of(ClaimsApi::PoaUpdater).to receive(:perform)
+              .with(power_of_attorney.id, rep.id).and_call_original
 
-          # expect the job to raise a ServiceError for Sidekiq retry and
-          # for the error detail to be set from the PoaUpdater
-          error = nil
-          expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
-            .to raise_error(Common::Exceptions::ServiceError) { |e| error = e }
-          expect(error.errors.first.detail).to include('BGS Error: update_birls_record failed with code')
+            # expect the PDF generation/upload to not occur
+            expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
+            expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
+            expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
 
-          # expect the POA to be marked as errored and the process to be failed
-          power_of_attorney.reload
-          expect(ClaimsApi::Process.find_by(processable: power_of_attorney).step_status).to eq('FAILED')
-          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+            # expect the job to raise a ServiceError for Sidekiq retry and
+            # for the error detail to be set from the PoaUpdater
+            error = nil
+            expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
+              .to raise_error(Common::Exceptions::ServiceError) { |e| error = e }
+            expect(error.errors.first.detail).to include('BGS Error: update_birls_record failed with code')
+
+            # expect the POA to be marked as errored and the process to be failed
+            power_of_attorney.reload
+            expect(ClaimsApi::Process.find_by(processable: power_of_attorney).step_status).to eq('FAILED')
+            expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+          end
         end
-      end
 
-      context 'when dependent claimant POA assignment fails' do
-        before do
-          # update POA to have dependent claimant data to trigger the dependent claimant flow in the job
-          power_of_attorney.update(
-            auth_headers: power_of_attorney.auth_headers.merge(
-              'dependent' => { 'first_name' => 'Mitchell', 'last_name' => 'Jenkins' }
+        context 'when dependent claimant POA assignment fails' do
+          before do
+            # update POA to have dependent claimant data to trigger the dependent claimant flow in the job
+            power_of_attorney.update(
+              auth_headers: power_of_attorney.auth_headers.merge(
+                'dependent' => { 'first_name' => 'Mitchell', 'last_name' => 'Jenkins' }
+              )
             )
-          )
-          power_of_attorney.form_data = {
-            recordConsent: true,
-            consentAddressChange: true,
-            consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
-            veteran: {
-              address: {
-                addressLine1: '2719 Hyperion Ave',
-                city: 'Los Angeles',
-                stateCode: 'CA',
-                country: 'US',
-                zipCode: '92264'
+            power_of_attorney.form_data = {
+              recordConsent: true,
+              consentAddressChange: true,
+              consentLimits: %w[DRUG_ABUSE SICKLE_CELL],
+              veteran: {
+                address: {
+                  addressLine1: '2719 Hyperion Ave',
+                  city: 'Los Angeles',
+                  stateCode: 'CA',
+                  country: 'US',
+                  zipCode: '92264'
+                }
+              },
+              claimant: {
+                claimantId: '1012830872V584140',
+                email: 'mitchell@jenkins.com',
+                relationship: 'Spouse'
+              },
+              serviceOrganization: {
+                poaCode: poa_code.to_s
               }
-            },
-            claimant: {
-              claimantId: '1012830872V584140',
-              email: 'mitchell@jenkins.com',
-              relationship: 'Spouse'
-            },
-            serviceOrganization: {
-              poaCode: poa_code.to_s
             }
-          }
-          power_of_attorney.save
+            power_of_attorney.save
+          end
+
+          it 'does not generate or upload the PDF' do
+            expect_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform)
+              .with(power_of_attorney.id, rep.id).and_raise(Common::Exceptions::ServiceError)
+
+            expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
+            expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
+            expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
+
+            expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
+              .to raise_error(Common::Exceptions::ServiceError)
+
+            power_of_attorney.reload
+            expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+          end
+        end
+      end
+
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
         end
 
-        it 'does not generate or upload the PDF' do
-          expect_any_instance_of(ClaimsApi::PoaAssignDependentClaimantJob).to receive(:perform)
-            .with(power_of_attorney.id, rep.id).and_raise(Common::Exceptions::ServiceError)
+        include_examples 'POA update failure behavior'
+      end
 
-          expect(ClaimsApi::V2::PoaPdfConstructor::Organization).not_to receive(:new)
-          expect(ClaimsApi::V2::PoaPdfConstructor::Individual).not_to receive(:new)
-          expect(ClaimsApi::PoaDocumentService).not_to receive(:new)
-
-          expect { subject.new.perform(power_of_attorney.id, '2122', 'post', rep.id) }
-            .to raise_error(Common::Exceptions::ServiceError)
-
-          power_of_attorney.reload
-          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
         end
+
+        let(:rep) do
+          create(:claims_api_representative, representative_id: '1234', poa_codes: [poa_code],
+                                             first_name: 'Bob', last_name: 'Representative')
+        end
+
+        include_examples 'POA update failure behavior'
       end
     end
   end

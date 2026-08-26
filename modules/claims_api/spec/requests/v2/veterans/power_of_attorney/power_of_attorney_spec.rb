@@ -17,112 +17,135 @@ RSpec.describe 'ClaimsApi::V2::PowerOfAttorney::PowerOfAttorney', type: :request
   let(:local_bgs) { ClaimsApi::LocalBGS }
 
   describe 'PowerOfAttorney' do
+    let(:rep_factory) { :veteran_representative }
+    let(:org_factory) { :veteran_organization }
+
     before do
-      create(:veteran_representative, representative_id: '12345', poa_codes: [individual_poa_code],
-                                      first_name: 'Abraham', last_name: 'Lincoln')
-      create(:veteran_representative, representative_id: '67890', poa_codes: [organization_poa_code],
-                                      first_name: 'George', last_name: 'Washington')
-      create(:veteran_organization, poa: organization_poa_code,
-                                    name: "#{organization_poa_code} - DISABLED AMERICAN VETERANS")
+      create(rep_factory, representative_id: '12345', poa_codes: [individual_poa_code],
+                          first_name: 'Abraham', last_name: 'Lincoln')
+      create(rep_factory, representative_id: '67890', poa_codes: [organization_poa_code],
+                          first_name: 'George', last_name: 'Washington')
+      create(org_factory, poa: organization_poa_code,
+                          name: "#{organization_poa_code} - DISABLED AMERICAN VETERANS")
+      allow(Flipper).to receive(:enabled?)
+        .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
     end
 
     describe 'show' do
-      context 'CCG (Client Credentials Grant) flow' do
-        context 'when provided' do
-          context 'when valid' do
-            context 'when BGS does not return a POA code' do
-              it 'returns a 200' do
-                mock_ccg(scopes) do |auth_header|
-                  mock_poa_verifier_call(method: :current_poa_code, return_value: nil)
-                  get get_poa_path, headers: auth_header
-                  expect(response).to have_http_status(:ok)
-                end
-              end
-            end
-
-            context 'when BGS returns a POA code with an endDate in the past' do
-              before do
-                create(:representative, :with_rep_id, poa_codes: ['074'], first_name: 'Abraham',
-                                                      last_name: 'Lincoln')
-              end
-
-              it 'returns an empty 200 response' do
-                mock_ccg(scopes) do |auth_header|
-                  VCR.use_cassette('claims_api/bgs/claimant_web_service/find_poa_by_participant_id_with_end_date') do
-                    allow_any_instance_of(ClaimsApi::OrgWebService).to receive(:find_poa_history_by_ptcpnt_id)
-                      .and_return({ person_poa_history: { person_poa: [{ begin_dt: Time.zone.now,
-                                                                         legacy_poa_cd: '033' }] } })
-
+      shared_examples 'show flag-sensitive behavior' do
+        context 'CCG (Client Credentials Grant) flow' do
+          context 'when provided' do
+            context 'when valid' do
+              context 'when BGS does not return a POA code' do
+                it 'returns a 200' do
+                  mock_ccg(scopes) do |auth_header|
+                    mock_poa_verifier_call(method: :current_poa_code, return_value: nil)
                     get get_poa_path, headers: auth_header
                     expect(response).to have_http_status(:ok)
-                    expect(JSON.parse(response.body)).to eq({ 'data' => {} })
                   end
                 end
               end
-            end
 
-            context 'when the current poa is not associated with an organization' do
-              context 'when there is one unique representative_id' do
+              context 'when BGS returns a POA code with an endDate in the past' do
                 before do
-                  create(:veteran_representative, representative_id: '12346', first_name: 'Robert', last_name: 'Lawlaw',
-                                                  poa_codes: ['ABC'], phone: '321-654-0987', created_at: Time.zone.now)
+                  create(rep_factory, representative_id: '1234', poa_codes: ['074'], first_name: 'Abraham',
+                                      last_name: 'Lincoln')
                 end
 
-                it 'returns the most recently created representative' do
+                it 'returns an empty 200 response' do
                   mock_ccg(scopes) do |auth_header|
-                    mock_poa_verifier_call(method: :current_poa_code, return_value: 'ABC')
+                    VCR.use_cassette('claims_api/bgs/claimant_web_service/find_poa_by_participant_id_with_end_date') do
+                      allow_any_instance_of(ClaimsApi::OrgWebService).to receive(:find_poa_history_by_ptcpnt_id)
+                        .and_return({ person_poa_history: { person_poa: [{ begin_dt: Time.zone.now,
+                                                                           legacy_poa_cd: '033' }] } })
 
-                    expected_response = {
-                      'data' => {
-                        'type' => 'individual',
-                        'attributes' => {
-                          'code' => 'ABC',
-                          'name' => 'Robert Lawlaw',
-                          'phoneNumber' => '321-654-0987'
+                      get get_poa_path, headers: auth_header
+                      expect(response).to have_http_status(:ok)
+                      expect(JSON.parse(response.body)).to eq({ 'data' => {} })
+                    end
+                  end
+                end
+              end
+
+              context 'when the current poa is not associated with an organization' do
+                context 'when there is one unique representative_id' do
+                  before do
+                    create(rep_factory, representative_id: '12346', first_name: 'Robert', last_name: 'Lawlaw',
+                                        poa_codes: ['ABC'], phone: '321-654-0987', created_at: Time.zone.now)
+                  end
+
+                  it 'returns the most recently created representative' do
+                    mock_ccg(scopes) do |auth_header|
+                      mock_poa_verifier_call(method: :current_poa_code, return_value: 'ABC')
+
+                      expected_response = {
+                        'data' => {
+                          'type' => 'individual',
+                          'attributes' => {
+                            'code' => 'ABC',
+                            'name' => 'Robert Lawlaw',
+                            'phoneNumber' => '321-654-0987'
+                          }
                         }
                       }
-                    }
 
-                    get get_poa_path, headers: auth_header
-
-                    response_body = JSON.parse(response.body)
-
-                    expect(response).to have_http_status(:ok)
-                    expect(response_body).to eq(expected_response)
-                  end
-                end
-
-                context 'when there are multiple unique representative_ids' do
-                  before do
-                    create(:veteran_representative, representative_id: '55369', poa_codes: ['EDF'])
-                    create(:veteran_representative, representative_id: '54321', poa_codes: ['EDF'])
-                  end
-
-                  it 'returns a meaningful 422' do
-                    mock_ccg(scopes) do |auth_header|
-                      mock_poa_verifier_call(method: :current_poa_code, return_value: 'EDF')
-                      detail = 'Could not retrieve Power of Attorney due to multiple representatives with code: EDF'
                       get get_poa_path, headers: auth_header
-                      response_body = JSON.parse(response.body)['errors'][0]
-                      expect(response).to have_http_status(:unprocessable_content)
-                      expect(response_body['title']).to eq('Unprocessable entity')
-                      expect(response_body['status']).to eq('422')
-                      expect(response_body['detail']).to eq(detail)
+
+                      response_body = JSON.parse(response.body)
+
+                      expect(response).to have_http_status(:ok)
+                      expect(response_body).to eq(expected_response)
+                    end
+                  end
+
+                  context 'when there are multiple unique representative_ids' do
+                    before do
+                      create(rep_factory, representative_id: '55369', poa_codes: ['EDF'])
+                      create(rep_factory, representative_id: '54321', poa_codes: ['EDF'])
+                    end
+
+                    it 'returns a meaningful 422' do
+                      mock_ccg(scopes) do |auth_header|
+                        mock_poa_verifier_call(method: :current_poa_code, return_value: 'EDF')
+                        detail = 'Could not retrieve Power of Attorney due to multiple representatives with code: EDF'
+                        get get_poa_path, headers: auth_header
+                        response_body = JSON.parse(response.body)['errors'][0]
+                        expect(response).to have_http_status(:unprocessable_content)
+                        expect(response_body['title']).to eq('Unprocessable entity')
+                        expect(response_body['status']).to eq('422')
+                        expect(response_body['detail']).to eq(detail)
+                      end
                     end
                   end
                 end
               end
             end
-          end
 
-          context 'when not valid' do
-            it 'returns a 401' do
-              get get_poa_path, headers: { 'Authorization' => 'Bearer HelloWorld' }
+            context 'when not valid' do
+              it 'returns a 401' do
+                get get_poa_path, headers: { 'Authorization' => 'Bearer HelloWorld' }
 
-              expect(response).to have_http_status(:unauthorized)
+                expect(response).to have_http_status(:unauthorized)
+              end
             end
           end
         end
+      end
+
+      context 'when the claims accreditation tables flag is disabled' do
+        include_examples 'show flag-sensitive behavior'
+      end
+
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+        end
+
+        let(:rep_factory) { :claims_api_representative }
+        let(:org_factory) { :claims_api_organization }
+
+        include_examples 'show flag-sensitive behavior'
       end
     end
 

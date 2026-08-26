@@ -168,8 +168,29 @@ describe FakeTargetVeteranController do
     end
 
     context 'when all conditions are met' do
-      it 'returns true' do
-        expect(controller.user_represents_veteran?).to be(true)
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        end
+
+        it 'returns true' do
+          expect(controller.user_represents_veteran?).to be(true)
+        end
+      end
+
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          allow(ClaimsApi::Representative).to receive(:all_for_user).with(
+            first_name: 'John', last_name: 'Doe'
+          ).and_return([rep])
+        end
+
+        it 'returns true' do
+          expect(controller.user_represents_veteran?).to be(true)
+        end
       end
     end
   end
@@ -196,13 +217,30 @@ describe FakeTargetVeteranController do
       let(:last_name) { 'Doe' }
       let(:representative) { double('Representative') }
 
-      before do
-        allow(Veteran::Service::Representative).to receive(:find_by).with(first_name,
-                                                                          last_name).and_return(representative)
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+          allow(Veteran::Service::Representative).to receive(:find_by)
+            .with(first_name, last_name).and_return(representative)
+        end
+
+        it 'returns true' do
+          expect(controller).to be_user_is_representative
+        end
       end
 
-      it 'returns true' do
-        expect(controller).to be_user_is_representative
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          allow(ClaimsApi::Representative).to receive(:find_by)
+            .with(first_name, last_name).and_return(representative)
+        end
+
+        it 'returns true' do
+          expect(controller).to be_user_is_representative
+        end
       end
     end
 
@@ -211,12 +249,30 @@ describe FakeTargetVeteranController do
       let(:first_name) { 'John' }
       let(:last_name) { 'Doe' }
 
-      before do
-        allow(Veteran::Service::Representative).to receive(:find_by).with(first_name, last_name).and_return(nil)
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+          allow(Veteran::Service::Representative).to receive(:find_by)
+            .with(first_name, last_name).and_return(nil)
+        end
+
+        it 'returns false' do
+          expect(controller).not_to be_user_is_representative
+        end
       end
 
-      it 'returns false' do
-        expect(controller).not_to be_user_is_representative
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          allow(ClaimsApi::Representative).to receive(:find_by)
+            .with(first_name, last_name).and_return(nil)
+        end
+
+        it 'returns false' do
+          expect(controller).not_to be_user_is_representative
+        end
       end
     end
   end

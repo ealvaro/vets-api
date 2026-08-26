@@ -13,29 +13,59 @@ describe ClaimsApi::VANotifyDeclinedJob, type: :job do
   let(:encrypted_ptcpnt_id) { Base64.strict_encode64(lockbox.encrypt(ptcpnt_id)) }
   let(:encrypted_first_name) { Base64.strict_encode64(lockbox.encrypt(first_name)) }
 
+  before do
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+  end
+
   context 'when the representative is a service organization' do
     let(:representative_id) { '123' }
 
     before do
       allow(VaNotify::Service).to receive(:new).with(anything).and_return(vanotify_service)
-      create(:veteran_representative, representative_id:, user_types: ['veteran_service_officer'])
     end
 
-    it 'sends a declined service organization notification' do
-      expect(vanotify_service).to receive(:send_email)
-        .with({
-                recipient_identifier: {
-                  id_type: 'PID',
-                  id_value: ptcpnt_id
-                },
-                personalisation: {
-                  first_name:,
-                  form_type: 'Appointment of Veterans Service Organization as Claimantʼs Representative (VA Form 21-22)'
-                },
-                template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
-              })
+    shared_examples 'sends a declined service organization notification' do
+      let(:expected_form_type_text) do
+        'Appointment of Veterans Service Organization as Claimantʼs Representative (VA Form 21-22)'
+      end
 
-      subject.perform(encrypted_ptcpnt_id, encrypted_first_name, representative_id)
+      it 'sends a declined service organization notification' do
+        expect(vanotify_service).to receive(:send_email)
+          .with({
+                  recipient_identifier: {
+                    id_type: 'PID',
+                    id_value: ptcpnt_id
+                  },
+                  personalisation: {
+                    first_name:,
+                    form_type: expected_form_type_text
+                  },
+                  template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
+                })
+
+        subject.perform(encrypted_ptcpnt_id, encrypted_first_name, representative_id)
+      end
+    end
+
+    context 'when the claims accreditation tables flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        create(:veteran_representative, representative_id:, user_types: ['veteran_service_officer'])
+      end
+
+      include_examples 'sends a declined service organization notification'
+    end
+
+    context 'when the claims accreditation tables flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+        create(:claims_api_representative, representative_id:, user_types: ['veteran_service_officer'])
+      end
+
+      include_examples 'sends a declined service organization notification'
     end
   end
 
@@ -44,26 +74,47 @@ describe ClaimsApi::VANotifyDeclinedJob, type: :job do
 
     before do
       allow(VaNotify::Service).to receive(:new).with(anything).and_return(vanotify_service)
-      create(:veteran_representative, representative_id:, user_types: ['claim_agents'])
     end
 
-    it 'sends a declined individual/representative notification' do
-      expect(vanotify_service).to receive(:send_email)
-        .with({
-                recipient_identifier: {
-                  id_type: 'PID',
-                  id_value: ptcpnt_id
-                },
-                personalisation: {
-                  first_name:,
-                  representative_type: 'claims agent',
-                  representative_type_abbreviated: 'claims agent',
-                  form_type: 'Appointment of Individual as Claimantʼs Representative (VA Form 21-22a)'
-                },
-                template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
-              })
+    shared_examples 'sends a declined individual/representative notification' do
+      it 'sends a declined individual/representative notification' do
+        expect(vanotify_service).to receive(:send_email)
+          .with({
+                  recipient_identifier: {
+                    id_type: 'PID',
+                    id_value: ptcpnt_id
+                  },
+                  personalisation: {
+                    first_name:,
+                    representative_type: 'claims agent',
+                    representative_type_abbreviated: 'claims agent',
+                    form_type: 'Appointment of Individual as Claimantʼs Representative (VA Form 21-22a)'
+                  },
+                  template_id: Settings.claims_api.vanotify.declined_service_organization_template_id
+                })
 
-      subject.perform(encrypted_ptcpnt_id, encrypted_first_name, representative_id)
+        subject.perform(encrypted_ptcpnt_id, encrypted_first_name, representative_id)
+      end
+    end
+
+    context 'when the claims accreditation tables flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        create(:veteran_representative, representative_id:, user_types: ['claim_agents'])
+      end
+
+      include_examples 'sends a declined individual/representative notification'
+    end
+
+    context 'when the claims accreditation tables flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+        create(:claims_api_representative, representative_id:, user_types: ['claim_agents'])
+      end
+
+      include_examples 'sends a declined individual/representative notification'
     end
   end
 

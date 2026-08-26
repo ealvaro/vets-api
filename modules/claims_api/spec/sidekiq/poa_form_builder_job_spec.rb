@@ -102,6 +102,9 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     allow_any_instance_of(ClaimsApi::PoaUpdater)
       .to receive(:perform)
       .and_return(nil)
+
+    allow(Flipper).to receive(:enabled?)
+      .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
   end
 
   describe 'with lighthouse_claims_api_2122_pdf_form_update_v1 feature flag disabled' do
@@ -110,65 +113,93 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
     end
 
     describe 'generating the filled and signed pdf' do
-      context 'when representative is an individual' do
-        before do
-          create(:veteran_representative, :with_address, representative_id: '12345', poa_codes: [poa_code.to_s])
+      shared_examples 'generating pdf under a factory flavor' do
+        context 'when representative is an individual' do
+          before do
+            create(rep_factory, :with_address, representative_id: '12345', poa_codes: [poa_code.to_s])
+          end
+
+          it 'generates the pdf to match example' do
+            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+            allow(bd_client).to receive(:upload_document).and_return(true)
+            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            expect(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:new).and_call_original
+            expect_any_instance_of(
+              ClaimsApi::V1::PoaPdfConstructor::Individual
+            ).to receive(:construct).and_call_original
+
+            subject.new.perform(power_of_attorney.id, 'post')
+          end
         end
 
-        it 'generates the pdf to match example' do
-          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-          allow(bd_client).to receive(:upload_document).and_return(true)
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          expect(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:new).and_call_original
-          expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Individual).to receive(:construct).and_call_original
+        context 'when representative is part of an organization' do
+          before do
+            create(rep_factory, representative_id: '67890', poa_codes: [poa_code.to_s]).save!
+            create(org_factory, poa: 'ABC', name: 'Some org')
+          end
 
-          subject.new.perform(power_of_attorney.id, 'post')
+          it 'generates the pdf to match example' do
+            allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+            allow(bd_client).to receive(:upload_document).and_return(true)
+            allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+            expect(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:new).and_call_original
+            expect_any_instance_of(
+              ClaimsApi::V1::PoaPdfConstructor::Organization
+            ).to receive(:construct).and_call_original
+
+            subject.new.perform(power_of_attorney.id, 'post')
+          end
         end
-      end
 
-      context 'when representative is part of an organization' do
-        before do
-          create(:veteran_representative, representative_id: '67890', poa_codes: [poa_code.to_s]).save!
-          create(:veteran_organization, poa: 'ABC', name: 'Some org')
-        end
-
-        it 'generates the pdf to match example' do
-          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-          allow(bd_client).to receive(:upload_document).and_return(true)
-          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-          expect(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:new).and_call_original
-          expect_any_instance_of(
-            ClaimsApi::V1::PoaPdfConstructor::Organization
-          ).to receive(:construct).and_call_original
-
-          subject.new.perform(power_of_attorney.id, 'post')
-        end
-      end
-
-      context 'when signature has prefix' do
-        before do
-          create(:veteran_representative, representative_id: '67890', poa_codes: ['ABC']).save!
-          create(:veteran_organization, poa: 'ABC', name: 'Some org')
-          power_of_attorney.update(form_data: power_of_attorney.form_data.deep_merge(
-            {
-              signatures: {
-                veteran: bad_b64_image,
-                representative: bad_b64_image
+        context 'when signature has prefix' do
+          before do
+            create(rep_factory, representative_id: '67890', poa_codes: ['ABC']).save!
+            create(org_factory, poa: 'ABC', name: 'Some org')
+            power_of_attorney.update(form_data: power_of_attorney.form_data.deep_merge(
+              {
+                signatures: {
+                  veteran: bad_b64_image,
+                  representative: bad_b64_image
+                }
               }
-            }
-          ))
+            ))
+          end
+
+          it 'sets the status and store the error' do
+            expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:construct)
+              .and_raise(ClaimsApi::StampSignatureError)
+
+            subject.new.perform(power_of_attorney.id, 'post')
+
+            power_of_attorney.reload
+            expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
+            expect(power_of_attorney.signature_errors).not_to be_empty
+          end
+        end
+      end
+
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
         end
 
-        it 'sets the status and store the error' do
-          expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:construct)
-            .and_raise(ClaimsApi::StampSignatureError)
+        let(:rep_factory) { :veteran_representative }
+        let(:org_factory) { :veteran_organization }
 
-          subject.new.perform(power_of_attorney.id, 'post')
+        include_examples 'generating pdf under a factory flavor'
+      end
 
-          power_of_attorney.reload
-          expect(power_of_attorney.status).to eq(ClaimsApi::PowerOfAttorney::ERRORED)
-          expect(power_of_attorney.signature_errors).not_to be_empty
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
         end
+
+        let(:rep_factory) { :claims_api_representative }
+        let(:org_factory) { :claims_api_organization }
+
+        include_examples 'generating pdf under a factory flavor'
       end
     end
   end
@@ -178,7 +209,7 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       allow(Flipper).to receive(:enabled?).with(:lighthouse_claims_api_v1_2122a_pdf_form_update).and_return(true)
     end
 
-    context 'when lighthouse_claims_api_v1_2122a_pdf_form_update is enabled' do
+    shared_examples 'generates a 3-page PDF using the updated form' do
       it 'generates a 3-page PDF using the updated form' do
         allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
         allow(bd_client).to receive(:upload_document).and_return(true)
@@ -194,6 +225,24 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
         expect(pdf_path).to be_present
         expect(PDF::Reader.new(pdf_path).pages.size).to eq(3)
       end
+    end
+
+    context 'when the claims accreditation tables flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+      end
+
+      include_examples 'generates a 3-page PDF using the updated form'
+    end
+
+    context 'when the claims accreditation tables flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+      end
+
+      include_examples 'generates a 3-page PDF using the updated form'
     end
   end
 
@@ -223,14 +272,42 @@ RSpec.describe ClaimsApi::V1::PoaFormBuilderJob, type: :job, vcr: 'bgs/person_we
       Timecop.return
     end
 
-    it 'uses the Organization constructor' do
-      allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
-      allow(bd_client).to receive(:upload_document).and_return(true)
-      allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
-      expect(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:new).and_call_original
-      expect_any_instance_of(ClaimsApi::V1::PoaPdfConstructor::Organization).to receive(:construct).and_call_original
+    describe 'the Organization constructor via perform' do
+      shared_examples 'uses the Organization constructor for perform' do
+        it 'uses the Organization constructor' do
+          allow(ClaimsApi::BD).to receive(:new).and_return(bd_client)
+          allow(bd_client).to receive(:upload_document).and_return(true)
+          allow_any_instance_of(BGS::PersonWebService).to receive(:find_by_ssn).and_return({ file_nbr: '123456789' })
+          expect(
+            ClaimsApi::V1::PoaPdfConstructor::Organization
+          ).to receive(:new).and_call_original
+          expect_any_instance_of(
+            ClaimsApi::V1::PoaPdfConstructor::Organization
+          ).to receive(:construct).and_call_original
 
-      subject.new.perform(power_of_attorney.id, 'post')
+          subject.new.perform(power_of_attorney.id, 'post')
+        end
+      end
+
+      context 'when the claims accreditation tables flag is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(false)
+        end
+
+        include_examples 'uses the Organization constructor for perform'
+      end
+
+      context 'when the claims accreditation tables flag is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(ClaimsApi::AccreditationTables::FLAG).and_return(true)
+          create(:claims_api_representative, representative_id: '67890', poa_codes: [poa_code.to_s])
+          create(:claims_api_organization, poa: poa_code.to_s, name: 'Some org')
+        end
+
+        include_examples 'uses the Organization constructor for perform'
+      end
     end
 
     it 'uses revised page 2 signature coordinates' do
