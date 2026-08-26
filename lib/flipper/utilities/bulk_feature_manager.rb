@@ -57,21 +57,22 @@ module Flipper
         unless @flipper.exist?(feature)
           added_features << feature
           @flipper.add(feature) unless @dry_run
-
-          # Default features to enabled for test and those explicitly set for development or staging
-          enabled_in_dev = feature_config['enable_in_development']
-          enabled_in_staging = feature_config['enable_in_staging']
-          should_enable =
-            Rails.env.test? ||
-            (Rails.env.development? && enabled_in_dev) ||
-            (Settings.vsp_environment == 'development' && enabled_in_dev) ||
-            (Settings.vsp_environment == 'staging' && enabled_in_staging)
-
-          if should_enable
-            enabled_features << feature
-            @flipper.enable(feature) unless @dry_run
-          end
         end
+
+        # Re-enable features that should be on in this environment, even if previously disabled by cleanup
+        if should_enable?(feature_config) && !@flipper.enabled?(feature)
+          enabled_features << feature
+          @flipper.enable(feature) unless @dry_run
+        end
+      end
+
+      def should_enable?(feature_config)
+        enabled_in_dev = feature_config['enable_in_development']
+        enabled_in_staging = feature_config['enable_in_staging']
+        Rails.env.test? ||
+          (Rails.env.development? && enabled_in_dev) ||
+          (Settings.vsp_environment == 'development' && enabled_in_dev) ||
+          (Settings.vsp_environment == 'staging' && enabled_in_staging)
       end
 
       def orphaned?(feature) = config_feature_names.exclude?(feature.name)

@@ -74,6 +74,20 @@ module Flipper
             expect(memory.enabled?('f_no_flag')).to be false
             expect(manager.enabled_features).to contain_exactly('f_staging_on')
           end
+
+          it 're-enables a staging feature that already exists but was disabled by cleanup' do
+            memory.add('f_staging_on')
+
+            allow_any_instance_of(described_class).to receive(:features_config).and_return(
+              'features' => { 'f_staging_on' => { 'enable_in_staging' => true } }
+            )
+
+            manager.setup
+
+            expect(memory.enabled?('f_staging_on')).to be true
+            expect(manager.added_features).to be_empty
+            expect(manager.enabled_features).to contain_exactly('f_staging_on')
+          end
         end
 
         context 'when vsp_environment is sandbox' do
