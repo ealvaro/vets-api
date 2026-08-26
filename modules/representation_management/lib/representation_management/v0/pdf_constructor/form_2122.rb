@@ -90,25 +90,25 @@ module RepresentationManagement
         def veteran_contact_details(data)
           {
             # Veteran Address
-            "#{PAGE1_KEY}.Claimants_MailingAddress_NumberAndStreet[1]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_NumberAndStreet[0]": \
             data.veteran_address_line1,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ApartmentOrUnitNumber[1]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ApartmentOrUnitNumber[0]": \
             data.veteran_address_line2,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_City[1]": data.veteran_city,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_StateOrProvince[1]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_City[0]": data.veteran_city,
+            "#{PAGE1_KEY}.Claimants_MailingAddress_StateOrProvince[0]": \
             data.veteran_state_code_truncated,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_Country[1]": data.veteran_country,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[1]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_Country[0]": data.veteran_country,
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[0]": \
             data.veteran_zip_code_expanded.first,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[1]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[0]": \
             data.veteran_zip_code_expanded.second,
             # Veteran Phone Number
-            "#{PAGE1_KEY}.Phone[1]": format_phone_number(
+            "#{PAGE1_KEY}.Phone[0]": format_phone_number(
               phone_number: data.veteran_phone,
               add_parentheses: true
             ),
             # Veteran Email
-            "#{PAGE1_KEY}.EmailAddress_Optional[1]": data.veteran_email
+            "#{PAGE1_KEY}.EmailAddress_Optional[0]": data.veteran_email
           }
         end
 
@@ -134,25 +134,25 @@ module RepresentationManagement
 
           {
             # Claimant Address
-            "#{PAGE1_KEY}.Claimants_MailingAddress_NumberAndStreet[0]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_NumberAndStreet[1]": \
             data.claimant_address_line1,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ApartmentOrUnitNumber[0]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ApartmentOrUnitNumber[1]": \
             data.claimant_address_line2,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_City[0]": data.claimant_city,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_StateOrProvince[0]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_City[1]": data.claimant_city,
+            "#{PAGE1_KEY}.Claimants_MailingAddress_StateOrProvince[1]": \
             data.claimant_state_code_truncated,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_Country[0]": data.claimant_country,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[0]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_Country[1]": data.claimant_country,
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[1]": \
             data.claimant_zip_code_expanded.first,
-            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[0]": \
+            "#{PAGE1_KEY}.Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[1]": \
             data.claimant_zip_code_expanded.second,
             # Claimant Phone Number
-            "#{PAGE1_KEY}.Phone[0]": format_phone_number(
+            "#{PAGE1_KEY}.Phone[1]": format_phone_number(
               phone_number: data.claimant_phone,
               add_parentheses: true
             ),
             # Claimant Email
-            "#{PAGE1_KEY}.EmailAddress_Optional[0]": data.claimant_email
+            "#{PAGE1_KEY}.EmailAddress_Optional[1]": data.claimant_email
           }
         end
 

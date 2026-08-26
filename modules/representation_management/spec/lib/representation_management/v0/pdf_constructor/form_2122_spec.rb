@@ -189,7 +189,7 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
   end
 
   it 'formats the veteran phone number correctly' do
-    phone_field = 'form1[0].#subform[0].Phone[1]'
+    phone_field = 'form1[0].#subform[0].Phone[0]'
     data_no_rep = data.except(:representative_id)
     form = RepresentationManagement::Form2122Data.new(data_no_rep)
 
@@ -203,7 +203,7 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
   end
 
   it 'formats the claimant phone number correctly' do
-    phone_field = 'form1[0].#subform[0].Phone[0]'
+    phone_field = 'form1[0].#subform[0].Phone[1]'
     data_no_rep = data.except(:representative_id)
     form = RepresentationManagement::Form2122Data.new(data_no_rep)
 
@@ -236,16 +236,16 @@ describe RepresentationManagement::V0::PdfConstructor::Form2122 do
       veteran_fields = pdf_constructor.send(:veteran_contact_details, international_data)
       claimant_fields = pdf_constructor.send(:claimant_contact_details, international_data)
 
-      expect(veteran_fields[:'form1[0].#subform[0].Claimants_MailingAddress_StateOrProvince[1]']).to eq('')
+      expect(veteran_fields[:'form1[0].#subform[0].Claimants_MailingAddress_StateOrProvince[1]']).to be_nil
       expect(veteran_fields[:'form1[0].#subform[0].Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[1]'])
-        .to eq('')
+        .to be_nil
       expect(veteran_fields[:'form1[0].#subform[0].Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[1]'])
-        .to eq('')
-      expect(claimant_fields[:'form1[0].#subform[0].Claimants_MailingAddress_StateOrProvince[0]']).to eq('')
+        .to be_nil
+      expect(claimant_fields[:'form1[0].#subform[0].Claimants_MailingAddress_StateOrProvince[0]']).to be_nil
       expect(claimant_fields[:'form1[0].#subform[0].Claimants_MailingAddress_ZIPOrPostalCode_FirstFiveNumbers[0]'])
-        .to eq('')
+        .to be_nil
       expect(claimant_fields[:'form1[0].#subform[0].Claimants_MailingAddress_ZIPOrPostalCode_LastFourNumbers[0]'])
-        .to eq('')
+        .to be_nil
     end
   end
 end
