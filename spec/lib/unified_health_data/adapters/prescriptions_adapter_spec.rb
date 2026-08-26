@@ -564,10 +564,10 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
             expect(parsed.first.is_refillable).to be(true)
           end
 
-          it 'does not emit the detection metric' do
+          it 'does not count the fetch' do
             parsed
             expect(StatsD).not_to have_received(:increment)
-              .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, anything)
           end
         end
 
@@ -582,7 +582,7 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
           it 'leaves the prescription untouched' do
             expect(parsed.first.source_ehr).to eq(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
             expect(StatsD).not_to have_received(:increment)
-              .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, anything)
           end
         end
 
@@ -591,6 +591,35 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
           it 'leaves the prescription untouched without raising' do
             expect(parsed.first.is_refillable).to be(true)
+          end
+        end
+
+        context 'when the prescription already offered neither affordance' do
+          let(:vista_medications) do
+            [vista_medication_data.merge('stationNumber' => '668', 'isRefillable' => false,
+                                         'dispStatus' => 'Discontinued', 'refillRemaining' => 0)]
+          end
+
+          it 'leaves both flags false' do
+            rx = parsed.first
+
+            expect(rx.is_refillable).to be(false)
+            expect(rx.is_renewable).to be(false)
+          end
+
+          it 'does not count a record with nothing to withdraw' do
+            parsed
+
+            expect(StatsD).not_to have_received(:increment)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, anything)
+          end
+
+          it 'logs no breakdown line' do
+            parsed
+
+            expect(Rails.logger).not_to have_received(:info).with(
+              hash_including(message: 'VistA prescription affordances suppressed at Oracle Health stations')
+            )
           end
         end
       end
@@ -609,18 +638,103 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
           parsed
 
           expect(StatsD).not_to have_received(:increment)
-            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+            .with(described_class::STATSD_SUPPRESSED_FETCHES, anything)
           expect(StatsD).not_to have_received(:gauge)
-            .with(described_class::STATSD_OH_STATION_COUNT, anything)
+            .with(described_class::STATSD_CONFIGURED_STATIONS, anything)
         end
       end
 
       context 'when the flag is enabled and a prescription is suppressed' do
-        it 'emits the detection metric tagged by station' do
+        it 'counts the fetch once, tagged by station only' do
           parsed
 
           expect(StatsD).to have_received(:increment)
-            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, tags: ['station_number:668'])
+            .with(described_class::STATSD_SUPPRESSED_FETCHES, tags: ['station_number:668']).once
+        end
+
+        it 'logs one breakdown line per fetch with the affordance and display status' do
+          parsed
+
+          expect(Rails.logger).to have_received(:info).with(
+            hash_including(
+              message: 'VistA prescription affordances suppressed at Oracle Health stations',
+              suppressed_count: 1,
+              by_station: { '668' => 1 },
+              by_affordance: { 'refill' => 1 },
+              by_disp_status: { 'none' => 1 }
+            )
+          )
+        end
+
+        context 'when both affordances were offered' do
+          let(:vista_medications) do
+            [vista_medication_data.merge('stationNumber' => '668', 'isRefillable' => true,
+                                         'dispStatus' => 'Active', 'refillRemaining' => 0)]
+          end
+
+          it 'reports the affordance as both alongside the upstream display status' do
+            parsed
+
+            expect(Rails.logger).to have_received(:info).with(
+              hash_including(by_affordance: { 'both' => 1 }, by_disp_status: { 'Active' => 1 })
+            )
+          end
+        end
+
+        context 'when several prescriptions are suppressed' do
+          let(:vista_medications) do
+            [
+              vista_medication_data.merge('stationNumber' => '668', 'dispStatus' => 'Active'),
+              vista_medication_data.merge('prescriptionId' => '28148666', 'stationNumber' => '528GQ01',
+                                          'dispStatus' => 'Active')
+            ]
+          end
+
+          it 'rolls them into a single log line' do
+            parsed
+
+            expect(Rails.logger).to have_received(:info).with(
+              hash_including(
+                suppressed_count: 2,
+                by_station: { '668' => 1, '528GQ01' => 1 },
+                by_disp_status: { 'Active' => 2 }
+              )
+            ).once
+          end
+
+          it 'counts the fetch once per station it touched' do
+            parsed
+
+            expect(StatsD).to have_received(:increment)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, tags: ['station_number:668']).once
+            expect(StatsD).to have_received(:increment)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, tags: ['station_number:528GQ01']).once
+          end
+        end
+
+        context 'when several prescriptions at the same station are suppressed' do
+          let(:vista_medications) do
+            [
+              vista_medication_data.merge('stationNumber' => '668', 'dispStatus' => 'Active'),
+              vista_medication_data.merge('prescriptionId' => '28148666', 'stationNumber' => '668',
+                                          'dispStatus' => 'Active')
+            ]
+          end
+
+          it 'counts the fetch once rather than once per record' do
+            parsed
+
+            expect(StatsD).to have_received(:increment)
+              .with(described_class::STATSD_SUPPRESSED_FETCHES, tags: ['station_number:668']).once
+          end
+
+          it 'still reports every affected record in the log' do
+            parsed
+
+            expect(Rails.logger).to have_received(:info).with(
+              hash_including(suppressed_count: 2, by_station: { '668' => 2 })
+            )
+          end
         end
       end
 
@@ -638,13 +752,13 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
           parsed
 
           expect(StatsD).not_to have_received(:increment)
-            .with(described_class::STATSD_VISTA_RX_AT_OH_STATION, anything)
+            .with(described_class::STATSD_SUPPRESSED_FETCHES, anything)
         end
 
         it 'gauges the configured station count so a stale list is visible' do
           parsed
 
-          expect(StatsD).to have_received(:gauge).with(described_class::STATSD_OH_STATION_COUNT, 0)
+          expect(StatsD).to have_received(:gauge).with(described_class::STATSD_CONFIGURED_STATIONS, 0)
         end
       end
 

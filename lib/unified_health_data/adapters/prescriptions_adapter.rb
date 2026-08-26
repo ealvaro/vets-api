@@ -25,15 +25,28 @@ module UnifiedHealthData
       # Settings.mhv.uhd.cmop_in_process_window_days so the ceiling can be tuned without a deploy.
       CMOP_IN_PROCESS_WINDOW_DEFAULT_DAYS = 15
 
-      # Emitted for every VistA prescription suppressed at a station that is live on Oracle
-      # Health. Only emitted when the feature flag is on, so it doubles as a rollout signal.
-      STATSD_VISTA_RX_AT_OH_STATION = 'api.uhd.vista_rx_at_oh_station.detected'
+      # Incremented once per list fetch in which at least one affordance was actually withdrawn
+      # at the tagged station, not once per affected prescription. Nothing caches the parse, so a
+      # per-record counter would re-count the same prescriptions on every page load and read as
+      # traffic rather than impact; counting fetches makes the series approximate "sessions
+      # affected at this station", which is what sizing a rollout needs. Per-record volume lives
+      # in the log line's suppressed_count.
+      #
+      # Only emitted when the feature flag is on, so it doubles as a rollout signal: after a
+      # station is added to the list this is how you confirm suppression actually started there,
+      # and a station going flat is how you catch a list that has gone stale.
+      #
+      # Deliberately tagged by station and nothing else. Datadog bills per unique tag
+      # combination, and the diagnostic breakdowns worth having here (which affordance, what
+      # display status) would multiply this counter's series for a question that is only asked
+      # while stations are cutting over -- those live in the log line below instead.
+      STATSD_SUPPRESSED_FETCHES = 'api.uhd.prescriptions.vista_suppression.affected_fetches'
       # Gauge of how many stations are configured for suppression. A curated list going stale is
       # otherwise indistinguishable from "no stations have cut over yet", so alert if this is 0
       # while the flag is on, or if it has not moved across a known cutover date. Gated with the
       # rest of the guard: with the flag off the list size has no consequences, and reporting it
       # anyway would suggest suppression is happening when none is.
-      STATSD_OH_STATION_COUNT = 'api.uhd.vista_rx_at_oh_station.configured_stations'
+      STATSD_CONFIGURED_STATIONS = 'api.uhd.prescriptions.vista_suppression.configured_stations'
 
       def initialize(current_user = nil)
         @current_user = current_user
@@ -144,20 +157,75 @@ module UnifiedHealthData
       def apply_oh_station_vista_suppression(prescriptions)
         return unless Flipper.enabled?(:mhv_medications_suppress_vista_rx_at_oh_stations, @current_user)
 
-        StatsD.gauge(STATSD_OH_STATION_COUNT, oh_suppression_stations.size)
+        StatsD.gauge(STATSD_CONFIGURED_STATIONS, oh_suppression_stations.size)
         return if oh_suppression_stations.empty?
 
-        prescriptions.each do |rx|
+        suppressed = prescriptions.filter_map do |rx|
           next unless vista_source?(rx) && rx.station_number.present?
 
           station = normalized_station(rx.station_number)
           next unless oh_suppression_stations.include?(station)
+          # A record offering neither affordance -- an old discontinued med, say -- has nothing
+          # to withdraw. Assigning false to it changes nothing, so skipping keeps both the counter
+          # and the log a measure of what the guard actually did.
+          next unless rx.is_refillable || rx.is_renewable
 
-          StatsD.increment(STATSD_VISTA_RX_AT_OH_STATION, tags: ["station_number:#{station}"])
+          # Captured before the assignment below, so the affordance still reads as what the
+          # Veteran was being offered rather than what we left behind.
+          entry = {
+            station_number: station,
+            affordance: suppressed_affordance(rx),
+            disp_status: rx.disp_status.presence || 'none'
+          }
 
           rx.is_refillable = false
           rx.is_renewable = false
+
+          entry
         end
+
+        count_affected_fetch(suppressed)
+        log_suppression_breakdown(suppressed)
+      end
+
+      # One increment per station this fetch touched, however many of the Veteran's records were
+      # affected there. A fetch can span stations, so uniq rather than a single increment.
+      def count_affected_fetch(suppressed)
+        suppressed.map { |entry| entry[:station_number] }.uniq.each do |station|
+          StatsD.increment(STATSD_SUPPRESSED_FETCHES, tags: ["station_number:#{station}"])
+        end
+      end
+
+      # Refill and renewal are offered independently by VistA and fail differently against an EHR
+      # that no longer owns the prescription, so they are worth telling apart.
+      def suppressed_affordance(rx)
+        return 'both' if rx.is_refillable && rx.is_renewable
+
+        rx.is_refillable ? 'refill' : 'renew'
+      end
+
+      # One line per list fetch, only when something was actually withdrawn, carrying the
+      # breakdowns that answer "why did VistA still think these were actionable?" -- a display
+      # status of 'Active' means VistA still considers the order live at a station it no longer
+      # fills for, while a missing one points at the record. These are logged rather than tagged
+      # onto the counter because log fields cost nothing per distinct value, where metric tags are
+      # billed per combination and disp_status is passed through from upstream unbounded.
+      #
+      # PII/PHI-safe: counts and upstream status values only. No prescription id, drug name, sig
+      # text, facility name or patient identifier, which is also why this cannot answer an
+      # individual support ticket -- it is a population signal for sizing and root cause.
+      def log_suppression_breakdown(suppressed)
+        return if suppressed.empty?
+
+        Rails.logger.info(
+          message: 'VistA prescription affordances suppressed at Oracle Health stations',
+          service: 'unified_health_data',
+          source_system: 'vista',
+          suppressed_count: suppressed.size,
+          by_station: suppressed.map { |entry| entry[:station_number] }.tally,
+          by_affordance: suppressed.map { |entry| entry[:affordance] }.tally,
+          by_disp_status: suppressed.map { |entry| entry[:disp_status] }.tally
+        )
       end
 
       # Hand-curated station numbers, updated at each cutover via Parameter Store. Matched exactly:
