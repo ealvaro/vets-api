@@ -24,6 +24,9 @@ module Forms
 
         def api_statuses(submissions)
           submitted_current_user = submissions.first
+
+          return missing_icn_error if submitted_current_user&.icn.blank?
+
           record = HealthCareApplication.enrollment_status(submitted_current_user.icn, true)
           status = NORMALIZED_STATUSES[record[:parsed_status]]
 
@@ -40,6 +43,14 @@ module Forms
         rescue => e
           status = e.respond_to?(:status_code) ? e.status_code : 500
           errors = error_handler.handle_error(status:, body: { message: e.message })
+          [nil, errors]
+        end
+
+        private
+
+        def missing_icn_error
+          errors = error_handler.handle_error(status: 422,
+                                              body: { message: 'Missing ICN for submission status lookup' })
           [nil, errors]
         end
       end

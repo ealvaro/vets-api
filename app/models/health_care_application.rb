@@ -173,6 +173,9 @@ class HealthCareApplication < ApplicationRecord
       HCA::EnrollmentEligibility::Service.new.lookup_user(icn),
       loa3
     )
+  rescue HCA::EnrollmentEligibility::Service::InvalidIcnError, Common::Client::Errors::ClientError => e
+    Rails.logger.error('[10-10EZ] - Error fetching enrollment status', { exception: e })
+    parsed_ee_data({}, false)
   end
 
   def self.user_icn(user_attributes)

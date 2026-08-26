@@ -136,6 +136,46 @@ RSpec.describe HealthCareApplication, type: :model do
         effective_date: '2018-01-24T00:00:00.000-09:00'
       )
     end
+
+    context 'when the EE service raises InvalidIcnError' do
+      before do
+        allow_any_instance_of(HCA::EnrollmentEligibility::Service)
+          .to receive(:lookup_user)
+          .and_raise(HCA::EnrollmentEligibility::Service::InvalidIcnError, 'ICN is required to look up EE data')
+      end
+
+      it 'logs the error and returns the fallback ee data' do
+        expect(Rails.logger).to receive(:error).with(
+          '[10-10EZ] - Error fetching enrollment status',
+          hash_including(exception: instance_of(HCA::EnrollmentEligibility::Service::InvalidIcnError))
+        )
+
+        expect(described_class.enrollment_status('', true)).to eq(
+          described_class.parsed_ee_data({}, false)
+        )
+      end
+    end
+
+    context 'when the EE service raises a ClientError' do
+      let(:client_error) { Common::Client::Errors::ClientError.new('timeout') }
+
+      before do
+        allow_any_instance_of(HCA::EnrollmentEligibility::Service)
+          .to receive(:lookup_user)
+          .and_raise(client_error)
+      end
+
+      it 'logs the error and returns the fallback ee data' do
+        expect(Rails.logger).to receive(:error).with(
+          '[10-10EZ] - Error fetching enrollment status',
+          { exception: client_error }
+        )
+
+        expect(described_class.enrollment_status('123', true)).to eq(
+          described_class.parsed_ee_data({}, false)
+        )
+      end
+    end
   end
 
   describe '.parsed_ee_data' do

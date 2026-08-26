@@ -24,5 +24,27 @@ describe HCA::EzrPostfill do
         )
       end
     end
+
+    context 'when the user has no icn' do
+      before do
+        allow(user).to receive(:icn).and_return(nil)
+      end
+
+      it 'raises a validation error without calling the EE service' do
+        expect_any_instance_of(HCA::EnrollmentEligibility::Service).not_to receive(:lookup_user)
+
+        expect { described_class.post_fill_hash(user) }.to raise_error(Common::Exceptions::ParameterMissing)
+      end
+    end
+
+    context 'when the icn is an empty string' do
+      before do
+        allow(user).to receive(:icn).and_return('')
+      end
+
+      it 'raises a validation error' do
+        expect { described_class.post_fill_hash(user) }.to raise_error(Common::Exceptions::ParameterMissing)
+      end
+    end
   end
 end

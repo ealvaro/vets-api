@@ -96,5 +96,36 @@ describe Forms::SubmissionStatuses::Gateways::Hca1010EzGateway,
         detail: 'Gateway timeout'
       )
     end
+
+    context 'when the submission has no icn' do
+      let(:user_account) { create(:user_account, icn: nil) }
+
+      it 'returns a 422 error without calling enrollment_status' do
+        expect(HealthCareApplication).not_to receive(:enrollment_status)
+
+        gateway = described_class.new(user_account:)
+        statuses, errors = gateway.api_statuses([user_account])
+
+        expect(statuses).to be_nil
+        expect(errors).to be_an(Array)
+        expect(errors.first).to include(
+          status: 422,
+          detail: 'Missing ICN for submission status lookup'
+        )
+      end
+    end
+
+    context 'when submissions is empty' do
+      it 'returns a 422 error without calling enrollment_status' do
+        expect(HealthCareApplication).not_to receive(:enrollment_status)
+
+        gateway = described_class.new(user_account:)
+        statuses, errors = gateway.api_statuses([])
+
+        expect(statuses).to be_nil
+        expect(errors).to be_an(Array)
+        expect(errors.first).to include(status: 422)
+      end
+    end
   end
 end

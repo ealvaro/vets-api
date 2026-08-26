@@ -104,6 +104,19 @@ RSpec.describe Form1010Ezr::Service do
         expect(form['vaMedicalFacility']).to eq('988')
       end
     end
+
+    context 'when the user has no icn' do
+      let(:current_user) do
+        create(:evss_user, :loa3, icn: nil, birth_date: '1986-01-02', first_name: 'FirstName',
+                                  middle_name: 'MiddleName', last_name: 'ZZTEST', suffix: 'Jr.',
+                                  ssn: '111111234', gender: 'F')
+      end
+
+      it 'raises a validation error' do
+        expect { service.send(:post_fill_required_fields, form) }
+          .to raise_error(Common::Exceptions::ParameterMissing)
+      end
+    end
   end
 
   describe '#post_fill_required_user_fields' do
@@ -401,6 +414,28 @@ RSpec.describe Form1010Ezr::Service do
             StandardError, 'Uh oh. Some bad error occurred.'
           )
         end
+      end
+    end
+
+    context 'when the user has no icn' do
+      let(:current_user) do
+        create(
+          :evss_user,
+          :loa3,
+          icn: nil,
+          birth_date: '1986-01-02',
+          first_name: 'FirstName',
+          middle_name: 'MiddleName',
+          last_name: 'ZZTEST',
+          suffix: 'Jr.',
+          ssn: '111111234',
+          gender: 'F'
+        )
+      end
+
+      it 'raises a validation error' do
+        expect { service.send(:post_fill_required_fields, form) }
+          .to raise_error(Common::Exceptions::ParameterMissing)
       end
     end
   end

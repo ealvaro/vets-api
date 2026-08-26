@@ -10,6 +10,8 @@ module HCA
     class Service < Common::Client::Base
       include Common::Client::Concerns::Monitoring
 
+      class InvalidIcnError < StandardError; end
+
       XPATH_PREFIX = 'env:Envelope/env:Body/getEESummaryResponse/summary/'
       configuration HCA::EnrollmentEligibility::Configuration
 
@@ -447,6 +449,8 @@ module HCA
       end
 
       def lookup_user_req(icn)
+        raise InvalidIcnError, 'ICN is required to look up EE data' if icn.blank?
+
         perform(:post, '', build_lookup_user_xml(icn)).body
       end
 

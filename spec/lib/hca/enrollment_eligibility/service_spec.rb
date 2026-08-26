@@ -23,18 +23,6 @@ describe HCA::EnrollmentEligibility::Service do
   end
 
   describe '#get_ezr_data' do
-    let(:veteran_data) do
-      data = JSON.parse(File.read('spec/fixtures/form1010_ezr/veteran_data.json'))
-      financial_info = data['nonPrefill']['previousFinancialInfo']
-
-      data.delete('nonPrefill')
-      data.merge('previousFinancialInfo' => financial_info)
-    end
-    let(:veteran_data_without_service_history) { veteran_data.except(*SERVICE_HISTORY_KEYS) }
-    let(:veteran_data_without_contacts_or_service_history) do
-      veteran_data_without_service_history.except(*EMERGENCY_CONTACTS_KEYS)
-    end
-
     let(:service_history) do
       instance_double(
         VAProfile::Prefill::MilitaryInformation,
@@ -43,6 +31,26 @@ describe HCA::EnrollmentEligibility::Service do
         last_discharge_date: '2017-08-30',
         discharge_type: 'honorable'
       )
+    end
+    let(:veteran_data_without_contacts_or_service_history) do
+      veteran_data_without_service_history.except(*EMERGENCY_CONTACTS_KEYS)
+    end
+    let(:veteran_data_without_service_history) { veteran_data.except(*SERVICE_HISTORY_KEYS) }
+    let(:veteran_data) do
+      data = JSON.parse(File.read('spec/fixtures/form1010_ezr/veteran_data.json'))
+      financial_info = data['nonPrefill']['previousFinancialInfo']
+
+      data.delete('nonPrefill')
+      data.merge('previousFinancialInfo' => financial_info)
+    end
+
+    context 'with a blank icn' do
+      it 'raises InvalidIcnError' do
+        user_without_icn = double(icn: '')
+
+        expect { described_class.new.get_ezr_data(user_without_icn) }
+          .to raise_error(described_class::InvalidIcnError)
+      end
     end
 
     def expect_veteran_data_to_match(veteran_data)
@@ -152,6 +160,20 @@ describe HCA::EnrollmentEligibility::Service do
   end
 
   describe '#lookup_user' do
+    context 'with a blank icn' do
+      it 'raises InvalidIcnError' do
+        expect { described_class.new.lookup_user('') }
+          .to raise_error(described_class::InvalidIcnError, 'ICN is required to look up EE data')
+      end
+    end
+
+    context 'with a nil icn' do
+      it 'raises InvalidIcnError' do
+        expect { described_class.new.lookup_user(nil) }
+          .to raise_error(described_class::InvalidIcnError, 'ICN is required to look up EE data')
+      end
+    end
+
     context 'with a user that has an ineligibility_reason' do
       it 'gets the ineligibility_reason', run_at: 'Wed, 13 Feb 2019 09:20:47 GMT' do
         VCR.use_cassette(

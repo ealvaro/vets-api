@@ -69,6 +69,8 @@ module Form1010Ezr
 
     # @param [HashWithIndifferentAccess] parsed_form JSON form data
     def submit_form(parsed_form)
+      raise Common::Exceptions::ParameterMissing, 'icn' if @user.icn.blank?
+
       # Log the 'veteranDateOfBirth' to ensure the frontend validation is working as intended
       # REMOVE THE FOLLOWING TWO LINES OF CODE ONCE THE DOB ISSUE HAS BEEN DIAGNOSED - 3/27/24
       @unprocessed_user_dob = parsed_form['veteranDateOfBirth'].clone
