@@ -35,7 +35,6 @@ Mobile::Engine.routes.draw do
     get '/debts', to: 'debts#index'
     get '/debts/:id', to: 'debts#show'
     get '/dependents', to: 'dependents#index'
-    post '/dependents', to: 'dependents#create'
     get '/dependents/request-decisions', to: 'dependents_request_decisions#index'
     get '/disability-rating', to: 'disability_rating#index'
     get '/enrollment-status', to: 'enrollment_status#show'
