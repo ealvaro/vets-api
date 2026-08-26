@@ -1724,6 +1724,10 @@ features:
     actor_type: user
     description: If enabled shows prefill read-only page for form 10-7959f-2 (Foreign Medical Program claim form)
     enable_in_development: true
+  form_1095b_pending:
+    actor_type: user
+    description: If enabled shows form pending 1095b forms
+    enable_in_development: true
   forms_address_validation:
     actor_type: user
     description: If enabled, forms using the forms-system address-validation pattern show a USPS address confirmation page after address entry (pilot form 20-10206)
