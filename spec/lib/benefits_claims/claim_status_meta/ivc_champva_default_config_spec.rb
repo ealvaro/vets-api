@@ -14,7 +14,8 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
   it 'has the expected top-level keys' do
     expect(config.keys).to include(
       'detail', 'statusHeader', 'whatYouNeedToDo', 'files',
-      'help', 'overview', 'listCard', 'closedAlert', 'nextSteps', 'whatWeAreDoing'
+      'help', 'overview', 'listCard', 'closedAlert', 'nextSteps', 'whatWeAreDoing',
+      'repeatIneligibilityCard'
     )
   end
 
@@ -270,6 +271,118 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
     it 'has title and description with a [Name] placeholder' do
       expect(variant_config['title']).to include('[Name]')
       expect(variant_config['description']).to include('[Name]')
+    end
+  end
+
+  describe 'repeatIneligibilityCard section' do
+    subject(:card) { config['repeatIneligibilityCard'] }
+
+    # ── Structure ────────────────────────────────────────────────────────────
+    # The FE reads both keys via claimStatusMeta.repeatIneligibilityCard and
+    # calls String#replace('[Name]', ...) / String#replace('[date]', ...) on each.
+    # A missing key or renamed key is a silent runtime failure — the FE will
+    # render an empty paragraph or the literal placeholder text to users.
+
+    it 'exists as a top-level key in the config' do
+      expect(card).to be_a(Hash)
+    end
+
+    it 'has exactly the three keys the FE expects: updatePrefix, newLetterSentence, and linkText' do
+      expect(card.keys).to match_array(%w[updatePrefix newLetterSentence linkText])
+    end
+
+    it 'updatePrefix is a non-empty string' do
+      expect(card['updatePrefix']).to be_a(String).and be_present
+    end
+
+    it 'newLetterSentence is a non-empty string' do
+      expect(card['newLetterSentence']).to be_a(String).and be_present
+    end
+
+    it 'linkText is a non-empty string' do
+      expect(card['linkText']).to be_a(String).and be_present
+    end
+
+    # linkText labels the repeat ineligibility alert's in-page jump to the first
+    # affected applicant card. Unlike the other two strings it names a static UI
+    # action, so it carries no [Name]/[date] placeholder to interpolate.
+    it 'linkText has no bracket placeholder — it is static UI copy' do
+      expect(card['linkText']).not_to match(/\[[^\]]+\]/)
+    end
+
+    # ── Placeholder contract ─────────────────────────────────────────────────
+    # The FE interpolates these exact bracket tokens client-side.
+    # A typo (e.g. "[name]" or "(Name)") means every user sees the raw token.
+
+    it 'updatePrefix contains the [Name] placeholder so FE can interpolate the applicant name' do
+      expect(card['updatePrefix']).to include('[Name]')
+    end
+
+    it 'newLetterSentence contains both the [Name] and [date] placeholders' do
+      expect(card['newLetterSentence']).to include('[Name]')
+      expect(card['newLetterSentence']).to include('[date]')
+    end
+
+    it '[Name] is capitalised (bracket-capital-N) not lowercase — case-sensitive FE replace contract' do
+      expect(card['updatePrefix']).to include('[Name]')
+      expect(card['updatePrefix']).not_to include('[name]')
+      expect(card['newLetterSentence']).to include('[Name]')
+      expect(card['newLetterSentence']).not_to include('[name]')
+    end
+
+    it '[date] is lowercase — matches the FE replace("[date]", ...) call exactly' do
+      expect(card['newLetterSentence']).to include('[date]')
+      expect(card['newLetterSentence']).not_to include('[Date]')
+    end
+
+    # ── Content contract ─────────────────────────────────────────────────────
+    # Guards against copy changes that would break the acceptance criteria
+    # without anyone noticing (e.g. a content edit that removes the 10-business-
+    # day commitment or the submission-document context).
+
+    it 'updatePrefix references the documents the applicant submitted (review context)' do
+      expect(card['updatePrefix']).to match(/documents you submitted/i)
+    end
+
+    it 'updatePrefix communicates that eligibility did not change' do
+      expect(card['updatePrefix']).to match(/didn't change|did not change/i)
+    end
+
+    it 'newLetterSentence references mailing a new letter to the applicant' do
+      expect(card['newLetterSentence']).to match(/mailed .* a new letter/i)
+    end
+
+    it 'newLetterSentence states the 10-business-day delivery window' do
+      expect(card['newLetterSentence']).to include('10 business days')
+    end
+
+    it 'newLetterSentence mentions "more information about our decision"' do
+      expect(card['newLetterSentence']).to match(/more information about our decision/i)
+    end
+
+    # ── Regression / safety guards ───────────────────────────────────────────
+
+    it 'neither string contains unmatched bracket tokens (no stray placeholder fragments)' do
+      [card['updatePrefix'], card['newLetterSentence']].each do |string|
+        # Any remaining [something] after interpolation is a copy error
+        leftover = string.scan(/\[[^\]]+\]/) - %w[[Name] [date]]
+        expect(leftover).to be_empty,
+                            "Found unexpected bracket token(s) in: #{string.inspect}"
+      end
+    end
+
+    it 'neither string contains HTML tags (plain text contract for va-alert rendering)' do
+      [card['updatePrefix'], card['newLetterSentence']].each do |string|
+        expect(string).not_to match(/<[a-z]/i)
+      end
+    end
+
+    it 'updatePrefix does not end with a trailing space or newline' do
+      expect(card['updatePrefix']).to eq(card['updatePrefix'].strip)
+    end
+
+    it 'newLetterSentence does not end with a trailing space or newline' do
+      expect(card['newLetterSentence']).to eq(card['newLetterSentence'].strip)
     end
   end
 end

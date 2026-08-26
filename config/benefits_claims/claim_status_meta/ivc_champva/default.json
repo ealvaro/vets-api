@@ -102,6 +102,11 @@
     "title": "We made a decision on your application on",
     "description": "Keep reading for our application decision."
   },
+  "repeatIneligibilityCard": {
+    "updatePrefix": "We reviewed the documents you submitted. But this didn't change [Name]'s eligibility.",
+    "newLetterSentence": "On [date], we mailed [Name] a new letter. This letter has more information about our decision. It should arrive within 10 business days.",
+    "linkText": "Read updated decision"
+  },
   "nextSteps": {
     "title": "Next steps",
     "items": [
