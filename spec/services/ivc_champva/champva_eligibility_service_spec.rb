@@ -255,6 +255,21 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
           expect { described_class.new(transaction_uuid).call }
             .not_to(change(IvcChampvaLetter, :count).from(2))
         end
+
+        it 'does not persist a duplicate letter when VES returns the same form_number with ' \
+           'different casing' do
+          described_class.new(transaction_uuid).call
+
+          recased_correspondence = mail_correspondence.deep_dup
+          recased_correspondence['letterTemplate']['formNumber'] = 'ccl-a43a.enc'
+          recased_response = {
+            'vfmpProgramsInfo' => { 'relationships' => [] }, 'mailCorrespondences' => [recased_correspondence]
+          }
+          allow(ves_client).to receive(:get_ee_summary).and_return(recased_response)
+
+          expect { described_class.new(transaction_uuid).call }
+            .not_to(change(IvcChampvaLetter, :count).from(2))
+        end
       end
 
       context 'when the letter was mailed before the application was submitted' do
@@ -283,6 +298,69 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
 
           expect(result[:letters_created_count]).to eq(0)
           expect(IvcChampvaLetter.count).to eq(0)
+        end
+      end
+
+      context 'when the letter is not on the CHAMPVA approved-letter allowlist' do
+        let(:mail_status_date) { 1.day.from_now.iso8601 }
+
+        context 'and the form number shares a prefix with an approved letter but is not itself approved' do
+          let(:mail_correspondence) do
+            {
+              'letterTemplate' => { 'name' => 'Some Other CG Correspondence', 'formNumber' => 'CG-A99z' },
+              'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+              'mailStatusDate' => mail_status_date
+            }
+          end
+
+          it 'does not persist a letter' do
+            result = described_class.new(transaction_uuid).call
+
+            expect(result[:letters_created_count]).to eq(0)
+            expect(IvcChampvaLetter.count).to eq(0)
+          end
+        end
+
+        context 'and the form number is entirely unknown/unrelated to CHAMPVA' do
+          let(:mail_correspondence) do
+            {
+              'letterTemplate' => { 'name' => 'ACA Bene Tax Form', 'formNumber' => '742-801' },
+              'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+              'mailStatusDate' => mail_status_date
+            }
+          end
+
+          it 'does not persist a letter' do
+            result = described_class.new(transaction_uuid).call
+
+            expect(result[:letters_created_count]).to eq(0)
+            expect(IvcChampvaLetter.count).to eq(0)
+          end
+        end
+      end
+
+      context 'when VES returns a mix of approved and unapproved correspondence' do
+        let(:mail_status_date) { 1.day.from_now.iso8601 }
+        let(:ee_summary_response) do
+          {
+            'vfmpProgramsInfo' => { 'relationships' => [] },
+            'mailCorrespondences' => [
+              mail_correspondence,
+              {
+                'letterTemplate' => { 'name' => 'Unrelated Correspondence', 'formNumber' => 'NEW-001' },
+                'mailStatus' => 'SENT_TO_PRINT_VENDOR',
+                'mailStatusDate' => mail_status_date
+              }
+            ]
+          }
+        end
+
+        it 'persists only the approved letter, for every applicant' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:letters_created_count]).to eq(2) # one per applicant (sponsor + beneficiary)
+          expect(IvcChampvaLetter.count).to eq(2)
+          expect(IvcChampvaLetter.pluck(:form_number)).to all(eq('CCL-A43a.ENC'))
         end
       end
 
@@ -411,6 +489,29 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
           expect(result[:eligibility_updated_count]).to eq(2)
           applicants = IvcChampvaApplicant.where(transaction_uuid:)
           expect(applicants).to all(have_attributes(eligibility_resolved: true, ves_eligibility_status: 'Ineligible'))
+        end
+      end
+
+      context 'when statusUpdatedDate predates submission and a post-submission letter exists ' \
+              'but has not actually been sent yet (a pending mail status)' do
+        let(:ee_summary_response) do
+          super().merge(
+            'mailCorrespondences' => [
+              {
+                'letterTemplate' => { 'name' => 'CHAMPVA Ineligibility Letter', 'formNumber' => 'CCL-A43a.ENC' },
+                'mailStatus' => 'PENDING',
+                'mailStatusDate' => 1.day.from_now.iso8601
+              }
+            ]
+          )
+        end
+
+        it 'does not treat the pending letter as proof, leaving eligibility unresolved' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:eligibility_updated_count]).to eq(0)
+          applicants = IvcChampvaApplicant.where(transaction_uuid:)
+          expect(applicants).to all(have_attributes(eligibility_resolved: false, ves_eligibility_status: nil))
         end
       end
 

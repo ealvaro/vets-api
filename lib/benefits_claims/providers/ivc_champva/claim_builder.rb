@@ -5,6 +5,7 @@ require 'benefits_claims/responses/claim_response'
 require 'benefits_claims/title_generator'
 require 'benefits_claims/providers/ivc_champva/ves_reason_translator'
 require 'benefits_claims/providers/ivc_champva/repeat_ineligibility_letter_activity'
+require 'benefits_claims/providers/ivc_champva/latest_update_date'
 
 module BenefitsClaims
   module Providers
@@ -36,27 +37,28 @@ module BenefitsClaims
           eligibility_transaction_uuid = transaction_uuid_for(records, representative)
           all_resolved = IvcChampvaApplicant.all_resolved_for?(eligibility_transaction_uuid)
           status = status_for(all_resolved)
-          champva_applicants, champva_sponsor, application_decided, ves_status_updated_date,
-            repeat_ineligibility_alert = champva_eligibility_summary(eligibility_transaction_uuid, user)
+          eligibility_summary = champva_eligibility_summary(eligibility_transaction_uuid, user)
 
           BenefitsClaims::Responses::ClaimResponse.new(
             **claim_response_attributes(records, representative, status, user, all_resolved),
-            cst_champva_applicants: champva_applicants,
-            cst_champva_sponsor: champva_sponsor,
-            application_decided:,
-            ves_status_updated_date:,
-            repeat_ineligibility_alert:
+            cst_champva_applicants: eligibility_summary[:applicants],
+            cst_champva_sponsor: eligibility_summary[:sponsor],
+            application_decided: eligibility_summary[:decided],
+            ves_status_updated_date: eligibility_summary[:ves_date],
+            repeat_ineligibility_alert: eligibility_summary[:repeat_ineligibility_alert],
+            latest_update_date: eligibility_summary[:latest_update_date]
           )
         end
 
         def self.claim_response_attributes(records, representative, status, user, all_resolved)
           claim_type = claim_type_for(representative&.form_number)
           titles = BenefitsClaims::TitleGenerator.generate_titles(claim_type, nil)
+          received_date = received_date_for(records)
           {
             id: representative&.form_uuid,
             provider: 'ivc_champva',
-            claim_date: format_date(records.min_by(&:created_at)&.created_at),
-            claim_phase_dates: claim_phase_dates_for(representative, status),
+            claim_date: format_date(received_date),
+            claim_phase_dates: claim_phase_dates_for(representative, status, received_date),
             close_date: close_date_for(representative, all_resolved),
             claim_type:,
             decision_letter_sent: status == 'complete',
@@ -96,9 +98,33 @@ module BenefitsClaims
           format_date(record.updated_at) if all_resolved
         end
 
-        def self.claim_phase_dates_for(representative, status)
+        # The application's static Received date: the earliest created_at across every form
+        # record for this application. Unlike updated_at, this never changes after submission
+        # regardless of later record updates (e.g. a Pega status callback touching a form row) --
+        # ticket #152150. Shared by claim_date and, for Step 1, phase_change_date, so "Received
+        # on" and "Moved to this step on" are guaranteed to be computed from the same value
+        # rather than two independent (and potentially drifting) calculations.
+        #
+        # @param records [Array<IvcChampvaForm>]
+        # @return [ActiveSupport::TimeWithZone, nil]
+        def self.received_date_for(records)
+          records.min_by(&:created_at)&.created_at
+        end
+
+        # Step 1's "Moved to this step" date must equal the application's static Received date
+        # (received_date_for) so it never appears to change just because a form record was
+        # updated for an unrelated reason -- ticket #152150. Step 2 ("moved to this step" meaning
+        # "when was this decided") is out of scope for that ticket and keeps using the
+        # representative record's updated_at.
+        #
+        # @param representative [IvcChampvaForm, nil]
+        # @param status [String]
+        # @param received_date [ActiveSupport::TimeWithZone, nil] from received_date_for
+        # @return [Hash]
+        def self.claim_phase_dates_for(representative, status, received_date)
+          phase_change_date = status == 'complete' ? representative&.updated_at : received_date
           {
-            phase_change_date: format_date(representative&.updated_at),
+            phase_change_date: format_date(phase_change_date),
             phase_type: phase_type_for_status(status)
           }
         end
@@ -157,11 +183,17 @@ module BenefitsClaims
 
         # Single applicant/sponsor path: consumed at the response root (cstChampvaApplicants/
         # cstChampvaSponsor) rather than duplicated under claimStatusMeta. repeatIneligibilityAlert
-        # is likewise a single response-root field, not duplicated onto each applicant, since it
-        # speaks to the application's decision as a whole and may name more than one applicant.
+        # and latestUpdateDate are likewise single response-root fields, not duplicated onto each
+        # applicant, since each speaks to the application as a whole.
+        #
+        # Returns a Hash (not a positional Array) so call sites name each field instead of relying
+        # on position -- this stopped scaling once a fifth/sixth value joined the original two.
+        #
+        # @return [Hash] :applicants, :sponsor, :decided, :ves_date, :repeat_ineligibility_alert,
+        #   :latest_update_date
         def self.champva_eligibility_summary(transaction_uuid, user)
-          return [[], nil, nil, nil, nil] unless ves_eligibility_on_demand?(user)
-          return [[], nil, nil, nil, nil] if transaction_uuid.blank?
+          return empty_eligibility_summary unless ves_eligibility_on_demand?(user)
+          return empty_eligibility_summary if transaction_uuid.blank?
 
           applicants = applicants_for(transaction_uuid)
           decided = applicants.any? && applicants.all?(&:eligibility_resolved)
@@ -169,14 +201,29 @@ module BenefitsClaims
 
           repeat_letter_data_by_applicant = repeat_letter_data_by_applicant_for(applicants)
           repeat_ineligibility_alert = repeat_ineligibility_alert_for(applicants, repeat_letter_data_by_applicant)
+          latest_update_date = LatestUpdateDate.for(applicants)
 
-          [
-            build_applicant_data(applicants, repeat_letter_data_by_applicant),
-            sponsor_details_for(transaction_uuid),
-            decided,
-            ves_date,
-            repeat_ineligibility_alert
-          ]
+          {
+            applicants: build_applicant_data(applicants, repeat_letter_data_by_applicant),
+            sponsor: sponsor_details_for(transaction_uuid),
+            decided:,
+            ves_date:,
+            repeat_ineligibility_alert:,
+            latest_update_date:
+          }
+        end
+
+        # @return [Hash] the champva_eligibility_summary shape with every value blank/nil, for the
+        #   flag-off and no-transaction-uuid early returns above
+        def self.empty_eligibility_summary
+          {
+            applicants: [],
+            sponsor: nil,
+            decided: nil,
+            ves_date: nil,
+            repeat_ineligibility_alert: nil,
+            latest_update_date: nil
+          }
         end
 
         def self.build_applicant_data(applicants, repeat_letter_data_by_applicant)
@@ -214,9 +261,16 @@ module BenefitsClaims
           ).merge(repeat_letter_data)
         end
 
-        # @return [Array<Hash>] this applicant's mail-correspondence letters, oldest first
+        # Reuses RepeatIneligibilityLetterActivity.sent_letters_for rather than reading
+        # applicant.ivc_champva_letters directly, so this FE-facing list can never drift
+        # from what the allowlist/sent-status filtering elsewhere (hasRepeatIneligibilityLetter,
+        # latestUpdateDate) considers a real letter -- e.g. a still-pending, not-yet-sent
+        # correspondence entry no longer appears here with a date newer than latestUpdateDate
+        # reflects.
+        #
+        # @return [Array<Hash>] this applicant's officially sent, allowlisted letters, oldest first
         def self.letters_for(applicant)
-          applicant.ivc_champva_letters.sort_by(&:mail_status_date).map do |letter|
+          RepeatIneligibilityLetterActivity.sent_letters_for(applicant).map do |letter|
             {
               'formNumber' => letter.form_number,
               'letterName' => letter.letter_name,

@@ -1091,6 +1091,7 @@ lib/ibm @software/bio-huntridge
 lib/identity @software/octo-identity
 lib/idp @software/bio-huntridge
 lib/idp.rb @software/bio-huntridge
+lib/ivc_champva @software/health-apps-backend
 lib/json_marshal @software/vsa-healthcare-health-quest-1-backend
 lib/json_schema @software/va-platform-backend
 lib/kafka @software/ves-submission-traceability
@@ -1772,6 +1773,7 @@ spec/lib/ibm @software/bio-huntridge
 spec/lib/identity @software/octo-identity
 spec/lib/idp @software/bio-huntridge
 spec/lib/idp_spec.rb @software/bio-huntridge
+spec/lib/ivc_champva @software/health-apps-backend
 spec/lib/json_marshal @software/vsa-healthcare-health-quest-1-backend
 spec/lib/json_schema @software/va-platform-backend
 spec/lib/kafka @software/ves-submission-traceability

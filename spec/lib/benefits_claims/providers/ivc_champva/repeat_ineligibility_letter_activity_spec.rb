@@ -3,7 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterActivity do
-  def create_letter(applicant, mail_status:, mail_status_date:, form_number: '10-10D-EXTENDED-EXISTING')
+  # 'CCL-A43a' is a real entry on the CHAMPVA letter allowlist (normalizes to the approved
+  # 'CCL-A43') -- sent_letters_for now re-checks that allowlist, so the default here has to be
+  # something it would actually accept, not an arbitrary/made-up value.
+  def create_letter(applicant, mail_status:, mail_status_date:, form_number: 'CCL-A43a')
     applicant.ivc_champva_letters.create!(
       form_number:,
       mail_status:,
@@ -139,6 +142,13 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterA
 
     it 'excludes letters whose mail status is not in the sent-letter allowlist' do
       create_letter(applicant, mail_status: 'in_progress', mail_status_date: 1.day.ago)
+
+      expect(described_class.sent_letters_for(applicant)).to eq([])
+    end
+
+    it 'excludes letters whose form_number is not on the CHAMPVA letter allowlist' do
+      create_letter(applicant, form_number: 'NEW-001', mail_status: 'mailed_by_print_vendor',
+                               mail_status_date: 1.day.ago)
 
       expect(described_class.sent_letters_for(applicant)).to eq([])
     end

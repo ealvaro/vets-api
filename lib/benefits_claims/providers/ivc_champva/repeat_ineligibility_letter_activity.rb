@@ -112,11 +112,23 @@ module BenefitsClaims
         # Letters that predate the application's submission are never persisted in
         # the first place, so no additional submission-date filtering is needed here.
         #
+        # Also re-checks IvcChampva::ChampvaLetterAllowlist here rather than trusting that
+        # every persisted row already passed it -- ChampvaEligibilityService#persist_letter
+        # is the only current write path and does check it, but this allowlist was added
+        # after ivc_champva_letters already existed, so any row persisted before that landed
+        # predates the check. Re-filtering at every read site (this method, plus
+        # ClaimBuilder.letters_for and ChampvaEligibilityService#application_letter_present?,
+        # which both delegate here) keeps the guarantee correct regardless of how a given row
+        # got into the table.
+        #
         # @param applicant [IvcChampvaApplicant]
         # @return [Array<IvcChampvaLetter>]
         def self.sent_letters_for(applicant)
           applicant.ivc_champva_letters
-                   .select { |letter| SENT_LETTER_STATUSES.include?(letter.mail_status.to_s.downcase.strip) }
+                   .select do |letter|
+                     ::IvcChampva::ChampvaLetterAllowlist.approved?(letter.form_number) &&
+                       SENT_LETTER_STATUSES.include?(letter.mail_status.to_s.downcase.strip)
+                   end
                    .sort_by(&:mail_status_date)
         end
 

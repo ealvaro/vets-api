@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ves_api/client'
+require 'benefits_claims/providers/ivc_champva/repeat_ineligibility_letter_activity'
 
 module IvcChampva
   # Fetches and processes eligibility data from VES for a single CHAMPVA application.
@@ -407,19 +408,25 @@ module IvcChampva
       status_updated_date < application_submitted_at
     end
 
-    # True once VES has generated at least one mail-correspondence entry for this
-    # applicant dated after the application's submission — i.e. proof a letter has
-    # actually gone out for the current application. Used to let a stale-looking
-    # status (per stale_prior_application_status?) through once a letter confirms
-    # it, even when the letter repeats the same status/reason as before ("the status
-    # may not change if the decision did not change").
+    # True once VES has generated at least one *officially sent, allowlisted* mail-correspondence
+    # entry for this applicant dated after the application's submission — i.e. proof a letter has
+    # actually gone out for the current application, not merely a queued/pending entry that
+    # hasn't been mailed yet, and not correspondence outside CHAMPVA's scope. Used to let a
+    # stale-looking status (per stale_prior_application_status?) through once a letter confirms
+    # it, even when the letter repeats the same status/reason as before ("the status may not
+    # change if the decision did not change"). Delegates to
+    # RepeatIneligibilityLetterActivity.sent_letters_for for the allowlist/sent-status filtering,
+    # so this check can't drift from what that method (and ClaimBuilder.letters_for) considers a
+    # real, relevant, sent letter.
     #
     # @param applicant [IvcChampvaApplicant]
     # @return [Boolean]
     def application_letter_present?(applicant)
       return false if application_submitted_at.blank?
 
-      applicant.ivc_champva_letters.exists?(['mail_status_date > ?', application_submitted_at])
+      BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterActivity
+        .sent_letters_for(applicant)
+        .any? { |letter| letter.mail_status_date.present? && letter.mail_status_date > application_submitted_at }
     end
 
     # Persists any new VES mail-correspondence letters for this applicant. VES may
@@ -436,12 +443,16 @@ module IvcChampva
     end
 
     # Persists a single VES mail-correspondence entry as a new letter record, unless
-    # it predates the application's submission, is missing a form number, or a
-    # matching letter (same applicant, form number, and mail status date) already
-    # exists. Holds a Postgres advisory lock keyed on that same tuple so two
-    # concurrent runs can't both pass the existence check and insert duplicates; the
-    # unique index and NOT NULL constraint backing that tuple are a second line of
-    # defense against the same race.
+    # it predates the application's submission, is missing a form number, isn't on
+    # the CHAMPVA Status Tool's approved-letter allowlist (see
+    # IvcChampva::ChampvaLetterAllowlist -- VES returns many correspondence types
+    # unrelated to CHAMPVA, and only approved ones should affect recent-activity,
+    # repeat-ineligibility, or Last Updated date logic), or a matching letter (same
+    # applicant, form number, and mail status date) already exists. Holds a
+    # Postgres advisory lock keyed on that same tuple so two concurrent runs can't
+    # both pass the existence check and insert duplicates; the unique index and NOT
+    # NULL constraint backing that tuple are a second line of defense against the
+    # same race.
     #
     # @param applicant [IvcChampvaApplicant]
     # @param correspondence [Hash]
@@ -454,11 +465,12 @@ module IvcChampva
       template = correspondence['letterTemplate'] || {}
       form_number = template['formNumber']
       return if form_number.blank?
+      return unless IvcChampva::ChampvaLetterAllowlist.approved?(form_number)
 
-      lock_key = "ivc_champva_letter-#{applicant.id}-#{form_number}-#{mail_status_date.to_i}"
-
+      lock_form_number = form_number.to_s.downcase
+      lock_key = "ivc_champva_letter-#{applicant.id}-#{lock_form_number}-#{mail_status_date.to_i}"
       IvcChampvaLetter.with_advisory_lock(lock_key) do
-        next if applicant.ivc_champva_letters.exists?(form_number:, mail_status_date:)
+        next if duplicate_letter?(applicant, form_number, mail_status_date)
 
         applicant.ivc_champva_letters.create!(
           letter_name: template['name'],
@@ -470,6 +482,21 @@ module IvcChampva
       end
     rescue ActiveRecord::RecordNotUnique
       # Already persisted by this same call or a concurrent run.
+    end
+
+    # Case-insensitive on form_number to match IvcChampva::ChampvaLetterAllowlist's own
+    # comparison (which normalizes/downcases) -- otherwise the same letter returned by VES
+    # with different casing across calls would pass the allowlist as "the same approved
+    # letter" both times, but slip past this dedup check as if it were two different ones,
+    # inserting a duplicate row.
+    #
+    # @param applicant [IvcChampvaApplicant]
+    # @param form_number [String]
+    # @param mail_status_date [ActiveSupport::TimeWithZone]
+    # @return [Boolean]
+    def duplicate_letter?(applicant, form_number, mail_status_date)
+      applicant.ivc_champva_letters
+               .exists?(['LOWER(form_number) = LOWER(?) AND mail_status_date = ?', form_number, mail_status_date])
     end
 
     # @param mail_status_date [String, nil]

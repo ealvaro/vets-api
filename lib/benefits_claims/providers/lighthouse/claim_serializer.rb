@@ -49,6 +49,7 @@ module BenefitsClaims
           attributes['cstChampvaSponsor'] = dto.cst_champva_sponsor if dto.cst_champva_sponsor.present?
           attributes['applicationDecided'] = dto.application_decided unless dto.application_decided.nil?
           attributes['vesStatusUpdatedDate'] = dto.ves_status_updated_date if dto.ves_status_updated_date.present?
+          attributes['latestUpdateDate'] = dto.latest_update_date if dto.latest_update_date.present?
           add_repeat_ineligibility_alert(attributes, dto)
 
           if dto.claim_phase_dates

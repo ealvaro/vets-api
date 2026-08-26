@@ -1,6 +1,7 @@
 {
-  "_comment": "VES mailStatus values that mean a CHAMPVA CCL letter has been officially sent to the user, used to detect repeat-ineligibility letter activity newer than the applicant's VES eligibility determination. Matched case-insensitively. Add new values here as VES introduces them — no code change required.",
+  "_comment": "VES mailStatus values that mean a CHAMPVA CCL letter has been officially sent to the user, used to detect repeat-ineligibility letter activity newer than the applicant's VES eligibility determination. Matched case-insensitively. Add new values here as VES introduces them — no code change required. VES's full mailStatus list (confirmed by the VES team, Slack #ivc-champva, 2026-08-25) is CORRESPONDENCE_COMPLETE, CORRESPONDENCE_FAILED, ENROLLMENT_REJECT, ERROR_BY_PRINT_VENDOR, INTERNAL_CANCEL, MAILED_BY_HEC, MAILED_BY_PRINT_VENDOR, PENDING_TRANSMISSION_TO_PRINT_VENDOR, REJECTED_ADDRESS_BY_PRINT_VENDOR, RETURN_BY_POST_OFFICE, SENT_TO_HEC_PRINTER, SENT_TO_PRINT_VENDOR, UNKNOWN -- sent_to_print_vendor was confirmed sent-equivalent to mailed_by_print_vendor in that same conversation; correspondence_complete was raised as a maybe but not confirmed, so it's intentionally left off pending Product/content sign-off.",
   "statuses": [
-    "mailed_by_print_vendor"
+    "mailed_by_print_vendor",
+    "sent_to_print_vendor"
   ]
 }
