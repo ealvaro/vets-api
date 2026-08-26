@@ -5,6 +5,7 @@ require 'tempfile'
 require 'benefits_documents/providers/benefits_documents_provider'
 require 'lighthouse/benefits_documents/constants'
 require 'lighthouse/benefits_documents/utilities/helpers'
+require 'logging/helper/data_scrubber'
 
 module BenefitsDocuments
   module Providers
@@ -23,16 +24,19 @@ module BenefitsDocuments
           10-7959A
         ].freeze
         DOCS_ONLY_RESUBMISSION_FLAG = :benefits_documents_ivc_champva_docs_only_resubmission
+        EVIDENCE_SUBMISSION_FAILURE_METRIC = 'cst.champva.document_upload.evidence_submission_failure'
 
         def initialize(current_user)
           @current_user = current_user
         end
 
         def queue_document_upload(params)
+          validate_single_file!(params[:file])
+
           claim_id = params[:claim_id].presence || params[:benefits_claim_id].presence
           claim_record = resolve_claim_record(claim_id)
           form_id = resolve_form_id(claim_record.form_number)
-          applicants = selected_applicants(params[:applicants])
+          docs_only_resubmission_enabled, applicants = docs_only_context(params[:applicants])
 
           attachment = PersistentAttachments::MilitaryRecords.new(form_id:)
           attachment.file = unlocked_file(params[:file], params[:password])
@@ -40,13 +44,31 @@ module BenefitsDocuments
           raise Common::Exceptions::ValidationErrors, attachment unless attachment.valid?
 
           attachment.save
-          persist_evidence_submission(claim_record.id, params[:file], attachment, params)
-          submit_docs_only_resubmission!(claim_record, attachment, params, applicants)
+          submit_docs_only_resubmission!(claim_record, attachment, params, applicants,
+                                         enabled: docs_only_resubmission_enabled)
+          status_key = docs_only_resubmission_enabled ? :SUCCESS : :CREATED
+          upload_status = BenefitsDocuments::Constants::UPLOAD_STATUS[status_key]
+          persist_evidence_submission(claim_record.id, params[:file], attachment, params, upload_status:)
 
           { jid: attachment.guid }
         end
 
         private
+
+        def docs_only_context(applicants)
+          enabled = Flipper.enabled?(DOCS_ONLY_RESUBMISSION_FLAG, @current_user)
+          [enabled, selected_applicants(applicants)]
+        end
+
+        def validate_single_file!(file)
+          valid = file.present? && !file.is_a?(Array) && !file.is_a?(String) && !file.respond_to?(:each_pair)
+          return if valid
+
+          raise Common::Exceptions::UnprocessableEntity.new(
+            detail: 'file must contain exactly one uploaded document',
+            source: self.class.name
+          )
+        end
 
         def resolve_claim_record(raw_claim_id)
           claim_id = raw_claim_id.to_s
@@ -111,22 +133,29 @@ module BenefitsDocuments
           file_param_valid && password_param_valid
         end
 
-        def persist_evidence_submission(claim_id, source_file, attachment, params)
+        def persist_evidence_submission(claim_id, source_file, attachment, params, upload_status:)
           current_user_account = user_account
           return if current_user_account.blank?
 
           file_name = uploaded_file_name(source_file, attachment)
           return if file_name.blank?
 
-          EvidenceSubmission.create(
-            claim_id:,
-            tracked_item_id: nil,
-            upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED],
+          attributes = {
+            claim_id:, tracked_item_id: nil, upload_status:,
             user_account: current_user_account,
             template_metadata: template_metadata(file_name, params).to_json
-          )
+          }
+          success_status = BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS]
+          attributes[:delete_date] = 60.days.from_now if upload_status == success_status
+
+          EvidenceSubmission.create!(attributes)
         rescue => e
-          Rails.logger.error('Failed to persist CHAMPVA evidence submission', exception: e)
+          error_class = e.class.name
+          error_message = 'Failed to persist CHAMPVA evidence submission'
+          error = Logging::Helper::DataScrubber.scrub(e.message)
+          Rails.logger.error(error_message, error_class:, error:)
+          StatsD.increment(EVIDENCE_SUBMISSION_FAILURE_METRIC, tags: ["error_class:#{error_class}"])
+          StatsD.increment('silent_failure', tags: ['service:claim-status', "function: #{error_message}"])
         end
 
         def user_account
@@ -159,8 +188,8 @@ module BenefitsDocuments
           }
         end
 
-        def submit_docs_only_resubmission!(claim_record, attachment, params, applicants)
-          return unless Flipper.enabled?(DOCS_ONLY_RESUBMISSION_FLAG, @current_user)
+        def submit_docs_only_resubmission!(claim_record, attachment, params, applicants, enabled:)
+          return unless enabled
 
           payload = docs_only_resubmission_payload(claim_record, attachment, params, applicants)
           response = ::IvcChampva::DocsOnlyResubmissionService.new(current_user: @current_user).call(payload)
@@ -199,7 +228,8 @@ module BenefitsDocuments
           applicants = JSON.parse(applicants) if applicants.is_a?(String)
           applicants ||= []
 
-          valid = applicants.is_a?(Array) && applicants.size <= 1 &&
+          valid_count = applicants.is_a?(Array) && applicants.size <= 1
+          valid = valid_count &&
                   applicants.all? { |applicant| applicant.is_a?(String) && applicant.present? }
           return applicants if valid
 

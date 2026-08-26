@@ -29,7 +29,7 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       generate_obscured_file_name: 'obf.pdf',
       format_date_for_mailers: 'May 1, 2026'
     )
-    allow(EvidenceSubmission).to receive(:create)
+    allow(EvidenceSubmission).to receive(:create!)
     allow(IvcChampva::DocsOnlyResubmissionService).to receive(:new)
       .with(current_user: user)
       .and_return(docs_only_resubmission_service)
@@ -91,6 +91,20 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         .with(form_id: '10-10D-SUPPLEMENTAL-EXISTING')
     end
 
+    [nil, [], ['one.pdf', 'two.pdf'], '/tmp/request-controlled.pdf', { path: '/tmp/document.pdf' }].each do |file|
+      it "rejects invalid single-file input #{file.inspect} before creating upload records" do
+        expect do
+          provider.queue_document_upload(claim_id: 'uuid-claim', file:)
+        end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
+          expect(error.errors.first[:detail]).to eq('file must contain exactly one uploaded document')
+        }
+
+        expect(PersistentAttachments::MilitaryRecords).not_to have_received(:new)
+        expect(EvidenceSubmission).not_to have_received(:create!)
+        expect(docs_only_resubmission_service).not_to have_received(:call)
+      end
+    end
+
     [
       ['malformed JSON', '["Michael Myers"'],
       ['non-array JSON', '{"name":"Michael Myers"}'],
@@ -112,9 +126,73 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         }
 
         expect(attachment).not_to have_received(:save)
-        expect(EvidenceSubmission).not_to have_received(:create)
+        expect(EvidenceSubmission).not_to have_received(:create!)
         expect(docs_only_resubmission_service).not_to have_received(:call)
       end
+    end
+
+    it 'allows a docs-only upload without an applicant when applicant metadata is unavailable' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+
+      result = provider.queue_document_upload(
+        claim_id: 'uuid-claim',
+        file: uploaded_file,
+        applicants: []
+      )
+
+      expect(result).to eq({ jid: 'guid-123' })
+      expect(docs_only_resubmission_service).to have_received(:call).with(
+        hash_including(
+          'supporting_docs' => [hash_including('applicants' => [])]
+        )
+      )
+    end
+
+    it 'persists evidence submission bookkeeping after PEGA is triggered' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+      expect(docs_only_resubmission_service).to receive(:call).ordered.and_return({ json: {}, status: 200 })
+      expect(EvidenceSubmission).to receive(:create!).ordered.with(
+        hash_including(
+          upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
+          delete_date: instance_of(ActiveSupport::TimeWithZone)
+        )
+      )
+
+      provider.queue_document_upload(
+        claim_id: 'uuid-claim',
+        file: uploaded_file,
+        applicants: ['Michael Myers']
+      )
+    end
+
+    it 'logs and meters bookkeeping failures without changing a successful response' do
+      stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
+      allow(EvidenceSubmission).to receive(:create!)
+        .and_raise(ActiveRecord::RecordInvalid.new(EvidenceSubmission.new))
+      allow(Rails.logger).to receive(:error)
+      allow(StatsD).to receive(:increment)
+
+      result = provider.queue_document_upload(
+        claim_id: 'uuid-claim',
+        file: uploaded_file,
+        applicants: ['Michael Myers']
+      )
+
+      expect(result).to eq({ jid: 'guid-123' })
+      expect(docs_only_resubmission_service).to have_received(:call)
+      expect(Rails.logger).to have_received(:error).with(
+        'Failed to persist CHAMPVA evidence submission',
+        error_class: 'ActiveRecord::RecordInvalid',
+        error: instance_of(String)
+      )
+      expect(StatsD).to have_received(:increment).with(
+        described_class::EVIDENCE_SUBMISSION_FAILURE_METRIC,
+        tags: ['error_class:ActiveRecord::RecordInvalid']
+      )
+      expect(StatsD).to have_received(:increment).with(
+        'silent_failure',
+        tags: ['service:claim-status', 'function: Failed to persist CHAMPVA evidence submission']
+      )
     end
 
     it 'supports numeric claim IDs that map directly to ivc_champva_form ids' do
@@ -174,14 +252,19 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
 
     it 'raises unprocessable entity when docs-only resubmission fails' do
       stub_champva_form_record(form_number: '10-10D-EXTENDED-EXISTING')
-      allow(docs_only_resubmission_service).to receive(:call)
-        .and_return({ json: { error_message: 'bad' }, status: 422 })
+      pega_failure = { json: { error_message: 'bad' }, status: 422 }
+      expect(docs_only_resubmission_service).to receive(:call).ordered.and_return(pega_failure)
 
       expect do
-        provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
+        provider.queue_document_upload(
+          claim_id: 'uuid-claim',
+          file: uploaded_file,
+          applicants: ['Michael Myers']
+        )
       end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
         expect(error.errors.first[:detail]).to eq('CHAMPVA docs-only resubmission failed: bad')
       }
+      expect(EvidenceSubmission).not_to have_received(:create!)
     end
 
     it 'uses a generic error detail when docs-only resubmission returns no error message' do
@@ -190,7 +273,11 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         .and_return({ json: {}, status: 500 })
 
       expect do
-        provider.queue_document_upload(claim_id: 'uuid-claim', file: uploaded_file)
+        provider.queue_document_upload(
+          claim_id: 'uuid-claim',
+          file: uploaded_file,
+          applicants: ['Michael Myers']
+        )
       end.to raise_error(Common::Exceptions::UnprocessableEntity) { |error|
         expect(error.errors.first[:detail]).to eq('CHAMPVA docs-only resubmission failed')
       }
@@ -206,6 +293,9 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
 
       expect(result).to eq({ jid: 'guid-123' })
       expect(docs_only_resubmission_service).not_to have_received(:call)
+      expect(EvidenceSubmission).to have_received(:create!).with(
+        hash_including(upload_status: BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED])
+      )
     end
 
     it 'unlocks password-protected PDF uploads before attachment validation' do
@@ -227,7 +317,8 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
       result = provider.queue_document_upload(
         claim_id: 'uuid-claim',
         file: pdf_file,
-        password: 'secret'
+        password: 'secret',
+        applicants: ['Michael Myers']
       )
 
       expect(result).to eq({ jid: 'guid-123' })
@@ -257,7 +348,8 @@ RSpec.describe BenefitsDocuments::Providers::IvcChampva::IvcChampvaBenefitsDocum
         provider.queue_document_upload(
           claim_id: 'uuid-claim',
           file: pdf_file,
-          password: 'wrong'
+          password: 'wrong',
+          applicants: ['Michael Myers']
         )
       end.to raise_error(Common::Exceptions::UnprocessableEntity)
     end
