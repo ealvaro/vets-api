@@ -10,6 +10,8 @@ module AskVAApi
 
       def initialize(icn:, id:, service: nil, **args)
         super(**args)
+        raise ArgumentError, 'Invalid ICN' if icn.blank?
+
         @icn = icn
         @id = id
         @service = service || default_service

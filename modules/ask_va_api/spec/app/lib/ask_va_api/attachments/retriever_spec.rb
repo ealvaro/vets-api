@@ -5,6 +5,18 @@ require 'rails_helper'
 RSpec.describe AskVAApi::Attachments::Retriever do
   subject(:retriever) { described_class.new(icn: '123', id: '1', entity_class: entity, user_mock_data: false) }
 
+  describe '#initialize' do
+    context 'when icn is blank' do
+      subject(:retriever) { described_class.new(icn: nil, id: '1', entity_class:, user_mock_data: false) }
+
+      let(:entity_class) { AskVAApi::Attachments::Entity }
+
+      it 'raises an ArgumentError' do
+        expect { retriever }.to raise_error(ArgumentError, 'Invalid ICN')
+      end
+    end
+  end
+
   describe '#call' do
     let(:entity) { AskVAApi::Attachments::Entity }
     let(:service) { instance_double(Crm::Service) }

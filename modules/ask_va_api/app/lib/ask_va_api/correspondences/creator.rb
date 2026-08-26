@@ -8,6 +8,8 @@ module AskVAApi
       attr_reader :params, :inquiry_id, :service, :icn
 
       def initialize(icn:, params:, inquiry_id:, service:)
+        raise ArgumentError, 'Invalid ICN' if icn.blank?
+
         @params = params
         @icn = icn
         @inquiry_id = inquiry_id

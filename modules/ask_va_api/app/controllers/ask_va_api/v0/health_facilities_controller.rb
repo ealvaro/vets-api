@@ -89,7 +89,8 @@ module AskVAApi
       def handle_exceptions
         yield
       rescue => e
-        log_and_render_error('unexpected_error', e, e.status_code)
+        status = e.respond_to?(:status_code) ? e.status_code : 500
+        log_and_render_error('unexpected_error', e, status)
       end
 
       def log_and_render_error(action, exception, status)

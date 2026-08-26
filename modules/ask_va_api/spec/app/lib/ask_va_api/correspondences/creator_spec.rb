@@ -10,6 +10,16 @@ module AskVAApi
       let(:params) { { reply: 'this is a correspondence message', files: [{ file_name: nil, file_content: nil }] } }
       let(:icn) { '123' }
 
+      describe '#initialize' do
+        context 'when icn is blank' do
+          let(:icn) { nil }
+
+          it 'raises an ArgumentError' do
+            expect { creator }.to raise_error(ArgumentError, 'Invalid ICN')
+          end
+        end
+      end
+
       describe '#call' do
         context 'when successful' do
           before do

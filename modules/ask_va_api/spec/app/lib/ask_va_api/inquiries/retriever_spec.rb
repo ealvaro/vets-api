@@ -78,6 +78,16 @@ RSpec.describe AskVAApi::Inquiries::Retriever do
       end
   end
 
+  describe '#initialize' do
+    context 'when icn is blank' do
+      let(:icn) { nil }
+
+      it 'raises an ArgumentError' do
+        expect { retriever }.to raise_error(ArgumentError, 'Invalid ICN')
+      end
+    end
+  end
+
   describe '#call' do
     context 'when ICN is given and CRM returns valid inquiries' do
       before do
