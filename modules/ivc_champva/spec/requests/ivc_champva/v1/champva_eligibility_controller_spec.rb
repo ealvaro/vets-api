@@ -17,8 +17,7 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
       existing_count: 2,
       names_updated_count: 0,
       eligibility_updated_count: 2,
-      cached: true,
-      pega_status: 'processed - eligibility determination unknown'
+      cached: true
     }
   end
   let(:eligibility_results) do

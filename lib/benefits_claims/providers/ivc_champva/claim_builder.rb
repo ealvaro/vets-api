@@ -4,6 +4,7 @@ require 'benefits_claims/claim_status_meta/config_loader'
 require 'benefits_claims/responses/claim_response'
 require 'benefits_claims/title_generator'
 require 'benefits_claims/providers/ivc_champva/ves_reason_translator'
+require 'benefits_claims/providers/ivc_champva/repeat_ineligibility_letter_activity'
 
 module BenefitsClaims
   module Providers
@@ -35,15 +36,16 @@ module BenefitsClaims
           eligibility_transaction_uuid = transaction_uuid_for(records, representative)
           all_resolved = IvcChampvaApplicant.all_resolved_for?(eligibility_transaction_uuid)
           status = status_for(all_resolved)
-          champva_applicants, champva_sponsor, application_decided, ves_status_updated_date =
-            champva_eligibility_summary(eligibility_transaction_uuid, user)
+          champva_applicants, champva_sponsor, application_decided, ves_status_updated_date,
+            repeat_ineligibility_alert = champva_eligibility_summary(eligibility_transaction_uuid, user)
 
           BenefitsClaims::Responses::ClaimResponse.new(
             **claim_response_attributes(records, representative, status, user, all_resolved),
             cst_champva_applicants: champva_applicants,
             cst_champva_sponsor: champva_sponsor,
             application_decided:,
-            ves_status_updated_date:
+            ves_status_updated_date:,
+            repeat_ineligibility_alert:
           )
         end
 
@@ -154,26 +156,62 @@ module BenefitsClaims
         end
 
         # Single applicant/sponsor path: consumed at the response root (cstChampvaApplicants/
-        # cstChampvaSponsor) rather than duplicated under claimStatusMeta.
+        # cstChampvaSponsor) rather than duplicated under claimStatusMeta. repeatIneligibilityAlert
+        # is likewise a single response-root field, not duplicated onto each applicant, since it
+        # speaks to the application's decision as a whole and may name more than one applicant.
         def self.champva_eligibility_summary(transaction_uuid, user)
-          return [[], nil, nil, nil] unless ves_eligibility_on_demand?(user)
-          return [[], nil, nil, nil] if transaction_uuid.blank?
+          return [[], nil, nil, nil, nil] unless ves_eligibility_on_demand?(user)
+          return [[], nil, nil, nil, nil] if transaction_uuid.blank?
 
           applicants = applicants_for(transaction_uuid)
           decided = applicants.any? && applicants.all?(&:eligibility_resolved)
           ves_date = decided ? format_date(applicants.filter_map(&:ves_status_updated_date).max) : nil
-          [build_applicant_data(applicants), sponsor_details_for(transaction_uuid), decided, ves_date]
+
+          repeat_letter_data_by_applicant = repeat_letter_data_by_applicant_for(applicants)
+          repeat_ineligibility_alert = repeat_ineligibility_alert_for(applicants, repeat_letter_data_by_applicant)
+
+          [
+            build_applicant_data(applicants, repeat_letter_data_by_applicant),
+            sponsor_details_for(transaction_uuid),
+            decided,
+            ves_date,
+            repeat_ineligibility_alert
+          ]
         end
 
-        def self.build_applicant_data(applicants)
+        def self.build_applicant_data(applicants, repeat_letter_data_by_applicant)
           applicants.map do |applicant|
-            applicant_eligibility_hash(applicant).merge(
-              'personType' => applicant.person_type,
-              'documentsRequested' => applicant.documents_requested,
-              'vesStatusUpdatedDate' => format_date(applicant.ves_status_updated_date),
-              'letters' => letters_for(applicant)
-            )
+            applicant_data_hash(applicant, repeat_letter_data_by_applicant[applicant])
           end
+        end
+
+        # @return [Hash{IvcChampvaApplicant => Hash}] each applicant's RepeatIneligibilityLetterActivity.evaluate result
+        def self.repeat_letter_data_by_applicant_for(applicants)
+          applicants.index_with { |applicant| RepeatIneligibilityLetterActivity.evaluate(applicant) }
+        end
+
+        # Shared across every flagged applicant on this application — names all of them, not just one.
+        #
+        # @return [Hash, nil]
+        def self.repeat_ineligibility_alert_for(applicants, repeat_letter_data_by_applicant)
+          flagged = applicants.select do |applicant|
+            repeat_letter_data_by_applicant[applicant]['hasRepeatIneligibilityLetter']
+          end
+          RepeatIneligibilityLetterActivity.alert_for(flagged)
+        end
+
+        # vesEligibilityReason is intentionally left as the applicant's normal plain-language
+        # reason (from ves_eligibility_reason_map.json via VesReasonTranslator) even when
+        # hasRepeatIneligibilityLetter is true — repeat-letter activity is surfaced entirely via
+        # the response-root repeatIneligibilityAlert (a separate alert card on the FE), not by
+        # overriding the existing eligibility card's body text.
+        def self.applicant_data_hash(applicant, repeat_letter_data)
+          applicant_eligibility_hash(applicant).merge(
+            'personType' => applicant.person_type,
+            'documentsRequested' => applicant.documents_requested,
+            'vesStatusUpdatedDate' => format_date(applicant.ves_status_updated_date),
+            'letters' => letters_for(applicant)
+          ).merge(repeat_letter_data)
         end
 
         # @return [Array<Hash>] this applicant's mail-correspondence letters, oldest first

@@ -21,8 +21,6 @@ module IvcChampva
   #         change over time; the controller's rate limit guards against excessive
   #         requests.
   class ChampvaEligibilityService
-    UNKNOWN_PEGA_STATUS = 'processed - eligibility determination unknown'
-
     DOCUMENTS_REQUESTED_STATUSES_PATH =
       Rails.root.join('config', 'benefits_claims', 'ves_documents_requested_statuses.json').freeze
 
@@ -42,11 +40,8 @@ module IvcChampva
       DOCUMENTS_REQUESTED_CONFIG.fetch('reasons', []).to_set { |r| r.to_s.downcase.strip }.freeze
 
     # @param transaction_uuid [String] the CHAMPVA application transaction UUID
-    # @param form_uuids [Array<String>, nil] specific form UUIDs to update (falls
-    #   back to all forms for transaction_uuid when omitted)
-    def initialize(transaction_uuid, form_uuids: nil)
+    def initialize(transaction_uuid)
       @transaction_uuid = transaction_uuid
-      @form_uuids = Array(form_uuids).compact_blank
       @ves_client = IvcChampva::VesApi::Client.new
       @created_count = 0
       @existing_count = 0
@@ -67,8 +62,7 @@ module IvcChampva
       applicants = sync_applicants
       names_updated_count = backfill_applicant_names(applicants)
       eligibility_updated_count = resolve_eligibility(applicants)
-      pega_status = update_pega_status_for_forms(service_status: 'success')
-      success_result(applicants, names_updated_count, eligibility_updated_count, pega_status)
+      success_result(applicants, names_updated_count, eligibility_updated_count)
     rescue IvcChampva::VesApi::VesApplicationPendingError => e
       failure_result('pending', e, level: :info)
     rescue IvcChampva::VesApi::VesApiError => e
@@ -80,7 +74,7 @@ module IvcChampva
     # Builds the success response hash from the synced applicants and per-step counts.
     #
     # @return [Hash]
-    def success_result(applicants, names_updated_count, eligibility_updated_count, pega_status)
+    def success_result(applicants, names_updated_count, eligibility_updated_count)
       {
         status: 'success',
         persons: applicants.map { |applicant| person_hash(applicant) },
@@ -89,7 +83,6 @@ module IvcChampva
         names_updated_count:,
         eligibility_updated_count:,
         letters_created_count: @letters_created_count,
-        pega_status:,
         cached: @cached
       }
     end
@@ -285,7 +278,10 @@ module IvcChampva
     end
 
     # Persists CHAMPVA eligibility data for a single applicant, then records the
-    # transaction's sponsor (once) from the same EE Summary payload.
+    # transaction's sponsor (once) from the same EE Summary payload. Skipped when
+    # the determination looks like it's carried over from a prior application (see
+    # stale_prior_application_status?) and no letter has yet confirmed it applies
+    # to this one.
     #
     # @param applicant [IvcChampvaApplicant]
     # @param data [Hash] the EE Summary response for this applicant
@@ -293,10 +289,44 @@ module IvcChampva
     def persist_eligibility(applicant, data)
       eligibility = extract_champva_eligibility(data)
       return false if eligibility.blank?
+      return false if stale_prior_application_status?(eligibility) && !application_letter_present?(applicant)
 
       applicant.update!(eligibility_attributes(eligibility))
       persist_sponsor(eligibility)
       true
+    end
+
+    # True when VES's statusUpdatedDate for this determination clearly predates the
+    # application's submission — i.e. this looks like a decision from a PRIOR CHAMPVA
+    # application under the same ICN that VES hasn't reprocessed yet (e.g. a Veteran
+    # denied months ago who has since reapplied), not a fresh determination for the
+    # current application. Absent/unparseable dates are treated as not stale, so
+    # applicants are still resolved immediately when VES doesn't supply this field.
+    #
+    # @param eligibility [Hash] a single CHAMPVA eligibility entry from the EE Summary
+    # @return [Boolean]
+    def stale_prior_application_status?(eligibility)
+      return false if application_submitted_at.blank?
+
+      status_updated_date = parsed_mail_status_date(eligibility['statusUpdatedDate'])
+      return false if status_updated_date.blank?
+
+      status_updated_date < application_submitted_at
+    end
+
+    # True once VES has generated at least one mail-correspondence entry for this
+    # applicant dated after the application's submission — i.e. proof a letter has
+    # actually gone out for the current application. Used to let a stale-looking
+    # status (per stale_prior_application_status?) through once a letter confirms
+    # it, even when the letter repeats the same status/reason as before ("the status
+    # may not change if the decision did not change").
+    #
+    # @param applicant [IvcChampvaApplicant]
+    # @return [Boolean]
+    def application_letter_present?(applicant)
+      return false if application_submitted_at.blank?
+
+      applicant.ivc_champva_letters.exists?(['mail_status_date > ?', application_submitted_at])
     end
 
     # Persists any new VES mail-correspondence letters for this applicant. VES may
@@ -452,49 +482,6 @@ module IvcChampva
       relationships
         .flat_map { |relationship| relationship['champvaEligibilities'] || [] }
         .first
-    end
-
-    # Writes pega_status to exactly one CHAMPVA form row per form_uuid.
-    # The status is derived from the service outcome, not applicant records.
-    #
-    # @param service_status [String] current call status ('success', 'pending', 'error')
-    # @return [String, nil] status written to forms, or nil when no update happened
-    def update_pega_status_for_forms(service_status:)
-      status = mapped_pega_status_for_service(service_status)
-      return nil if status.blank?
-
-      representative_forms_for_update.each do |form|
-        # rubocop:disable Rails/SkipsModelValidations
-        form.update_columns(pega_status: status, updated_at: Time.current)
-        # rubocop:enable Rails/SkipsModelValidations
-      end
-
-      status
-    end
-
-    # Derives a CHAMPVA form-level status from the service call outcome.
-    #
-    # @param service_status [String]
-    # @return [String, nil]
-    def mapped_pega_status_for_service(service_status)
-      return UNKNOWN_PEGA_STATUS if service_status == 'success'
-
-      nil
-    end
-
-    # Returns one representative row per form_uuid for the requested scope.
-    # We select the most recently updated row for each form_uuid.
-    #
-    # @return [Array<IvcChampvaForm>]
-    def representative_forms_for_update
-      forms_scope.to_a.group_by(&:form_uuid).values.map { |forms| forms.max_by(&:updated_at) }
-    end
-
-    # @return [ActiveRecord::Relation<IvcChampvaForm>]
-    def forms_scope
-      return IvcChampvaForm.where(transaction_uuid: @transaction_uuid, form_uuid: @form_uuids) if @form_uuids.any?
-
-      IvcChampvaForm.where(transaction_uuid: @transaction_uuid)
     end
 
     # @return [IvcChampva::MPIService]

@@ -49,6 +49,7 @@ module BenefitsClaims
           attributes['cstChampvaSponsor'] = dto.cst_champva_sponsor if dto.cst_champva_sponsor.present?
           attributes['applicationDecided'] = dto.application_decided unless dto.application_decided.nil?
           attributes['vesStatusUpdatedDate'] = dto.ves_status_updated_date if dto.ves_status_updated_date.present?
+          add_repeat_ineligibility_alert(attributes, dto)
 
           if dto.claim_phase_dates
             attributes['claimPhaseDates'] =
@@ -69,6 +70,12 @@ module BenefitsClaims
           attributes['issues'] = Serializers::IssuesSerializer.serialize(dto.issues)
           attributes['evidence'] = Serializers::EvidenceSerializer.serialize(dto.evidence)
           attributes['trackedItems'] = Serializers::TrackedItemsSerializer.serialize(dto.tracked_items)
+        end
+
+        def self.add_repeat_ineligibility_alert(attributes, dto)
+          return if dto.repeat_ineligibility_alert.blank?
+
+          attributes['repeatIneligibilityAlert'] = dto.repeat_ineligibility_alert
         end
       end
     end

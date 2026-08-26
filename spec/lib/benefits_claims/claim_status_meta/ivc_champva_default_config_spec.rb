@@ -18,6 +18,11 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
     )
   end
 
+  it 'does not include repeatIneligibilityAlert — that lives in its own variant file ' \
+     '(repeat_ineligibility_alert.json) precisely so it never ends up in claimStatusMeta' do
+    expect(config).not_to have_key('repeatIneligibilityAlert')
+  end
+
   describe 'files section' do
     subject(:files) { config['files'] }
 
@@ -252,6 +257,19 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
         expect(step_map['complete']).to eq(2)
         expect(step_map['vbms']).to eq(2)
       end
+    end
+  end
+
+  describe '#load ivc_champva repeat_ineligibility_alert variant' do
+    subject(:variant_config) { described_class.load(provider: :ivc_champva, variant: 'repeat_ineligibility_alert') }
+
+    it 'loads without error' do
+      expect { variant_config }.not_to raise_error
+    end
+
+    it 'has title and description with a [Name] placeholder' do
+      expect(variant_config['title']).to include('[Name]')
+      expect(variant_config['description']).to include('[Name]')
     end
   end
 end

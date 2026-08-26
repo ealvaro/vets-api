@@ -71,8 +71,6 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(applicant.ves_eligibility_reason).to eq('Child younger than 18 years')
       expect(applicant.sponsor_icn).to eq('0000001200581123V296649000000')
       expect(applicant.eligibility_resolved).to be(true)
-      expect(result[:pega_status]).to eq('processed - eligibility determination unknown')
-      expect(IvcChampvaForm.find_by(form_uuid:)&.pega_status).to eq('processed - eligibility determination unknown')
     end
 
     it 'uses cached applicants on a subsequent run and does not re-query ICNs from VES' do
@@ -182,40 +180,6 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
         existing_count: 0,
         error: 'still processing'
       )
-    end
-
-    it 'updates only the targeted form UUIDs when form_uuids are provided' do
-      untouched_form = create(:ivc_champva_form, transaction_uuid:)
-
-      described_class.new(transaction_uuid, form_uuids: [form_uuid]).call
-
-      expect(IvcChampvaForm.find_by(form_uuid:)&.pega_status).to eq('processed - eligibility determination unknown')
-      expect(untouched_form.reload.pega_status).not_to eq('processed - eligibility determination unknown')
-    end
-
-    it 'updates only one row per form_uuid when multiple rows share the same form_uuid' do
-      older = create(
-        :ivc_champva_form,
-        form_uuid:,
-        transaction_uuid:,
-        updated_at: 2.days.ago,
-        pega_status: nil
-      )
-      newer = create(
-        :ivc_champva_form,
-        form_uuid:,
-        transaction_uuid:,
-        updated_at: 1.day.ago,
-        pega_status: nil
-      )
-
-      result = described_class.new(transaction_uuid, form_uuids: [form_uuid]).call
-
-      expect(result[:pega_status]).to eq('processed - eligibility determination unknown')
-      updated_rows = IvcChampvaForm.where(form_uuid:, pega_status: 'processed - eligibility determination unknown')
-      expect(updated_rows.count).to eq(1)
-      statuses = [older.reload.pega_status, newer.reload.pega_status]
-      expect(statuses.count('processed - eligibility determination unknown')).to be <= 1
     end
 
     it 'persists a sponsor record from the EE summary with the name looked up in MPI' do
@@ -379,6 +343,107 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
 
           expect(second_result[:letters_created_count]).to eq(2)
           expect(IvcChampvaLetter.count).to eq(2)
+        end
+      end
+    end
+
+    describe 'stale prior-application eligibility status' do
+      let(:stale_status_updated_date) { '2025-02-01' }
+      let(:ee_summary_response) do
+        {
+          'vfmpProgramsInfo' => {
+            'relationships' => [
+              {
+                'champvaEligibilities' => [
+                  {
+                    'status' => 'Ineligible',
+                    'reason' => 'child married',
+                    'statusUpdatedDate' => stale_status_updated_date,
+                    'sponsor' => {
+                      'icn' => '0000001200581123V296649000000', 'champvaStatus' => 'ELIGIBLE', 'champvaReason' => 'P&T'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      end
+
+      before do
+        # Backdates the form created in the outer `before` so '2025-02-01' unambiguously
+        # predates the application's submission, regardless of when specs actually run.
+        IvcChampvaForm.where(transaction_uuid:).update_all(created_at: Time.zone.parse('2026-01-01')) # rubocop:disable Rails/SkipsModelValidations
+      end
+
+      context 'when statusUpdatedDate predates the application submission and no letter exists yet' do
+        it 'does not persist eligibility, leaving it unresolved' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:eligibility_updated_count]).to eq(0)
+          applicants = IvcChampvaApplicant.where(transaction_uuid:)
+          expect(applicants).to all(have_attributes(eligibility_resolved: false, ves_eligibility_status: nil))
+        end
+
+        it 'does not persist the stale sponsor record either' do
+          described_class.new(transaction_uuid).call
+
+          expect(IvcChampvaSponsor.where(transaction_uuid:)).to be_empty
+        end
+      end
+
+      context 'when statusUpdatedDate predates submission but a post-submission letter now exists' do
+        let(:ee_summary_response) do
+          super().merge(
+            'mailCorrespondences' => [
+              {
+                'letterTemplate' => { 'name' => 'CHAMPVA Ineligibility Letter', 'formNumber' => 'CCL-A43a.ENC' },
+                'mailStatus' => 'MAILED_BY_PRINT_VENDOR',
+                'mailStatusDate' => 1.day.from_now.iso8601
+              }
+            ]
+          )
+        end
+
+        it 'persists eligibility once a letter confirms it, even though the status itself is unchanged' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:eligibility_updated_count]).to eq(2)
+          applicants = IvcChampvaApplicant.where(transaction_uuid:)
+          expect(applicants).to all(have_attributes(eligibility_resolved: true, ves_eligibility_status: 'Ineligible'))
+        end
+      end
+
+      context 'when statusUpdatedDate is on/after the application submission' do
+        # Fixed, deterministic date after the '2026-01-01' submission time set in the outer
+        # `before` block above — matches that block's own "regardless of when specs actually
+        # run" intent. `1.day.from_now` would only land after 2026-01-01 if the suite happens
+        # to run after that date, making the example's pass/fail depend on wall-clock time
+        # rather than the behavior under test.
+        let(:stale_status_updated_date) { '2026-01-02T00:00:00Z' }
+
+        it 'persists eligibility immediately, no letter required' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:eligibility_updated_count]).to eq(2)
+        end
+      end
+
+      context 'when VES does not supply statusUpdatedDate at all' do
+        let(:ee_summary_response) do
+          {
+            'vfmpProgramsInfo' => {
+              'relationships' => [
+                { 'champvaEligibilities' => [{ 'status' => 'Ineligible', 'reason' => 'child married' }] }
+              ]
+            }
+          }
+        end
+
+        it 'persists eligibility immediately, preserving existing behavior' do
+          result = described_class.new(transaction_uuid).call
+
+          expect(result[:eligibility_updated_count]).to eq(2)
         end
       end
     end

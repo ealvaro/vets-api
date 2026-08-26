@@ -132,6 +132,12 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
         expect(meta.dig('whatWeAreDoing', 'currentStatus')).to eq('pending')
       end
 
+      it 'does not include the raw repeatIneligibilityAlert config template — the real, ' \
+         'name-substituted alert is only ever exposed at the response root' do
+        meta = described_class.build_claim_status_meta([record], 'pending', user)
+        expect(meta).not_to have_key('repeatIneligibilityAlert')
+      end
+
       it 'maps claimReceived status into currentStatus correctly' do
         meta = described_class.build_claim_status_meta([record], 'claimReceived', user)
         expect(meta.dig('whatWeAreDoing', 'currentStatus')).to eq('claimReceived')
@@ -264,7 +270,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
       end
 
       it 'returns empty/nil defaults' do
-        expect(described_class.champva_eligibility_summary(transaction_uuid, user)).to eq([[], nil, nil, nil])
+        expect(described_class.champva_eligibility_summary(transaction_uuid, user)).to eq([[], nil, nil, nil, nil])
       end
     end
 
@@ -364,7 +370,9 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           'vesEligibilityReasonLink' => nil,
           'documentsRequested' => false,
           'vesStatusUpdatedDate' => nil,
-          'letters' => []
+          'letters' => [],
+          'hasRepeatIneligibilityLetter' => false,
+          'repeatIneligibilityLetterDate' => nil
         )
       end
 
@@ -379,6 +387,271 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
 
         applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
         expect(applicants.first['vesEligibilityReason']).to start_with("Jane's not eligible for CHAMPVA benefits")
+      end
+
+      describe 'hasRepeatIneligibilityLetter' do
+        def create_applicant(icn, status:, status_updated_date: Date.new(2026, 1, 1), eligibility_resolved: true)
+          IvcChampvaApplicant.create!(
+            transaction_uuid:,
+            applicant_icn: icn,
+            person_type: 'BENEFICIARY',
+            eligibility_resolved:,
+            ves_eligibility_status: status,
+            ves_status_updated_date: status_updated_date
+          )
+        end
+
+        def add_letter(applicant, mail_status_date:, mail_status: 'MAILED_BY_PRINT_VENDOR')
+          applicant.ivc_champva_letters.create!(
+            form_number: 'CCL-A43a.ENC', mail_status:, mail_status_date: Time.zone.parse(mail_status_date)
+          )
+        end
+
+        it 'is false for an enrolled (eligible) applicant, even with two sent letters' do
+          applicant = create_applicant('1', status: 'ELIGIBLE')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status_date: '2026-06-01')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => false,
+            'repeatIneligibilityLetterDate' => nil
+          )
+        end
+
+        it 'is false for a not-enrolled applicant with only their initial decision letter' do
+          applicant = create_applicant('2', status: 'INELIGIBLE')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => false,
+            'repeatIneligibilityLetterDate' => nil
+          )
+        end
+
+        it 'is true once a not-enrolled applicant has received a second sent letter' do
+          applicant = create_applicant('3', status: 'INELIGIBLE')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status_date: '2026-06-15T12:00:00Z')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => true,
+            'repeatIneligibilityLetterDate' => '2026-06-15T12:00:00Z'
+          )
+        end
+
+        it 'populates the response-root repeatIneligibilityAlert with the applicant name substituted, ' \
+           'only once true' do
+          applicant = create_applicant('3b', status: 'INELIGIBLE')
+          applicant.update!(applicant_first_name: 'Jane')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+
+          _applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+          expect(alert).to be_nil
+
+          add_letter(applicant, mail_status_date: '2026-06-15T12:00:00Z')
+          _applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+          expect(alert['title']).to include('Jane')
+          expect(alert['title']).not_to include('[Name]')
+          expect(alert['description']).to include('Jane')
+          expect(alert['description']).not_to include('[Name]')
+        end
+
+        it 'returns nil (not a hash of blank strings) when the alert config template fails to load, ' \
+           'even with a flagged applicant' do
+          applicant = create_applicant('3d', status: 'INELIGIBLE')
+          applicant.update!(applicant_first_name: 'Jane')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status_date: '2026-06-15T12:00:00Z')
+
+          allow(BenefitsClaims::ClaimStatusMeta::ConfigLoader).to receive(:load)
+            .with(provider: :ivc_champva, variant: 'repeat_ineligibility_alert')
+            .and_raise(ArgumentError, 'config file not found')
+
+          _applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+
+          expect(alert).to be_nil
+        end
+
+        it 'leaves vesEligibilityReason as the normal plain-language reason once ' \
+           'hasRepeatIneligibilityLetter is true — repeat activity is surfaced only via the ' \
+           'response-root repeatIneligibilityAlert, not by overriding the card body' do
+          applicant = create_applicant('3c', status: 'INELIGIBLE')
+          applicant.update!(applicant_first_name: 'Jane', ves_eligibility_reason: 'child married')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status_date: '2026-06-15T12:00:00Z')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first['hasRepeatIneligibilityLetter']).to be(true)
+          expect(applicants.first['vesEligibilityReason']).to start_with("Jane's not eligible for CHAMPVA benefits")
+        end
+
+        it 'ignores letters whose mail status is not in the sent-letter allowlist' do
+          applicant = create_applicant('4', status: 'INELIGIBLE')
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status: 'PENDING_PRINT', mail_status_date: '2026-06-15')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => false,
+            'repeatIneligibilityLetterDate' => nil
+          )
+        end
+
+        it 'falls back to false when eligibility has not yet been resolved' do
+          applicant = create_applicant('5', status: 'INELIGIBLE', eligibility_resolved: false)
+          add_letter(applicant, mail_status_date: '2026-01-03')
+          add_letter(applicant, mail_status_date: '2026-06-15')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => false,
+            'repeatIneligibilityLetterDate' => nil
+          )
+        end
+
+        it 'falls back to false when the not-enrolled applicant has no letters at all' do
+          create_applicant('6', status: 'INELIGIBLE')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.first).to include(
+            'hasRepeatIneligibilityLetter' => false,
+            'repeatIneligibilityLetterDate' => nil
+          )
+        end
+
+        it 'only flags the not-enrolled applicant with a second sent letter in a multi-applicant transaction' do
+          enrolled = create_applicant('7', status: 'ELIGIBLE')
+          add_letter(enrolled, mail_status_date: '2026-01-03')
+
+          not_enrolled = create_applicant('8', status: 'INELIGIBLE')
+          add_letter(not_enrolled, mail_status_date: '2026-01-03')
+          add_letter(not_enrolled, mail_status_date: '2026-06-15')
+
+          applicants, = described_class.champva_eligibility_summary(transaction_uuid, user)
+          expect(applicants.find { |a| a['vesEligibilityStatus'] == 'ELIGIBLE' })
+            .to include('hasRepeatIneligibilityLetter' => false)
+          expect(applicants.find { |a| a['vesEligibilityStatus'] == 'INELIGIBLE' })
+            .to include('hasRepeatIneligibilityLetter' => true)
+        end
+
+        it 'names every flagged applicant (not just one) in a single response-root repeatIneligibilityAlert, ' \
+           'not duplicated per applicant' do
+          jane = create_applicant('9', status: 'INELIGIBLE')
+          jane.update!(applicant_first_name: 'Jane')
+          add_letter(jane, mail_status_date: '2026-01-03')
+          add_letter(jane, mail_status_date: '2026-06-15')
+
+          john = create_applicant('10', status: 'INELIGIBLE')
+          john.update!(applicant_first_name: 'John')
+          add_letter(john, mail_status_date: '2026-01-04')
+          add_letter(john, mail_status_date: '2026-06-16')
+
+          applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+
+          expect(alert['title']).to include('Jane and John')
+          applicants.each { |a| expect(a).not_to have_key('repeatIneligibilityAlert') }
+        end
+
+        it 'names a flagged applicant once per distinct record, even when two flagged applicants ' \
+           'share the same first name (never silently drops one via string-level dedup)' do
+          jane1 = create_applicant('9c', status: 'INELIGIBLE')
+          jane1.update!(applicant_first_name: 'Jane')
+          add_letter(jane1, mail_status_date: '2026-01-03')
+          add_letter(jane1, mail_status_date: '2026-06-15')
+
+          jane2 = create_applicant('9d', status: 'INELIGIBLE')
+          jane2.update!(applicant_first_name: 'Jane')
+          add_letter(jane2, mail_status_date: '2026-01-04')
+          add_letter(jane2, mail_status_date: '2026-06-16')
+
+          applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+
+          expect(alert['title']).to include('Jane and Jane')
+          expect(applicants.count { |a| a['hasRepeatIneligibilityLetter'] }).to eq(2)
+        end
+
+        it 'uses comma-separated, Oxford-comma grammar once three or more applicants are ' \
+           'flagged (not just "and"-joining every name)' do
+          jane = create_applicant('9b', status: 'INELIGIBLE')
+          jane.update!(applicant_first_name: 'Jane')
+          add_letter(jane, mail_status_date: '2026-01-03')
+          add_letter(jane, mail_status_date: '2026-06-15')
+
+          john = create_applicant('10b', status: 'INELIGIBLE')
+          john.update!(applicant_first_name: 'John')
+          add_letter(john, mail_status_date: '2026-01-04')
+          add_letter(john, mail_status_date: '2026-06-16')
+
+          sam = create_applicant('10c', status: 'INELIGIBLE')
+          sam.update!(applicant_first_name: 'Sam')
+          add_letter(sam, mail_status_date: '2026-01-05')
+          add_letter(sam, mail_status_date: '2026-06-17')
+
+          _applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+
+          expect(alert['title']).to include("Jane, John, and Sam's eligibility")
+          expect(alert['description']).to start_with('Jane, John, and Sam is still not eligible')
+        end
+
+        it 'omits an unaffected applicant\'s name from the shared alert even when a sibling applicant is flagged' do
+          jane = create_applicant('11', status: 'INELIGIBLE')
+          jane.update!(applicant_first_name: 'Jane')
+          add_letter(jane, mail_status_date: '2026-01-03')
+          add_letter(jane, mail_status_date: '2026-06-15')
+
+          unaffected = create_applicant('12', status: 'INELIGIBLE')
+          unaffected.update!(applicant_first_name: 'Unaffected')
+          add_letter(unaffected, mail_status_date: '2026-01-04')
+
+          _applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+
+          expect(alert['title']).to include('Jane')
+          expect(alert['title']).not_to include('Unaffected')
+        end
+
+        it 'excludes a sibling applicant whose VES eligibility check has not resolved yet from the shared alert ' \
+           '(async per-applicant resolution)' do
+          jane = create_applicant('13', status: 'INELIGIBLE')
+          jane.update!(applicant_first_name: 'Jane')
+          add_letter(jane, mail_status_date: '2026-01-03')
+          add_letter(jane, mail_status_date: '2026-06-15')
+
+          # Simulates ChampvaEligibilityService#sync_applicant_eligibility having succeeded for
+          # Jane but still being pending/errored for this sibling on the same transaction.
+          pending_sibling = create_applicant('14', status: 'INELIGIBLE', eligibility_resolved: false)
+          add_letter(pending_sibling, mail_status_date: '2026-01-04')
+          add_letter(pending_sibling, mail_status_date: '2026-06-16')
+
+          applicants, _sponsor, _decided, _ves_date, alert = described_class.champva_eligibility_summary(
+            transaction_uuid, user
+          )
+          jane_entry = applicants.find { |a| a['firstName'] == 'Jane' }
+          pending_entry = applicants.find { |a| a['firstName'].nil? }
+
+          expect(jane_entry['hasRepeatIneligibilityLetter']).to be(true)
+          # Only Jane is named (no "and" joiner), confirming the still-unresolved sibling
+          # never contributes to the shared name list even once they're eventually excluded.
+          expect(alert['title']).to include("Jane's eligibility")
+          expect(alert['title']).not_to include('and')
+          expect(pending_entry['hasRepeatIneligibilityLetter']).to be(false)
+        end
       end
     end
   end

@@ -1,0 +1,6 @@
+{
+  "_comment": "VES mailStatus values that mean a CHAMPVA CCL letter has been officially sent to the user, used to detect repeat-ineligibility letter activity newer than the applicant's VES eligibility determination. Matched case-insensitively. Add new values here as VES introduces them — no code change required.",
+  "statuses": [
+    "mailed_by_print_vendor"
+  ]
+}

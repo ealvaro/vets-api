@@ -79,7 +79,7 @@ module IvcChampva
           {
             transaction_uuid:,
             form_uuids:,
-            **IvcChampva::ChampvaEligibilityService.new(transaction_uuid, form_uuids:).call
+            **IvcChampva::ChampvaEligibilityService.new(transaction_uuid).call
           }
         end
       end

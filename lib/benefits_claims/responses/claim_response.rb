@@ -143,6 +143,7 @@ module BenefitsClaims
       attribute :cst_champva_sponsor, Hash
       attribute :application_decided, Bool
       attribute :ves_status_updated_date, String
+      attribute :repeat_ineligibility_alert, Hash
       attribute :supporting_documents, SupportingDocument, array: true, default: -> { [] }
       attribute :evidence_submissions, EvidenceSubmission, array: true, default: -> { [] }
       attribute :contentions, Contention, array: true, default: -> { [] }
