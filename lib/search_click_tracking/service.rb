@@ -33,22 +33,14 @@ module SearchClickTracking
     #
     def track_click
       with_monitoring do
-        Faraday.post(url_with_params, '')
+        perform(:post, "?#{query_params}", '')
       end
-    rescue => e
-      Rails.logger.warn('SearchClickTracking::Service#track_click error', exception: e)
-      e
+    rescue Common::Client::Errors::ClientError => e
+      Rails.logger.error('SearchClickTracking::Service#track_click error', exception: e)
+      raise
     end
 
     private
-
-    def url_with_params
-      "#{track_click_url}?#{query_params}"
-    end
-
-    def track_click_url
-      config.base_path
-    end
 
     # Required params [affiliate, access_key, module_code, url, query, position, user_agent]
     #

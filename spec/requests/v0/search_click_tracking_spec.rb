@@ -4,11 +4,11 @@ require 'rails_helper'
 require 'support/error_details'
 require 'uri'
 
-Rspec.describe 'V0::SearchClickTracking', type: :request do
+RSpec.describe 'V0::SearchClickTracking', type: :request do
   include ErrorDetails
 
   describe 'POST /v0/search_click_tracking' do
-    context 'on a successfull post request' do
+    context 'on a successful post request' do
       let(:query_params) do
         URI.encode_www_form(
           {
@@ -31,13 +31,18 @@ Rspec.describe 'V0::SearchClickTracking', type: :request do
     end
 
     context 'when upstream connection fails' do
-      it 'returns 204 without raising' do
+      it 'returns a 502 Bad Gateway with an error message', :aggregate_failures do
         allow_any_instance_of(SearchClickTracking::Service)
           .to receive(:track_click)
-          .and_return(Faraday::ConnectionFailed.new('connection failed'))
+          .and_raise(Common::Client::Errors::ClientError.new('connection failed'))
 
-        post '/v0/search_click_tracking', params: { position: 0, query: 'testQuery', url: 'https://www.testurl.com', user_agent: 'testUserAgent', module_code: 'I14Y' }
-        expect(response).to have_http_status(:no_content)
+        post '/v0/search_click_tracking', params: {
+          position: 0, query: 'testQuery', url: 'https://www.testurl.com',
+          user_agent: 'testUserAgent', module_code: 'I14Y'
+        }
+
+        expect(response).to have_http_status(:bad_gateway)
+        expect(JSON.parse(response.body)['error']).to eq('connection failed')
       end
     end
 

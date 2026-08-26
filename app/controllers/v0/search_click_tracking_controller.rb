@@ -15,11 +15,13 @@ module V0
     #
     def create
       response = SearchClickTracking::Service.new(url, query, position, user_agent, module_code).track_click
-      if response.respond_to?(:success?) && response.respond_to?(:body) && !response.success?
-        render json: response.body, status: :bad_request
-      else
+      if response.success?
         render nothing: true, status: :no_content
+      else
+        render json: response.body, status: :bad_request
       end
+    rescue Common::Client::Errors::ClientError => e
+      render json: { error: e.message }, status: :bad_gateway
     end
 
     private

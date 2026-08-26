@@ -28,14 +28,14 @@ describe SearchClickTracking::Service do
       let(:query) { 'testQuery' }
 
       it 'returns a status of 200' do
-        VCR.use_cassette('search_click_tracking/success', VCR::MATCH_EVERYTHING) do
+        VCR.use_cassette('search_click_tracking/success', match_requests_on: %i[method uri]) do
           response = subject.track_click
           expect(response.status).to eq 200
         end
       end
 
       it 'returns an empty body' do
-        VCR.use_cassette('search_click_tracking/success', VCR::MATCH_EVERYTHING) do
+        VCR.use_cassette('search_click_tracking/success', match_requests_on: %i[method uri]) do
           response = subject.track_click
           expect(response.body).to eq ''
         end
@@ -46,11 +46,28 @@ describe SearchClickTracking::Service do
       let(:query) { '' }
 
       it 'returns a status of 400', :aggregate_failures do
-        VCR.use_cassette('search_click_tracking/missing_parameter', VCR::MATCH_EVERYTHING) do
+        VCR.use_cassette('search_click_tracking/missing_parameter', match_requests_on: %i[method uri]) do
           response = subject.track_click
           expect(response.status).to eq(400)
           expect(response.body).to eq "[\"Query can't be blank\"]"
         end
+      end
+    end
+
+    context 'when the upstream connection fails' do
+      let(:query) { 'testQuery' }
+
+      it 'logs the error and re-raises it', :aggregate_failures do
+        allow_any_instance_of(Faraday::Connection)
+          .to receive(:post)
+          .and_raise(Faraday::ConnectionFailed.new('connection failed'))
+
+        expect(Rails.logger).to receive(:error).with(
+          'SearchClickTracking::Service#track_click error',
+          exception: instance_of(Common::Client::Errors::ClientError)
+        )
+
+        expect { subject.track_click }.to raise_error(Common::Client::Errors::ClientError)
       end
     end
   end

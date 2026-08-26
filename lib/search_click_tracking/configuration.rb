@@ -13,5 +13,13 @@ module SearchClickTracking
     def service_name
       'SearchClickTracking'
     end
+
+    def connection
+      @connection ||= Faraday.new(base_path, request: { timeout: read_timeout }) do |conn|
+        conn.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        conn.use(:breakers, service_name:)
+        conn.adapter Faraday.default_adapter
+      end
+    end
   end
 end
