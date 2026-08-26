@@ -9,6 +9,10 @@ module ClaimsApi
         def submit
           render json: { errors: [{ status: '501', title: 'Not Implemented' }] }, status: :not_implemented
         end
+
+        def generate_pdf
+          render json: { errors: [{ status: '501', title: 'Not Implemented' }] }, status: :not_implemented
+        end
       end
     end
   end
