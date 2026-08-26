@@ -259,7 +259,7 @@ GEM
     attr_extras (7.1.0)
     auth-sanitizer (0.2.1)
       version_gem (~> 1.1, >= 1.1.10)
-    avro (1.12.1)
+    avro (1.12.2)
       multi_json (~> 1.0)
     awesome_print (1.9.2)
     aws-eventstream (1.4.0)
