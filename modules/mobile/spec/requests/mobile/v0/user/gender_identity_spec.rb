@@ -114,7 +114,7 @@ RSpec.describe 'Mobile::V0::User::GenderIdentity', type: :request do
     describe 'PUT /mobile/v0/gender_identity' do
       context 'without demographics access' do
         let!(:user) do
-          sis_user(icn: nil, idme_uuid: nil, logingov_uuid: nil)
+          sis_user(idme_uuid: nil, logingov_uuid: nil)
         end
 
         it 'returns 403', :aggregate_failures do

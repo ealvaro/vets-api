@@ -4,8 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'V0::Profile::Contacts', type: :request do
   include SchemaMatchers
-  let(:user) { build(:user, :loa3, idme_uuid:, icn:) }
-  let(:icn) { '1012667145V762142' }
+  let(:user) { build(:user, :loa3, idme_uuid:) }
   let(:resource) { JSON.parse(response.body) }
 
   around do |ex|

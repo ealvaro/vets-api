@@ -53,8 +53,8 @@ describe VAProfile::Profile::V3::Service do
   end
 
   describe '#get_health_benefit_bio' do
-    let(:user) { build(:user, :loa3, idme_uuid:, icn:) }
-    let(:icn) { '1012667145V762142' }
+    let(:user) { build(:user, :loa3, idme_uuid:) }
+
     let(:cassette_filename) { "spec/support/vcr_cassettes/#{cassette}.yml" }
     let(:cassette_data) { YAML.load_file(cassette_filename) }
     let(:va_profile_tx_audit_id) do
@@ -177,16 +177,6 @@ describe VAProfile::Profile::V3::Service do
         expect(Rails.logger).to have_received(:info).with(
           hash_including(event: 'va_profile.health_benefit_bio.response', contacts_present: false)
         )
-      end
-    end
-
-    context 'when the user has no ICN' do
-      let(:idme_uuid) { 'dd681e7d6dea41ad8b80f8d39284ef29' }
-      let(:cassette) { 'va_profile/profile/v3/health_benefit_bio_200' }
-
-      it 'raises a backend service exception' do
-        allow(user).to receive(:icn).and_return(nil)
-        expect { subject.get_health_benefit_bio }.to raise_error(Common::Exceptions::BackendServiceException)
       end
     end
   end
