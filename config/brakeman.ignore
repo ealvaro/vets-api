@@ -3,6 +3,52 @@
     {
       "warning_type": "File Access",
       "warning_code": 16,
+      "fingerprint": "29fe4fd9d85cec2c7c774c10277a220c2df73aff0b6eba8c51425f844aa60419",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/education_benefits_claims_controller.rb",
+      "line": 45,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.read(SavedClaim.find(EducationBenefitsClaim.find_by!(:token => params[:id]).saved_claim_id).to_pdf(SecureRandom.uuid))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::EducationBenefitsClaimsController",
+        "method": "download_pdf"
+      },
+      "user_input": "SavedClaim.find(EducationBenefitsClaim.find_by!(:token => params[:id]).saved_claim_id).to_pdf(SecureRandom.uuid)",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "932deb527d6407836adaec8c68f1bb3005d742e74504f63eb1e53ce92ea83839",
+      "check_name": "FileAccess",
+      "message": "Model attribute used in file name",
+      "file": "app/controllers/v0/education_benefits_claims_controller.rb",
+      "line": 57,
+      "link": "https://brakemanscanner.org/docs/warning_types/file_access/",
+      "code": "File.delete(SavedClaim.find(EducationBenefitsClaim.find_by!(:token => params[:id]).saved_claim_id).to_pdf(SecureRandom.uuid))",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "V0::EducationBenefitsClaimsController",
+        "method": "download_pdf"
+      },
+      "user_input": "SavedClaim.find(EducationBenefitsClaim.find_by!(:token => params[:id]).saved_claim_id).to_pdf(SecureRandom.uuid)",
+      "confidence": "Medium",
+      "cwe_id": [
+        22
+      ],
+      "note": "to_pdf is a method call that returns a server-generated temp file path; this is a Brakeman false positive for model-attribute filename usage."
+    },
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
       "fingerprint": "658320536241b097eb56fffee9aaf4fffc804447cb6111f0e8ae8e44de5ab8c7",
       "check_name": "FileAccess",
       "message": "Model attribute used in file name",

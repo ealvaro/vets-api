@@ -36,11 +36,10 @@ module V0
       education_claim = EducationBenefitsClaim.find_by!(token: params[:id])
       saved_claim = SavedClaim.find(education_claim.saved_claim_id)
 
-      source_file_path = PdfFill::Filler.fill_form(
-        saved_claim,
-        SecureRandom.uuid,
-        sign: false
-      )
+      # Use the claim's own #to_pdf (not PdfFill::Filler.fill_form directly) so that
+      # per-form overrides -- e.g. VA0803's extras_redesign/omit_esign_stamp/placeholder
+      # options for ExtrasGeneratorV2 overflow pages -- are honored on this download path.
+      source_file_path = saved_claim.to_pdf(SecureRandom.uuid)
 
       client_file_name = "education_benefits_claim_#{saved_claim.id}.pdf"
       file_contents = File.read(source_file_path)

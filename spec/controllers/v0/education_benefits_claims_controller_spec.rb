@@ -58,7 +58,7 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
         .with(education_benefits_claim.saved_claim_id)
         .and_return(education_benefits_claim.saved_claim)
 
-      allow(PdfFill::Filler).to receive(:fill_form).and_return(temp_file_path)
+      allow(saved_claim).to receive(:to_pdf).and_return(temp_file_path)
       allow(File).to receive(:read).with(temp_file_path).and_return(file_contents)
       allow(File).to receive(:exist?).and_call_original
       allow(File).to receive(:exist?).with(temp_file_path).and_return(true)
@@ -72,10 +72,8 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
 
       expect(EducationBenefitsClaim).to have_received(:find_by!).with({ token: education_benefits_claim.token })
       expect(SavedClaim).to have_received(:find).with(education_benefits_claim.saved_claim_id)
-      expect(PdfFill::Filler).to have_received(:fill_form).with(
-        saved_claim,
-        an_instance_of(String), # SecureRandom.uuid
-        sign: false
+      expect(saved_claim).to have_received(:to_pdf).with(
+        an_instance_of(String) # SecureRandom.uuid
       )
       expect(File).to have_received(:read).with(temp_file_path)
       expect(controller).to have_received(:send_data).with(
@@ -113,7 +111,7 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
     end
 
     it 'does not try to delete file if temp_file_path is nil' do
-      allow(PdfFill::Filler).to receive(:fill_form).and_return(nil)
+      allow(saved_claim).to receive(:to_pdf).and_return(nil)
 
       get :download_pdf, params: { id: education_benefits_claim.token }
 
@@ -123,7 +121,7 @@ RSpec.describe V0::EducationBenefitsClaimsController, type: :controller do
 
     context 'when pdf generation fails' do
       before do
-        allow(PdfFill::Filler).to receive(:fill_form).and_raise(StandardError, 'Failed to fill form')
+        allow(saved_claim).to receive(:to_pdf).and_raise(StandardError, 'Failed to fill form')
       end
 
       it 'increments the failed metric and returns 500' do
