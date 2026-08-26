@@ -276,14 +276,13 @@ FactoryBot.define do
           ],
           # Section X: Unreimbursed Medical Expenses
           # A: Care Expenses
-          hasCareExpenses: true,
           careExpenses: [
             {
               recipients: 'VETERAN',
               provider: 'NYC Care Provider Family Medical Facility',
               careType: 'CARE_FACILITY',
               ratePerHour: 100.75,
-              hoursPerWeek: '20',
+              hoursPerMonth: '20',
               careDateRange: {
                 from: '2020-08-01',
                 to: '2023-05-25'
@@ -296,7 +295,7 @@ FactoryBot.define do
               provider: 'MA Care Provider',
               careType: 'IN_HOME_CARE_PROVIDER',
               ratePerHour: 150,
-              hoursPerWeek: '15',
+              hoursPerMonth: '15',
               careDateRange: {
                 from: '2021-08-01',
                 to: '2022-05-25'
@@ -310,7 +309,7 @@ FactoryBot.define do
               provider: 'LA Care Provider',
               careType: 'CARE_FACILITY',
               ratePerHour: 200,
-              hoursPerWeek: '10',
+              hoursPerMonth: '10',
               careDateRange: {
                 from: '2020-08-01'
               },
@@ -320,7 +319,6 @@ FactoryBot.define do
             }
           ],
           # B: Medical Expenses
-          hasMedicalExpenses: true,
           medicalExpenses: [
             {
               recipients: 'VETERAN',

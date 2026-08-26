@@ -65,13 +65,13 @@ module Pensions
             dollar: true
           },
           # (5) Hours Per Week
-          'hoursPerWeek' => {
+          'hoursPerMonth' => {
             limit: 3,
             question_num: 10,
             question_suffix: 'A',
-            question_label: 'Provider Hours Worked Per Week',
-            question_text: 'PROVIDER HOURS WORKED PER WEEK',
-            key: "care_weekly_hours[#{ITERATOR}]"
+            question_label: 'Provider Hours Worked Per Month',
+            question_text: 'PROVIDER HOURS WORKED PER MONTH',
+            key: "care_monthly_hours[#{ITERATOR}]"
           },
           # (6-7) Provider Start/End Dates
           'careDateRange' => {
@@ -223,7 +223,7 @@ module Pensions
       # @note Modifies `form_data`
       #
       def expand(form_data)
-        any_expenses = (form_data['careExpenses'] || form_data['medicalExpenses'])&.any?
+        any_expenses = form_data['careExpenses']&.any? || form_data['medicalExpenses']&.any? || false
         form_data['hasAnyExpenses'] = to_radio_yes_no(any_expenses)
         return unless yes?(form_data['hasAnyExpenses'])
 
@@ -268,16 +268,23 @@ module Pensions
       # @note Modifies the expense hash in place
       #
       def expand_care_expense(expense)
+        no_end_date = if expense['noCareEndDate'].nil?
+                        expense.dig('careDateRange', 'to').blank? || false
+                      else
+                        expense['noCareEndDate']
+                      end
         expense.merge!({
                          'careType' => CARE_TYPES_V2[expense['careType']],
                          'careTypeOverflow' => expense['careType']&.humanize,
                          'ratePerHour' => expand_currency(expense['ratePerHour']),
+                         # TODO: Remove 'hoursPerWeek' backward compatibility after form migration complete
+                         'hoursPerMonth' => expense['hoursPerMonth'].presence || expense['hoursPerWeek'],
                          'careDateRange' => {
                            'from' => split_date(expense.dig('careDateRange', 'from')),
                            'to' => split_date(expense.dig('careDateRange', 'to'))
                          },
-                         'careDateRangeOverflow' => build_date_range_string(expense['careDateRange']),
-                         'noCareEndDate' => to_checkbox_on_off(expense['noCareEndDate'])
+                         'noCareEndDate' => to_checkbox_on_off(no_end_date),
+                         'careDateRangeOverflow' => build_date_range_string(expense['careDateRange'])
                        })
       end
     end

@@ -70,6 +70,8 @@ module Pensions
       # @return [String] formatted date range string
       #
       def build_date_range_string(date_range)
+        return if date_range.blank?
+
         "#{to_date_string(date_range['from'])} - #{to_date_string(date_range['to']) || 'No End Date'}"
       end
 

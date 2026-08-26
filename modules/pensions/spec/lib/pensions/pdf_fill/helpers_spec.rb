@@ -104,6 +104,10 @@ describe Pensions::PdfFill::Helpers do
   describe '#build_date_range_string' do
     let(:range) { { 'from' => '2026-01-31', 'to' => '2027-01-31' } }
 
+    it 'returns early if range nil' do
+      expect(section.build_date_range_string(nil)).to be_nil
+    end
+
     it 'formats from and to dates' do
       expect(section.build_date_range_string(range)).to eq('01-31-2026 - 01-31-2027')
     end

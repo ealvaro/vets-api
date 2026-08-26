@@ -375,8 +375,9 @@
       "recipientsOverflow": "Veteran",
       "paymentFrequencyOverflow": "ONCE_MONTH",
       "careTypeOverflow": "Care facility",
-      "careDateRangeOverflow": "08-01-2020 - 05-25-2023",
-      "noCareEndDate": "Off"
+      "hoursPerMonth": "20",
+      "noCareEndDate": "Off",
+      "careDateRangeOverflow": "08-01-2020 - 05-25-2023"
     },
     {
       "recipients": 1,
@@ -401,8 +402,9 @@
       "recipientsOverflow": "Spouse",
       "paymentFrequencyOverflow": "ONCE_MONTH",
       "careTypeOverflow": "In home care provider",
-      "careDateRangeOverflow": "08-01-2021 - 05-25-2022",
-      "noCareEndDate": "Off"
+      "hoursPerMonth": "15",
+      "noCareEndDate": "Off",
+      "careDateRangeOverflow": "08-01-2021 - 05-25-2022"
     },
     {
       "recipients": 2,
@@ -425,6 +427,7 @@
       "recipientsOverflow": "Dependent",
       "paymentFrequencyOverflow": "ONCE_YEAR",
       "careTypeOverflow": "Care facility",
+      "hoursPerMonth": "10",
       "careDateRangeOverflow": "08-01-2020 - No End Date"
     }
   ],

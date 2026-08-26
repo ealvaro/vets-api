@@ -110,6 +110,8 @@ describe Pensions::PdfFill::Section8V2 do
       }
     end
 
+    before { allow(Pensions).to receive(:use_v2?).and_return(true) }
+
     it 'returns early if no dependents' do
       form_data = { 'dependents' => [] }
       expect(described_class.new.expand(form_data)).to be_nil
