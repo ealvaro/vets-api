@@ -3,133 +3,145 @@
 require 'rails_helper'
 require 'flipper/utilities/bulk_feature_manager'
 
-module Flipper
-  module Utilities
-    RSpec.describe BulkFeatureManager do
-      subject(:manager) { described_class.new(memory) }
+RSpec.describe Flipper::Utilities::BulkFeatureManager do
+  subject(:manager) { described_class.new(memory) }
 
-      # Use an in-memory Flipper instance passed into the manager for isolation
-      let(:memory) { Flipper.new(Flipper::Adapters::Memory.new) }
+  # Use an in-memory Flipper instance passed into the manager for isolation
+  let(:memory) { Flipper.new(Flipper::Adapters::Memory.new) }
 
-      describe 'static helpers' do
-        describe '.setup_features' do
-          it 'creates a BulkFeatureManager and calls setup' do
-            manager_instance = instance_double(described_class)
-            allow(described_class).to receive(:new).with(Flipper, dry_run: false).and_return(manager_instance)
-            allow(manager_instance).to receive_messages(
-              setup: nil,
-              added_features: [],
-              enabled_features: [],
-              removed_features: []
-            )
+  describe 'static helpers' do
+    describe '.setup_features' do
+      it 'creates a BulkFeatureManager and calls setup' do
+        manager_instance = instance_double(described_class)
+        allow(described_class).to receive(:new).with(Flipper, dry_run: false).and_return(manager_instance)
+        allow(manager_instance).to receive_messages(
+          setup: nil,
+          added_features: [],
+          enabled_features: [],
+          removed_features: []
+        )
 
-            Flipper::Utilities.setup_features
-            expect(described_class).to have_received(:new).with(Flipper, dry_run: false)
-            expect(manager_instance).to have_received(:setup)
-          end
-        end
+        Flipper::Utilities.setup_features
+        expect(described_class).to have_received(:new).with(Flipper, dry_run: false)
+        expect(manager_instance).to have_received(:setup)
+      end
+    end
+  end
+
+  describe '#setup' do
+    it 'adds features from the config and enables them in test env' do
+      allow_any_instance_of(described_class).to receive(:features_config).and_return(
+        'features' => {
+          'f_one' => {},
+          'f_two' => { 'enable_in_development' => true }
+        }
+      )
+
+      expect { manager.setup }.not_to raise_error
+
+      expect(memory.exist?('f_one')).to be true
+      expect(memory.exist?('f_two')).to be true
+
+      # In test environment the manager enables new features by default
+      expect(memory.enabled?('f_one')).to be true
+      expect(memory.enabled?('f_two')).to be true
+
+      expect(manager.added_features).to include('f_one', 'f_two')
+      expect(manager.enabled_features).to include('f_one', 'f_two')
+    end
+
+    context 'when vsp_environment is staging' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('staging')
+        allow(Rails.env).to receive_messages(test?: false, development?: false)
       end
 
-      describe '#setup' do
-        it 'adds features from the config and enables them in test env' do
-          allow_any_instance_of(described_class).to receive(:features_config).and_return(
-            'features' => {
-              'f_one' => {},
-              'f_two' => { 'enable_in_development' => true }
-            }
-          )
+      it 'enables features with enable_in_staging: true and leaves others disabled' do
+        allow_any_instance_of(described_class).to receive(:features_config).and_return(
+          'features' => {
+            'f_staging_on' => { 'enable_in_staging' => true },
+            'f_staging_off' => { 'enable_in_staging' => false },
+            'f_no_flag' => {}
+          }
+        )
 
-          expect { manager.setup }.not_to raise_error
+        manager.setup
 
-          expect(memory.exist?('f_one')).to be true
-          expect(memory.exist?('f_two')).to be true
-
-          # In test environment the manager enables new features by default
-          expect(memory.enabled?('f_one')).to be true
-          expect(memory.enabled?('f_two')).to be true
-
-          expect(manager.added_features).to include('f_one', 'f_two')
-          expect(manager.enabled_features).to include('f_one', 'f_two')
-        end
-
-        context 'when vsp_environment is staging' do
-          before do
-            allow(Settings).to receive(:vsp_environment).and_return('staging')
-            allow(Rails.env).to receive_messages(test?: false, development?: false)
-          end
-
-          it 'enables features with enable_in_staging: true and leaves others disabled' do
-            allow_any_instance_of(described_class).to receive(:features_config).and_return(
-              'features' => {
-                'f_staging_on' => { 'enable_in_staging' => true },
-                'f_staging_off' => { 'enable_in_staging' => false },
-                'f_no_flag' => {}
-              }
-            )
-
-            manager.setup
-
-            expect(memory.enabled?('f_staging_on')).to be true
-            expect(memory.enabled?('f_staging_off')).to be false
-            expect(memory.enabled?('f_no_flag')).to be false
-            expect(manager.enabled_features).to contain_exactly('f_staging_on')
-          end
-
-          it 're-enables a staging feature that already exists but was disabled by cleanup' do
-            memory.add('f_staging_on')
-
-            allow_any_instance_of(described_class).to receive(:features_config).and_return(
-              'features' => { 'f_staging_on' => { 'enable_in_staging' => true } }
-            )
-
-            manager.setup
-
-            expect(memory.enabled?('f_staging_on')).to be true
-            expect(manager.added_features).to be_empty
-            expect(manager.enabled_features).to contain_exactly('f_staging_on')
-          end
-        end
-
-        context 'when vsp_environment is sandbox' do
-          before do
-            allow(Settings).to receive(:vsp_environment).and_return('sandbox')
-            allow(Rails.env).to receive_messages(test?: false, development?: false)
-          end
-
-          it 'does not auto-enable features with enable_in_staging: true' do
-            allow_any_instance_of(described_class).to receive(:features_config).and_return(
-              'features' => { 'f_sandbox' => { 'enable_in_staging' => true } }
-            )
-
-            manager.setup
-
-            expect(memory.enabled?('f_sandbox')).to be false
-          end
-        end
-
-        it 'removes orphaned features present in Flipper but absent from config' do
-          memory.add('orphan_x')
-
-          allow_any_instance_of(described_class).to receive(:features_config).and_return('features' => {})
-
-          manager.setup
-
-          expect(memory.exist?('orphan_x')).to be false
-          expect(manager.removed_features).to include('orphan_x')
-        end
-
-        it 'logs and re-raises a Psych::SyntaxError when config parsing fails' do
-          manager = described_class.new(memory)
-          # Psych::SyntaxError expects constructor args; raise a properly constructed instance
-          syntax_error = Psych::SyntaxError.new('config/features.yml', 1, 1, 0, 'invalid yaml', 'while parsing')
-          allow_any_instance_of(described_class).to receive(:features_config).and_raise(syntax_error)
-
-          allow(Rails.logger).to receive(:error)
-
-          expect { manager.setup }.to raise_error(Psych::SyntaxError)
-          expect(Rails.logger).to have_received(:error).with(%r{Error parsing config/features.yml})
-        end
+        expect(memory.enabled?('f_staging_on')).to be true
+        expect(memory.enabled?('f_staging_off')).to be false
+        expect(memory.enabled?('f_no_flag')).to be false
+        expect(manager.enabled_features).to contain_exactly('f_staging_on')
       end
+
+      it 're-enables a staging feature that already exists but was disabled by cleanup' do
+        memory.add('f_staging_on')
+
+        allow_any_instance_of(described_class).to receive(:features_config).and_return(
+          'features' => { 'f_staging_on' => { 'enable_in_staging' => true } }
+        )
+
+        manager.setup
+
+        expect(memory.enabled?('f_staging_on')).to be true
+        expect(manager.added_features).to be_empty
+        expect(manager.enabled_features).to contain_exactly('f_staging_on')
+      end
+    end
+
+    context 'when vsp_environment is sandbox' do
+      before do
+        allow(Settings).to receive(:vsp_environment).and_return('sandbox')
+        allow(Rails.env).to receive_messages(test?: false, development?: false)
+      end
+
+      it 'does not auto-enable features with enable_in_staging: true' do
+        allow_any_instance_of(described_class).to receive(:features_config).and_return(
+          'features' => { 'f_sandbox' => { 'enable_in_staging' => true } }
+        )
+
+        manager.setup
+
+        expect(memory.enabled?('f_sandbox')).to be false
+      end
+    end
+
+    it 'removes orphaned features present in Flipper but absent from config' do
+      memory.add('orphan_x')
+
+      allow_any_instance_of(described_class).to receive(:features_config).and_return('features' => {})
+
+      manager.setup
+
+      expect(memory.exist?('orphan_x')).to be false
+      expect(manager.removed_features).to include('orphan_x')
+    end
+
+    it 'does not remove a feature whose Flipper name is a Symbol matching a config key' do
+      memory.add('known_feature')
+
+      allow_any_instance_of(described_class).to receive(:features_config).and_return(
+        'features' => { 'known_feature' => { 'actor_type' => 'user' } }
+      )
+
+      # Simulate Flipper returning a Symbol-named feature (as seen in production for some features)
+      sym_feature = instance_double(Flipper::Feature, name: :known_feature, remove: nil)
+      allow(memory).to receive(:features).and_return([sym_feature])
+
+      manager.setup
+
+      expect(manager.removed_features).to be_empty
+    end
+
+    it 'logs and re-raises a Psych::SyntaxError when config parsing fails' do
+      manager = described_class.new(memory)
+      # Psych::SyntaxError expects constructor args; raise a properly constructed instance
+      syntax_error = Psych::SyntaxError.new('config/features.yml', 1, 1, 0, 'invalid yaml', 'while parsing')
+      allow_any_instance_of(described_class).to receive(:features_config).and_raise(syntax_error)
+
+      allow(Rails.logger).to receive(:error)
+
+      expect { manager.setup }.to raise_error(Psych::SyntaxError)
+      expect(Rails.logger).to have_received(:error).with(%r{Error parsing config/features.yml})
     end
   end
 end

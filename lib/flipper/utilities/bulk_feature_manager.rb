@@ -75,10 +75,10 @@ module Flipper
           (Settings.vsp_environment == 'staging' && enabled_in_staging)
       end
 
-      def orphaned?(feature) = config_feature_names.exclude?(feature.name)
+      def orphaned?(feature) = config_feature_names.exclude?(feature.name.to_s)
 
       def remove_if_orphaned(feature)
-        feature_name = feature.name
+        feature_name = feature.name.to_s
         unless config_feature_names.include?(feature_name)
           removed_features << feature_name
           feature.remove unless @dry_run
