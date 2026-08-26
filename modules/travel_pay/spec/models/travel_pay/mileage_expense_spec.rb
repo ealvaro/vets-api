@@ -67,6 +67,96 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         expect(subject.errors[:trip_type]).to include('is not included in the list')
       end
     end
+
+    context 'challenge mileage validation' do
+      subject do
+        expense = described_class.new(valid_attributes)
+        expense.user = user
+        expense
+      end
+
+      let(:user) { build(:user) }
+
+      context 'when travel_pay_enable_one_way_mileage is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(false)
+        end
+
+        it 'does not validate challenge fields even when challenge_mileage is true' do
+          subject.challenge_mileage = true
+          expect(subject).to be_valid
+        end
+      end
+
+      context 'when travel_pay_enable_one_way_mileage is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:travel_pay_enable_one_way_mileage, user).and_return(true)
+        end
+
+        context 'when challenge_mileage is false' do
+          it 'does not require challenge_requested_mileage or challenge_reason' do
+            subject.challenge_mileage = false
+            expect(subject).to be_valid
+          end
+        end
+
+        context 'when challenge_mileage is nil' do
+          it 'does not require challenge_requested_mileage or challenge_reason' do
+            subject.challenge_mileage = nil
+            expect(subject).to be_valid
+          end
+        end
+
+        context 'when challenge_mileage is true' do
+          before { subject.challenge_mileage = true }
+
+          it 'is invalid without challenge_requested_mileage' do
+            subject.challenge_reason = 'Odometer reading differs'
+            expect(subject).not_to be_valid
+            expect(subject.errors[:challenge_requested_mileage]).to include("can't be blank")
+          end
+
+          it 'is invalid when challenge_requested_mileage is zero' do
+            subject.challenge_requested_mileage = 0
+            subject.challenge_reason = 'Odometer reading differs'
+            expect(subject).not_to be_valid
+            expect(subject.errors[:challenge_requested_mileage]).to include('must be greater than 0')
+          end
+
+          it 'is invalid when challenge_requested_mileage is negative' do
+            subject.challenge_requested_mileage = -5.0
+            subject.challenge_reason = 'Odometer reading differs'
+            expect(subject).not_to be_valid
+            expect(subject.errors[:challenge_requested_mileage]).to include('must be greater than 0')
+          end
+
+          it 'is invalid without challenge_reason' do
+            subject.challenge_requested_mileage = 12.5
+            expect(subject).not_to be_valid
+            expect(subject.errors[:challenge_reason]).to include("can't be blank")
+          end
+
+          it 'is invalid when challenge_reason exceeds 2000 characters' do
+            subject.challenge_requested_mileage = 12.5
+            subject.challenge_reason = 'a' * 2001
+            expect(subject).not_to be_valid
+            expect(subject.errors[:challenge_reason]).to include('is too long (maximum is 2000 characters)')
+          end
+
+          it 'is valid when challenge_reason is exactly 2000 characters' do
+            subject.challenge_requested_mileage = 12.5
+            subject.challenge_reason = 'a' * 2000
+            expect(subject).to be_valid
+          end
+
+          it 'is valid with both challenge_requested_mileage > 0 and challenge_reason' do
+            subject.challenge_requested_mileage = 12.5
+            subject.challenge_reason = 'Odometer reading differs'
+            expect(subject).to be_valid
+          end
+        end
+      end
+    end
   end
 
   describe '#expense_type' do
@@ -288,6 +378,15 @@ RSpec.describe TravelPay::MileageExpense, type: :model do
         subject.challenge_mileage = false
         params = subject.to_service_params
         expect(params['challenge_mileage']).to be false
+      end
+
+      it 'excludes challenge_requested_mileage and challenge_reason when challenge_mileage is false, even if present' do
+        subject.challenge_mileage = false
+        subject.challenge_requested_mileage = 0
+        subject.challenge_reason = ''
+        params = subject.to_service_params
+        expect(params).not_to have_key('challenge_requested_mileage')
+        expect(params).not_to have_key('challenge_reason')
       end
 
       it 'excludes challenge mileage fields when not set' do

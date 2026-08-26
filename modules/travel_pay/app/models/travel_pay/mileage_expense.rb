@@ -16,6 +16,16 @@ module TravelPay
     # TODO: After 8/20/26 TP API release, replace ALL_TRIP_TYPE_VALUES with TRIP_TYPES.values.
     validates :trip_type, presence: true, inclusion: { in: TravelPay::Constants::ALL_TRIP_TYPE_VALUES }
 
+    validates :challenge_requested_mileage,
+              presence: true,
+              numericality: { greater_than: 0 },
+              if: :challenging_mileage?
+
+    validates :challenge_reason,
+              presence: true,
+              length: { maximum: 2000 },
+              if: :challenging_mileage?
+
     ADDRESS_PARAMS = %i[address_line1 address_line2 city state_code postal_code].freeze
 
     # Returns the list of permitted parameters for mileage expenses
@@ -57,10 +67,18 @@ module TravelPay
         params['start_address'] = start_address.to_h if start_address.present?
         params['end_address'] = end_address.to_h if end_address.present?
         params['challenge_mileage'] = challenge_mileage unless challenge_mileage.nil?
-        params['challenge_requested_mileage'] = challenge_requested_mileage if challenge_requested_mileage.present?
-        params['challenge_reason'] = challenge_reason if challenge_reason.present?
+        if challenge_mileage == true
+          params['challenge_requested_mileage'] = challenge_requested_mileage if challenge_requested_mileage.present?
+          params['challenge_reason'] = challenge_reason if challenge_reason.present?
+        end
       end
       params
+    end
+
+    private
+
+    def challenging_mileage?
+      challenge_mileage == true && Flipper.enabled?(:travel_pay_enable_one_way_mileage, user)
     end
   end
 end
