@@ -80,9 +80,9 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
         )
     end
 
-    it 'uses Rails.cache.fetch with correct key, TTL, and skip_nil' do
-      expect(Rails.cache).to receive(:fetch)
-        .with(cache_key, expires_in: 12.hours, skip_nil: true)
+    it 'writes successful results to cache with the standard TTL' do
+      expect(Rails.cache).to receive(:write)
+        .with(cache_key, hash_including(id: '668'), expires_in: 12.hours)
         .and_call_original
 
       service.get_facility_with_cache(facility_id)
@@ -91,6 +91,118 @@ RSpec.describe UnifiedHealthData::FacilityService, type: :service do
     it 'returns facility data' do
       result = service.get_facility_with_cache(facility_id)
       expect(result[:id]).to eq('668')
+    end
+
+    it 'caches successful results and does not call API again' do
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+
+      service.get_facility_with_cache(facility_id)
+      service.get_facility_with_cache(facility_id)
+
+      expect(a_request(:get, %r{/facilities/v3/facilities/668})).to have_been_made.once
+    end
+
+    context 'when facility is not found' do
+      before do
+        stub_request(:get, %r{/facilities/v3/facilities/989})
+          .to_return(status: 404, body: { error: 'Not found' }.to_json)
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      let(:facility_id) { '989' }
+      let(:cache_key) { 'uhd_facility_989' }
+
+      it 'returns nil' do
+        expect(service.get_facility_with_cache(facility_id)).to be_nil
+      end
+
+      it 'caches the not-found sentinel with the shorter TTL' do
+        expect(Rails.cache).to receive(:write)
+          .with(cache_key, described_class::NOT_FOUND_SENTINEL, expires_in: 1.hour)
+          .and_call_original
+
+        service.get_facility_with_cache(facility_id)
+      end
+
+      it 'caches the not-found result and does not call API again' do
+        allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+
+        service.get_facility_with_cache(facility_id)
+        service.get_facility_with_cache(facility_id)
+
+        expect(a_request(:get, %r{/facilities/v3/facilities/989})).to have_been_made.once
+      end
+
+      it 'returns nil (not the sentinel) when reading from cache' do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        allow(Rails).to receive(:cache).and_return(cache)
+
+        service.get_facility_with_cache(facility_id)
+
+        expect(service.get_facility_with_cache(facility_id)).to be_nil
+      end
+
+      it 'caches when original_status is a string "404"' do
+        error = Common::Exceptions::BackendServiceException.new('VA900', {}, '404')
+        stub_request(:get, %r{/facilities/v3/facilities/989}).to_raise(error)
+        expect(Rails.cache).to receive(:write)
+          .with(cache_key, described_class::NOT_FOUND_SENTINEL, expires_in: 1.hour)
+
+        service.get_facility_with_cache(facility_id)
+      end
+    end
+
+    context 'when the API returns a transient error (5xx)' do
+      before do
+        stub_request(:get, %r{/facilities/v3/facilities/668})
+          .to_return(status: 503, body: { error: 'Service unavailable' }.to_json)
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      it 'returns nil' do
+        expect(service.get_facility_with_cache(facility_id)).to be_nil
+      end
+
+      it 'does not cache the failure' do
+        expect(Rails.cache).not_to receive(:write)
+
+        service.get_facility_with_cache(facility_id)
+      end
+
+      it 'retries on the next request (does not cache)' do
+        allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+
+        service.get_facility_with_cache(facility_id)
+        service.get_facility_with_cache(facility_id)
+
+        expect(a_request(:get, %r{/facilities/v3/facilities/668})).to have_been_made.twice
+      end
+    end
+
+    context 'when the request raises a non-HTTP error (timeout)' do
+      before do
+        stub_request(:get, %r{/facilities/v3/facilities/668}).to_timeout
+        allow(Rails.logger).to receive(:warn)
+      end
+
+      it 'returns nil' do
+        expect(service.get_facility_with_cache(facility_id)).to be_nil
+      end
+
+      it 'does not cache the failure' do
+        expect(Rails.cache).not_to receive(:write)
+
+        service.get_facility_with_cache(facility_id)
+      end
+
+      it 'retries on the next request (does not cache)' do
+        allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+
+        service.get_facility_with_cache(facility_id)
+        service.get_facility_with_cache(facility_id)
+
+        expect(a_request(:get, %r{/facilities/v3/facilities/668})).to have_been_made.twice
+      end
     end
   end
 
