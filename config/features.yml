@@ -396,6 +396,10 @@ features:
     description: Enables detailed logging in EventBusGatewayController for debugging and monitoring
   event_bus_gateway_controller_validation_visibility:
     description: System-wide flag to enable validation logging in EventBusGatewayController
+  hca_auto_resize_on_upload:
+    actor_type: user
+    enable_in_development: true
+    description: Auto-downscales oversized 10-10EZ/EZR image attachments to supported dimensions before upload validation
   hca_browser_monitoring_enabled:
     actor_type: user
     description: Enables browser monitoring for the health care application.

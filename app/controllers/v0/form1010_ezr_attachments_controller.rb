@@ -13,6 +13,8 @@ module V0
     def create
       validate_file_upload_class!
 
+      resize_image_if_needed!
+
       Form1010EzrAttachments::FileTypeValidator.new(
         filtered_params['file_data']
       ).validate
@@ -24,6 +26,14 @@ module V0
     end
 
     private
+
+    def resize_image_if_needed!
+      return unless Flipper.enabled?(:hca_auto_resize_on_upload, current_user)
+
+      filtered_params['file_data'] = Form1010EzrAttachments::ImageResizeService.new(
+        filtered_params['file_data']
+      ).resize_if_needed
+    end
 
     def serializer_klass
       Form1010EzrAttachmentSerializer

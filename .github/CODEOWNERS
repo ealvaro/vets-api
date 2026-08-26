@@ -540,6 +540,7 @@ app/services/email_verification_callback.rb @software/vfs-authenticated-experien
 app/services/email_verification_service.rb @software/vfs-authenticated-experience-backend
 app/services/evss_claim_service.rb @software/benefits-management-tools-be
 app/services/feature_toggles_service.rb @software/va-platform-backend
+app/services/form1010_ezr_attachments/ @software/health-apps-backend
 app/services/form1010_ezr_attachments/file_type_validator.rb @software/health-apps-backend
 app/services/form1010cg/ @software/health-apps-backend
 app/services/hca/overrides_parser.rb @software/health-apps-backend
@@ -2241,6 +2242,8 @@ spec/services/email_verification_service_spec.rb @software/vfs-authenticated-exp
 spec/services/evss_claim_service_spec.rb @software/benefits-management-tools-be
 spec/services/feature_toggles_service_spec.rb @software/va-platform-backend
 spec/services/form1010_ezr_attachments/file_type_validator_spec.rb @software/health-apps-backend
+spec/services/form1010_ezr_attachments/image_resize_service_spec.rb @software/health-apps-backend
+spec/services/form1010_ezr_attachments/image_resizer_spec.rb @software/health-apps-backend
 spec/services/form1010cg @software/health-apps-backend
 spec/services/hca/overrides_parser_spec.rb @software/health-apps-backend
 spec/services/ivc_champva @software/health-apps-backend

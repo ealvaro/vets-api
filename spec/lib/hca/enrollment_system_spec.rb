@@ -1560,6 +1560,36 @@ describe HCA::EnrollmentSystem do
     ]
   )
 
+  describe '.add_attachment' do
+    let(:file_data) { 'binary-image-content' }
+    let(:file) { double('file', content_type: 'image/jpeg', read: file_data) }
+
+    before do
+      allow(Rails.logger).to receive(:info)
+    end
+
+    it 'builds the expected image payload contract fields' do
+      result = described_class.send(:add_attachment, file, 3, false, 'guid-123')
+
+      expect(result).to eq(
+        {
+          'va:document' => {
+            'va:name' => 'Attachment_3',
+            'va:format' => 'JPG',
+            'va:type' => '5',
+            'va:content' => Base64.encode64(file_data)
+          }
+        }
+      )
+    end
+
+    it 'sets dd214 attachment type to 1' do
+      result = described_class.send(:add_attachment, file, 1, true, 'guid-123')
+
+      expect(result.dig('va:document', 'va:type')).to eq('1')
+    end
+  end
+
   describe '#veteran_to_save_submit_form' do
     let(:ez_form) do
       described_class.veteran_to_save_submit_form(test_veteran, nil, '10-10EZ').with_indifferent_access

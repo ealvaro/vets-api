@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'common/image_resize_service'
 require 'datadog'
 
 module IvcChampva
@@ -19,44 +20,29 @@ module IvcChampva
   # If we later want a single orchestration point for all supporting-document
   # prep (unlock -> resize -> convert), introduce a thin document/attachment
   # preparer that composes this service rather than widening ImageService.
-  class ImageService
+  class ImageService < Common::ImageResizeService
     ##
     # @param uploaded_file [ActionDispatch::Http::UploadedFile] The file to transform
     # @param form_id [String] The government form ID (e.g., '10-10D'), used for metrics
     # @param monitor [IvcChampva::Monitor] Observability sink (injectable for tests)
     def initialize(uploaded_file, form_id, monitor: IvcChampva::Monitor.new)
-      @uploaded_file = uploaded_file
+      super(uploaded_file, resizer_class: IvcChampva::ImageResizer)
       @form_id = form_id
       @monitor = monitor
     end
 
-    ##
-    # Downscales oversized image uploads to the uploader's supported dimensions.
-    # On failure, the derived context plus the error class is logged and the
-    # original file is returned so normal attachment validation still runs (an
-    # oversized image then fails as it does today).
-    #
-    # @return [ActionDispatch::Http::UploadedFile] The original or resized file
-    def resize_if_needed
-      Datadog::Tracing.trace('IVC Champva Forms - Resize Image') do
-        resizer = IvcChampva::ImageResizer.new(@uploaded_file)
-        next @uploaded_file if resizer.valid?
-
-        context = resize_context(resizer)
-        resized = resizer.resize
-        @monitor.track_image_resize(@form_id, 'resized', context)
-        resized
-      rescue => e
-        @monitor.track_image_resize(@form_id, 'error', (context || {}).merge(error_class: e.class.name))
-        @uploaded_file
-      end
-    end
-
     private
 
-    def resize_context(resizer)
-      width, height = resizer.original_dimensions
-      { original_width: width, original_height: height, content_type: resizer.content_type }
+    def instrument(&)
+      Datadog::Tracing.trace('IVC Champva Forms - Resize Image', &)
+    end
+
+    def track_success(context)
+      @monitor.track_image_resize(@form_id, 'resized', context)
+    end
+
+    def track_error(context)
+      @monitor.track_image_resize(@form_id, 'error', context)
     end
   end
 end

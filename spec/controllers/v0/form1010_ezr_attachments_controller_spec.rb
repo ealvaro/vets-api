@@ -61,6 +61,44 @@ RSpec.describe V0::Form1010EzrAttachmentsController, type: :controller do
       end
     end
 
+    context 'image auto-resize' do
+      let(:oversized_image) { fixture_file_upload('oversized-image.png', 'image/png') }
+      let(:params) { { 'form1010_ezr_attachment' => { 'file_data' => oversized_image } } }
+
+      before do
+        sign_in(current_user)
+      end
+
+      context 'when hca_auto_resize_on_upload is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:hca_auto_resize_on_upload, anything).and_return(true)
+        end
+
+        it 'downscales the oversized image so the upload succeeds' do
+          expect(Form1010EzrAttachments::ImageResizeService).to receive(:new).and_call_original
+
+          post(:create, params:)
+
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)['data']['attributes']['guid']).to be_present
+        end
+      end
+
+      context 'when hca_auto_resize_on_upload is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:hca_auto_resize_on_upload, anything).and_return(false)
+        end
+
+        it 'does not resize the image (regression: existing behavior unchanged)' do
+          expect(Form1010EzrAttachments::ImageResizeService).not_to receive(:new)
+
+          post(:create, params:)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
     context 'when the file type of the attachment is not valid in the Enrollment System' do
       before do
         sign_in(current_user)
