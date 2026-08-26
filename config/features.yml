@@ -572,6 +572,10 @@ features:
   champva_ignore_recent_missing_statuses:
     actor_type: user
     description: Enables ignoring the most recent form submissions in the MissingFormStatusJob
+  champva_benefits_card:
+    actor_type: user
+    description: Enables the authenticated GET /ivc_champva/v1/champva_card endpoint that returns CHAMPVA benefits card metadata from VES
+    enable_in_development: true
   champva_pdf_stamper_use_hexapdf:
     actor_type: user
     description: If enabled, IVC CHAMPVA PdfStamper uses HexaPDF directly for overlay stamping instead of pdftk

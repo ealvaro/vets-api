@@ -477,4 +477,142 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(ves_client).to have_received(:get_ee_summary).with(icn: '0000001200603250V008079000000').twice
     end
   end
+
+  describe '.benefits_card_for' do
+    let(:ves_client) { instance_double(IvcChampva::VesApi::Client) }
+    let(:user) { instance_double(User, icn: '0000001200603250V008079000000', first_name: 'Alex', last_name: 'Doe') }
+    let(:as_of) { Date.new(2026, 6, 15) }
+
+    def ee_summary_with_dates(periods)
+      {
+        'vfmpProgramsInfo' => {
+          'relationships' => [
+            { 'champvaEligibilities' => [{ 'eligibilityDates' => periods }] }
+          ]
+        }
+      }
+    end
+
+    it 'queries the ChampvaDigitalCardData dataset with the user ICN' do
+      expect(ves_client).to receive(:get_ee_summary)
+        .with(icn: user.icn, dataset: 'ChampvaDigitalCardData')
+        .and_return(ee_summary_with_dates([{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }]))
+
+      described_class.benefits_card_for(user, ves_client:, as_of:)
+    end
+
+    it 'returns formatted card attributes for a covering period' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates([{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }])
+      )
+
+      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+
+      expect(result).to eq(
+        status: :ok,
+        attributes: {
+          full_name: 'Alex Doe',
+          effective_date: '01/2026',
+          expiration_date: '01/2028'
+        }
+      )
+    end
+
+    it 'returns ok with a nil expiration_date when endDate is omitted' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates([{ 'startDate' => '2020-01-01' }])
+      )
+
+      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+
+      expect(result[:status]).to eq(:ok)
+      expect(result[:attributes][:expiration_date]).to be_nil
+      expect(result[:attributes][:effective_date]).to eq('01/2020')
+    end
+
+    it 'returns not_enrolled when relationships are empty' do
+      allow(ves_client).to receive(:get_ee_summary).and_return({ 'vfmpProgramsInfo' => { 'relationships' => [] } })
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'returns not_enrolled when the period is expired' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates([{ 'startDate' => '2020-01-01', 'endDate' => '2021-01-31' }])
+      )
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'returns not_enrolled when the period starts in the future' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates([{ 'startDate' => '2027-01-01', 'endDate' => '2028-01-31' }])
+      )
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'picks the covering period with the latest startDate' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates(
+          [
+            { 'startDate' => '2011-01-01', 'endDate' => '2028-01-31' },
+            { 'startDate' => '2024-06-01', 'endDate' => '2028-12-31' }
+          ]
+        )
+      )
+
+      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+
+      expect(result[:attributes][:effective_date]).to eq('06/2024')
+      expect(result[:attributes][:expiration_date]).to eq('12/2028')
+    end
+
+    it 'treats a single eligibilityDates hash as one covering period' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates({ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' })
+      )
+
+      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+
+      expect(result[:status]).to eq(:ok)
+      expect(result[:attributes][:effective_date]).to eq('01/2026')
+      expect(result[:attributes][:expiration_date]).to eq('01/2028')
+    end
+
+    it 'returns not_enrolled when eligibilityDates is neither an array nor a hash' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(ee_summary_with_dates('2026-01-15'))
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'returns not_enrolled when startDate cannot be parsed' do
+      allow(ves_client).to receive(:get_ee_summary).and_return(
+        ee_summary_with_dates([{ 'startDate' => 'not-a-date', 'endDate' => '2028-01-31' }])
+      )
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'returns not_enrolled when VES data is still pending' do
+      allow(ves_client).to receive(:get_ee_summary)
+        .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'pending')
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    end
+
+    it 'returns upstream_timeout when VES times out' do
+      allow(ves_client).to receive(:get_ee_summary)
+        .and_raise(IvcChampva::VesApi::VesApiTimeoutError, 'timeout')
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :upstream_timeout)
+    end
+
+    it 'returns upstream_error when VES fails' do
+      allow(ves_client).to receive(:get_ee_summary)
+        .and_raise(IvcChampva::VesApi::VesApiError, 'response code: 500')
+
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :upstream_error)
+    end
+  end
 end

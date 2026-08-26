@@ -9,6 +9,9 @@ module IvcChampva
   module VesApi
     class VesApiError < StandardError; end
 
+    # Raised when VES times out or the connection fails.
+    class VesApiTimeoutError < VesApiError; end
+
     # Raised when VES returns a 200 but no ICNs yet — application is still being processed.
     # Callers should treat this as a transient condition and retry later.
     class VesApplicationPendingError < StandardError; end
@@ -141,7 +144,7 @@ module IvcChampva
       end
 
       ##
-      # Fetch CHAMPVA eligibility for a given ICN from the VES EE Summary service (CSTChampvaEligibility dataset).
+      # Fetch CHAMPVA eligibility for a given ICN from the VES EE Summary service.
       #
       # The applicant's CHAMPVA status/reason is at:
       #   data['vfmpProgramsInfo']['relationships'][]['champvaEligibilities'][]['status'] / ['reason']
@@ -149,15 +152,17 @@ module IvcChampva
       #   ...['champvaEligibilities'][]['sponsor']['champvaStatus'] / ['champvaReason']
       #
       # @param icn [String] the person's Integration Control Number
+      # @param dataset [String] EE Summary dataset (default CSTChampvaEligibility)
       # @param region_id_or_offset [String, nil] optional timezone region/offset (e.g. 'GMT-6')
       # @return [Hash] the parsed 'data' hash from VES
       # @raise [VesApplicationPendingError] if VES returns 200 but no data (still processing)
+      # @raise [VesApiTimeoutError] on timeout or connection failure
       # @raise [VesApiError] on non-200 response or unexpected error
-      def get_ee_summary(icn:, region_id_or_offset: nil)
+      def get_ee_summary(icn:, dataset: 'CSTChampvaEligibility', region_id_or_offset: nil)
         params = { id: icn }
         params[:regionIdOrOffset] = region_id_or_offset if region_id_or_offset.present?
 
-        resp = connection.get("#{config.base_path}/ves-ee-summary-svc/eesummary/CSTChampvaEligibility", params) do |req|
+        resp = connection.get("#{config.base_path}/ves-ee-summary-svc/eesummary/#{dataset}", params) do |req|
           req.headers = ee_summary_headers
         end
 
@@ -175,6 +180,8 @@ module IvcChampva
         data
       rescue VesApplicationPendingError
         raise
+      rescue Faraday::TimeoutError, Faraday::ConnectionFailed, Net::OpenTimeout, Net::ReadTimeout => e
+        raise VesApiTimeoutError, e.message.to_s
       rescue => e
         raise VesApiError, e.message.to_s
       end

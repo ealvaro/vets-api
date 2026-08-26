@@ -8,5 +8,6 @@ IvcChampva::Engine.routes.draw do
     post '/forms/submit_supporting_documents', to: 'uploads#submit_supporting_documents'
     post '/forms/status_updates', to: 'pega#update_status'
     post '/forms/champva_eligibility', to: 'champva_eligibility#update'
+    get '/champva_card', to: 'champva_cards#get_benefits_card'
   end
 end

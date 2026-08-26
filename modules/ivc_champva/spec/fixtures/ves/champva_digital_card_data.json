@@ -1,0 +1,44 @@
+{
+  "data": {
+    "vfmpProgramsInfo": {
+      "relationships": [
+        {
+          "relationshipType": "Child",
+          "relationChildType": "Natural",
+          "champvaEligibilities": [
+            {
+              "applicationDate": "2022-02-22",
+              "status": "Ineligible",
+              "reason": "No current school letter",
+              "qualifyingEventDate": "2002-02-22",
+              "qualifyingEventReason": "Child born after P&T",
+              "eligibilityOverride": true,
+              "initialPeriodOfEligibilityStartDate": "2002-02-22",
+              "eligibilityDates": [
+                {
+                  "startDate": "2002-02-22",
+                  "endDate": "2024-06-01"
+                }
+              ],
+              "studentChildAttendanceDetails": [
+                {
+                  "institution": "Example University",
+                  "fullTime": true,
+                  "estimatedGraduationDate": "20240619",
+                  "enrollmentDate": "20231101",
+                  "completedDate": "20240601"
+                }
+              ],
+              "sponsor": {
+                "icn": "0000000000000000V000000000000",
+                "champvaStatus": "ELIGIBLE",
+                "champvaReason": "P&T"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "messages": []
+}

@@ -39,6 +39,99 @@ module IvcChampva
     DOCUMENTS_REQUESTED_REASONS =
       DOCUMENTS_REQUESTED_CONFIG.fetch('reasons', []).to_set { |r| r.to_s.downcase.strip }.freeze
 
+    class << self
+      # Builds CHAMPVA card attributes for a logged-in user from EE Summary.
+      #
+      # @param user [User]
+      # @param ves_client [IvcChampva::VesApi::Client]
+      # @param as_of [Date]
+      # @return [Hash] { status: :ok, attributes: } or { status: :not_enrolled|:upstream_timeout|:upstream_error }
+      def benefits_card_for(user, ves_client: IvcChampva::VesApi::Client.new, as_of: Date.current)
+        data = ves_client.get_ee_summary(icn: user.icn, dataset: 'ChampvaDigitalCardData')
+        eligibility = extract_champva_eligibility(data)
+        period = covering_period(eligibility, as_of:)
+        return { status: :not_enrolled } if period.blank?
+
+        {
+          status: :ok,
+          attributes: {
+            full_name: [user.first_name, user.last_name].compact.join(' '),
+            effective_date: format_card_date(period['startDate']),
+            expiration_date: format_card_date(period['endDate'])
+          }
+        }
+      rescue IvcChampva::VesApi::VesApplicationPendingError
+        { status: :not_enrolled }
+      rescue IvcChampva::VesApi::VesApiTimeoutError
+        { status: :upstream_timeout }
+      rescue IvcChampva::VesApi::VesApiError
+        { status: :upstream_error }
+      end
+
+      # Digs the first CHAMPVA eligibility entry out of the EE Summary response.
+      #
+      # @param data [Hash, nil]
+      # @return [Hash, nil]
+      def extract_champva_eligibility(data)
+        return nil unless data.is_a?(Hash)
+
+        relationships = data.dig('vfmpProgramsInfo', 'relationships')
+        return nil unless relationships.is_a?(Array)
+
+        relationships
+          .flat_map { |relationship| eligibility_entries(relationship) }
+          .first
+      end
+
+      private
+
+      def eligibility_entries(relationship)
+        return [] unless relationship.is_a?(Hash)
+
+        Array(relationship['champvaEligibilities'])
+      end
+
+      def covering_period(eligibility, as_of:)
+        periods = eligibility_date_periods(eligibility)
+        covering = periods.select { |period| period_covers?(period, as_of) }
+        covering.max_by { |period| parse_card_date(period['startDate']) || Date.new(0) }
+      end
+
+      def eligibility_date_periods(eligibility)
+        return [] unless eligibility.is_a?(Hash)
+
+        dates = eligibility['eligibilityDates']
+        case dates
+        when Array then dates
+        when Hash then [dates]
+        else []
+        end
+      end
+
+      def period_covers?(period, as_of)
+        return false unless period.is_a?(Hash)
+
+        start_date = parse_card_date(period['startDate'])
+        return false if start_date.nil? || start_date > as_of
+
+        end_date = parse_card_date(period['endDate'])
+        end_date.nil? || end_date >= as_of
+      end
+
+      def parse_card_date(value)
+        return value if value.is_a?(Date)
+        return nil if value.blank?
+
+        Date.parse(value.to_s)
+      rescue ArgumentError, TypeError
+        nil
+      end
+
+      def format_card_date(value)
+        parse_card_date(value)&.strftime('%m/%Y')
+      end
+    end
+
     # @param transaction_uuid [String] the CHAMPVA application transaction UUID
     def initialize(transaction_uuid)
       @transaction_uuid = transaction_uuid
@@ -465,23 +558,10 @@ module IvcChampva
 
     # Digs the first CHAMPVA eligibility entry out of the EE Summary response.
     #
-    # VES response 'data' shape:
-    #   { "vfmpProgramsInfo": { "relationships": [
-    #       { "champvaEligibilities": [
-    #           { "status": ..., "reason": ...,
-    #             "sponsor": { "icn": ..., "champvaStatus": ..., "champvaReason": ... } } ] } ] } }
-    #
     # @param data [Hash, nil]
     # @return [Hash, nil] the first eligibility hash, or nil when none present
     def extract_champva_eligibility(data)
-      return nil unless data.is_a?(Hash)
-
-      relationships = data.dig('vfmpProgramsInfo', 'relationships')
-      return nil unless relationships.is_a?(Array)
-
-      relationships
-        .flat_map { |relationship| relationship['champvaEligibilities'] || [] }
-        .first
+      self.class.extract_champva_eligibility(data)
     end
 
     # @return [IvcChampva::MPIService]

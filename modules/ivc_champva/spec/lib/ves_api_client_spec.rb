@@ -327,10 +327,31 @@ RSpec.describe IvcChampva::VesApi::Client do
         mock_conn = double('connection')
         allow(client).to receive(:connection).and_return(mock_conn)
         expect(mock_conn).to receive(:get)
-          .with(/CSTChampvaEligibility/, hash_including(regionIdOrOffset: 'GMT-6'))
+          .with(%r{/eesummary/CSTChampvaEligibility},
+                hash_including(regionIdOrOffset: 'GMT-6'))
           .and_yield(double('req', headers: {}).as_null_object)
           .and_return(response)
         client.get_ee_summary(icn:, region_id_or_offset: 'GMT-6')
+      end
+
+      it 'defaults the dataset to CSTChampvaEligibility' do
+        mock_conn = double('connection')
+        allow(client).to receive(:connection).and_return(mock_conn)
+        expect(mock_conn).to receive(:get)
+          .with(%r{/eesummary/CSTChampvaEligibility}, anything)
+          .and_yield(double('req', headers: {}).as_null_object)
+          .and_return(response)
+        client.get_ee_summary(icn:)
+      end
+
+      it 'uses an explicit dataset override' do
+        mock_conn = double('connection')
+        allow(client).to receive(:connection).and_return(mock_conn)
+        expect(mock_conn).to receive(:get)
+          .with(%r{/eesummary/ChampvaDigitalCardData}, anything)
+          .and_yield(double('req', headers: {}).as_null_object)
+          .and_return(response)
+        client.get_ee_summary(icn:, dataset: 'ChampvaDigitalCardData')
       end
     end
 
@@ -351,6 +372,34 @@ RSpec.describe IvcChampva::VesApi::Client do
         expect do
           client.get_ee_summary(icn:)
         end.to raise_error(IvcChampva::VesApi::VesApiError)
+      end
+    end
+
+    context 'timeout from VES' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: '{}') }
+
+      before do
+        allow(client).to receive(:connection).and_raise(Faraday::TimeoutError)
+      end
+
+      it 'raises a VesApiTimeoutError' do
+        expect do
+          client.get_ee_summary(icn:)
+        end.to raise_error(IvcChampva::VesApi::VesApiTimeoutError)
+      end
+    end
+
+    context 'connection failure from VES' do
+      let(:response) { instance_double(Faraday::Response, status: 200, body: '{}') }
+
+      before do
+        allow(client).to receive(:connection).and_raise(Faraday::ConnectionFailed.new('connection failed'))
+      end
+
+      it 'raises a VesApiTimeoutError' do
+        expect do
+          client.get_ee_summary(icn:)
+        end.to raise_error(IvcChampva::VesApi::VesApiTimeoutError)
       end
     end
   end

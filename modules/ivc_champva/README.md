@@ -43,6 +43,39 @@ The VES integration follows a specific workflow:
      - `ves_status`: Response status from VES
      - `ves_request_data`: Encrypted copy of the submitted data
 
+### CHAMPVA Benefits Card
+Authenticated `GET /ivc_champva/v1/champva_card` returns card metadata for the logged-in user. The frontend generates the printable PDF client-side from this JSON. Not `/v0/champva_card`.
+
+Gated by Flipper `champva_benefits_card` (disabled → `404` `{ "error_message": "Not found" }`). Session ICN is sent to VES EE Summary (`ChampvaEligibilityService.benefits_card_for`). Name comes from the session, not VES.
+
+Success `200`:
+
+```json
+{
+  "data": {
+    "type": "champva_card",
+    "attributes": {
+      "full_name": "Alex Doe",
+      "effective_date": "01/2026",
+      "expiration_date": "01/2028"
+    }
+  }
+}
+```
+
+`X-Key-Inflection: camel` → `fullName`, `effectiveDate`, `expirationDate`. Dates are `%m/%Y` from `eligibilityDates[].startDate` / `endDate` (`endDate` may be `null`). A period covers today when `startDate <= today` and (`endDate` blank or `>= today`); several covering periods → latest `startDate`.
+
+| Scenario | Status | Body |
+|------|--------|------|
+| Not signed in | `401` | existing auth error |
+| Flipper off | `404` | `{ "error_message": "Not found" }` |
+| No ICN | `422` | `{ "error": { "code": "missing_icn", "message": "..." } }` |
+| No record, expired, or future start | `404` | `{ "error": { "code": "not_enrolled", "message": "..." } }` |
+| VES timeout | `504` | `{ "error": { "code": "upstream_timeout", "message": "..." } }` |
+| Other VES / non-200 | `502` | `{ "error": { "code": "upstream_error", "message": "..." } }` |
+
+Dataset: card flow passes the dedicated `ChampvaDigitalCardData` dataset into `get_ee_summary` (a smaller subset than `allEEData`); existing eligibility persist keeps the method default `CSTChampvaEligibility`. Out of scope: family/sponsor lookup, Payor ID, PDF generation. Confirm with VES if printed-card expiration differs from `endDate`.
+
 ### Retry Mechanisms
 The module implements a robust retry mechanism with configurable parameters for failed operations. An `IvcChampva::Retry` service handles retrying problematic operations with configurable max retries, delay, and condition-based retry logic. The system automatically retries when specific error messages occur during form processing.
 
@@ -94,6 +127,7 @@ Current feature flags used to control functionality:
 | `champva_log_all_s3_uploads` | Enables detailed logging for all S3 uploads |
 | `champva_claims_insurance_dates` | Uses the 12/31/2027 OMB revision of 10-7959A (requires `champva_form_versioning`); shared with FE | Adds beneficiary email, OHI effective/termination dates, signer email on the PDF and in Pega metadata |
 | `champva_send_7959c_to_ves` | Routes standalone 10-7959c (OHI) submissions to VES | 10-10d always routes to VES regardless of this flag |
+| `champva_benefits_card` | Enables `GET /ivc_champva/v1/champva_card` | Returns CHAMPVA card metadata from VES EE Summary |
 | (TODO) | Enables the endpoint to submit combined 10-10d/10-7959c form submissions | Feature is WIP |
 |`form1010d_extended`|Enables access to the combined 10-10d/10-7959c form experience (frontend) |This form is a WIP|
 
@@ -117,6 +151,7 @@ The supporting_document_ids method retrieves the IDs of any supporting documents
 - `/ivc_champva/v1/forms/10-10d-ext` - Submit a 10-10d form with automatic OHI form generation (WIP)
 - `/ivc_champva/v1/forms/submit_supporting_documents` - Upload supporting documents for a form
 - `/ivc_champva/v1/forms/status_updates` - Receive status updates from PEGA
+- `/ivc_champva/v1/champva_card` - Authenticated CHAMPVA benefits card metadata (Flipper `champva_benefits_card`)
 
 ## Supported Forms
 The module currently supports the following forms:
