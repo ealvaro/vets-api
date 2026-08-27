@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :claims_api_organization, class: 'ClaimsApi::Organization' do
-    poa { Faker::Alphanumeric.alphanumeric(number: 3) }
+    sequence(:poa) { |n| format('%03d', n) }
     phone { Faker::PhoneNumber.phone_number }
     name { 'Org Name' }
     created_at { Time.zone.now }
