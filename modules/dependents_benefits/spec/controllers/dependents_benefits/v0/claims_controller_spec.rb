@@ -41,7 +41,6 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     allow(Flipper).to receive(:enabled?).with(:enable_date_last_verified_for_dependents).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:dependents_claims_controller_authentication).and_return(false)
-    allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
     allow(DependentsBenefits::UserData).to receive(:new).and_return(user_data)
   end

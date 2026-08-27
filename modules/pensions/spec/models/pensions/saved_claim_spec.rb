@@ -92,4 +92,40 @@ RSpec.describe Pensions::SavedClaim, :uploader_helpers do
       claim.send_email(email_type)
     end
   end
+
+  describe '#track_pdf_overflow?' do
+    context 'when :saved_claim_pdf_overflow_tracking disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(false) }
+
+      it 'returns false' do
+        expect(instance.track_pdf_overflow?).to be false
+      end
+    end
+
+    context 'when :saved_claim_pdf_overflow_tracking enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true) }
+
+      it 'returns true' do
+        expect(instance.track_pdf_overflow?).to be true
+      end
+    end
+  end
+
+  describe '#track_pdf_overflow_by_field?' do
+    context 'when :saved_claim_pdf_overflow_tracking disabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:track_pdf_overflow_by_field).and_return(false) }
+
+      it 'returns false' do
+        expect(instance.track_pdf_overflow_by_field?).to be false
+      end
+    end
+
+    context 'when :saved_claim_pdf_overflow_tracking enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:track_pdf_overflow_by_field).and_return(true) }
+
+      it 'returns true' do
+        expect(instance.track_pdf_overflow_by_field?).to be true
+      end
+    end
+  end
 end

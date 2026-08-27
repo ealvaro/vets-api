@@ -20,6 +20,7 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
 
   before do
     allow(BenefitsIntake::Monitor).to receive(:new).and_return(monitor)
+    allow(claim).to receive(:track_pdf_overflow?).and_return(false)
   end
 
   describe '#perform' do
@@ -202,6 +203,70 @@ RSpec.describe BenefitsIntake::SubmitClaimJob, :uploader_helpers do
           expect(Kafka).not_to receive(:submit_event)
 
           expect(monitor).to receive(:track_submission_exhaustion).with(msg, nil)
+        end
+      end
+    end
+  end
+
+  describe '#handle_pdf_overflow_tracking' do
+    before do
+      job.instance_variable_set(:@claim, claim)
+      job.instance_variable_set(:@form_path, pdf_path)
+    end
+
+    context 'when pdf overflow tracking not enabled on claim' do
+      before { allow(claim).to receive(:track_pdf_overflow?).and_return(false) }
+
+      it 'returns early' do
+        expect(job.send(:handle_pdf_overflow_tracking)).to be_nil
+      end
+    end
+
+    context 'when pdf overflow tracking enabled on claim' do
+      let(:tracker) do
+        instance_double(PdfFill::OverflowTracker, track_pdf_overflow: false, track_pdf_overflow_by_field: nil)
+      end
+
+      before do
+        allow(claim).to receive(:track_pdf_overflow?).and_return(true)
+        allow(PdfFill::OverflowTracker).to receive(:new).and_return(tracker)
+      end
+
+      context 'when no pdf overflow' do
+        it 'checks for pdf overflow and does not track pdf overflow by field' do
+          job.send(:handle_pdf_overflow_tracking)
+          expect(tracker).to have_received(:track_pdf_overflow).with(pdf_path)
+          expect(tracker).not_to have_received(:track_pdf_overflow_by_field)
+        end
+      end
+
+      context 'when pdf overflow present' do
+        before { allow(tracker).to receive(:track_pdf_overflow).and_return(true) }
+
+        context 'when pdf overflow tracking by field disabled on claim' do
+          before { allow(claim).to receive(:track_pdf_overflow_by_field?).and_return(false) }
+
+          it 'does not track pdf overflow by field' do
+            job.send(:handle_pdf_overflow_tracking)
+            expect(tracker).not_to have_received(:track_pdf_overflow_by_field)
+          end
+        end
+
+        context 'when pdf overflow tracking by field enabled on claim' do
+          before { allow(claim).to receive(:track_pdf_overflow_by_field?).and_return(true) }
+
+          it 'tracks pdf overflow by field' do
+            job.send(:handle_pdf_overflow_tracking)
+            expect(tracker).to have_received(:track_pdf_overflow_by_field)
+          end
+        end
+      end
+
+      context 'when error encountered' do
+        before { allow(claim).to receive(:track_pdf_overflow?).and_raise(NoMethodError) }
+
+        it 'returns nil' do
+          expect(job.send(:handle_pdf_overflow_tracking)).to be_nil
         end
       end
     end

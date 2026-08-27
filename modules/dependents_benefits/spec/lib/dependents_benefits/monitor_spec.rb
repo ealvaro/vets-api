@@ -6,7 +6,6 @@ require 'dependents_benefits/monitor'
 RSpec.describe DependentsBenefits::Monitor do
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
-    allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(Flipper).to receive(:enabled?).with(:dependents_v3_removal_picklist_logging).and_return(false)
   end
 

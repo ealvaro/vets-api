@@ -4,6 +4,7 @@ require 'claims_evidence_api/uploader'
 require 'dependents_benefits/pdf_stamper'
 require 'dependents_benefits/service_response'
 require 'dependents_benefits/sidekiq/dependent_submission_job'
+require 'pdf_fill/overflow_tracker'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -93,15 +94,15 @@ module DependentsBenefits::Sidekiq
       stamp_set = DependentsBenefits::PdfStamper.form_stamp_set(claim.form_id)
       stamper = DependentsBenefits::PdfStamper.new(stamp_set)
 
-      file_path = if Flipper.enabled?(:enable_686_674_digital_pdf)
-                    claim.to_dpdf
-                  else
-                    stamper.run(claim.to_pdf, timestamp: claim.created_at)
-                  end
+      @file_path = if Flipper.enabled?(:enable_686_674_digital_pdf)
+                     claim.to_dpdf
+                   else
+                     stamper.run(claim.to_pdf, timestamp: claim.created_at)
+                   end
 
       claims_evidence_uploader(claim).upload_evidence(
         claim.id,
-        file_path:,
+        file_path: @file_path,
         form_id: claim.form_id,
         doctype: claim.document_type
       )
@@ -206,6 +207,18 @@ module DependentsBenefits::Sidekiq
       end
 
       false
+    end
+
+    ##
+    # Track metrics for PDF overflow and PDF overflow by field
+    #
+    # @param claim [SavedClaim]
+    def handle_pdf_overflow_tracking(claim)
+      return unless claim.track_pdf_overflow?
+
+      PdfFill::OverflowTracker.new(claim).track_pdf_overflow(@file_path)
+    rescue
+      nil
     end
   end
 end

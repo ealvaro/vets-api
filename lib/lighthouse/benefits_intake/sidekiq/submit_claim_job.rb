@@ -7,6 +7,7 @@ require 'lighthouse/benefits_intake/metadata'
 require 'lighthouse/benefits_intake/monitor'
 require 'lighthouse/benefits_intake/service'
 require 'pdf_utilities/pdf_stamper'
+require 'pdf_fill/overflow_tracker'
 
 module BenefitsIntake
   # generic job for submitting a claim to Lighthouse Benefits Intake
@@ -102,6 +103,7 @@ module BenefitsIntake
       submit_kafka_event(participant_id)
       send_claim_email
       monitor.track_submission_success(claim, service, user_account_uuid)
+      handle_pdf_overflow_tracking
 
       benefits_intake_uuid
     rescue NoRetryError => e
@@ -326,6 +328,17 @@ module BenefitsIntake
       attachment_paths&.each { |p| Common::FileHelpers.delete_file_if_exists(p) }
     rescue => e
       monitor.track_file_cleanup_error(claim, service, user_account_uuid, e)
+    end
+
+    # Track metrics for PDF overflow and PDF overflow by field
+    def handle_pdf_overflow_tracking
+      return unless @claim.track_pdf_overflow?
+
+      tracker = PdfFill::OverflowTracker.new(@claim)
+      has_overflow = tracker.track_pdf_overflow(@form_path)
+      tracker.track_pdf_overflow_by_field if has_overflow && @claim.track_pdf_overflow_by_field?
+    rescue
+      nil
     end
 
     # end module BenefitsIntake

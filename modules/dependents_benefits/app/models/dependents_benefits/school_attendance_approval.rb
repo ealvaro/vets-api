@@ -22,5 +22,13 @@ module DependentsBenefits
     def document_type
       142
     end
+
+    ##
+    # Check if feature enabled to track pdf overflow for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow?
+      Flipper.enabled?(:saved_claim_pdf_overflow_tracking) || false
+    end
   end
 end

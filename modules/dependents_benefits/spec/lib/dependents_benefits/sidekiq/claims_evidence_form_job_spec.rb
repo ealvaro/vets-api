@@ -269,4 +269,31 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsEvidenceFormJob, type: :job do
       job.send(:claims_evidence_uploader, saved_claim)
     end
   end
+
+  describe '#handle_pdf_overflow_tracking' do
+    let(:tracker) { PdfFill::OverflowTracker.new(saved_claim) }
+    let(:file_path) { 'file_path.pdf' }
+
+    before do
+      allow(PdfFill::OverflowTracker).to receive(:new).and_return(tracker)
+      allow(tracker).to receive(:track_pdf_overflow).with(file_path).and_return(nil)
+      job.instance_variable_set(:@file_path, file_path)
+    end
+
+    context 'when pdf overflow tracking disabled' do
+      it 'does not check for pdf overflow' do
+        allow(saved_claim).to receive(:track_pdf_overflow?).and_return(false)
+        job.send(:handle_pdf_overflow_tracking, saved_claim)
+        expect(PdfFill::OverflowTracker).not_to have_received(:new)
+      end
+    end
+
+    context 'when pdf overflow tracking enabled' do
+      it 'checks for pdf overflow' do
+        allow(saved_claim).to receive(:track_pdf_overflow?).and_return(true)
+        job.send(:handle_pdf_overflow_tracking, saved_claim)
+        expect(tracker).to have_received(:track_pdf_overflow).with(file_path)
+      end
+    end
+  end
 end

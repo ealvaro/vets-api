@@ -114,6 +114,7 @@ module DependentsBenefits::Sidekiq
     # Submit a single claim to the service
     # @param claim [SavedClaim] The claim to submit
     # @return [DependentsBenefits::ServiceResponse] Response indicating success or failure
+    # rubocop:disable Metrics/MethodLength
     def submit_claim_to_service(claim)
       submission = find_or_create_form_submission(claim)
       return DependentsBenefits::ServiceResponse.new(status: true) if submission_previously_succeeded?(submission)
@@ -130,6 +131,7 @@ module DependentsBenefits::Sidekiq
         submit_674_form(claim)
       end
       mark_submission_attempt_succeeded(submission_attempt)
+      handle_pdf_overflow_tracking(claim)
       DependentsBenefits::ServiceResponse.new(status: true)
     rescue => e
       monitor.track_error_event("Submission attempt failure in #{self.class}",
@@ -139,5 +141,14 @@ module DependentsBenefits::Sidekiq
       mark_in_progress_form_pending
       DependentsBenefits::ServiceResponse.new(status: false, error: e.message)
     end
+    # rubocop:enable Metrics/MethodLength
+
+    ##
+    # Track metrics for PDF overflow and PDF overflow by field
+    #
+    # @see ClaimsEvidenceFormJob#handle_pdf_overflow_tracking
+    #
+    # @param claim [SavedClaim]
+    def handle_pdf_overflow_tracking(_claim); end
   end
 end

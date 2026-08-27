@@ -10,7 +10,6 @@ RSpec.describe DependentsBenefits::ClaimProcessor, type: :model do
     allow(mock_monitor).to receive(:track_info_event)
     allow(mock_monitor).to receive(:track_error_event)
 
-    allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(processor).to receive(:collect_child_claims).and_return([form_686_claim, form_674_claim])
   end
 

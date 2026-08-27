@@ -2,7 +2,6 @@
 
 require 'income_and_assets/benefits_intake/submit_claim_job'
 require 'pdf_fill/filler'
-require 'pdf_fill/concerns/field_overflow_monitoring'
 
 module IncomeAndAssets
   ##
@@ -10,8 +9,6 @@ module IncomeAndAssets
   # @see app/model/saved_claim
   #
   class SavedClaim < ::SavedClaim
-    include ::PdfFill::Concerns::FieldOverflowMonitoring
-
     # Income and Assets Form ID
     FORM = IncomeAndAssets::FORM_ID
 
@@ -134,6 +131,22 @@ module IncomeAndAssets
       JSONSchemer.schema(form_schema, insert_property_defaults: true, before_property_validation:).validate(data)
 
       self.form = data.to_json
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow?
+      Flipper.enabled?(:saved_claim_pdf_overflow_tracking) || false
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow by field for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow_by_field?
+      Flipper.enabled?(:track_pdf_overflow_by_field) || false
     end
   end
 end

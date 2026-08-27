@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'pdf_fill/concerns/field_overflow_monitoring'
-
 module Pensions
   ##
   # Pension 21P-527EZ Active::Record
@@ -10,8 +8,6 @@ module Pensions
   # todo: migrate encryption to Pensions::SavedClaim, remove inheritance and encrytion shim
   #
   class SavedClaim < ::SavedClaim
-    include ::PdfFill::Concerns::FieldOverflowMonitoring
-
     # We want to use the `Type` behavior but we want to override it with our custom type default scope behaviors.
     self.inheritance_column = :_type_disabled
 
@@ -131,6 +127,22 @@ module Pensions
     #
     def to_pdf(file_name = nil, fill_options = {})
       ::PdfFill::Filler.fill_form(self, file_name, fill_options)
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow?
+      Flipper.enabled?(:saved_claim_pdf_overflow_tracking) || false
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow by field for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow_by_field?
+      Flipper.enabled?(:track_pdf_overflow_by_field) || false
     end
   end
 end

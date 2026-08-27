@@ -54,13 +54,6 @@ class SavedClaim::DependencyClaim < CentralMailClaim
     self.form_id = '686C-674-V2'
   end
 
-  def pdf_overflow_tracking
-    track_each_pdf_overflow('686C-674-V2') if submittable_686?
-    track_each_pdf_overflow('21-674-V2') if submittable_674?
-  rescue => e
-    monitor.track_pdf_overflow_tracking_failure(e)
-  end
-
   def track_each_pdf_overflow(subform_id)
     filenames = []
     if subform_id == '21-674-V2'

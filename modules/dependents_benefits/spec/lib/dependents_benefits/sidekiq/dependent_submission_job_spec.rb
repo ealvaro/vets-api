@@ -20,7 +20,6 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
 
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('/tmp/dummy.pdf')
-    allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
     allow(job).to receive(:monitor).and_return(monitor)
     allow(monitor).to receive(:track_info_event)
@@ -120,6 +119,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
         mark_submission_failed: nil,
         parent_claim_id: parent_claim.id
       )
+      allow(job).to receive(:handle_pdf_overflow_tracking).and_return(nil)
     end
 
     context 'when submission previously succeeded' do
@@ -131,6 +131,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
         expect(job).not_to receive(:create_form_submission_attempt)
         expect(job).not_to receive(:submit_686c_form)
         expect(job).not_to receive(:submit_674_form)
+        expect(job).not_to receive(:handle_pdf_overflow_tracking)
 
         result = job.send(:submit_claim_to_service, claim)
 
@@ -158,6 +159,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
           it 'processes the 686c form successfully' do
             expect(job).to receive(:submit_686c_form).with(claim)
             expect(job).to receive(:mark_submission_attempt_succeeded).with(submission_attempt)
+            expect(job).to receive(:handle_pdf_overflow_tracking).with(claim)
 
             result = job.send(:submit_claim_to_service, claim)
 
@@ -183,6 +185,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
 
           it 'returns failed response with validation error' do
             expect(job).not_to receive(:submit_686c_form)
+            expect(job).not_to receive(:handle_pdf_overflow_tracking)
             expect(job).to receive(:mark_in_progress_form_pending)
             result = job.send(:submit_claim_to_service, claim)
 
@@ -211,6 +214,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
           it 'processes the 674 form successfully' do
             expect(job).to receive(:submit_674_form).with(claim)
             expect(job).to receive(:mark_submission_attempt_succeeded).with(submission_attempt)
+            expect(job).to receive(:handle_pdf_overflow_tracking).with(claim)
 
             result = job.send(:submit_claim_to_service, claim)
 
@@ -236,6 +240,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
 
           it 'returns failed response with validation error' do
             expect(job).not_to receive(:submit_674_form)
+            expect(job).not_to receive(:handle_pdf_overflow_tracking)
             expect(job).to receive(:mark_submission_attempt_failed)
             expect(job).to receive(:mark_in_progress_form_pending)
             result = job.send(:submit_claim_to_service, claim)
@@ -256,6 +261,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
           expect(job).not_to receive(:submit_686c_form)
           expect(job).not_to receive(:submit_674_form)
           expect(job).to receive(:mark_submission_attempt_succeeded).with(submission_attempt)
+          expect(job).to receive(:handle_pdf_overflow_tracking).with(claim)
 
           result = job.send(:submit_claim_to_service, claim)
 
@@ -277,6 +283,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
           expect(monitor).to receive(:track_error_event)
           expect(job).to receive(:mark_submission_attempt_failed)
           expect(job).to receive(:mark_in_progress_form_pending)
+          expect(job).not_to receive(:handle_pdf_overflow_tracking)
           result = job.send(:submit_claim_to_service, claim)
 
           expect(result.status).to be false
@@ -297,6 +304,7 @@ RSpec.describe DependentsBenefits::Sidekiq::DependentSubmissionJob, type: :job d
           expect(job).to receive(:mark_submission_attempt_failed).with(nil, error)
           expect(job).to receive(:mark_in_progress_form_pending)
           expect(monitor).to receive(:track_error_event)
+          expect(job).not_to receive(:handle_pdf_overflow_tracking)
 
           result = job.send(:submit_claim_to_service, claim)
 

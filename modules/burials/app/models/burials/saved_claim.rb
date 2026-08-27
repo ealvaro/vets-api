@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'burials/processing_office'
-require 'pdf_fill/concerns/field_overflow_monitoring'
 
 module Burials
   ##
@@ -10,8 +9,6 @@ module Burials
   #
   # todo: migrate encryption to Burials::SavedClaim, remove inheritance and encryption shim
   class SavedClaim < ::SavedClaim
-    include ::PdfFill::Concerns::FieldOverflowMonitoring
-
     # We want to use the `Type` behavior but we want to override it with our custom type default scope behaviors.
     self.inheritance_column = :_type_disabled
 
@@ -174,6 +171,22 @@ module Burials
     # @return [Class]
     def send_email(email_type)
       Burials::NotificationEmail.new(id).deliver(email_type)
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow?
+      Flipper.enabled?(:saved_claim_pdf_overflow_tracking) || false
+    end
+
+    ##
+    # Check if feature enabled to track pdf overflow by field for claim submissions
+    #
+    # @return [Boolean]
+    def track_pdf_overflow_by_field?
+      Flipper.enabled?(:track_pdf_overflow_by_field) || false
     end
   end
 end

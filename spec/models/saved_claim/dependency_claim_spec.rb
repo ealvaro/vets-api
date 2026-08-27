@@ -199,30 +199,11 @@ RSpec.describe SavedClaim::DependencyClaim do
     subject { described_class.new(form: all_flows_payload_v2.to_json) }
 
     before do
-      allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:dependents_bypass_schema_validation).and_return(false)
     end
 
     it 'has a form id of 686C-674-V2' do
       expect(subject.form_id).to eq('686C-674-V2')
-    end
-
-    context 'after create' do
-      it 'tracks pdf overflow' do
-        allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true)
-        allow(StatsD).to receive(:increment)
-        subject.save!
-
-        tags = ['form_id:686C-674-V2']
-        expect(StatsD).to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
-        expect(StatsD).to have_received(:increment).with('saved_claim.create', tags: tags + ['doctype:148'])
-      end
-
-      it 'calls PdfFill::Filler.fill_form during PDF overflow tracking' do
-        allow(StatsD).to receive(:increment)
-        expect(PdfFill::Filler).to receive(:fill_form).at_least(:once)
-        subject.save!
-      end
     end
 
     context 'with bad schema data' do
@@ -242,30 +223,11 @@ RSpec.describe SavedClaim::DependencyClaim do
     subject { described_class.new(form: all_flows_payload_v2.to_json) }
 
     before do
-      allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true)
       allow(Flipper).to receive(:enabled?).with(:dependents_bypass_schema_validation).and_return(true)
     end
 
     it 'has a form id of 686C-674-V2' do
       expect(subject.form_id).to eq('686C-674-V2')
-    end
-
-    context 'after create' do
-      it 'tracks pdf overflow' do
-        allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(true)
-        allow(StatsD).to receive(:increment)
-        subject.save!
-
-        tags = ['form_id:686C-674-V2']
-        expect(StatsD).to have_received(:increment).with('saved_claim.pdf.overflow', tags:)
-        expect(StatsD).to have_received(:increment).with('saved_claim.create', tags: tags + ['doctype:148'])
-      end
-
-      it 'ensures PDF tracking works with schema validation disabled' do
-        allow(StatsD).to receive(:increment)
-        expect(PdfFill::Filler).to receive(:fill_form).at_least(:once)
-        subject.save!
-      end
     end
 
     context 'with bad schema data' do
@@ -382,25 +344,6 @@ RSpec.describe SavedClaim::DependencyClaim do
         expect(Dependents::Form686c674FailureEmailJob).not_to receive(:perform_async)
 
         subject.send_failure_email('')
-      end
-    end
-
-    context 'when overflow tracking fails' do
-      let(:standard_error) { StandardError.new('test error') }
-      let(:claim_data) { build(:dependency_claim).attributes }
-
-      before do
-        allow(Flipper).to receive(:enabled?)
-          .with(:saved_claim_pdf_overflow_tracking).and_return(true)
-
-        allow(PdfFill::Filler).to receive(:fill_form).and_return('fake_path.pdf')
-        allow(Common::FileHelpers).to receive(:delete_file_if_exists).and_raise(standard_error)
-      end
-
-      it 'has the monitor track the failure' do
-        claim = SavedClaim::DependencyClaim.new(claim_data)
-        expect(claim.monitor).to receive(:track_pdf_overflow_tracking_failure).with(standard_error)
-        claim.save!
       end
     end
 
