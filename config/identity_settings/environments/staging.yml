@@ -62,6 +62,9 @@ session_cookie:
 sign_in:
   arp_client_id: ce6db4d7974daf061dccdd21ba9add14
   okta_client_id: okta_stg
+  sso_restricted_clients:
+    - okta_stg
+    - occ_staging
   cookies_secure: true
   oidc_issuer: https://staging-api.va.gov/sign_in
   info_cookie_domain: va.gov

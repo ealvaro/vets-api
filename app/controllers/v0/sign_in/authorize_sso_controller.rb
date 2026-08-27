@@ -125,8 +125,8 @@ module V0
         redirect_to_usip
       end
 
-      def okta_client?
-        client_id == IdentitySettings.sign_in.okta_client_id
+      def sso_restricted_client?
+        IdentitySettings.sign_in.sso_restricted_clients.include?(client_id)
       end
 
       def redirect_to_usip
@@ -206,7 +206,7 @@ module V0
       end
 
       def stash_authorize_sso_request?
-        !okta_client? || Flipper.enabled?(:identity_auth_sso_enabled)
+        !sso_restricted_client? || Flipper.enabled?(:identity_auth_sso_enabled)
       end
     end
   end

@@ -200,9 +200,9 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
         end
 
-        context 'and the client is an okta client' do
+        context 'and the client is in the sso_restricted_clients list' do
           before do
-            allow(IdentitySettings.sign_in).to receive(:okta_client_id).and_return(client_id)
+            allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([client_id])
           end
 
           let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
@@ -213,13 +213,32 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
           end
         end
 
-        context 'and the client is not an okta client' do
+        context 'and the client is not in the sso_restricted_clients list' do
+          before do
+            allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([])
+          end
+
           let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
 
           it 'redirects to USIP and still stashes a container' do
             expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
             expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to have_attributes(client_id:)
           end
+        end
+      end
+
+      context 'when redirecting to USIP and the client is in sso_restricted_clients but the flag is enabled' do
+        before do
+          request.cookies.clear
+          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
+          allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([client_id])
+        end
+
+        let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
+
+        it 'redirects to USIP and stashes a container' do
+          expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
+          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to have_attributes(client_id:)
         end
       end
 

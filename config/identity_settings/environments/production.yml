@@ -73,6 +73,8 @@ session_cookie:
 sign_in:
   arp_client_id: fe0d4b2cac7935e7eec5946b8ee31643
   okta_client_id: 861fbfbf1b4cd2594e0f7a4a367a9a87
+  sso_restricted_clients:
+    - 861fbfbf1b4cd2594e0f7a4a367a9a87
   cookies_secure: true
   info_cookie_domain: va.gov
   oidc_issuer: https://api.va.gov/sign_in
