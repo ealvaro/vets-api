@@ -51,7 +51,7 @@ RSpec.describe 'vre:claims_batch_log', type: :task do
   describe 'with no claims found' do
     it 'exits early when no claims match criteria' do
       expect(VREVBMSDocumentUploadLogJob).not_to receive(:perform_async)
-      expect { task.invoke }.to output(/No claims found. Exiting./).to_stdout
+      expect { task.invoke }.to raise_error(SystemExit).and output(/No claims found. Exiting./).to_stdout
     end
   end
 

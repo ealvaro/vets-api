@@ -125,6 +125,21 @@ RSpec.configure do |config|
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   # config.fixture_paths = Array(Rails.root / 'spec/fixtures')
 
+  # Guard against real Kernel#exit/abort calls (e.g. from rake task/CLI code under
+  # test) escaping an example. `expect { ... }.to raise_error(SystemExit)` already
+  # rescues SystemExit inside the block, so intentional exits are unaffected. An
+  # UNEXPECTED SystemExit reaching here means some example let a real exit call
+  # slip through; without this it silently kills the whole rspec process (with a
+  # clean 0 failures summary) and every remaining example in that run's random
+  # order never executes. Fail loudly instead.
+  config.around do |example|
+    example.run
+  rescue SystemExit => e
+    raise "Unexpected Kernel#exit(#{e.status}) escaped this example instead of " \
+          'being caught by `expect { ... }.to raise_error(SystemExit)`. This would ' \
+          'otherwise silently kill the whole rspec process.'
+  end
+
   config.include(ValidationHelpers, type: :model)
   %i[controller model].each do |type|
     config.include(ModelHelpers, type:)

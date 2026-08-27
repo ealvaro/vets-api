@@ -2179,7 +2179,9 @@ spec/rswag_override.rb @software/va-platform-backend
 spec/rswag/v0/form214192_spec.rb @software/benefits-optimization-aquia
 spec/rswag/v0/form21p530a_spec.rb @software/benefits-optimization-aquia
 spec/rswag/v0/shared_schemas @software/va-platform-backend
+spec/scripts/check_shard_completeness_spec.rb @software/va-platform-backend
 spec/scripts/coverage_collate_spec.rb @software/va-platform-backend
+spec/scripts/generate_shard_manifest_spec.rb @software/va-platform-backend
 spec/scripts/junit_to_runtime_log_spec.rb @software/va-platform-backend
 spec/scripts/vcr_inspector @software/va-platform-backend
 spec/scripts/vcr_mcp @software/va-platform-backend

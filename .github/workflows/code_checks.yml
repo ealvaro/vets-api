@@ -2,13 +2,18 @@
 #   compare_sha        — diagnostic: logs commit SHAs for debugging checkout mismatches
 #   linting_and_security — Rubocop, Brakeman, Reek, bundle-audit; adds/removes lint-failure label on PRs
 #   build              — builds the Docker image and saves it to the Actions cache keyed by github.sha
-#   tests              — 24-way matrix; each group restores the Docker image and runs its assigned specs
+#   shard_manifest     — restores the runtime log once and calls tests_in_groups exactly once, producing
+#                        all 24 group manifests plus a union manifest as a single workflow artifact
+#   tests              — 24-way matrix; each group restores the Docker image and downloads its manifest
+#                        from the shard_manifest job's artifact (no per-group partitioning)
 #   publish_results    — collects JUnit XML, reports results, checks coverage, conditionally posts Slack alerts
 #
 # Caching strategy:
 #   Docker image       — cached by github.sha; kept on PR failure for fast rebuild, deleted on success or master push
-#   Shard manifest     — generated once per run_id+group by generate_shard_manifest.rb so reruns always
-#                        execute the same file set; deleted after publish_results
+#   Shard manifests    — NOT cached. Produced once per run by the shard_manifest job and shared with all 24
+#                        test groups via a workflow artifact, so a single cache restore can't race with itself
+#                        and split the spec set across two different partitions. Artifacts persist across
+#                        rerun attempts, so rerunning a single failed group still executes the same file set.
 #   Runtime log        — saved only on full test success to avoid poisoning future shard balancing with
 #                        partial data; restored with branch-then-master fallback for new PRs
 name: Code Checks
@@ -375,11 +380,100 @@ jobs:
           path: /tmp/vets-api.tar.zst
           key: docker-image-${{ github.sha }}
 
+  shard_manifest:
+    name: Generate Shard Manifests
+    runs-on: ubuntu-latest
+    # No `needs:` -- runs in parallel with `build`. This only requires host Ruby + the
+    # checked-out spec tree, so it never extends the time before test groups can start.
+    permissions:
+      actions: write
+      contents: read
+      id-token: write
+    env:
+      # Must match the number of entries in the `tests` job's `matrix.test_group` list.
+      TOTAL_TEST_GROUPS: 24
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-gov-west-1
+
+      - uses: software/action-inject-ssm-secrets@47689845c2a46848eb5455078d9261c8dfe5e521 # latest
+        with:
+          ssm_parameter: /dsva-vagov/vets-api/prod/env_vars/BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+          env_variable_name: BUNDLE_ENTERPRISE__CONTRIBSYS__COM
+
+      - name: Generate cross-repo token for gems
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GEM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Generate bgs-ext token
+        id: bgs-ext-app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GEM_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GEM_APP_PRIVATE_KEY }}
+          owner: software
+          repositories: bgs-ext
+          github-api-url: https://va.ghe.com/api/v3
+
+      - name: Add temporary bgs-ext git URL rewrite
+        run: |
+          git config --global url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf https://va.ghe.com/software/bgs-ext.git
+
+      - uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+        env:
+          BUNDLE_VA__GHE__COM: x-access-token:${{ steps.app-token.outputs.token }}
+        with:
+          bundler-cache: true
+
+      - name: Remove temporary bgs-ext git URL rewrite
+        if: always()
+        run: |
+          git config --global --unset-all url."https://x-access-token:${{ steps.bgs-ext-app-token.outputs.token }}@va.ghe.com/software/bgs-ext.git".insteadOf || true
+
+      # Same restore-key chain as the old per-group restore. This is now the *only* place
+      # the runtime log is restored, so all 24 groups are guaranteed to partition from it.
+      - name: Restore runtime log from cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/parallel_runtime_rspec.log
+          key: parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}
+          restore-keys: |
+            parallel-runtime-log-${{ github.ref }}-
+            parallel-runtime-log-refs/heads/master-
+            parallel-runtime-log-
+
+      - name: Generate all shard manifests
+        run: |
+          mkdir -p tmp/shard-manifests
+          bundle exec ruby script/generate_shard_manifest.rb \
+            all "$TOTAL_TEST_GROUPS" tmp/shard-manifests tmp/parallel_runtime_rspec.log
+
+      - name: Upload shard manifests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: shard-manifests
+          path: tmp/shard-manifests
+          if-no-files-found: error
+          overwrite: true
+
   tests:
     name: Test (Group ${{ matrix.test_group }})
     runs-on: ubuntu-16-cores-latest
     permissions: write-all
-    needs: build
+    needs: [build, shard_manifest]
     strategy:
       fail-fast: false
       matrix:
@@ -474,68 +568,15 @@ jobs:
       - name: Load Docker image
         run: zstd -d /tmp/vets-api.tar.zst --stdout | docker load
 
-      # Shard balancing: generate_shard_manifest.rb uses the ParallelTests Ruby
-      # API to assign spec files to each group. When a runtime log is present it
-      # uses runtime-based balancing; otherwise it falls back to filesize.
-      # The manifest is cached by run_id+group so that reruns of a single group
-      # always execute the exact same file set.
-      #
-      # Runtime log cache key priority:
-      #   1. This branch's most recent successful run
-      #   2. master branch (so new PRs get balanced shards immediately)
-      #   3. Any previous run (catch-all fallback)
-      - name: Restore runtime log from cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Manifests are generated exactly once per run by the shard_manifest job and shared
+      # here via workflow artifact, so a single cache restore can't race with itself and
+      # split the spec set across two partitions (see shard_manifest job for details).
+      # Artifacts persist across rerun attempts, preserving rerun-file-set stability.
+      - name: Download shard manifests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          path: tmp/parallel_runtime_rspec.log
-          key: parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}
-          restore-keys: |
-            parallel-runtime-log-${{ github.ref }}-
-            parallel-runtime-log-refs/heads/master-
-            parallel-runtime-log-
-
-      - name: Restore shard manifest from cache
-        id: shard_manifest_restore
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
-          key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
-
-      - name: Generate shard manifest for group
-        if: steps.shard_manifest_restore.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p tmp
-          manifest_path="tmp/shard-manifest-group-${{ matrix.test_group }}.txt"
-
-          # Use the ParallelTests Ruby API directly (no CLI output parsing).
-          # Passes the runtime log when present so grouping mirrors what a normal
-          # first-attempt run would do, then freezes those file assignments.
-          ${{ env.COMPOSE_BASH_CMD }} \
-            "bundle exec ruby script/generate_shard_manifest.rb \
-              ${{ matrix.test_group }} ${{ strategy.job-total }} $manifest_path \
-              tmp/parallel_runtime_rspec.log"
-
-          if [ ! -s "$manifest_path" ]; then
-            echo "Failed to build shard manifest for group ${{ matrix.test_group }}"
-            exit 1
-          fi
-
-          echo "Built shard manifest with $(wc -l < "$manifest_path") files"
-
-      - name: Save shard manifest to cache
-        if: steps.shard_manifest_restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
-          key: shard-manifest-${{ github.run_id }}-group-${{ matrix.test_group }}
-
-      - name: Upload Shard Manifest
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: Shard Manifest Group ${{ matrix.test_group }}
-          path: tmp/shard-manifest-group-${{ matrix.test_group }}.txt
-          if-no-files-found: warn
+          name: shard-manifests
+          path: tmp
 
       - name: Setup Database
         uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
@@ -566,10 +607,16 @@ jobs:
 
           # Run rspec directly with the frozen file list from the manifest.
           # Using xargs keeps the command length bounded for large shards.
+          # --options .rspec_parallel gives each group a unique output filename
+          # (log/rspec<TEST_ENV_NUMBER>.xml) instead of the default .rspec's fixed
+          # log/rspec.xml, which multiple concurrent groups could otherwise collide on.
           ${{ env.COMPOSE_BASH_CMD }} \
-            "TEST_ENV_NUMBER=${{ matrix.test_group }} TMPDIR=tmp/systmp \
-             xargs -a $manifest_path bundle exec rspec --profile 20"
+            "export TEST_ENV_NUMBER=${{ matrix.test_group }} TMPDIR=tmp/systmp && \
+             xargs -a $manifest_path bundle exec rspec --options .rspec_parallel --profile 20"
 
+      # Must run before the dry-run step below: the dry-run also boots SimpleCov under
+      # the same TEST_ENV_NUMBER/command_name and would otherwise clobber this group's
+      # real coverage/.resultset.json before it's safely moved out of the way.
       - name: Prepare SimpleCov shard payload
         if: always()
         run: |
@@ -577,6 +624,35 @@ jobs:
           if [ -f coverage/.resultset.json ]; then
             mv coverage/.resultset.json simplecov-resultset-${{ matrix.test_group }}/.resultset.json
           fi
+
+      - name: Dry-run file coverage report
+        if: always()
+        run: |
+          manifest_path="tmp/shard-manifest-group-${{ matrix.test_group }}.txt"
+
+          if [ ! -s "$manifest_path" ]; then
+            exit 0
+          fi
+
+          # Cheap (no execution) pass over this group's own manifest, applying the
+          # exact same RSpec filtering as the real run (e.g. `exclude {skip: true}`).
+          # Uses the same RspecJunitFormatter as the real run (not the JSON formatter)
+          # so shared-example file attribution matches exactly -- the two formatters
+          # disagree on which file `it_behaves_like` examples belong to (JSON credits
+          # the shared_examples-defining file, JUnit credits the calling file), so
+          # mixing them produces false positives/negatives in the completeness check.
+          ${{ env.COMPOSE_BASH_CMD }} \
+            "export TEST_ENV_NUMBER=${{ matrix.test_group }} TMPDIR=tmp/systmp && \
+             xargs -a $manifest_path bundle exec rspec --dry-run --options .rspec_parallel \
+               --format RspecJunitFormatter --out tmp/dryrun-${{ matrix.test_group }}.xml" || true
+
+      - name: Upload dry-run file coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: Dry Run Group ${{ matrix.test_group }}
+          path: tmp/dryrun-${{ matrix.test_group }}.xml
+          if-no-files-found: ignore
 
       - name: Upload SimpleCov raw resultset
         if: always()
@@ -691,12 +767,11 @@ jobs:
           # Delete Docker image
           api -X DELETE "repos/${{ github.repository }}/actions/caches?key=docker-image-${{ github.sha }}"
 
-          # Bulk delete: buildkit, index-buildkit for all refs, shard manifests for current ref only
+          # Bulk delete: buildkit, index-buildkit for all refs
           gh api --paginate "repos/${{ github.repository }}/actions/caches" \
             --hostname va.ghe.com \
             --jq '.actions_caches[] | select(
               ((.key | startswith("buildkit-") or startswith("index-buildkit-"))) or
-              ((.key | startswith("shard-manifest-")) and .ref == "${{ github.ref }}") or
               ((.key | startswith("setup-ruby-bundler-cache-")) and .ref != "refs/heads/master")
             ) | .id' \
           | while read -r id; do
@@ -774,6 +849,17 @@ jobs:
         with:
           path: tmp/parallel_runtime_rspec.log
           key: parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}
+
+      # Warn-only: compares the shard_manifest job's union manifest against specs that
+      # actually appear in the collected JUnit XML. Never fails the job -- this exists so
+      # an "assigned but never executed" gap surfaces as an explicit message instead of a
+      # mysterious coverage drop. The "shard-manifests" artifact was already fetched by the
+      # unfiltered download-artifact step above, into ./shard-manifests/.
+      - name: Check shard completeness
+        if: needs.tests.result == 'success'
+        run: |
+          ruby script/check_shard_completeness.rb \
+            shard-manifests/shard-manifest-union.txt "Test Results Group*/*.xml" "Dry Run Group*/*.xml"
 
       - name: Download coverage artifacts
         if: needs.tests.result == 'success'

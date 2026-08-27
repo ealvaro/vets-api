@@ -11,9 +11,14 @@ This document describes how GitHub Actions caches are used, written, and cleaned
 | `buildkit-blob-1-sha256:*` | Docker image layer blobs written by BuildKit | 0–427 MB each |
 | `index-buildkit-1-*` | BuildKit layer index metadata | ~0 MB |
 | `docker-image-${{ github.sha }}` | Full compressed Docker image tar (~900 MB) shared across 24 test shards | ~900 MB |
-| `shard-manifest-${{ github.run_id }}-group-N` | List of spec files for each of the 24 test shards | ~0 MB |
 | `parallel-runtime-log-${{ github.ref }}-${{ github.run_id }}` | Per-file rspec runtimes used for shard balancing on next run | ~35 KB |
 | `setup-ruby-bundler-cache-*` | Bundled gems for the linting job | ~181 MB |
+
+> **Note:** Shard manifests (`shard-manifest-group-N.txt` + a union manifest) are generated once per
+> run by the `shard_manifest` job and shared with all 24 test groups as a **workflow artifact**, not a
+> cache. A single artifact can't race with itself the way 24 independent cache restores could, so all
+> groups are guaranteed to partition from the same runtime log. Workflow artifacts persist across rerun
+> attempts, so rerunning one failed group still executes the exact same file set.
 
 ## How BuildKit layer caching works
 
@@ -42,12 +47,10 @@ When a build runs, BuildKit checks which layers have changed and reuses cached b
 
 **Tests job (×24):**
 - Restores `docker-image-${{ github.sha }}` ✅
-- Restores runtime log: miss on this ref → falls back to master ✅
-- Restores shard manifest: miss (new run_id) → generates and saves fresh
+- Downloads the `shard-manifests` artifact produced by the `shard_manifest` job
 
 **Publish results:**
 - Docker image tar: deleted
-- Shard manifests: deleted (bulk delete scoped to current ref)
 - Buildkit blobs: deleted for all refs
 - Runtime logs: all PR runtime logs deleted, not saved (tests failed)
 
@@ -77,12 +80,10 @@ Same as fail except:
 
 **Tests job (×24):**
 - Restores `docker-image-${{ github.sha }}` ✅
-- Restores runtime log: hits this PR ref from previous successful run (if any) ✅
-- Restores shard manifest: miss (new run_id) → generates and saves fresh
+- Downloads the `shard-manifests` artifact produced by the `shard_manifest` job
 
 **Publish results:**
 - Docker image tar: deleted
-- Shard manifests: deleted (bulk delete scoped to current ref)
 - Buildkit blobs: deleted for all refs
 - Runtime logs: all PR runtime logs deleted, not saved
 
@@ -112,12 +113,10 @@ Same as fail except:
 
 **Tests job (×24):**
 - Restores `docker-image-${{ github.sha }}` ✅
-- Restores runtime log: hits latest master runtime log ✅
-- Restores shard manifest: miss → generates and saves fresh
+- Downloads the `shard-manifests` artifact produced by the `shard_manifest` job
 
 **Publish results:**
 - Docker image tar: deleted
-- Shard manifests: deleted
 - Buildkit blobs: deleted for all refs
 - Runtime logs: old master runtime logs deleted, not saved (tests failed), latest kept
 
@@ -138,14 +137,17 @@ Same as fail except:
 
 ## Summary
 
-| Scenario | Docker image tar | Buildkit blobs | Shard manifests | Runtime log |
-|---|---|---|---|---|
-| New PR fail | Deleted | Written then deleted | Deleted | Not saved, all PR logs deleted |
-| New PR success | Deleted | Written then deleted | Deleted | Saved, deleted on next PR run |
-| Existing PR fail | Deleted | Written then deleted | Deleted | Not saved, all PR logs deleted |
-| Existing PR success | Deleted | Written then deleted | Deleted | Saved, deleted on next PR run |
-| Master fail | Deleted | Written then deleted | Deleted | Not saved, old logs pruned |
-| Master success | Deleted | Written then deleted | Deleted | Saved, old logs pruned, latest kept |
+| Scenario | Docker image tar | Buildkit blobs | Runtime log |
+|---|---|---|---|
+| New PR fail | Deleted | Written then deleted | Not saved, all PR logs deleted |
+| New PR success | Deleted | Written then deleted | Saved, deleted on next PR run |
+| Existing PR fail | Deleted | Written then deleted | Not saved, all PR logs deleted |
+| Existing PR success | Deleted | Written then deleted | Saved, deleted on next PR run |
+| Master fail | Deleted | Written then deleted | Not saved, old logs pruned |
+| Master success | Deleted | Written then deleted | Saved, old logs pruned, latest kept |
+
+Shard manifests aren't in this table: they're a workflow artifact produced once by the `shard_manifest`
+job, not a cache, so there's nothing to restore, save, or clean up here.
 
 ## PR close
 
@@ -153,7 +155,7 @@ When a PR is closed (merged or abandoned), the `Cleanup PR Caches` workflow (`.g
 
 ## Rerunning a failed test shard
 
-If a single test shard fails, a dev can rerun just that shard. Since the docker image tar is always deleted after `publish_results`, a rerun will trigger a full rebuild. The shard manifest will regenerate automatically on cache miss.
+If a single test shard fails, a dev can rerun just that shard. Since the docker image tar is always deleted after `publish_results`, a rerun will trigger a full rebuild. The shard's manifest comes from the `shard-manifests` artifact produced by the original run's `shard_manifest` job — workflow artifacts persist across rerun attempts, so the rerun executes the exact same file set it did originally.
 
 ---
 
