@@ -29,6 +29,9 @@ Cop/NoAttrPackageCreationInJob:
     - "modules/va_notify/app/sidekiq/va_notify/v2/queue_email_job.rb"
     - "modules/va_notify/app/sidekiq/va_notify/v2/queue_user_account_job.rb"
 
+Cop/NoTimeoutInSidekiqJob:
+  Enabled: true
+
 Project/ForbidFlipperToggleInSpecs:
   Enabled: true
 
