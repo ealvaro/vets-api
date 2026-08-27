@@ -82,7 +82,9 @@ module AccreditedRepresentativePortal
       end
 
       def handle_resource_not_found(error)
-        raise Error.new(error.try(:detail) || error.message, :not_found)
+        error_message = error.try(:detail) || error.message
+        Rails.logger.error("[AR::POA] resource_not_found message=#{error_message}")
+        raise Error.new(error_message, :not_found)
       end
 
       def handle_record_invalid(error)
@@ -119,7 +121,34 @@ module AccreditedRepresentativePortal
       end
 
       def service
-        @service ||= BenefitsClaims::Service.new(poa_request.claimant.icn)
+        @service ||= BenefitsClaims::Service.new(veteran_icn)
+      end
+
+      def dependent_claimant?
+        poa_request.claimant_type == PowerOfAttorneyRequest::ClaimantTypes::DEPENDENT
+      end
+
+      def veteran_icn
+        if Flipper.enabled?(:form2122_non_veteran_digital_submit) && dependent_claimant?
+          veteran_data = {
+            first_name: form_data.dig('veteran', 'name', 'first'),
+            last_name: form_data.dig('veteran', 'name', 'last'),
+            ssn: form_data.dig('veteran', 'ssn'),
+            birth_date: form_data.dig('veteran', 'dateOfBirth')
+          }
+          @veteran_icn ||= ClaimantLookupService.get_icn(
+            veteran_data[:first_name],
+            veteran_data[:last_name],
+            veteran_data[:ssn],
+            veteran_data[:birth_date]
+          )
+        else
+          @veteran_icn ||= claimant_icn
+        end
+      end
+
+      def claimant_icn
+        poa_request.claimant.icn
       end
 
       def create_form_submission!(response_body)
@@ -186,13 +215,15 @@ module AccreditedRepresentativePortal
       def form_payload
         {}.tap do |a|
           a[:veteran] = veteran_data
-          if Flipper.enabled?(:form2122_non_veteran_digital_submit) && form_data['dependent'].present?
-            a[:claimant] = claimant_data
-          end
+          a[:claimant] = claimant_data if Flipper.enabled?(:form2122_non_veteran_digital_submit) && dependent_claimant?
           a[:serviceOrganization] = organization_data
           a[:recordConsent] = form_data.dig('authorizations', 'recordDisclosureLimitations').blank?
-          a[:consentLimits] = form_data.dig('authorizations', 'recordDisclosureLimitations')
-          a[:consentAddressChange] = form_data.dig('authorizations', 'addressChange')
+          a[:consentLimits] = form_data.dig('authorizations', 'recordDisclosureLimitations') || []
+          a[:consentAddressChange] = form_data.dig('authorizations', 'addressChange') == true
+
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit)
+            Common::HashHelpers.deep_remove_blanks(a) # removes nil and blank values (but not false)
+          end
         end
       end
 
@@ -209,21 +240,29 @@ module AccreditedRepresentativePortal
       end
 
       def veteran_data
-        service_number = form_data.dig('veteran', 'serviceNumber')
-        insurance_number = form_data.dig('veteran', 'insuranceNumber')
+        return nil if Flipper.enabled?(:form2122_non_veteran_digital_submit) && form_data['veteran'].blank?
+
         {}.tap do |v|
           v[:address] = address_data(form_data.dig('veteran', 'address'))
           v[:phone] = phone_data(form_data.dig('veteran', 'phone'))
           v[:email] = form_data.dig('veteran', 'email')
-          v[:serviceNumber] = service_number if service_number.present?
-          v[:insuranceNumber] = insurance_number if insurance_number.present?
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit) ||
+             form_data.dig('veteran', 'serviceNumber').present?
+            v[:serviceNumber] = form_data.dig('veteran', 'serviceNumber')
+          end
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit) ||
+             form_data.dig('veteran', 'insuranceNumber').present?
+            v[:insuranceNumber] = form_data.dig('veteran', 'insuranceNumber')
+          end
         end
       end
 
       def claimant_data
+        return nil if form_data['dependent'].blank?
+
         {
-          claimantId: poa_request.claimant.icn,
-          address: address_data(form_data.dig('dependent', 'address') || {}),
+          claimantId: claimant_icn,
+          address: address_data(form_data.dig('dependent', 'address')),
           relationship: form_data.dig('dependent', 'relationship'),
           # optional fields
           dateOfBirth: form_data.dig('dependent', 'dateOfBirth'),
@@ -233,25 +272,29 @@ module AccreditedRepresentativePortal
       end
 
       def phone_data(phone)
+        return nil if Flipper.enabled?(:form2122_non_veteran_digital_submit) && phone.blank?
+
         phone_number = phone.to_s.gsub(/-| /, '')
         {}.tap do |p|
           p[:areaCode] = phone_number[0..2]
           p[:phoneNumber] = phone_number[3..9]
-          p[:phoneNumberExt] = phone_number[10..] if phone_number[10..].present?
         end
       end
 
-      def address_data(address_json)
+      def address_data(address)
+        return nil if Flipper.enabled?(:form2122_non_veteran_digital_submit) && address.blank?
+
         {}.tap do |a|
-          a[:addressLine1] = address_json['addressLine1']
-          a[:addressLine2] = address_json['addressLine2'] if address_json['addressLine2'].present?
-          a[:city] = address_json['city']
-          a[:stateCode] = address_json['stateCode']
-          a[:countryCode] = address_json['country']
-          a[:zipCode] = address_json['zipCode'] if address_json['country'] == 'US'
-          if address_json['zipCodeSuffix'].present?
-            a[:zipCodeSuffix] =
-              address_json['zipCodeSuffix']
+          a[:addressLine1] = address['addressLine1']
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit) || address['addressLine2'].present?
+            a[:addressLine2] = address['addressLine2']
+          end
+          a[:city] = address['city']
+          a[:stateCode] = address['stateCode']
+          a[:countryCode] = address['country']
+          a[:zipCode] = address['zipCode'] if address['country'] == 'US'
+          if Flipper.enabled?(:form2122_non_veteran_digital_submit) || address['zipCodeSuffix'].present?
+            a[:zipCodeSuffix] = address['zipCodeSuffix']
           end
         end
       end

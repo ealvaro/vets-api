@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# TODO: Most of this service is duplicated code from AccreditedRepresentativePortal::PowerOfAttorneyRequestService::Accept
+#   Move all shared code to a shared location to DRY it up and to reduce discrepancies and errors
 module AccreditedRepresentativePortal
   class SendPoaRequestToCorpDbService
     def self.call(poa_request)
@@ -8,8 +10,7 @@ module AccreditedRepresentativePortal
 
     def initialize(poa_request)
       @poa_request = poa_request
-      @claimant_id = poa_request.claimant.icn
-      @service = BenefitsClaims::Service.new(@claimant_id)
+      @service = BenefitsClaims::Service.new(veteran_icn)
     end
 
     def call
@@ -21,24 +22,56 @@ module AccreditedRepresentativePortal
 
     private
 
+    def dependent_claimant?
+      @poa_request.claimant_type == PowerOfAttorneyRequest::ClaimantTypes::DEPENDENT
+    end
+
+    def veteran_icn
+      if Flipper.enabled?(:form2122_non_veteran_digital_submit) && dependent_claimant?
+        veteran_data = {
+          first_name: form_data.dig('veteran', 'name', 'first'),
+          last_name: form_data.dig('veteran', 'name', 'last'),
+          ssn: form_data.dig('veteran', 'ssn'),
+          birth_date: form_data.dig('veteran', 'dateOfBirth')
+        }
+        @veteran_icn ||= ClaimantLookupService.get_icn(
+          veteran_data[:first_name],
+          veteran_data[:last_name],
+          veteran_data[:ssn],
+          veteran_data[:birth_date]
+        )
+      else
+        @veteran_icn ||= claimant_icn
+      end
+    end
+
+    def claimant_icn
+      @poa_request.claimant.icn
+    end
+
     def build_payload
       {
         data: {
           attributes: {}.tap do |h|
             h[:veteran] = veteran_payload
-            if Flipper.enabled?(:form2122_non_veteran_digital_submit) && form_data.fetch('dependent').present?
+            if Flipper.enabled?(:form2122_non_veteran_digital_submit) && dependent_claimant?
               h[:claimant] = claimant_payload
             end
             h[:representative] = representative_payload
+
             h[:recordConsent] = authorizations['recordDisclosureLimitations'].blank?
-            h[:consentAddressChange] = authorizations['addressChange'] == true
             h[:consentLimits] = authorizations['recordDisclosureLimitations'] || []
+            h[:consentAddressChange] = authorizations['addressChange'] == true
+
+            Common::HashHelpers.deep_remove_blanks(h) # removes nil and blank values (but not false)
           end
         }
       }
     end
 
     def veteran_payload
+      return nil if veteran.blank?
+
       {
         serviceNumber: veteran['serviceNumber'],
         serviceBranch: veteran['serviceBranch'],
@@ -46,13 +79,15 @@ module AccreditedRepresentativePortal
         phone: phone_payload(veteran['phone']),
         email: veteran['email'],
         insuranceNumber: veteran['insuranceNumber']
-      }.compact_blank
+      }
     end
 
     def claimant_payload
+      return nil if claimant.blank?
+
       {
-        claimantId: @claimant_id,
-        address: address_payload(claimant['address'] || {}),
+        claimantId: claimant_icn,
+        address: address_payload(claimant['address']),
         relationship: claimant['relationship'],
         # optional fields
         dateOfBirth: claimant['dateOfBirth'],
@@ -62,6 +97,8 @@ module AccreditedRepresentativePortal
     end
 
     def address_payload(address)
+      return nil if address.blank?
+
       {
         addressLine1: address['addressLine1'],
         addressLine2: address['addressLine2'],
@@ -70,17 +107,17 @@ module AccreditedRepresentativePortal
         zipCode: address['zipCode'],
         zipCodeSuffix: address['zipCodeSuffix'],
         countryCode: address['countryCode'] || 'US'
-      }.compact_blank
+      }
     end
 
     def phone_payload(phone)
-      digits = (phone || '').gsub(/\D/, '')
-      return nil if digits.blank?
+      return nil if phone.blank?
 
-      {
-        areaCode: digits[0, 3],
-        phoneNumber: digits[3, 7]
-      }
+      phone_number = phone.to_s.gsub(/-| /, '')
+      {}.tap do |p|
+        p[:areaCode] = phone_number[0..2]
+        p[:phoneNumber] = phone_number[3..9]
+      end
     end
 
     def representative_payload
@@ -92,11 +129,11 @@ module AccreditedRepresentativePortal
     end
 
     def veteran
-      @veteran ||= form_data.fetch('veteran')
+      @veteran ||= form_data['veteran']
     end
 
     def claimant
-      @claimant ||= form_data.fetch('dependent')
+      @claimant ||= form_data['dependent']
     end
 
     def authorizations

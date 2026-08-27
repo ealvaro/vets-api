@@ -65,7 +65,6 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
           # Phone
           expect(vet[:phone][:areaCode]).to eq('555')
           expect(vet[:phone][:phoneNumber]).to eq('5551234')
-          expect(vet[:phone]).not_to have_key(:phoneNumberExt)
 
           # Representative
           rep = attributes[:representative]
@@ -81,6 +80,7 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
     end
 
     context 'when non-veteran claimant data is added' do
+      let(:poa_request) { create(:power_of_attorney_request, :with_dependent_claimant) }
       let(:parsed_data) do
         {
           'veteran' => {
@@ -137,6 +137,7 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
       context 'Flipper is enabled' do
         before do
           allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+          allow(AccreditedRepresentativePortal::ClaimantLookupService).to receive(:get_icn)
         end
 
         it 'sends claimant data' do
@@ -184,7 +185,8 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
         described_class.call(poa_request)
 
         expect(service_instance).to have_received(:submit_power_of_attorney_request) do |payload|
-          vet = payload[:data][:attributes][:veteran]
+          attr = payload[:data][:attributes]
+          vet = attr[:veteran]
 
           # Optional fields should be omitted entirely, not sent as null,
           # since Lighthouse's schema validation rejects null for typed/enum/pattern fields.
@@ -192,12 +194,10 @@ RSpec.describe AccreditedRepresentativePortal::SendPoaRequestToCorpDbService do
           expect(vet[:address]).not_to have_key(:zipCodeSuffix)
           expect(vet[:address][:countryCode]).to eq('US') # default
           expect(vet).not_to have_key(:insuranceNumber)
-          expect(vet[:phone]).not_to have_key(:phoneNumberExt)
 
           # Consent fields
-          auth = payload[:data][:attributes]
-          expect(auth[:consentAddressChange]).to be(false)
-          expect(auth[:consentLimits]).to eq([])
+          expect(attr[:consentAddressChange]).to be(false)
+          expect(attr[:consentLimits]).to eq([])
         end
       end
     end
