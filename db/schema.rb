@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_155107) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gin"
   enable_extension "fuzzystrmatch"
@@ -2024,6 +2024,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_155107) do
     t.string "credential_id", null: false
     t.datetime "last_used_at"
     t.text "public_key", null: false
+    t.datetime "revoked_at"
     t.bigint "sign_count", default: 0, null: false
     t.string "transports", default: [], array: true
     t.datetime "updated_at", null: false
