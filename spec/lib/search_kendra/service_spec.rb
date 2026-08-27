@@ -179,15 +179,19 @@ describe SearchKendra::Service do
   end
 
   describe '#query_params' do
-    let(:query) { 'benefits test@example.com 123-45-6789' }
+    let(:query) { 'DD 214 test@example.com 123-45-6789' }
 
-    it 'redacts PII in the query parameter' do
+    it 'redacts PII from query parameter' do
       params = subject.send(:query_params)
 
-      expect(params[:query_text]).to include('[REDACTED - email]')
-      expect(params[:query_text]).to include('[REDACTED - ssn]')
-      expect(params[:query_text]).not_to include('test@example.com')
-      expect(params[:query_text]).not_to include('123-45-6789')
+      expect(params[:query_text]).to eq('dd 214 [REDACTED - email] [REDACTED - ssn]')
+    end
+
+    it 'normalizes query' do
+      service = described_class.new(' DD 214 ')
+      params = service.send(:query_params)
+
+      expect(params[:query_text]).to eq('dd214')
     end
 
     it 'includes the configured index_id' do

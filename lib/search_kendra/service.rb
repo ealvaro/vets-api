@@ -6,6 +6,7 @@ require 'search/response'
 require 'search/pagination'
 require 'search/pii_redactor'
 require 'search_kendra/configuration'
+require 'search_kendra/query_normalizer'
 require 'search_kendra/response_adapter'
 require 'aws-sdk-kendra'
 
@@ -36,8 +37,8 @@ module SearchKendra
     def results
       with_monitoring do
         query_result = config.client.query(query_params).data
-        response = SearchKendra::ResponseAdapter.new(query_result, redacted_query, page_number)
-        Search::ResultsResponse.from(response)
+        kendra_response = SearchKendra::ResponseAdapter.new(query_result, processed_query, page_number)
+        Search::ResultsResponse.from(kendra_response)
       end
     rescue => e
       handle_error(e)
@@ -55,7 +56,7 @@ module SearchKendra
     def query_params
       {
         index_id: config.index_id,
-        query_text: redacted_query,
+        query_text: processed_query,
         page_size:,
         page_number:
       }
@@ -69,8 +70,9 @@ module SearchKendra
       Search::Pagination::ENTRIES_PER_PAGE
     end
 
-    def redacted_query
-      Search::PiiRedactor.redact(query)
+    def processed_query
+      normalized_query = SearchKendra::QueryNormalizer.normalize(query)
+      Search::PiiRedactor.redact(normalized_query)
     end
 
     def handle_error(error)
