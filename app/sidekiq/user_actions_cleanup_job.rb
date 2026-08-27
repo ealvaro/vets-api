@@ -8,6 +8,6 @@ class UserActionsCleanupJob
   EXPIRATION_TIME = 1.year
 
   def perform
-    UserAction.where(created_at: ...EXPIRATION_TIME.ago).delete_all
+    UserAction.where(created_at: ...EXPIRATION_TIME.ago).in_batches(of: 10_000).delete_all
   end
 end
