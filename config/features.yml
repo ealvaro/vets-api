@@ -2036,6 +2036,10 @@ features:
     actor_type: user
     description: Shows Veterans their Priority Group on the MHV Landing Page
     enable_in_development: true
+  mhv_oh_direct_provisioning:
+    actor_type: user
+    description: Routes Oracle Health provisioning requests directly to Oracle Health instead of MAP Sign-up Service.
+    enable_in_development: true
   mhv_oh_emergency_cutover_lock_appointments:
     actor_type: user
     description: Emergency lock for Appointments during Oracle Health cutover. Blocks tool access for migrating users.
@@ -2118,7 +2122,7 @@ features:
       is_renewable are forced to false.
       The records stay visible as history and their display status is unchanged.
       With the flag off nothing is evaluated, logged, or counted. Fails open when no
-      stations are configured.    
+      stations are configured.
   mhv_mmi_refill_status_bandaid_temp:
     actor_type: user
     description: >-
@@ -4145,6 +4149,6 @@ features:
   form_0803_benefits_intake_submission:
     actor_type: user
     description: Enables form 22-0803 to use the Benefits Intake API for submission, which includes the redesigned supporting documents upload
-  va_dependents_new_child_quick_fix: 
+  va_dependents_new_child_quick_fix:
     actor_type: user
     description: Enable temporary fix to clarify add child/student distinction in 686c-674
