@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+module ClaimsApi
+  module V3
+    module DisabilityCompensation
+      module Sections
+        class VeteranIdentification
+          def initialize(payload, valid_countries:)
+            @payload = payload || {}
+            @valid_countries = valid_countries
+          end
+
+          def validate
+            errors = Errors.new(base_source: '/veteranIdentification')
+            return errors if @payload.empty?
+
+            Fields::Address.new(
+              @payload['mailingAddress'],
+              source: '/mailingAddress'
+            ).validate(errors:, valid_countries: @valid_countries)
+
+            Rules::MilitaryAddressCityStateCoupling.call(
+              @payload['mailingAddress'],
+              source: '/mailingAddress',
+              errors:
+            )
+
+            Fields::ServiceNumber.call(
+              @payload['serviceNumber'],
+              source: '/serviceNumber',
+              errors:
+            )
+
+            errors
+          end
+        end
+      end
+    end
+  end
+end
