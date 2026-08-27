@@ -717,6 +717,25 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
           expect(result.disp_status).to eq('Active: Submitted')
         end
       end
+
+      context 'when mhv_medications_oh_in_progress_refill_status is enabled but MMI is off' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, anything).and_return(false)
+        end
+
+        # The in-progress surfacing is gated together with MMI; with MMI off the fix does not
+        # apply and the requested-Task overlay still pins "Active: Submitted".
+        it 'stays Active: Submitted (requires MMI)' do
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+        end
+      end
     end
 
     # Order-intent (refill) most-recent-wins. Mirrors the renewal
@@ -731,6 +750,15 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       let(:fresh_date) { '2025-06-25T00:00:00.000Z' } # 1 day ago  (inside 3-day window)
       let(:older_in_window_date) { '2025-06-24T00:00:00.000Z' } # 2 days ago (inside window)
       let(:stale_date) { '2025-06-16T00:00:00.000Z' } # 10 days ago (outside window)
+      let(:ambient_stale_resource) do
+        # Stale order-Task (20d) plus a completed dispense; used by the MMI on/off cases below.
+        fhir_resource_with_task(
+          task_date: '2025-06-06T00:00:00.000Z', # 20 days ago, well outside the 3-day window
+          dispenses: [{ status: 'completed',
+                        when_prepared: '2025-06-05T00:00:00.000Z',
+                        when_handed_over: '2025-06-05T00:00:00.000Z' }]
+        )
+      end
 
       it 'selects the most recent order-Task by date when two in-window Tasks exist' do
         # Both Tasks are inside the staleness window, so only max_by ordering can pick the winner.
@@ -757,29 +785,34 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_submit_date).to eq(fresh_date)
       end
 
-      # Ambient-history immunity: a stale order-Task (20d) plus a completed
-      # dispense must yield the SAME output as a plain active med with no Task, in BOTH flag states.
-      [true, false].each do |flag_on|
-        it "ignores an ambient stale order-Task and matches the no-Task baseline (flag=#{flag_on})" do
-          allow(Flipper).to receive(:enabled?).and_call_original
-          allow(Flipper).to receive(:enabled?)
-            .with(:mhv_medications_management_improvements, anything).and_return(flag_on)
+      # Ambient-history: a stale order-Task (20d) plus a completed dispense. With MMI on the
+      # in-flight path applies the staleness window, so the med matches the plain-active no-Task
+      # baseline. With MMI off the upstream path runs (no status window), so the stale 'requested'
+      # Task still surfaces as submitted; refill_submit_date stays nil (window-bounded metadata).
 
-          stale = '2025-06-06T00:00:00.000Z' # 20 days ago, well outside the 3-day window
-          resource = fhir_resource_with_task(
-            task_date: stale,
-            dispenses: [{ status: 'completed',
-                          when_prepared: '2025-06-05T00:00:00.000Z',
-                          when_handed_over: '2025-06-05T00:00:00.000Z' }]
-          )
+      it 'ignores an ambient stale order-Task and matches the no-Task baseline when MMI is enabled' do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medications_management_improvements, anything).and_return(true)
 
-          result = subject.parse(resource)
+        result = subject.parse(ambient_stale_resource)
 
-          # Identical to the no-Task active baseline:
-          expect(result.refill_status).to eq('active')
-          expect(result.disp_status).to eq('Active')
-          expect(result.refill_submit_date).to be_nil
-        end
+        expect(result.refill_status).to eq('active')
+        expect(result.disp_status).to eq('Active')
+        expect(result.refill_submit_date).to be_nil
+      end
+
+      it 'uses the upstream path when MMI is disabled (a stale requested Task stays submitted)' do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:mhv_medications_management_improvements, anything).and_return(false)
+
+        result = subject.parse(ambient_stale_resource)
+
+        expect(result.refill_status).to eq('submitted')
+        expect(result.disp_status).to eq('Active: Submitted')
+        # refill_submit_date metadata still applies the 3-day window unconditionally.
+        expect(result.refill_submit_date).to be_nil
       end
 
       # Cross-reference contamination guard for intent='order'. A fresh order-Task
@@ -879,9 +912,9 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
 
     # In-flight refill Task staleness window (Issue 1): once an honored in-flight
     # order-Task ages past REFILL_IN_FLIGHT_WINDOW_DAYS (3) with no fulfilling
-    # dispense, the status falls back to the normalized MedicationRequest status
-    # and refill_submit_date is dropped, so a med does not display an in-flight
-    # refill state indefinitely. The window is always enforced, regardless of the flag.
+    # dispense, the in-flight refill state is not surfaced indefinitely. The window
+    # governs refill_status only on the MMI-gated in-flight path (the upstream path
+    # applies no status window), but refill_submit_date is window-bounded unconditionally.
     context 'in-flight refill Task staleness window' do
       context 'when mhv_medications_management_improvements is enabled' do
         before do
@@ -927,12 +960,13 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
             .with(:mhv_medications_management_improvements, anything).and_return(false)
         end
 
-        it 'drops a stale requested Task back to active and clears refill_submit_date' do
+        it 'uses the upstream path (no status window), so a stale requested Task stays submitted' do
           stale_date = 20.days.ago.utc.iso8601
           result = subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: stale_date))
 
-          expect(result.refill_status).to eq('active')
-          expect(result.disp_status).to eq('Active')
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+          # refill_submit_date metadata still applies the 3-day window unconditionally.
           expect(result.refill_submit_date).to be_nil
         end
 
@@ -1001,10 +1035,10 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_submit_date).to eq(fresh_task_date)
       end
 
-      it 'suppresses the overlay on a non-active med regardless of the bandaid flag' do
+      it 'suppresses the overlay on a non-active med regardless of the in-flight status flag' do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
-          .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(true)
+          .with(:mhv_medications_oh_refill_in_flight_status, anything).and_return(true)
 
         result = subject.parse(resource_with_requested_task('status' => 'stopped'))
 
@@ -1016,12 +1050,12 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
     # extract_refill_status_upstream is the flag-off classification path: only a live
     # 'requested' order-Task with no subsequent dispense maps to 'submitted'; everything
     # else reflects the normalized upstream status. The suite enables
-    # mhv_mmi_refill_status_bandaid_temp by default, so these stub it off to exercise it.
-    context 'upstream classification path (bandaid flag disabled)' do
+    # mhv_medications_oh_refill_in_flight_status by default, so these stub it off to exercise it.
+    context 'upstream classification path (in-flight status flag disabled)' do
       before do
         allow(Flipper).to receive(:enabled?).and_call_original
         allow(Flipper).to receive(:enabled?)
-          .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(false)
+          .with(:mhv_medications_oh_refill_in_flight_status, anything).and_return(false)
       end
 
       it 'maps a requested order-Task with no subsequent dispense to submitted' do

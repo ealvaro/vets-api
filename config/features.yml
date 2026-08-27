@@ -2096,6 +2096,7 @@ features:
       a configurable window (Settings.mhv.uhd.cmop_in_process_window_days, default 15
       days) off the refill-record date and released early once a dispense or shipment
       lands. Does not alter is_refillable, so an additional refill can still be requested.
+      Requires mhv_medications_management_improvements to also be enabled; no effect on its own.
     enable_in_development: true
   mhv_medications_management_improvements:
     actor_type: user
@@ -2114,7 +2115,9 @@ features:
       MedicationDispense in preparation/in-progress/on-hold that has not yet been
       handed over) surface as "Active: Refill in Process" instead of sticking at
       "Active: Submitted". refill_submit_date is retained so the frontend
-      DelayedRefillAlert still fires. When disabled, behavior is unchanged.
+      DelayedRefillAlert still fires. Requires mhv_medications_management_improvements
+      to also be enabled for the user; has no effect on its own. When disabled, behavior
+      is unchanged.
     enable_in_development: true
   mhv_medications_oh_refill_window_logging:
     actor_type: user
@@ -2144,12 +2147,25 @@ features:
       The records stay visible as history and their display status is unchanged.
       With the flag off nothing is evaluated, logged, or counted. Fails open when no
       stations are configured.
-  mhv_mmi_refill_status_bandaid_temp:
+  mhv_medications_oh_refill_in_flight_status:
     actor_type: user
     description: >-
-      If enabled, applies the interim refill-status bridging logic that keeps
-      recently-requested VistA/Oracle Health refills surfaced as
-      "Active: Submitted" / "Refill in Process" while upstream status catches up.
+      If enabled, Oracle Health prescriptions with a live in-flight refill order Task
+      (requested/accepted/in-progress, within a 3-day window, no subsequent dispense)
+      surface as "Active: Submitted" / "Active: Refill in Process" from the Task overlay
+      instead of falling back to the plain upstream MedicationRequest status. Requires
+      mhv_medications_management_improvements to also be enabled for the user; has no
+      effect on its own. When disabled, the upstream status path is used.
+    enable_in_development: true
+  mhv_medications_oh_refill_in_process_block:
+    actor_type: user
+    description: >-
+      If enabled, an Oracle Health prescription showing "refillinprocess" is treated as a
+      pending refill and is not refillable, preventing a duplicate refill request while a
+      fill is in process. Requires mhv_medications_management_improvements to also be
+      enabled for the user; has no effect on its own. When disabled, only "submitted"
+      blocks refillability.
+    enable_in_development: true
   mhv_supply_reordering_enabled:
     actor_type: user
     description: Enables the launch of mhv supply reordering application at /my-health/order-medical-supplies

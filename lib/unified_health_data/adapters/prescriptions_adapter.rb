@@ -15,10 +15,6 @@ module UnifiedHealthData
       # Number of days after the most recent shipped date during which a prescription remains trackable.
       SHIPPED_TRACKING_WINDOW_DAYS = 15
 
-      # Number of days a just-requested refill stays surfaced as in-flight ("Active: Submitted" /
-      # "Active: Refill in Process") while VistA lags flipping the upstream disp_status.
-      REFILL_IN_FLIGHT_WINDOW_DAYS = 3
-
       # Default number of days a VistA refill stays surfaced as "Active: Refill in Process"
       # after the request while it is transmitted to CMOP and awaiting a dispense. VistA
       # momentarily reports plain "Active" during this handoff. Overridable via
@@ -93,23 +89,18 @@ module UnifiedHealthData
 
       # Read-time, flag-gated status adjustments applied after parsing and filtering. Ordering
       # matters: shipped-tracking runs first so dispense-based states take precedence, then the
-      # interim submission bridge, then the CMOP in-process bridge (each only touches meds still
-      # showing plain 'Active', so they do not clobber each other).
+      # CMOP in-process bridge (which only touches meds still showing plain 'Active').
       def apply_flagged_status_adjustments(prescriptions)
         # Shipped tracking (sets is_trackable to false if shipped beyond the 15-day window).
         if Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
           apply_shipped_tracking_logic(prescriptions)
         end
 
-        # Interim refill-status bridging while upstream (VistA) status flips lag behind requests.
-        if Flipper.enabled?(:mhv_mmi_refill_status_bandaid_temp, @current_user)
-          apply_submission_date_bridge(prescriptions)
-        end
-
         # Restore "Active: Refill in Process" for VistA refills mid-CMOP-handoff, when VistA
-        # momentarily reports plain "Active". Independent of the interim bandaid above so it
-        # persists after that flag is removed; upstream does not correct the CMOP flip-back.
-        return unless Flipper.enabled?(:mhv_medications_cmop_refill_in_process_bridge, @current_user)
+        # momentarily reports plain "Active". Gated together with MMI so it ships only to the
+        # MMI rollout cohort.
+        return unless Flipper.enabled?(:mhv_medications_cmop_refill_in_process_bridge, @current_user) &&
+                      Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
 
         apply_cmop_in_process_bridge(prescriptions)
       end
@@ -330,59 +321,6 @@ module UnifiedHealthData
         nil
       end
 
-      # Keeps a prescription showing "Active: Submitted" after a refill request while upstream
-      # catches up, using persisted dates instead of the transient Redis badge. A submission newer
-      # than the last fill (or a submission with no fill yet) means the refill is still pending.
-      # Runs after the dispense-based tracking steps so those (shipped/awaiting) take precedence:
-      # only prescriptions still showing plain 'Active' are bridged here. Gated to VistA only:
-      # Oracle Health also populates refill_submit_date (from order Task executionPeriod), so an
-      # ungated bridge would fire on OH prescriptions that OH already surfaces correctly.
-      def apply_submission_date_bridge(prescriptions)
-        prescriptions.each do |rx|
-          next unless vista_source?(rx)
-          next unless rx.disp_status == DISP_ACTIVE
-          next unless refill_still_pending?(rx)
-
-          rx.disp_status = DISP_ACTIVE_SUBMITTED
-          rx.refill_status = STATUS_SUBMITTED
-          rx.is_refillable = false
-          # No shipment exists yet for a still-pending refill, so clear the upstream-sourced
-          # is_trackable flag to avoid offering a tracking affordance against an empty list.
-          rx.is_trackable = false
-        end
-      end
-
-      def refill_still_pending?(rx)
-        submit = parse_bridge_time(rx.refill_submit_date)
-        return false if submit.nil?
-
-        # Bound the bridge to the refill in-flight window. Without an upper bound a request
-        # that never receives a dispense upstream would hold the prescription at "Active: Submitted"
-        # with is_refillable=false indefinitely, re-creating the stuck-Submitted trap. After the
-        # window elapses we stop bridging so the prescription falls back to its upstream status.
-        return false if submit < REFILL_IN_FLIGHT_WINDOW_DAYS.days.ago
-
-        # A fill that shipped on/after the submit date means this refill has been filled, so it is
-        # no longer pending regardless of the projected refill_date. Compare the shipment completion
-        # date against the submit date (rather than a date-agnostic presence check) so tracking left
-        # over from a *previous* fill cycle does not suppress a genuinely new request.
-        return false if shipped_since?(rx, submit)
-
-        # An actual dispense on/after the submit date means the request has already been filled.
-        # refill_date below is VistA's *projected* next-available date, which is cleared/moved once a
-        # fill lands; relying on it alone would re-stamp an already-dispensed refill back to
-        # "Active: Submitted". Guard on the real dispensed date before consulting refill_date. A
-        # same-day dispense counts as filled (dispensed >= submit) so a completed fill is never
-        # re-bridged.
-        dispensed = most_recent_dispensed_date(rx)
-        return false if dispensed && dispensed.to_date >= submit.to_date
-
-        fill = parse_bridge_time(rx.refill_date)
-        return true if fill.nil? # submitted, not yet filled
-
-        submit > fill
-      end
-
       # Restores "Active: Refill in Process" for a VistA prescription whose requested refill has
       # been transmitted to CMOP but not yet dispensed. During that handoff VistA reports the
       # aggregate disp_status as plain "Active" (with is_refillable true), so a mid-fill med looks
@@ -390,7 +328,7 @@ module UnifiedHealthData
       # as "Active: Shipped" or an already-restored "Active: Refill in Process" take precedence.
       # Gated to VistA only: Oracle Health surfaces its own in-process status correctly.
       #
-      # Unlike apply_submission_date_bridge, this deliberately leaves is_refillable and
+      # This deliberately leaves is_refillable and
       # is_trackable untouched: the veteran may still request an additional refill before the
       # dispense lands, and VistA remains the authority that accepts or rejects that request.
       def apply_cmop_in_process_bridge(prescriptions)

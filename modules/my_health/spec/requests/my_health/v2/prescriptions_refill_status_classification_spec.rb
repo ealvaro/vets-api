@@ -89,7 +89,9 @@ RSpec.describe 'MyHealth::V2::Prescriptions refill_status classification', type:
     allow(Flipper).to receive(:enabled?)
       .with(:mhv_medications_management_improvements, anything).and_return(management_improvements)
     allow(Flipper).to receive(:enabled?)
-      .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(management_improvements)
+      .with(:mhv_medications_oh_refill_in_flight_status, anything).and_return(management_improvements)
+    allow(Flipper).to receive(:enabled?)
+      .with(:mhv_medications_oh_refill_in_process_block, anything).and_return(management_improvements)
   end
 
   describe 'GET /my_health/v2/prescriptions/:id?station_number=989' do

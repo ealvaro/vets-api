@@ -249,7 +249,7 @@ module UnifiedHealthData
 
       # Extracts and normalizes MedicationRequest status to a VistA-compatible value, honoring
       # in-flight refill Tasks only when the med is active and, for the in-flight lifecycle
-      # statuses, the bandaid flag is enabled.
+      # statuses, the in-flight status flag (+ MMI) is enabled.
       def extract_refill_status(resource, dispenses_data = [])
         base_status = normalize_to_legacy_vista_status(resource)
 
@@ -266,12 +266,11 @@ module UnifiedHealthData
         # merely received. refill_submit_date is still surfaced (extract_refill_submission_
         # metadata_from_tasks keeps it for the refillinprocess family), so the frontend
         # DelayedRefillAlert continues to fire once the fill runs long.
-        if base_status == STATUS_REFILL_IN_PROCESS &&
-           Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user)
-          return base_status
-        end
+        # Gated together with MMI (mhv_medications_management_improvements) so the improved
+        # in-progress-fill card ships only to the MMI rollout cohort.
+        return base_status if base_status == STATUS_REFILL_IN_PROCESS && in_progress_refill_status_enabled?
 
-        if Flipper.enabled?(:mhv_mmi_refill_status_bandaid_temp, @current_user)
+        if in_flight_refill_status_enabled?
           extract_refill_status_in_flight(resource, dispenses_data)
         else
           extract_refill_status_upstream(resource, dispenses_data)

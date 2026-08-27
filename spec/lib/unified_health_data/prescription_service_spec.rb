@@ -28,7 +28,9 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
     allow(Flipper).to receive(:enabled?)
       .with(:mhv_medications_management_improvements, anything).and_return(false)
     allow(Flipper).to receive(:enabled?)
-      .with(:mhv_mmi_refill_status_bandaid_temp, anything).and_return(false)
+      .with(:mhv_medications_oh_refill_in_flight_status, anything).and_return(false)
+    allow(Flipper).to receive(:enabled?)
+      .with(:mhv_medications_oh_refill_in_process_block, anything).and_return(false)
   end
 
   describe '#get_prescriptions' do
@@ -270,10 +272,13 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
           end
         end
 
-        context 'when mhv_medications_oh_in_progress_refill_status is enabled' do
+        context 'when mhv_medications_oh_in_progress_refill_status and MMI are enabled' do
           before do
             allow(Flipper).to receive(:enabled?)
               .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+            # The in-progress surfacing is gated together with MMI, so both must be on.
+            allow(Flipper).to receive(:enabled?)
+              .with(:mhv_medications_management_improvements, anything).and_return(true)
           end
 
           it 'ignores failed Tasks but surfaces the in-progress dispense as refillinprocess' do
@@ -287,6 +292,24 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
               expect(failed_task_prescription.refill_submit_date).to be_nil
               expect(failed_task_prescription.refill_status).to eq('refillinprocess')
               expect(failed_task_prescription.disp_status).to eq('Active: Refill in Process')
+            end
+          end
+        end
+
+        context 'when mhv_medications_oh_in_progress_refill_status is enabled but MMI is off' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+            # MMI stays off (top-level default); the in-progress surfacing requires MMI too.
+          end
+
+          it 'leaves the masked in-progress dispense as Active (no MMI, no surfacing)' do
+            VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+              prescriptions = service.get_prescriptions[:prescriptions]
+              failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+
+              expect(failed_task_prescription.refill_status).to eq('active')
+              expect(failed_task_prescription.disp_status).to eq('Active')
             end
           end
         end

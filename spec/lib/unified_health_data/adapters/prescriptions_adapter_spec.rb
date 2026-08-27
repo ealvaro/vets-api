@@ -145,7 +145,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         # Ensure business rules filtering doesn't interfere with basic parsing tests
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
       end
 
       it 'returns prescriptions from both VistA and Oracle Health' do
@@ -1568,7 +1567,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
     end
 
     it 'logs counts when both sources return medications' do
@@ -1977,7 +1975,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
-      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(true)
     end
 
     context 'when shipped within 15-day window' do
@@ -2159,7 +2156,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
     before do
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
-      allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
     end
 
     it 'does not apply shipped tracking logic' do
@@ -2175,220 +2171,6 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
       rx = result[:prescriptions].first
 
       expect(rx.is_awaiting_tracking).to be false
-    end
-  end
-
-  # I2 (retires RC5): the "Active: Submitted" badge is derived at read time from
-  # persisted dates instead of a transient Redis TTL. A submission newer than the
-  # last fill (or a submission with no fill yet) means the refill is still pending,
-  # so the prescription keeps showing "Active: Submitted" until upstream catches up.
-  describe '#refill_still_pending? / submission date bridge (I2)' do
-    def rx_with(submit:, fill:, disp_status: 'Active', dispensed: nil, tracking: [])
-      UnifiedHealthData::Prescription.new(
-        id: '12345',
-        disp_status:,
-        refill_submit_date: submit,
-        refill_date: fill,
-        dispensed_date: dispensed,
-        tracking:
-      )
-    end
-
-    describe '#refill_still_pending?' do
-      subject(:adapter) { described_class.new }
-
-      it 'is true when the submit date is newer than the fill date' do
-        rx = rx_with(submit: 2.days.ago.iso8601, fill: 10.days.ago.iso8601)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
-      end
-
-      it 'is true when a submit date exists but there is no fill yet' do
-        rx = rx_with(submit: 2.days.ago.iso8601, fill: nil)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
-      end
-
-      it 'is false when there is no submit date' do
-        rx = rx_with(submit: nil, fill: 2.days.ago.iso8601)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      it 'is false when the submit date is older than the fill date' do
-        rx = rx_with(submit: 10.days.ago.iso8601, fill: 2.days.ago.iso8601)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      it 'is false when both dates are missing' do
-        rx = rx_with(submit: nil, fill: nil)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      it 'is nil-safe when the dates are unparseable strings' do
-        rx = rx_with(submit: 'not-a-date', fill: 'also-garbage')
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      # Adrian-Rollett review (#29670): a submission whose fill never materializes upstream must
-      # not hold the prescription in "Submitted" (is_refillable=false) forever; once the submit
-      # date ages out of the refill in-flight window it is no longer treated as still pending.
-      it 'is false when the submit date is older than the refill in-flight window even with no fill' do
-        rx = rx_with(submit: 20.days.ago.iso8601, fill: nil)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      # Staging bug: submit -> in process -> pharmacy dispenses, then the prescription reverted to
-      # "Active: Submitted". VistA clears/moves the projected refill_date once a fill lands, so a
-      # nil/stale refill_date alone would re-stamp an already-dispensed refill as pending. Guarding
-      # on the real dispensed date prevents the regression: a same-day dispense counts as filled
-      # (dispensed >= submit), not as a still-pending re-request.
-      it 'is false when an actual dispense landed on/after the submit date even with no projected refill_date' do
-        rx = rx_with(submit: 2.days.ago.iso8601, fill: nil, dispensed: 1.day.ago.iso8601)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      it 'is false when a dispense landed on the same calendar day as the submit date' do
-        today = Time.zone.today.iso8601
-        rx = rx_with(submit: today, fill: nil, dispensed: today)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      it 'stays true when the only dispense predates the submit date (prior fill, genuine new request)' do
-        rx = rx_with(submit: 1.day.ago.iso8601, fill: nil, dispensed: 30.days.ago.iso8601)
-        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
-      end
-
-      it 'is false when a shipped fill (tracking with a completion date) exists' do
-        rx = rx_with(
-          submit: 2.days.ago.iso8601,
-          fill: nil,
-          tracking: [{ complete_date_time: 1.day.ago.iso8601 }]
-        )
-        expect(adapter.send(:refill_still_pending?, rx)).to be(false)
-      end
-
-      # Tracking persists across fill cycles (see the 15-day window in apply_shipped_tracking_logic),
-      # so a completion date from a *prior* shipment must not suppress a genuinely new request. The
-      # tracking guard is date-aware: only a shipment on/after the submit date counts as filled.
-      it 'stays true when the only tracking shipped before the submit date (stale prior-cycle tracking)' do
-        rx = rx_with(
-          submit: 1.day.ago.iso8601,
-          fill: nil,
-          tracking: [{ complete_date_time: 30.days.ago.iso8601 }]
-        )
-        expect(adapter.send(:refill_still_pending?, rx)).to be(true)
-      end
-    end
-
-    # Adrian-Rollett review (#29670): the date bridge is VistA-only. Oracle Health derives
-    # "submitted"/"refill in process" from the order Task lifecycle in its own adapter, so the
-    # bridge must not also apply to OH prescriptions.
-    describe '#apply_submission_date_bridge source gating' do
-      subject(:adapter) { described_class.new }
-
-      def bridge_rx(source_ehr)
-        UnifiedHealthData::Prescription.new(
-          id: '12345',
-          disp_status: 'Active',
-          source_ehr:,
-          refill_submit_date: 2.days.ago.iso8601,
-          refill_date: nil,
-          is_refillable: true
-        )
-      end
-
-      it 'bridges a VistA prescription to Active: Submitted' do
-        rx = bridge_rx(UnifiedHealthData::Prescription::SOURCE_EHR_VISTA)
-        adapter.send(:apply_submission_date_bridge, [rx])
-
-        expect(rx.disp_status).to eq('Active: Submitted')
-        expect(rx.is_refillable).to be false
-      end
-
-      it 'does not bridge an Oracle Health prescription (OH derives submitted from Tasks)' do
-        rx = bridge_rx(UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH)
-        adapter.send(:apply_submission_date_bridge, [rx])
-
-        expect(rx.disp_status).to eq('Active')
-        expect(rx.is_refillable).to be true
-      end
-    end
-
-    describe 'integration through #parse' do
-      let(:vista_med_submitted) do
-        vista_medication_data.merge(
-          'dispStatus' => 'Active',
-          'isTrackable' => false,
-          'dispensedDate' => nil,
-          'refillSubmitDate' => 2.days.ago.utc.iso8601(3),
-          'refillDate' => 20.days.ago.utc.iso8601(3)
-        )
-      end
-
-      let(:submitted_response) do
-        {
-          'vista' => {
-            'medicationList' => {
-              'medication' => [vista_med_submitted]
-            }
-          }
-        }
-      end
-
-      before do
-        allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
-      end
-
-      context 'when the management-improvements flag is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(true)
-          allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(true)
-        end
-
-        it 'bridges a still-pending refill to Active: Submitted' do
-          rx = subject.parse(submitted_response)[:prescriptions].first
-
-          expect(rx.disp_status).to eq('Active: Submitted')
-          expect(rx.refill_status).to eq('submitted')
-          expect(rx.is_refillable).to be false
-        end
-
-        # Staging regression: submit -> in process -> pharmacy dispensed and shipped, then the
-        # prescription reverted to "Active: Submitted". A shipped fill (tracking with a completion
-        # date) after the submit date must not be re-bridged back to Submitted.
-        it 'does not revert a dispensed-and-shipped refill back to Submitted' do
-          vista_med_submitted['dispensedDate'] = 1.day.ago.utc.iso8601(3)
-          vista_med_submitted['rxRFRecords'] = {
-            'rfRecord' => [
-              {
-                'id' => 'rf-1',
-                'refillStatus' => 'dispensed',
-                'dispensedDate' => 1.day.ago.utc.iso8601(3),
-                'refillDate' => 1.day.ago.utc.iso8601(3)
-              }
-            ]
-          }
-          vista_med_submitted['trackingList'] = {
-            'tracking' => [{ 'completeDateTime' => 1.day.ago.utc.iso8601(3) }]
-          }
-
-          rx = subject.parse(submitted_response)[:prescriptions].first
-
-          expect(rx.disp_status).not_to eq('Active: Submitted')
-          expect(rx.refill_status).not_to eq('submitted')
-        end
-      end
-
-      context 'when the management-improvements flag is disabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
-          allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
-        end
-
-        it 'leaves the prescription as plain Active (gating preserved)' do
-          rx = subject.parse(submitted_response)[:prescriptions].first
-
-          expect(rx.disp_status).to eq('Active')
-        end
-      end
     end
   end
 
@@ -2549,14 +2331,14 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
 
       before do
         allow(Flipper).to receive(:enabled?).with(:mhv_medications_display_pending_meds, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_medications_management_improvements, user).and_return(false)
-        allow(Flipper).to receive(:enabled?).with(:mhv_mmi_refill_status_bandaid_temp, user).and_return(false)
       end
 
-      context 'when the CMOP bridge flag is enabled' do
+      context 'when the CMOP bridge flag and MMI are enabled' do
         before do
           allow(Flipper).to receive(:enabled?)
             .with(:mhv_medications_cmop_refill_in_process_bridge, user).and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, user).and_return(true)
         end
 
         it 'restores Active: Refill in Process and leaves is_refillable true' do
@@ -2572,9 +2354,26 @@ describe UnifiedHealthData::Adapters::PrescriptionsAdapter do
         before do
           allow(Flipper).to receive(:enabled?)
             .with(:mhv_medications_cmop_refill_in_process_bridge, user).and_return(false)
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, user).and_return(true)
         end
 
         it 'leaves the prescription as plain Active (gating preserved)' do
+          rx = subject.parse(cmop_response)[:prescriptions].first
+
+          expect(rx.disp_status).to eq('Active')
+        end
+      end
+
+      context 'when the CMOP bridge flag is enabled but MMI is off' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_cmop_refill_in_process_bridge, user).and_return(true)
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_management_improvements, user).and_return(false)
+        end
+
+        it 'leaves the prescription as plain Active (requires MMI)' do
           rx = subject.parse(cmop_response)[:prescriptions].first
 
           expect(rx.disp_status).to eq('Active')

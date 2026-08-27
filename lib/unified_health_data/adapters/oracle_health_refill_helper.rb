@@ -44,15 +44,33 @@ module UnifiedHealthData
         true
       end
 
+      # Whether the Medications Management Improvements (MMI) rollout gate is on for the user.
+      # Shared by the refill-status flag checks so each new flag ships only to the MMI cohort.
+      def mmi_enabled?
+        Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
+      end
+
+      # Whether the OH in-progress refill-status card is enabled (flag + MMI).
+      def in_progress_refill_status_enabled?
+        Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user) && mmi_enabled?
+      end
+
+      # Whether the OH in-flight refill-status overlay is enabled (flag + MMI).
+      def in_flight_refill_status_enabled?
+        Flipper.enabled?(:mhv_medications_oh_refill_in_flight_status, @current_user) && mmi_enabled?
+      end
+
       # Refill statuses that indicate an in-flight request and therefore block refillability.
-      # 'refillinprocess' is only treated as pending while the interim refill-status bridging
-      # flag is enabled; otherwise only 'submitted' blocks refillability.
+      # 'refillinprocess' is only treated as pending while the in-process refill-block flag (+ MMI)
+      # is enabled; otherwise only 'submitted' blocks refillability.
       #
       # @param refill_status [String] Current refill status
       # @return [Boolean] true if the status represents a pending refill request
       def pending_refill_status?(refill_status)
         pending_statuses = %w[submitted]
-        pending_statuses << 'refillinprocess' if Flipper.enabled?(:mhv_mmi_refill_status_bandaid_temp, @current_user)
+        if Flipper.enabled?(:mhv_medications_oh_refill_in_process_block, @current_user) && mmi_enabled?
+          pending_statuses << 'refillinprocess'
+        end
         pending_statuses.include?(refill_status)
       end
 
@@ -101,7 +119,10 @@ module UnifiedHealthData
         # an older completed fill wins the date ranking -- masking the active fill. Detect
         # such a not-yet-handed-over in-progress dispense directly so the card reflects
         # "Refill in Process" instead of falling back to the requested-Task "Submitted".
-        return false unless Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user)
+        # Gated together with MMI so the improved in-progress detection ships only to the
+        # MMI rollout cohort.
+        return false unless Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user) &&
+                            Flipper.enabled?(:mhv_medications_management_improvements, @current_user)
 
         medication_dispenses(resource).any? do |dispense|
           IN_PROGRESS_DISPENSE_STATUSES.include?(dispense['status']) && dispense['whenHandedOver'].blank?
