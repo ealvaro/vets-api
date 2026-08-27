@@ -143,10 +143,11 @@ RSpec.describe 'V0::Form1095Bs', type: :request do
   end
 
   describe 'GET /available_forms' do
-    before { Timecop.freeze(Time.zone.parse('2025-03-05T08:00:00Z')) }
+    let(:now) { '2025-03-05T08:00:00Z' }
 
     context 'with valid user' do
       before do
+        Timecop.freeze(Time.zone.parse(now))
         sign_in_as(user)
       end
 
@@ -159,9 +160,11 @@ RSpec.describe 'V0::Form1095Bs', type: :request do
         expect(response.parsed_body.deep_symbolize_keys).to eq(
           { available_forms: [
             { year: 2022,
-              last_updated: nil },
+              last_updated: nil,
+              status: 'available' },
             { year: 2024,
-              last_updated: nil }
+              last_updated: nil,
+              status: 'available' }
           ] }
         )
       end
@@ -181,8 +184,7 @@ RSpec.describe 'V0::Form1095Bs', type: :request do
 
       context 'when user was not enrolled during allowed date range' do
         # the cassette doesn't have any coverage in the years 2016-2018
-        before { Timecop.freeze(Time.zone.parse('2019-03-05T08:00:00Z')) }
-        after { Timecop.return }
+        let(:now) { '2019-03-05T08:00:00Z' }
 
         it 'returns an empty array' do
           VCR.use_cassette('veteran_enrollment_system/enrollment_periods/get_success',
@@ -193,6 +195,83 @@ RSpec.describe 'V0::Form1095Bs', type: :request do
           expect(response.parsed_body.deep_symbolize_keys).to eq(
             { available_forms: [] }
           )
+        end
+      end
+
+      describe 'pending form' do
+        context 'with feature flag enabled in December' do
+          let(:now) { '2025-12-05T08:00:00Z' }
+
+          before { allow(Flipper).to receive(:enabled?).with(:form_1095b_pending, any_args).and_return(true) }
+
+          it 'includes the current year with status: pending' do
+            VCR.use_cassette('veteran_enrollment_system/enrollment_periods/get_success',
+                             { match_requests_on: %i[method uri] }) do
+              get '/v0/form1095_bs/available_forms'
+            end
+            expect(response).to have_http_status(:success)
+            expect(response.parsed_body.deep_symbolize_keys).to eq(
+              { available_forms: [
+                { year: 2022,
+                  last_updated: nil,
+                  status: 'available' },
+                { year: 2024,
+                  last_updated: nil,
+                  status: 'available' },
+                { year: 2025,
+                  last_updated: nil,
+                  status: 'pending' }
+              ] }
+            )
+          end
+        end
+
+        context 'with feature flag enabled and month is not December' do
+          let(:now) { '2025-11-05T08:00:00Z' }
+
+          before { allow(Flipper).to receive(:enabled?).with(:form_1095b_pending, any_args).and_return(true) }
+
+          it 'includes the current year with status: pending' do
+            VCR.use_cassette('veteran_enrollment_system/enrollment_periods/get_success',
+                             { match_requests_on: %i[method uri] }) do
+              get '/v0/form1095_bs/available_forms'
+            end
+            expect(response).to have_http_status(:success)
+            expect(response.parsed_body.deep_symbolize_keys).to eq(
+              { available_forms: [
+                { year: 2022,
+                  last_updated: nil,
+                  status: 'available' },
+                { year: 2024,
+                  last_updated: nil,
+                  status: 'available' }
+              ] }
+            )
+          end
+        end
+
+        context 'with feature flag disabled in December' do
+          let(:now) { '2025-12-05T08:00:00Z' }
+
+          before { allow(Flipper).to receive(:enabled?).with(:form_1095b_pending, any_args).and_return(false) }
+
+          it 'does not include the current year' do
+            VCR.use_cassette('veteran_enrollment_system/enrollment_periods/get_success',
+                             { match_requests_on: %i[method uri] }) do
+              get '/v0/form1095_bs/available_forms'
+            end
+            expect(response).to have_http_status(:success)
+            expect(response.parsed_body.deep_symbolize_keys).to eq(
+              { available_forms: [
+                { year: 2022,
+                  last_updated: nil,
+                  status: 'available' },
+                { year: 2024,
+                  last_updated: nil,
+                  status: 'available' }
+              ] }
+            )
+          end
         end
       end
 

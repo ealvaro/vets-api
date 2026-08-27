@@ -31,10 +31,21 @@ module V0
     def fetch_enrollment_periods
       periods = VeteranEnrollmentSystem::EnrollmentPeriods::Service.new.get_enrollment_periods(icn: current_user.icn)
       years = model_class.available_years(periods)
-      forms = years.map { |year| { year:, last_updated: nil } } # last_updated is not used on front end.
+      # last_updated is not used on front end.
+      forms = years.map { |year| { year:, last_updated: nil, status: 'available' } }
+      forms = add_next_year(forms) if Flipper.enabled?(:form_1095b_pending, current_user)
       forms.sort_by! { |f| f[:year] }
     rescue Common::Exceptions::ResourceNotFound
       [] # if user is not known by enrollment system, return empty list
+    end
+
+    def add_next_year(forms)
+      now = Time.zone.now
+      current_month = now.month
+      return forms unless current_month == 12
+
+      year = now.year
+      forms << { year:, last_updated: nil, status: 'pending' }
     end
 
     def form
