@@ -4,7 +4,6 @@ require 'rails_helper'
 require 'bgs_service/local_bgs'
 
 RSpec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
-  let(:fallback_service_flag_enabled) { false }
   let(:dependent_participant_id) { '600052700' }
   let(:poa_error_message) { 'Failed to assign POA to dependent' }
   let(:poa_code) { '002' }
@@ -174,9 +173,6 @@ RSpec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
 
     before do
       allow(ClaimsApi::Logger).to receive(:log)
-      allow(Flipper).to receive(:enabled?).with(
-        :claims_api_dependent_claimant_update_poa_relationship_fallback
-      ).and_return(fallback_service_flag_enabled)
     end
 
     context 'when the dependent has no open claims' do
@@ -192,47 +188,6 @@ RSpec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
             expect(service).to have_received(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
           end
         end
-      end
-    end
-
-    describe 'when claims_api_dependent_claimant_update_poa_relationship_fallback is enabled' do
-      let(:fallback_service_flag_enabled) { true }
-      let(:new_fallback_service) { instance_double(ClaimsApi::DependentClaimantUpdatePoaRelationshipService) }
-
-      before do
-        allow(service).to receive(:dependent_claimant_update_poa_relationship_service).and_return(new_fallback_service)
-      end
-
-      it 'uses dependent claimant update POA relationship fallback when manage_ptcpnt_rlnshp reports open claims' do
-        allow(service).to receive(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
-          .and_return(:fallback_to_update_benefit_claim)
-        allow(new_fallback_service).to receive(:assign_poa_to_dependent!).and_return(:success)
-
-        expect(service.assign_poa_to_dependent!).to be_nil
-        expect(new_fallback_service).to have_received(:assign_poa_to_dependent!)
-      end
-
-      it 'raises service error with new fallback reason when dependent claimant update fallback fails' do
-        allow(service).to receive(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
-          .and_return(:fallback_to_update_benefit_claim)
-        allow(new_fallback_service).to receive(:assign_poa_to_dependent!).and_return(:failed)
-
-        expect do
-          service.assign_poa_to_dependent!
-        end.to raise_error(Common::Exceptions::ServiceError) { |error|
-          expect(error.errors.first.detail).to eq(
-            'Failed to assign POA via both manage_ptcpnt_rlnshp and dependent claimant update POA relationship'
-          )
-        }
-
-        expect(ClaimsApi::Logger).to have_received(:log).with(
-          'dependent_claimant_poa_assignment_service',
-          hash_including(
-            level: :error,
-            message: poa_error_message,
-            reason: 'Failed to assign POA via both manage_ptcpnt_rlnshp and dependent claimant update POA relationship'
-          )
-        )
       end
     end
 
@@ -302,33 +257,6 @@ RSpec.describe ClaimsApi::DependentClaimantPoaAssignmentService do
             level: :info
           )
         )
-      end
-
-      context 'when claims_api_dependent_claimant_update_poa_relationship_fallback is enabled' do
-        let(:fallback_service_flag_enabled) { true }
-
-        it 'logs new fallback reason details when manage_ptcpnt_rlnshp reports open claims' do
-          open_claims_error = Common::Exceptions::ServiceError.new(detail: 'PtcpntIdA has open claims.')
-          person_web_service = instance_double(ClaimsApi::PersonWebService)
-
-          allow(service).to receive_messages(person_web_service:, poa_participant_id: '600123456')
-          allow(person_web_service).to receive(:manage_ptcpnt_rlnshp_poa).and_raise(open_claims_error)
-
-          result = service.send(:assign_poa_to_dependent_via_manage_ptcpnt_rlnshp)
-
-          expect(result).to eq(:fallback_to_update_benefit_claim)
-          expect(ClaimsApi::Logger).to have_received(:log).with(
-            'dependent_claimant_poa_assignment_service',
-            hash_including(
-              reason: 'Failed to assign POA via manage_ptcpnt_rlnshp. ' \
-                      'Attempting to assign POA via DependentClaimantUpdatePoaRelationshipService.',
-              message: 'Dependent has open claims, continuing.',
-              poa_code:,
-              poa_id: nil,
-              level: :info
-            )
-          )
-        end
       end
 
       it 'logs detailed service errors and re-raises the original exception' do

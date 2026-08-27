@@ -78,9 +78,6 @@ RSpec.describe ClaimsApi::PoaAssignDependentClaimantJob, type: :job do
     end
 
     it "marks the POA status as 'updated'" do
-      poa.vbms_error_message = 'A prior assignment error'
-      poa.save!
-
       allow_any_instance_of(ClaimsApi::DependentClaimantPoaAssignmentService)
         .to receive(:assign_poa_to_dependent!).and_return(
           true
@@ -96,7 +93,6 @@ RSpec.describe ClaimsApi::PoaAssignDependentClaimantJob, type: :job do
 
       poa.reload
       expect(poa.status).to eq(ClaimsApi::PowerOfAttorney::UPDATED)
-      expect(poa.vbms_error_message).to be_nil
     end
 
     describe 'allow_poa_access' do

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'claims_api/dependent_claimant_poa_assignment_service'
-
 module ClaimsApi
   class PoaAssignDependentClaimantJob < ClaimsApi::ServiceBase
     LOG_TAG = 'poa_assign_dependent_claimant_job'
