@@ -83,16 +83,29 @@ module UnifiedHealthData
         remaining.positive? ? remaining : 0
       end
 
-      # Checks if most recent MedicationDispense is in-progress
-      # In-progress statuses: preparation, in-progress, on-hold
+      # Dispense statuses that mean a fill is somewhere between requested and handed
+      # over. Per the refillability spec (Gate 7) and the content document, all three
+      # map to the "Active: Refill in Process" family ("also known as Active: Suspended").
+      IN_PROGRESS_DISPENSE_STATUSES = %w[preparation in-progress on-hold].freeze
+
+      # Checks if a fill is currently in progress for the medication.
       #
       # @param resource [Hash] FHIR MedicationRequest resource
-      # @return [Boolean] true if most recent dispense is in-progress
+      # @return [Boolean] true if a fill is in progress
       def most_recent_dispense_in_progress?(resource)
         most_recent = find_most_recent_medication_dispense(resource)
-        return false if most_recent.nil?
+        return true if most_recent && IN_PROGRESS_DISPENSE_STATUSES.include?(most_recent['status'])
 
-        %w[preparation in-progress on-hold].include?(most_recent['status'])
+        # A fill that has begun but not yet been handed over carries no whenHandedOver/
+        # whenPrepared date, so find_most_recent_medication_dispense sinks it to epoch and
+        # an older completed fill wins the date ranking -- masking the active fill. Detect
+        # such a not-yet-handed-over in-progress dispense directly so the card reflects
+        # "Refill in Process" instead of falling back to the requested-Task "Submitted".
+        return false unless Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user)
+
+        medication_dispenses(resource).any? do |dispense|
+          IN_PROGRESS_DISPENSE_STATUSES.include?(dispense['status']) && dispense['whenHandedOver'].blank?
+        end
       end
     end
   end

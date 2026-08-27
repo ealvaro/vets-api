@@ -545,58 +545,177 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
       end
 
-      it 'keeps submitted status when in-progress dispense occurs after task' do
-        resource = fhir_resource_with_task(
-          task_date: '2025-06-24T10:00:00.000Z',
-          dispenses: [
-            {
-              status: 'in-progress',
-              when_prepared: '2025-06-25T12:00:00.000Z',
-              when_handed_over: nil
-            }
-          ]
-        )
+      context 'when mhv_medications_oh_in_progress_refill_status is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+        end
 
-        result = subject.parse(resource)
+        # A fill the pharmacy has begun (in-progress/preparation/on-hold dispense, not yet
+        # handed over) surfaces as "Active: Refill in Process". refill_submit_date is retained
+        # so the frontend DelayedRefillAlert still fires.
+        it 'surfaces refill in process when an in-progress dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'in-progress', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
 
-        expect(result.refill_status).to eq('submitted')
-        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
+
+        it 'surfaces refill in process when a preparation dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'preparation', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
+
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
+
+        it 'surfaces refill in process when an on-hold (suspended) dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'on-hold', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
+
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
       end
 
-      it 'keeps submitted status when preparation dispense occurs after task' do
-        resource = fhir_resource_with_task(
-          task_date: '2025-06-24T10:00:00.000Z',
-          dispenses: [
-            {
-              status: 'preparation',
-              when_prepared: '2025-06-25T12:00:00.000Z',
-              when_handed_over: nil
-            }
-          ]
-        )
+      context 'when mhv_medications_oh_in_progress_refill_status is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(false)
+        end
 
-        result = subject.parse(resource)
+        # Rollback / pre-flag behavior (vets-api PR #28337): an in-flight fill stays
+        # "Active: Submitted" with refill_submit_date retained for the delayed-refill alert.
+        it 'keeps submitted status when an in-progress dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'in-progress', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
 
-        expect(result.refill_status).to eq('submitted')
-        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
+
+        it 'keeps submitted status when a preparation dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'preparation', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
+
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
+
+        it 'keeps submitted status when an on-hold dispense follows the task' do
+          resource = fhir_resource_with_task(
+            task_date: '2025-06-24T10:00:00.000Z',
+            dispenses: [
+              { status: 'on-hold', when_prepared: '2025-06-25T12:00:00.000Z', when_handed_over: nil }
+            ]
+          )
+
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+          expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        end
+      end
+    end
+
+    # Silver Sulfadiazine scenario (the reported bug). An OH refill whose fill has begun but not
+    # yet shipped arrives as a MedicationDispense with status 'in-progress' and whenHandedOver: nil,
+    # alongside the completed first fill and a recent 'requested' refill Task. Before the fix it
+    # stuck at 'submitted' for two reasons, both now addressed behind
+    # mhv_medications_oh_in_progress_refill_status:
+    #   1. find_most_recent_medication_dispense ranked the dateless in-progress dispense at epoch
+    #      (whenHandedOver/whenPrepared both nil), so the older completed fill won and the base
+    #      status never became refillinprocess. most_recent_dispense_in_progress? now detects a
+    #      not-yet-handed-over in-progress dispense directly; and
+    #   2. the requested-Task overlay pinned 'submitted'. extract_refill_status now returns the
+    #      refillinprocess base status directly instead of letting the overlay downgrade it.
+    context 'in-progress refill dispense with a requested Task (Silver Sulfadiazine bug)' do
+      around do |example|
+        travel_to(Time.zone.parse('2026-08-26T00:00:00Z')) { example.run }
       end
 
-      it 'keeps submitted status when on-hold dispense occurs after task' do
-        resource = fhir_resource_with_task(
-          task_date: '2025-06-24T10:00:00.000Z',
+      let(:resource) do
+        fhir_resource_with_task(
+          task_status: 'requested',
+          task_date: '2026-08-25T15:46:53+00:00',
           dispenses: [
-            {
-              status: 'on-hold',
-              when_prepared: '2025-06-25T12:00:00.000Z',
-              when_handed_over: nil
-            }
+            # Completed first fill, shipped months ago.
+            { status: 'completed', when_prepared: nil, when_handed_over: '2026-05-23T03:04:04.000Z' },
+            # Refill the pharmacy has begun filling: in-progress, not yet handed over.
+            { status: 'in-progress', when_prepared: nil, when_handed_over: nil }
           ]
         )
+      end
 
-        result = subject.parse(resource)
+      context 'when mhv_medications_oh_in_progress_refill_status is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+        end
 
-        expect(result.refill_status).to eq('submitted')
-        expect(result.refill_submit_date).to eq('2025-06-24T10:00:00.000Z')
+        it 'derives Active: Refill in Process while the in-progress refill is being filled' do
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('refillinprocess')
+          expect(result.disp_status).to eq('Active: Refill in Process')
+        end
+      end
+
+      context 'when mhv_medications_oh_in_progress_refill_status is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).and_call_original
+          allow(Flipper).to receive(:enabled?)
+            .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(false)
+        end
+
+        # The unfixed bug: the dateless in-progress dispense is masked by the older completed
+        # fill, so the requested-Task overlay still pins "Active: Submitted".
+        it 'stays Active: Submitted (the pre-fix behavior)' do
+          result = subject.parse(resource)
+
+          expect(result.refill_status).to eq('submitted')
+          expect(result.disp_status).to eq('Active: Submitted')
+        end
       end
     end
 

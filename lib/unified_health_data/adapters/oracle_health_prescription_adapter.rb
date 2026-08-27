@@ -260,6 +260,17 @@ module UnifiedHealthData
         # lifecycle. Guarding here covers both the in-flight and upstream paths.
         return base_status unless refill_overlay_eligible?(base_status)
 
+        # Once the pharmacy has actually begun the fill, base_status is 'refillinprocess'
+        # (a real in-progress/preparation/on-hold dispense). Do not let the requested-Task
+        # overlay downgrade the card back to "Submitted" -- the fill is being processed, not
+        # merely received. refill_submit_date is still surfaced (extract_refill_submission_
+        # metadata_from_tasks keeps it for the refillinprocess family), so the frontend
+        # DelayedRefillAlert continues to fire once the fill runs long.
+        if base_status == STATUS_REFILL_IN_PROCESS &&
+           Flipper.enabled?(:mhv_medications_oh_in_progress_refill_status, @current_user)
+          return base_status
+        end
+
         if Flipper.enabled?(:mhv_mmi_refill_status_bandaid_temp, @current_user)
           extract_refill_status_in_flight(resource, dispenses_data)
         else

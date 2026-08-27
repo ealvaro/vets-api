@@ -239,26 +239,55 @@ describe UnifiedHealthData::PrescriptionService, type: :service do
           end
         end
 
-        it 'ignores Tasks with failed status' do
-          VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-            prescriptions = service.get_prescriptions[:prescriptions]
-            # Prescription 20848650695 has multiple Tasks but all have status='failed'
-            failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+        context 'when mhv_medications_oh_in_progress_refill_status is disabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(false)
+          end
 
-            # Should NOT have refill_submit_date set from failed Tasks
-            expect(failed_task_prescription.refill_submit_date).to be_nil
-            # Should have normal active status, not submitted
-            expect(failed_task_prescription.refill_status).to eq('active')
+          it 'ignores Tasks with failed status' do
+            VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+              prescriptions = service.get_prescriptions[:prescriptions]
+              # Prescription 20848650695 has 649 Tasks, all status='failed'. Its dateless
+              # in-progress dispense stays masked by the completed fill while the flag is off.
+              failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+
+              # Should NOT have refill_submit_date set from failed Tasks
+              expect(failed_task_prescription.refill_submit_date).to be_nil
+              # Should have normal active status, not submitted
+              expect(failed_task_prescription.refill_status).to eq('active')
+            end
+          end
+
+          it 'sets disp_status to Active (not Active: Submitted) when Tasks are failed' do
+            VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+              prescriptions = service.get_prescriptions[:prescriptions]
+              # Prescription 20848650695 has multiple Tasks but all have status='failed'
+              failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+
+              expect(failed_task_prescription.disp_status).to eq('Active')
+            end
           end
         end
 
-        it 'sets disp_status to Active (not Active: Submitted) when Tasks are failed' do
-          VCR.use_cassette('unified_health_data/get_prescriptions_success') do
-            prescriptions = service.get_prescriptions[:prescriptions]
-            # Prescription 20848650695 has multiple Tasks but all have status='failed'
-            failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+        context 'when mhv_medications_oh_in_progress_refill_status is enabled' do
+          before do
+            allow(Flipper).to receive(:enabled?)
+              .with(:mhv_medications_oh_in_progress_refill_status, anything).and_return(true)
+          end
 
-            expect(failed_task_prescription.disp_status).to eq('Active')
+          it 'ignores failed Tasks but surfaces the in-progress dispense as refillinprocess' do
+            VCR.use_cassette('unified_health_data/get_prescriptions_success') do
+              prescriptions = service.get_prescriptions[:prescriptions]
+              # Prescription 20848650695: 649 failed Tasks plus a dateless in-progress dispense
+              # masked by an older completed fill. The flag surfaces the active fill.
+              failed_task_prescription = prescriptions.find { |p| p.prescription_id == '20848650695' }
+
+              # Failed Tasks still contribute nothing: no submit date, never 'submitted'.
+              expect(failed_task_prescription.refill_submit_date).to be_nil
+              expect(failed_task_prescription.refill_status).to eq('refillinprocess')
+              expect(failed_task_prescription.disp_status).to eq('Active: Refill in Process')
+            end
           end
         end
 

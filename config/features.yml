@@ -2107,6 +2107,15 @@ features:
       VistA-sourced NDC for Krames PMI documentation lookup, unlocking the
       "Learn more about this medication" link for local pharmacy fills.
     enable_in_development: true
+  mhv_medications_oh_in_progress_refill_status:
+    actor_type: user
+    description: >-
+      If enabled, Oracle Health prescriptions whose refill fill has begun (a
+      MedicationDispense in preparation/in-progress/on-hold that has not yet been
+      handed over) surface as "Active: Refill in Process" instead of sticking at
+      "Active: Submitted". refill_submit_date is retained so the frontend
+      DelayedRefillAlert still fires. When disabled, behavior is unchanged.
+    enable_in_development: true
   mhv_medications_oh_refill_window_logging:
     actor_type: user
     description: >-
