@@ -12,6 +12,8 @@ module Mobile
 
         def get_vet_verification_status(icn, lighthouse_client_id = nil, lighthouse_rsa_key_path = nil, options = {})
           endpoint = 'status'
+          raise ArgumentError, 'icn is required' if icn.blank?
+
           response = config.get(
             "#{endpoint}/#{icn}",
             lighthouse_client_id,
@@ -20,6 +22,8 @@ module Mobile
           ).body
 
           transform_response(response)
+        rescue ArgumentError
+          raise
         rescue => e
           StatsD.increment("#{STATSD_KEY_PREFIX}.fail")
           handle_error(e, lighthouse_client_id, endpoint)

@@ -64,6 +64,7 @@ module IncreaseCompensation
 
       mappings = self.class.mappings_for_form(form_id)
       form_data = generate_prefill(mappings) if FormProfile.prefill_enabled_forms.include?(form_id)
+      form_data['ratedDisabilitiesFetchFailed'] = true if @rated_disabilities_fetch_failed && form_data
 
       { form_data:, metadata: }
     end
@@ -102,28 +103,29 @@ module IncreaseCompensation
       return {} unless user.authorize :evss, :access?
       return {} unless user.authorize :lighthouse, :access_vet_status?
 
-      begin
-        api_provider = ApiProviderFactory.call(
-          type: ApiProviderFactory::FACTORIES[:rated_disabilities],
-          provider: :lighthouse,
-          options: { icn: user.icn.to_s },
-          current_user: user,
-          feature_toggle: :form_218940_disability_prefill_enabled
-        )
-        invoker = 'FormProfiles::VA218940V1#initialize_rated_disabilities_information'
-        # lib/disability_compensation/providers/rated_disabilities/lighthouse_rated_disabilities_provider.rb
-        response = api_provider.get_rated_disabilities(nil, nil, { invoker: })
+      fetch_rated_disabilities_information
+    rescue => e
+      Rails.logger.error('IncreaseCompensation::FormProfile Fetch Disabilities Error', { error: e.message })
+      @rated_disabilities_fetch_failed = true
+      DisabilityList.new(rated_disabilities: [])
+    end
 
-        # response = lib/disability_compensation/responses/rated_disabilities_response.rb
-        simple_response = response.rated_disabilities
-                                  .select { |rated_dis| rated_dis.decision_code == 'SVCCONNCTED' }
-                                  .map { |disablitiy_info| { 'disability' => disablitiy_info.name } }
+    def fetch_rated_disabilities_information
+      api_provider = ApiProviderFactory.call(
+        type: ApiProviderFactory::FACTORIES[:rated_disabilities],
+        provider: :lighthouse,
+        options: { icn: user.icn.to_s },
+        current_user: user,
+        feature_toggle: :form_218940_disability_prefill_enabled
+      )
+      invoker = 'FormProfiles::VA218940V1#initialize_rated_disabilities_information'
+      response = api_provider.get_rated_disabilities(nil, nil, { invoker: })
 
-        DisabilityList.new(rated_disabilities: simple_response)
-      rescue => e
-        Rails.logger.error('IncreaseCompensation::FormProfile Fetch Disablilities Error', { error: e.message })
-        {}
-      end
+      simple_response = response.rated_disabilities
+                                .select { |rated_dis| rated_dis.decision_code == 'SVCCONNCTED' }
+                                .map { |disability_info| { 'disability' => disability_info.name } }
+
+      DisabilityList.new(rated_disabilities: simple_response)
     end
   end
 end

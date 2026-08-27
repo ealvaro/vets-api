@@ -59,6 +59,8 @@ RSpec.describe IncreaseCompensation::FormProfiles::VA218940v1, type: :model do
   describe '#prefill' do
     it 'initializes identity and contact information' do
       allow(Flipper).to receive(:enabled?).with(:form_218940_prefill_enabled).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:form_218940_disability_prefill_enabled).and_return(false)
+
       expect(subject.prefill).to match(
         {
           form_data: {
@@ -123,6 +125,104 @@ RSpec.describe IncreaseCompensation::FormProfiles::VA218940v1, type: :model do
           }
         }
       )
+    end
+
+    context 'when the rated disabilities fetch fails' do
+      it 'sets ratedDisabilitiesFetchFailed to true in form_data' do
+        new_subject = described_class.new(form_id:, user:)
+        allow(user).to receive(:authorize).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form_218940_prefill_enabled).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form_218940_disability_prefill_enabled).and_return(true)
+        allow(new_subject).to receive(:initialize_rated_disabilities_information) do
+          new_subject.instance_variable_set(:@rated_disabilities_fetch_failed, true)
+          IncreaseCompensation::FormProfiles::VA218940v1::DisabilityList.new(rated_disabilities: [])
+        end
+
+        result = new_subject.prefill
+
+        expect(result[:form_data]['ratedDisabilitiesFetchFailed']).to be(true)
+      end
+    end
+
+    context 'when the rated disabilities fetch succeeds' do
+      it 'does not set ratedDisabilitiesFetchFailed in form_data' do
+        new_subject = described_class.new(form_id:, user:)
+        allow(user).to receive(:authorize).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form_218940_prefill_enabled).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form_218940_disability_prefill_enabled).and_return(true)
+        allow(new_subject).to receive(:initialize_rated_disabilities_information).and_return(disability_list)
+
+        result = new_subject.prefill
+
+        expect(result[:form_data]).not_to have_key('ratedDisabilitiesFetchFailed')
+      end
+    end
+
+    context 'when form_data is nil (form_id not in prefill_enabled_forms)' do
+      it 'does not attempt to set the flag and does not raise' do
+        allow(FormProfile).to receive(:prefill_enabled_forms).and_return([])
+        allow(user).to receive(:authorize).and_return(true)
+        allow(Flipper).to receive(:enabled?).with(:form_218940_prefill_enabled).and_return(true)
+        new_subject = described_class.new(form_id:, user:)
+        new_subject.instance_variable_set(:@rated_disabilities_fetch_failed, true)
+
+        result = nil
+        expect { result = new_subject.prefill }.not_to raise_error
+        expect(result[:form_data]).to be_nil
+      end
+    end
+  end
+
+  describe '#initialize_rated_disabilities_information' do
+    let(:api_provider) { instance_double(LighthouseRatedDisabilitiesProvider) }
+
+    before do
+      allow(user).to receive(:authorize).with(:evss, :access?).and_return(true)
+      allow(user).to receive(:authorize).with(:lighthouse, :access_vet_status?).and_return(true)
+      allow(ApiProviderFactory).to receive(:call).and_return(api_provider)
+    end
+
+    context 'when the Lighthouse call raises' do
+      before do
+        allow(api_provider).to receive(:get_rated_disabilities).and_raise(Common::Exceptions::ServiceUnavailable)
+      end
+
+      it 'returns an empty DisabilityList rather than a bare hash' do
+        result = subject.send(:initialize_rated_disabilities_information)
+
+        expect(result).to be_a(IncreaseCompensation::FormProfiles::VA218940v1::DisabilityList)
+        expect(result.rated_disabilities).to eq([])
+      end
+
+      it 'sets @rated_disabilities_fetch_failed to true' do
+        subject.send(:initialize_rated_disabilities_information)
+
+        expect(subject.instance_variable_get(:@rated_disabilities_fetch_failed)).to be(true)
+      end
+
+      it 'logs the error' do
+        expect(Rails.logger).to receive(:error).with(
+          'IncreaseCompensation::FormProfile Fetch Disabilities Error',
+          hash_including(:error)
+        )
+
+        subject.send(:initialize_rated_disabilities_information)
+      end
+    end
+
+    context 'when the Lighthouse call succeeds' do
+      before do
+        allow(api_provider).to receive(:get_rated_disabilities).and_return(
+          instance_double(DisabilityCompensation::ApiProvider::RatedDisabilitiesResponse,
+                          rated_disabilities: rated_response.map { |r| double('rated_disability', **r) })
+        )
+      end
+
+      it 'does not set @rated_disabilities_fetch_failed' do
+        subject.send(:initialize_rated_disabilities_information)
+
+        expect(subject.instance_variable_get(:@rated_disabilities_fetch_failed)).to be_nil
+      end
     end
   end
 end
