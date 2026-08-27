@@ -87,6 +87,21 @@ RSpec.describe Rack::Attack do
     end
   end
 
+  describe 'throttle instrumentation' do
+    it 'notifies RackAttack::ThrottleLogger with the throttled request' do
+      post('/v0/limited', headers:)
+      expect(last_response).not_to have_http_status(:too_many_requests)
+
+      expect(RackAttack::ThrottleLogger).to receive(:log) do |request|
+        expect(request.env['rack.attack.matched']).to eq('example/ip')
+        expect(request.env['rack.attack.match_type']).to eq(:throttle)
+      end
+
+      post('/v0/limited', headers:)
+      expect(last_response).to have_http_status(:too_many_requests)
+    end
+  end
+
   describe 'check_in/ip' do
     let(:data) { { data: 'foo', status: 200 } }
 

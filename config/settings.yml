@@ -1195,6 +1195,21 @@ preneeds:
     bucket: <%= ENV['preneeds__s3__bucket'] %>
     region: us-gov-west-1
   wsdl: config/preneeds/wsdl/preneeds.wsdl
+rack_attack:
+  throttle_log:
+    # HMAC key used by RackAttack::ThrottleLogger to pseudonymize IPs before they
+    # reach the logs. Each environment holds its own value, so a token minted in
+    # one environment is meaningless in another. Falls back to secret_key_base
+    # when unset. Rotating it remints every token -- watch the hash_key_id field
+    # in the logs to tell a rotation apart from a change in traffic.
+    #
+    # The .github/workflows/settings_checks.yml job fails the build unless this
+    # parameter exists in ALL FOUR environments, so create all of them:
+    #   /dsva-vagov/vets-api/dev/env_vars/rack_attack/throttle_log/hash_secret
+    #   /dsva-vagov/vets-api/sandbox/env_vars/rack_attack/throttle_log/hash_secret
+    #   /dsva-vagov/vets-api/staging/env_vars/rack_attack/throttle_log/hash_secret
+    #   /dsva-vagov/vets-api/prod/env_vars/rack_attack/throttle_log/hash_secret
+    hash_secret: <%= ENV['rack_attack__throttle_log__hash_secret'] %>
 rack_timeout:
   service_timeout: <%= ENV['rack_timeout__service_timeout'] %>
   wait_overtime: <%= ENV['rack_timeout__wait_overtime'] %>

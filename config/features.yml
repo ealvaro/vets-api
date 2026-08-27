@@ -2663,6 +2663,18 @@ features:
   my_va_form_submission_pdf_link:
     actor_type: user
     description: Enables users to view PDF link within submitted forms cards
+  rack_attack_throttle_logging:
+    actor_type: user
+    description: >
+      When enabled, logs structured diagnostics (matched rule, discriminator,
+      REMOTE_ADDR, X-Real-IP, X-Forwarded-For, count/limit/period) for every
+      Rack::Attack 429. No IP is logged in the clear: each is replaced by a keyed
+      HMAC pseudonym (ip_<hex> for the address, net_<hex> for its /24 or /48), so
+      identical addresses still produce identical tokens and bucket collapse stays
+      visible without the addresses being recoverable from the log. Used to
+      diagnose rate-limit bucket collisions where many clients collapse onto one
+      discriminator IP. Safe to leave off; turn on during rate-limit
+      investigations.
   rated_disabilities_detect_discrepancies:
     actor_type: user
     description:

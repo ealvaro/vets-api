@@ -1197,6 +1197,9 @@ preneeds:
     bucket: ~
     region: ~
   wsdl: config/preneeds/wsdl/preneeds.wsdl
+rack_attack:
+  throttle_log:
+    hash_secret: fake_secret
 rack_timeout:
   service_timeout: ~
   wait_overtime: ~

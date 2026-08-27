@@ -1,5 +1,7 @@
 # All lines should be added in alphabetical order (using sort -u)
+
 # For more details and guidance, please take a look at .github/CODEOWNERS_README.md
+
 # Place your entry above this comment in alphabetical order.
 
 .devcontainer/ @software/cto-engineers
@@ -902,6 +904,7 @@ config/initializers/octokit.rb @software/va-platform-backend
 config/initializers/okcomputer.rb @software/va-platform-backend
 config/initializers/override_redirect_to_logging.rb @software/octo-identity
 config/initializers/rack_attack.rb @software/va-platform-backend
+config/initializers/rack_attack_throttle_logging.rb @software/va-platform-backend
 config/initializers/rack_forwarded_header_priority.rb @software/va-platform-backend
 config/initializers/rack_timeout.rb @software/va-platform-backend
 config/initializers/rails_semantic_logger_patch.rb @software/va-platform-backend
@@ -1182,6 +1185,7 @@ lib/pdf_utilities @software/va-platform-backend
 lib/periodic_jobs.rb @software/va-platform-backend
 lib/persistent_attachments @software/benefits-lifestage
 lib/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
+lib/rack_attack/throttle_logger.rb @software/va-platform-backend
 lib/README.md @software/va-platform-backend
 lib/reports/uploader.rb @software/govcio-vfep-codereviewers
 lib/request_context_middleware.rb @software/octo-identity
@@ -1830,6 +1834,7 @@ spec/lib/periodic_jobs_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/persistent_attachments/sanitizer_spec.rb @software/benefits-lifestage
 spec/lib/postgis_schema_roundtrip_spec.rb @software/va-platform-backend
 spec/lib/preneeds @software/bah-mbs-selfserv @software/va-platform-backend
+spec/lib/rack_attack/throttle_logger_spec.rb @software/va-platform-backend
 spec/lib/request_context_middleware_spec.rb @software/octo-identity
 spec/lib/res/ch31_form_spec.rb @software/govcio-vfep-codereviewers
 spec/lib/rubocop @software/va-platform-backend
