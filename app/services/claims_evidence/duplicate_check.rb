@@ -7,7 +7,7 @@ module ClaimsEvidence
   #
   #   presumed_duplicate? - matches prior SUCCESS rows, so it only catches repeats once an
   #                         earlier upload has landed.
-  #   acquire_lock        - a short Redis lease covering the window before that row exists.
+  #   acquire_lock        - a short Redis lock covering the window before that row exists.
   #                         The frontend uploads files in parallel, so two copies of one
   #                         file can clear the first layer at the same moment.
   #
@@ -16,9 +16,11 @@ module ClaimsEvidence
   # open: a Redis outage must not stop a Veteran filing evidence.
   class DuplicateCheck
     LOCK_NAMESPACE = 'claims-evidence-upload'
-    LOCK_TTL = 10.minutes
+    # Only has to cover one upload request — tempfile copy, PDF unlock, virus scan, CE call,
+    # DB insert.
+    LOCK_TTL = 2.minutes
     LOCK_UNAVAILABLE_MESSAGE = 'ClaimsEvidence::DuplicateCheck lock unavailable, failing open'
-    LOCK_RELEASE_FAILED_MESSAGE = 'ClaimsEvidence::DuplicateCheck lock release failed, lease will expire'
+    LOCK_RELEASE_FAILED_MESSAGE = 'ClaimsEvidence::DuplicateCheck lock release failed, it will expire on its own'
 
     # @param upload [ClaimsEvidence::UploadRequest]
     def initialize(current_user:, upload:, cache: Rails.cache)
@@ -37,8 +39,8 @@ module ClaimsEvidence
       end
     end
 
-    # @return [Boolean] true if this request may proceed — it took the lease, or the cache
-    # was unreachable and we failed open. False means another request holds the lease.
+    # @return [Boolean] true if this request may proceed — it took the lock, or the cache was
+    # unreachable and we failed open. False means another request holds the lock.
     def acquire_lock
       claimed = @cache.write(lock_key, true, namespace: LOCK_NAMESPACE,
                                              expires_in: LOCK_TTL,
@@ -54,20 +56,27 @@ module ClaimsEvidence
       lock_unavailable(e)
     end
 
-    # Best effort. By the time anything releases the lease the file is in the eFolder, so a
-    # cache error here must not fail the request; the lease just expires on its own instead.
-    def release_lock
+    # Best effort. By the time anything releases the lock the file is in the eFolder, so a
+    # cache error here must not fail the request; the lock just expires on its own instead.
+    #
+    # @param retry_blocked [Boolean] whether stranding the lock blocks a legitimate retry.
+    #   True when no EvidenceSubmission row was written, so presumed_duplicate? has nothing to
+    #   fall back on and the Veteran gets a 422 until the TTL expires. False when the row does
+    #   exist, since the first layer then rejects repeats on its own. Required rather than
+    #   defaulted: it drives the monitor, so a new call site has to decide which case it is.
+    def release_lock(retry_blocked:)
       @cache.delete(lock_key, namespace: LOCK_NAMESPACE)
     rescue => e
       Rails.logger.warn("#{LOCK_RELEASE_FAILED_MESSAGE}: #{e.class}")
       StatsD.increment("#{ClaimsEvidence::Metrics::PREFIX}.duplicate_check.release_failure",
-                       tags: ClaimsEvidence::Metrics::TAGS + ["error_class:#{e.class.name}"])
+                       tags: ClaimsEvidence::Metrics::TAGS + ["error_class:#{e.class.name}",
+                                                              "retry_blocked:#{retry_blocked}"])
       nil
     end
 
     private
 
-    # @return [true] always: no lease means no dedupe, not a blocked upload
+    # @return [true] always: no lock means no dedupe, not a blocked upload
     def lock_unavailable(error = nil)
       error_tags = error ? ["error_class:#{error.class.name}"] : []
       Rails.logger.warn([LOCK_UNAVAILABLE_MESSAGE, error&.class].compact.join(': '))
@@ -85,9 +94,13 @@ module ClaimsEvidence
       )
     end
 
+    # Guards both levels: a non-object payload, and a personalisation key holding something
+    # other than an object. The inner check matters because a String there would raise
+    # NoMethodError, which the JSON::ParserError rescue does not catch.
     def parse_personalisation(submission)
       parsed = JSON.parse(submission.template_metadata.to_s)
-      parsed.is_a?(Hash) ? parsed['personalisation'].to_h : {}
+      personalisation = parsed.is_a?(Hash) ? parsed['personalisation'] : nil
+      personalisation.is_a?(Hash) ? personalisation : {}
     rescue JSON::ParserError
       {}
     end

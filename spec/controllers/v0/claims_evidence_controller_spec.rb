@@ -22,7 +22,7 @@ RSpec.describe V0::ClaimsEvidenceController, type: :controller do
   end
 
   describe 'POST #create' do
-    it 'releases the duplicate lease after successful upload and persistence' do
+    it 'releases the duplicate lock after successful upload and persistence' do
       duplicate_check = instance_double(ClaimsEvidence::DuplicateCheck,
                                         presumed_duplicate?: false,
                                         acquire_lock: true,
@@ -32,7 +32,8 @@ RSpec.describe V0::ClaimsEvidenceController, type: :controller do
       post :create, params: { file:, documentTypeId: doc_type_id, supplementalClaimId: sc_id }
 
       expect(response).to have_http_status(:ok)
-      expect(duplicate_check).to have_received(:release_lock).once
+      # retry_blocked:false — the row exists, so the DB layer covers a stranded lock.
+      expect(duplicate_check).to have_received(:release_lock).with(retry_blocked: false).once
     end
   end
 end

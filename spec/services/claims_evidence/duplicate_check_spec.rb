@@ -74,10 +74,17 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
       create(:cst_sc_evidence_submission, user_account:).update!(template_metadata: '{"other":1}')
       expect(duplicate_check).not_to be_presumed_duplicate
     end
+
+    # A String here raises NoMethodError rather than JSON::ParserError, so it would escape
+    # the rescue below and 500 an upload.
+    it 'ignores a row whose personalisation is not an object' do
+      create(:cst_sc_evidence_submission, user_account:).update!(template_metadata: '{"personalisation":"x"}')
+      expect(duplicate_check).not_to be_presumed_duplicate
+    end
   end
 
   describe '#acquire_lock' do
-    it 'claims the lease on the first call and refuses the second' do
+    it 'claims the lock on the first call and refuses the second' do
       expect(duplicate_check.acquire_lock).to be(true)
       expect(build_check.acquire_lock).to be(false)
     end
@@ -92,7 +99,7 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
       expect(build_check(file_name: 'other-note.pdf').acquire_lock).to be(true)
     end
 
-    it 'scopes the lease to the user' do
+    it 'scopes the lock to the user' do
       duplicate_check.acquire_lock
       other_account = create(:user_account)
       other_user = user_struct.new(other_account, other_account.id)
@@ -130,9 +137,9 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
   end
 
   describe '#release_lock' do
-    it 'frees the lease so the same file can be retried' do
+    it 'frees the lock so the same file can be retried' do
       duplicate_check.acquire_lock
-      duplicate_check.release_lock
+      duplicate_check.release_lock(retry_blocked: true)
       expect(build_check.acquire_lock).to be(true)
     end
 
@@ -141,15 +148,24 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
       before { allow(cache).to receive(:delete).and_raise(ConnectionPool::TimeoutError.new('no slot')) }
 
       it 'swallows the error' do
-        expect { duplicate_check.release_lock }.not_to raise_error
+        expect { duplicate_check.release_lock(retry_blocked: true) }.not_to raise_error
       end
 
-      it 'records the release failure' do
+      # retry_blocked is what the monitor keys on, so both values have to reach the tag.
+      it 'tags the release failure retry_blocked:true when no row was written' do
         allow(StatsD).to receive(:increment).and_call_original
-        duplicate_check.release_lock
+        duplicate_check.release_lock(retry_blocked: true)
         expect(StatsD).to have_received(:increment)
           .with('api.claims_evidence.duplicate_check.release_failure',
-                tags: base_tags + ['error_class:ConnectionPool::TimeoutError'])
+                tags: base_tags + ['error_class:ConnectionPool::TimeoutError', 'retry_blocked:true'])
+      end
+
+      it 'tags the release failure retry_blocked:false when the row exists' do
+        allow(StatsD).to receive(:increment).and_call_original
+        duplicate_check.release_lock(retry_blocked: false)
+        expect(StatsD).to have_received(:increment)
+          .with('api.claims_evidence.duplicate_check.release_failure',
+                tags: base_tags + ['error_class:ConnectionPool::TimeoutError', 'retry_blocked:false'])
       end
     end
   end

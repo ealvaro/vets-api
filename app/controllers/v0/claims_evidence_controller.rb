@@ -13,6 +13,8 @@ module V0
 
     STATSD_METRIC_PREFIX = ClaimsEvidence::Metrics::PREFIX
     STATSD_TAGS = ClaimsEvidence::Metrics::TAGS
+    MAX_FILE_SIZE = 99.megabytes
+    ALLOWED_EXTENSIONS = %w[bmp jpeg jpg pdf png tif tiff txt].freeze
 
     # Internal signal, translated to a 422 in #create.
     class DuplicateUpload < StandardError; end
@@ -52,7 +54,7 @@ module V0
       sc_id = parse_supplemental_claim_id
 
       upload = build_upload_request(uploaded_file, doc_type_id, sc_id)
-      copy_and_upload(upload, claim_upload_slot(upload))
+      copy_and_upload(upload, guard_duplicate_upload(upload))
     rescue ClaimsEvidenceApi::Service::Files::VirusFound => e
       increment_upload_failure(doc_type_id, reason: 'virus')
       log_upload_failure(e, uploaded_file, doc_type_id, sc_id)
@@ -62,8 +64,9 @@ module V0
       )
     rescue DuplicateUpload
       # Translate the internal signal into the response; unhandled it would render a 500.
-      raise Common::Exceptions::UnprocessableEntity.new(detail: 'DOC_UPLOAD_DUPLICATE',
-                                                        source: self.class.name)
+      raise Common::Exceptions::UnprocessableEntity.new(detail: 'DOC_UPLOAD_DUPLICATE', source: self.class.name)
+    rescue ClaimsEvidence::PdfUnlocker::Rejected => e
+      raise_validation_failure(e.reason, e.code)
     rescue => e
       # sc_id is the last thing param validation sets, so its presence means the failure came
       # from the upload itself; validation failures already counted validation.failure.
@@ -74,6 +77,9 @@ module V0
 
     private
 
+    # file_size is measured before decryption and has to stay that way: it keys the duplicate
+    # check, and HexaPDF's rewrite is a different size, so a retry of the same locked PDF
+    # would stop matching the row the first attempt left behind.
     def build_upload_request(uploaded_file, doc_type_id, sc_id)
       ClaimsEvidence::UploadRequest.new(
         file: uploaded_file,
@@ -85,12 +91,14 @@ module V0
       )
     end
 
-    # @return [ClaimsEvidence::DuplicateCheck] holding the lease, for the caller to release
-    def claim_upload_slot(upload)
+    # @return [ClaimsEvidence::DuplicateCheck] holding the lock, for the caller to release
+    # detected_by names what the duplicate matched: an upload that already finished, or one
+    # still running in a parallel request.
+    def guard_duplicate_upload(upload)
       duplicate_check = ClaimsEvidence::DuplicateCheck.new(current_user: @current_user, upload:)
 
-      raise_duplicate(upload, detected_by: 'db') if duplicate_check.presumed_duplicate?
-      raise_duplicate(upload, detected_by: 'lock') unless duplicate_check.acquire_lock
+      raise_duplicate(upload, detected_by: 'completed') if duplicate_check.presumed_duplicate?
+      raise_duplicate(upload, detected_by: 'in_flight') unless duplicate_check.acquire_lock
 
       duplicate_check
     end
@@ -98,6 +106,14 @@ module V0
     def raise_duplicate(upload, detected_by:)
       increment_upload_failure(upload.doc_type_id, reason: 'duplicate', detected_by:)
       raise DuplicateUpload
+    end
+
+    # Something about the file itself the Veteran can act on, so it carries a code the frontend
+    # can key off rather than a sentence. cause: nil matters for the password rejections, whose
+    # underlying error was raised while the password was in scope.
+    def raise_validation_failure(reason, code)
+      increment_validation_failure(reason)
+      raise Common::Exceptions::UnprocessableEntity.new(detail: code, source: self.class.name), cause: nil
     end
 
     def parse_uploaded_file
@@ -112,7 +128,23 @@ module V0
         raise Common::Exceptions::InvalidFieldValue.new('file', uploaded_file.class.name)
       end
 
+      validate_file_size(uploaded_file)
+      validate_file_type(uploaded_file)
       uploaded_file
+    end
+
+    # Checked before the file is staged to disk or streamed upstream. An empty file would
+    # otherwise reach the eFolder as a document nobody can open.
+    def validate_file_size(uploaded_file)
+      raise_validation_failure('empty_file', 'DOC_UPLOAD_EMPTY_FILE') if uploaded_file.size.zero?
+      raise_validation_failure('file_too_large', 'DOC_UPLOAD_FILE_TOO_LARGE') if uploaded_file.size > MAX_FILE_SIZE
+    end
+
+    def validate_file_type(uploaded_file)
+      extension = File.extname(uploaded_file.original_filename.to_s).delete_prefix('.').downcase
+      return if ALLOWED_EXTENSIONS.include?(extension)
+
+      raise_validation_failure('unsupported_file_type', 'DOC_UPLOAD_UNSUPPORTED_TYPE')
     end
 
     def log_upload_failure(error, uploaded_file, doc_type_id, sc_id)
@@ -144,22 +176,26 @@ module V0
         upload.file.tempfile.rewind
         IO.copy_stream(upload.file.tempfile, tmp)
         tmp.flush
+        # Decrypt before the virus scan and upload, so both see readable bytes.
+        ClaimsEvidence::PdfUnlocker.new(tmp, upload.file_name, password: params[:password]).unlock!
         ce_response = ce_service.upload(tmp.path, provider_data: build_provider_data(upload.doc_type_id))
         # Set the moment Claims Evidence takes the file: from here on nothing may release
-        # the lease, because the document is in the eFolder whatever happens next.
+        # the lock, because the document is in the eFolder whatever happens next.
         evidence_accepted = true
 
         # Order matters: save the record first, since the file is already in the eFolder. Build the
         # payload before counting success, so a response body we can't read is only counted as a failure.
-        # Once the row exists the first layer takes over. If it didn't, hold the lease.
-        duplicate_check.release_lock if persist_evidence_submission(upload, ce_response)
+        # Once the row exists the first layer takes over, so a failed release costs nothing.
+        # If it didn't, hold the lock.
+        duplicate_check.release_lock(retry_blocked: false) if persist_evidence_submission(upload, ce_response)
         payload = build_upload_response_payload(ce_response.body)
         log_upload_success(upload.doc_type_id)
         render json: payload, status: ce_response.status
       end
     rescue
-      # The file never reached Claims Evidence, so free the lease for an immediate retry.
-      duplicate_check.release_lock unless evidence_accepted
+      # The file never reached Claims Evidence, so free the lock for an immediate retry. If this
+      # release fails the lock is stranded and that retry 422s until the TTL expires.
+      duplicate_check.release_lock(retry_blocked: true) unless evidence_accepted
       raise
     end
 
@@ -250,7 +286,7 @@ module V0
       log_persist_failure(e, { file_name: upload.file_name, sc_id: upload.sc_id,
                                doc_type_id: upload.doc_type_id, file_size: upload.file_size,
                                ce_response: })
-      nil # StatsD.increment returns truthy; nil stops the caller releasing the lease
+      nil # StatsD.increment returns truthy; nil stops the caller releasing the lock
     end
 
     def log_persist_failure(error, context)

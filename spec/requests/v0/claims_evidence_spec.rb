@@ -28,6 +28,31 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
       post '/v0/claims_evidence', params:
     end
 
+    # The DOC_UPLOAD_* code, or the prose sentence on the paths that still send one.
+    def error_detail
+      JSON.parse(response.body)['errors'].first['detail']
+    end
+
+    shared_examples 'a rejected file' do |reason:, code:|
+      before do
+        allow(StatsD).to receive(:increment).and_call_original
+        expect_any_instance_of(ClaimsEvidenceApi::Service::Files).not_to receive(:upload)
+        post_upload
+      end
+
+      it "returns 422 with #{code}" do
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(error_detail).to eq(code)
+      end
+
+      it "increments the validation failure counter with reason:#{reason}" do
+        expect(StatsD).to have_received(:increment).with(
+          'api.claims_evidence.validation.failure',
+          tags: base_tags + ["reason:#{reason}"]
+        )
+      end
+    end
+
     context 'when unauthenticated' do
       it 'returns 401' do
         post_upload
@@ -409,12 +434,12 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               expect(response.body).to include('DOC_UPLOAD_DUPLICATE')
             end
 
-            it 'increments the upload failure counter with reason:duplicate detected_by:db' do
+            it 'increments the upload failure counter with reason:duplicate detected_by:completed' do
               allow(StatsD).to receive(:increment).and_call_original
               post_upload
               expect(StatsD).to have_received(:increment).with(
                 'api.claims_evidence.upload.failure',
-                tags: base_tags + ['reason:duplicate', 'detected_by:db', "document_type_id:#{valid_doc_type_id}"]
+                tags: base_tags + ['reason:duplicate', 'detected_by:completed', "document_type_id:#{valid_doc_type_id}"]
               )
             end
 
@@ -526,7 +551,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               post_upload
             end
 
-            it 'tags the rejection detected_by:lock' do
+            it 'tags the rejection detected_by:in_flight' do
               post_upload
 
               allow(StatsD).to receive(:increment).and_call_original
@@ -534,7 +559,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
 
               expect(StatsD).to have_received(:increment).with(
                 'api.claims_evidence.upload.failure',
-                tags: base_tags + ['reason:duplicate', 'detected_by:lock', "document_type_id:#{valid_doc_type_id}"]
+                tags: base_tags + ['reason:duplicate', 'detected_by:in_flight', "document_type_id:#{valid_doc_type_id}"]
               )
             end
 
@@ -561,7 +586,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               expect(response).to have_http_status(:unprocessable_entity)
               expect(StatsD).to have_received(:increment).with(
                 'api.claims_evidence.upload.failure',
-                tags: base_tags + ['reason:duplicate', 'detected_by:db', "document_type_id:#{valid_doc_type_id}"]
+                tags: base_tags + ['reason:duplicate', 'detected_by:completed', "document_type_id:#{valid_doc_type_id}"]
               )
             end
           end
@@ -584,12 +609,12 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             end
           end
 
-          # The file is in the eFolder but nothing recorded it, so the lease is the only
+          # The file is in the eFolder but nothing recorded it, so the lock is the only
           # thing standing between the Veteran and a duplicate. It must survive the error.
           context 'when the request fails after Claims Evidence accepted the file' do
             # Metrics and logs deliberately rescue themselves, so the response body is the
             # only thing left that can fail once the file has been accepted. Persistence
-            # fails too, otherwise the row would exist and releasing the lease is correct.
+            # fails too, otherwise the row would exist and releasing the lock is correct.
             let(:malformed_response) { double(reason_phrase: 'OK', status: 200, body: 'not-a-hash') }
 
             before do
@@ -599,7 +624,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
                 .and_return(malformed_response)
             end
 
-            it 'keeps the lease, so a retry is rejected rather than uploaded twice' do
+            it 'keeps the lock, so a retry is rejected rather than uploaded twice' do
               post_upload
               expect(response).to have_http_status(:internal_server_error)
 
@@ -635,9 +660,9 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             end
           end
 
-          # The upload and the DB row both succeeded; only the lease cleanup broke. The
+          # The upload and the DB row both succeeded; only the lock cleanup broke. The
           # Veteran must not see a 500 for a request that did everything it was asked to.
-          context 'when Redis raises while the lease is being released' do
+          context 'when Redis raises while the lock is being released' do
             before { allow(cache).to receive(:delete).and_raise(ConnectionPool::TimeoutError.new('no slot')) }
 
             it 'still returns 200 and persists the submission' do
@@ -654,7 +679,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             end
           end
 
-          context 'when Redis raises while the lease is being acquired' do
+          context 'when Redis raises while the lock is being acquired' do
             before { allow(cache).to receive(:write).and_raise(ConnectionPool::TimeoutError.new('no slot')) }
 
             it 'still allows the upload' do
@@ -667,7 +692,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             post_upload
             expect(response).to have_http_status(:ok)
 
-            expect { post_upload(file: fixture_file_upload('spec/fixtures/files/va.gif', 'image/gif')) }
+            expect { post_upload(file: fixture_file_upload('doctors-note.png', 'image/png')) }
               .to change(EvidenceSubmission, :count).by(1)
             expect(response).to have_http_status(:ok)
           end
@@ -687,7 +712,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
 
           it 'includes the supplementalClaimId error detail' do
             post_upload(supplementalClaimId: nil)
-            expect(JSON.parse(response.body)['errors'].first['detail']).to eq('supplementalClaimId is required')
+            expect(error_detail).to eq('supplementalClaimId is required')
           end
 
           it 'does not persist an EvidenceSubmission' do
@@ -728,7 +753,7 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
 
           it 'includes the supplementalClaimId format error detail' do
             post_upload(supplementalClaimId: 'sc10879')
-            expect(JSON.parse(response.body)['errors'].first['detail'])
+            expect(error_detail)
               .to eq('supplementalClaimId must be in the format SC followed by digits (e.g. SC10879)')
           end
 
@@ -769,6 +794,123 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
               'api.claims_evidence.upload.failure',
               tags: base_tags + ['reason:virus', "document_type_id:#{valid_doc_type_id}"]
             )
+          end
+        end
+
+        context 'with an empty file' do
+          let(:file) { fixture_file_upload('empty-file.jpg', 'image/jpeg') }
+
+          it_behaves_like 'a rejected file', reason: 'empty_file', code: 'DOC_UPLOAD_EMPTY_FILE'
+        end
+
+        context 'with a file over the size limit' do
+          before { stub_const('V0::ClaimsEvidenceController::MAX_FILE_SIZE', 10) }
+
+          it_behaves_like 'a rejected file', reason: 'file_too_large', code: 'DOC_UPLOAD_FILE_TOO_LARGE'
+
+          it 'applies to non-PDFs too' do
+            post_upload(file: fixture_file_upload('doctors-note.png', 'image/png'))
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(error_detail).to eq('DOC_UPLOAD_FILE_TOO_LARGE')
+          end
+        end
+
+        context 'with an unsupported file type' do
+          let(:file) { fixture_file_upload('va.gif', 'image/gif') }
+
+          it_behaves_like 'a rejected file', reason: 'unsupported_file_type',
+                                             code: 'DOC_UPLOAD_UNSUPPORTED_TYPE'
+
+          it 'rejects a file with no extension' do
+            no_extension = Rack::Test::UploadedFile.new(
+              Rails.root.join('spec', 'fixtures', 'files', 'doctors-note.pdf'),
+              'application/pdf',
+              original_filename: 'noextension'
+            )
+
+            post_upload(file: no_extension)
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(error_detail).to eq('DOC_UPLOAD_UNSUPPORTED_TYPE')
+          end
+
+          it 'accepts each type the form offers' do
+            allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload).and_return(ce_success)
+
+            %w[doctors-note.pdf doctors-note.png doctors-note.jpg doctors-note.bmp].each do |name|
+              post_upload(file: fixture_file_upload(name))
+              expect(response).to have_http_status(:ok), "#{name} was rejected"
+            end
+          end
+        end
+
+        context 'with an encrypted PDF' do
+          let(:file) { fixture_file_upload('locked_pdf_password_is_test.pdf', 'application/pdf') }
+
+          before do
+            allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+              .to receive(:upload)
+              .and_return(ce_success)
+          end
+
+          context 'and the correct password' do
+            # file.size, not the decrypted rewrite: that value keys the duplicate check.
+            it 'returns 200 and records the size the veteran uploaded' do
+              expect { post_upload(password: 'test') }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+              expect(EvidenceSubmission.last.file_size).to eq(file.size)
+            end
+
+            it 'sends Claims Evidence a decrypted file' do
+              uploaded_encrypted = nil
+              allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload) do |_service, path, **|
+                uploaded_encrypted = HexaPDF::Document.open(path).encrypted?
+                ce_success
+              end
+
+              post_upload(password: 'test')
+              expect(uploaded_encrypted).to be(false)
+            end
+          end
+
+          context 'and an incorrect password' do
+            before do
+              allow(StatsD).to receive(:increment).and_call_original
+              allow(Rails.logger).to receive(:error).and_call_original
+              post_upload(password: 'not-the-password')
+            end
+
+            it 'returns 422 with DOC_UPLOAD_INCORRECT_PASSWORD' do
+              expect(response).to have_http_status(:unprocessable_entity)
+              expect(error_detail).to eq('DOC_UPLOAD_INCORRECT_PASSWORD')
+            end
+
+            it 'does not persist an EvidenceSubmission' do
+              expect(EvidenceSubmission.count).to be_zero
+            end
+
+            it 'counts a validation failure rather than an upload failure' do
+              expect(StatsD).to have_received(:increment).with(
+                'api.claims_evidence.validation.failure',
+                tags: base_tags + ['reason:incorrect_password']
+              )
+            end
+
+            it 'does not emit an error-level failure log' do
+              expect(Rails.logger).not_to have_received(:error).with(
+                'ClaimsEvidenceController#create upload failed', anything
+              )
+            end
+
+            # Picks up from the rejected attempt above: a typo must not cost the veteran the
+            # lock's full TTL.
+            it 'frees the lock so the correct password can be retried immediately' do
+              expect { post_upload(password: 'test') }.to change(EvidenceSubmission, :count).by(1)
+              expect(response).to have_http_status(:ok)
+            end
+          end
+
+          context 'and no password' do
+            it_behaves_like 'a rejected file', reason: 'encrypted_pdf', code: 'DOC_UPLOAD_ENCRYPTED_PDF'
           end
         end
 
