@@ -47,7 +47,7 @@ module Search
       config.base_path
     end
 
-    # Required params [affiliate, access_key, query]
+    # Required params [affiliate, access_key, api_key, query]
     # Optional params [enable_highlighting, limit, offset, sort_by]
     #
     # @see https://search.usa.gov/sites/7378/api_instructions
@@ -56,6 +56,7 @@ module Search
       {
         affiliate:,
         access_key:,
+        api_key:,
         query: redacted_query,
         offset:,
         limit:
@@ -70,10 +71,13 @@ module Search
       Settings.search.access_key
     end
 
+    def api_key
+      Settings.search.api_key
+    end
+
     # Calculate the offset parameter based on the requested page number.
     # Delegated to Search::Pagination.offset_for so the request offset and the
     # results cache key share a single source of truth.
-    #
     def offset
       Search::Pagination.offset_for(page)
     end

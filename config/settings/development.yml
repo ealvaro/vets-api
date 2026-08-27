@@ -1422,6 +1422,7 @@ schema_contract:
 search:
   access_key: SEARCH_GOV_ACCESS_KEY
   affiliate: va
+  api_key: SEARCH_GOV_API_KEY
   bot_user_agent_regex: bingbot|Googlebot|DuckDuckBot|YandexBot|AhrefsBot|SemrushBot|PetalBot|Bytespider|facebookexternalhit|GPTBot|ClaudeBot|Amazonbot|Applebot|Slurp|bot/|crawler|spider
   mock_search: false
   results_cache_ttl_seconds: 3600
@@ -1435,6 +1436,7 @@ search_click_tracking:
 search_gsa:
   access_key: SEARCH_GOV_ACCESS_KEY
   affiliate: va
+  api_key: SEARCH_GOV_API_KEY
   mock_search: false
   url: https://api.gsa.gov/technology/searchgov/v2/results/i14y
 search_kendra:

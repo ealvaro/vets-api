@@ -10,6 +10,7 @@ describe SearchGsa::Service do
 
   before do
     allow_any_instance_of(described_class).to receive(:access_key).and_return('TESTKEY')
+    allow_any_instance_of(described_class).to receive(:api_key).and_return('TESTKEY')
   end
 
   describe '#results' do
@@ -182,6 +183,10 @@ describe SearchGsa::Service do
       expect(params[:query]).to include('[REDACTED - ssn]')
       expect(params[:query]).not_to include('test@example.com')
       expect(params[:query]).not_to include('123-45-6789')
+    end
+
+    it 'includes the api_key' do
+      expect(subject.send(:query_params)[:api_key]).to eq('TESTKEY')
     end
   end
 end
