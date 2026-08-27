@@ -4,10 +4,8 @@ require 'rails_helper'
 require_relative '../../../rails_helper'
 
 RSpec.describe 'ClaimsApi::V3::Veterans::526', type: :request do
-  let(:icn) { '1012861229V078999' } # Janet Moore
-
   describe '#submit' do
-    let(:submit_path) { "/services/claims/v3/veterans/#{icn}/526" }
+    let(:submit_path) { '/services/claims/v3/veterans/526' }
 
     it 'returns 401 Unauthorized when no auth token is provided' do
       post submit_path
@@ -30,7 +28,7 @@ RSpec.describe 'ClaimsApi::V3::Veterans::526', type: :request do
   end
 
   describe '#generate_pdf' do
-    let(:generate_pdf_path) { "/services/claims/v3/veterans/#{icn}/526/generatePDF/minimum-validations" }
+    let(:generate_pdf_path) { '/services/claims/v3/veterans/526/generatePDF/minimum-validations' }
 
     it 'returns 401 Unauthorized when no auth token is provided' do
       post generate_pdf_path
