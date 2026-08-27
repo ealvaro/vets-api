@@ -83,6 +83,17 @@ RSpec.describe SignIn::Webauthn::Authentication::Verifier do
       end
     end
 
+    context 'when the credential is revoked' do
+      before do
+        webauthn_credential.update!(revoked_at: Time.zone.now)
+      end
+
+      it 'does not create a session and raises a record not found error' do
+        expect { subject }.to raise_error(ActiveRecord::RecordNotFound)
+        expect(SignIn::SessionCreator).not_to have_received(:new)
+      end
+    end
+
     context 'when the assertion fails to verify' do
       before { allow(credential).to receive(:verify).and_raise(WebAuthn::VerificationError, 'invalid assertion') }
 

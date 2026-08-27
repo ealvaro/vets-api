@@ -53,18 +53,43 @@ RSpec.describe SignIn::Webauthn::Registration::OptionsGenerator do
     end
 
     context 'when the user account has existing webauthn credentials' do
+      let(:webauthn_handle) { 'some-webauthn-handle' }
       let(:existing_credential_id) { 'some-existing-credential-id' }
       let(:webauthn_credential) { create(:webauthn_credential, credential_id: existing_credential_id) }
       let!(:existing_user_verification) do
         create(:user_verification, user_account:, webauthn_credential:, idme_uuid: nil)
       end
 
+      before do
+        user_account.update!(webauthn_handle:)
+      end
+
       it 'excludes the existing credential ids from the creation options' do
-        expect(WebAuthn::Credential).to receive(:options_for_create)
-          .with(hash_including(exclude: [existing_credential_id]))
-          .and_call_original
+        expect(WebAuthn::Credential).to receive(:options_for_create).with(
+          user: { id: webauthn_handle, name: credential_email, display_name: credential_email },
+          authenticator_selection: { resident_key: 'required', user_verification: 'required' },
+          attestation: 'none',
+          exclude: [existing_credential_id]
+        ).and_call_original
 
         subject
+      end
+
+      context 'when the credential has been revoked' do
+        before do
+          webauthn_credential.update!(revoked_at: Time.zone.now)
+        end
+
+        it 'does not exclude the revoked credential id' do
+          expect(WebAuthn::Credential).to receive(:options_for_create).with(
+            user: { id: webauthn_handle, name: credential_email, display_name: credential_email },
+            authenticator_selection: { resident_key: 'required', user_verification: 'required' },
+            attestation: 'none',
+            exclude: []
+          ).and_call_original
+
+          subject
+        end
       end
     end
   end

@@ -27,7 +27,7 @@ module SignIn
         attr_reader :authentication, :challenge_id, :challenge, :request_attributes
 
         def webauthn_credential
-          @webauthn_credential ||= ::SignIn::WebauthnCredential.includes(:user_verification)
+          @webauthn_credential ||= ::SignIn::WebauthnCredential.active.includes(:user_verification)
                                                                .find_by!(credential_id: credential.id)
         end
 

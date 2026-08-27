@@ -49,6 +49,23 @@ RSpec.describe SignIn::WebauthnCredential, type: :model do
     end
   end
 
+  describe '.active' do
+    let!(:active_credential) { create(:webauthn_credential) }
+    let!(:revoked_credential) { create(:webauthn_credential, revoked_at: Time.zone.now) }
+
+    it 'returns only credentials that have not been revoked' do
+      expect(described_class.active).to contain_exactly(active_credential)
+    end
+  end
+
+  describe '#revoke!' do
+    let(:webauthn_credential) { create(:webauthn_credential) }
+
+    it 'stamps revoked_at' do
+      expect { webauthn_credential.revoke! }.to change { webauthn_credential.reload.revoked_at }.from(nil)
+    end
+  end
+
   describe '#user_verification' do
     subject { webauthn_credential.user_verification }
 

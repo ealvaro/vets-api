@@ -9,5 +9,11 @@ module SignIn
     validates :credential_id, presence: true, uniqueness: true
     validates :public_key, :sign_count, presence: true
     validates :backup_eligible, :backed_up, inclusion: { in: [true, false] }
+
+    scope :active, -> { where(revoked_at: nil) }
+
+    def revoke!
+      update!(revoked_at: Time.zone.now)
+    end
   end
 end

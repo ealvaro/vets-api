@@ -57,8 +57,7 @@ module SignIn
         end
 
         def existing_credentials
-          user_account.user_verifications.joins(:webauthn_credential)
-                      .pluck('sign_in_webauthn_credentials.credential_id')
+          user_account.webauthn_credentials.active.pluck(:credential_id)
         end
       end
     end

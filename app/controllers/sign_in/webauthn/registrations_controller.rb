@@ -3,8 +3,10 @@
 module SignIn
   module Webauthn
     class RegistrationsController < ApplicationController
+      rescue_from ActiveRecord::RecordNotFound, with: :credential_not_found
       protect_from_forgery with: :exception
       before_action :set_user
+      before_action :set_webauthn_credential, only: :destroy
       after_action :set_csrf_header
 
       def options
@@ -31,11 +33,46 @@ module SignIn
         render json: { error: e.message }, status: :unprocessable_entity
       end
 
+      def destroy
+        ActiveRecord::Base.transaction do
+          @webauthn_credential.revoke!
+          revoke_credential_sessions!(@webauthn_credential.user_verification)
+        end
+
+        sign_in_logger.info('webauthn registration revoked', log_context)
+
+        render json: signal_payload, status: :ok
+      end
+
       private
+
+      def credential_not_found(exception)
+        sign_in_logger.error('webauthn registration revoke error', exception:, context: log_context)
+        render json: { error: 'Credential not found' }, status: :not_found
+      end
+
+      def revoke_credential_sessions!(user_verification)
+        sessions = OAuthSession.where(user_verification:)
+        handles = sessions.pluck(:handle)
+        sessions.destroy_all
+        SessionRecord.sign_out(handles)
+      end
+
+      def signal_payload
+        {
+          rp_id: WebAuthn.configuration.rp_id,
+          user_id: @user_account.webauthn_handle,
+          all_accepted_credential_ids: @user_account.webauthn_credentials.active.pluck(:credential_id)
+        }
+      end
 
       def set_user
         @user_verification = current_user.user_verification
         @user_account = @user_verification.user_account
+      end
+
+      def set_webauthn_credential
+        @webauthn_credential = @user_account.webauthn_credentials.active.find_by!(credential_id:)
       end
 
       def log_context
@@ -48,6 +85,10 @@ module SignIn
 
       def challenge_id
         params.require(:challenge_id)
+      end
+
+      def credential_id
+        params.require(:credential_id)
       end
     end
   end
