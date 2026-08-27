@@ -36,17 +36,21 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
 
   before do
     allow(DependentsBenefits::PdfFill::Filler).to receive(:fill_form).and_return('tmp/pdfs/mock_form_final.pdf')
-    sign_in_as(user)
     allow(Flipper).to receive(:enabled?).with(:dependents_module_enabled, instance_of(User)).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:va_dependents_v3, instance_of(User)).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:enable_date_last_verified_for_dependents).and_return(false)
     allow(Flipper).to receive(:enabled?).with(:enable_686_674_digital_pdf).and_return(false)
+    allow(Flipper).to receive(:enabled?).with(:dependents_claims_controller_authentication).and_return(false)
     allow_any_instance_of(SavedClaim).to receive(:pdf_overflow_tracking)
     allow(DependentsBenefits::Monitor).to receive(:new).and_return(monitor)
     allow(DependentsBenefits::UserData).to receive(:new).and_return(user_data)
   end
 
   describe '#show' do
+    before do
+      sign_in_as(user)
+    end
+
     context 'with a valid bgs response' do
       it 'returns a list of dependents' do
         VCR.use_cassette('bgs/claimant_web_service/dependents') do
@@ -122,7 +126,11 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     end
   end
 
-  describe 'POST create' do
+  describe 'POST create as an authenticated user' do
+    before do
+      sign_in_as(user)
+    end
+
     context 'with valid params and flipper enabled' do
       before do
         allow(Flipper).to receive(:enabled?).with(:dependents_digital_forms_api_submission_enabled,
@@ -301,7 +309,27 @@ RSpec.describe DependentsBenefits::V0::ClaimsController do
     end
   end
 
+  describe 'POST #create as an unauthenticated user' do
+    context 'with the authentication flag on' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:dependents_claims_controller_authentication).and_return(true)
+      end
+
+      it 'returns an error' do
+        expect(DependentsBenefits::PrimaryDependencyClaim).not_to receive(:new)
+        expect(DependentsBenefits::ClaimProcessor).not_to receive(:enqueue_submissions)
+
+        post(:create, params: test_form, as: :json)
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe '#log_validation_error_to_metadata' do
+    before do
+      sign_in_as(user)
+    end
+
     let(:in_progress_form) { build(:in_progress_form) }
 
     it 'returns nil for blank in_progress_form' do

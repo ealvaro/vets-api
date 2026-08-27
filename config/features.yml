@@ -4139,10 +4139,12 @@ features:
   enable_686_674_benefits_intake_dpdf:
     actor_type: user
     description: Enables using the digital pdf service for generating 686/674 pdfs in the BenefitsIntakeJob
+  dependents_claims_controller_authentication:
+    actor_type: user
+    description: If enabled, enforce user authentication at the controller level for 686/674(DependentsBenefits::V0::ClaimsController)
   form_0803_benefits_intake_submission:
     actor_type: user
     description: Enables form 22-0803 to use the Benefits Intake API for submission, which includes the redesigned supporting documents upload
   va_dependents_new_child_quick_fix: 
     actor_type: user
     description: Enable temporary fix to clarify add child/student distinction in 686c-674
-

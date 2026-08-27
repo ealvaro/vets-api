@@ -22,6 +22,8 @@ module DependentsBenefits
       before_action :load_user, only: %i[create show]
       before_action :check_flipper_flag
 
+      before_action :authenticate_if_feature_flag_enabled, only: :create
+
       wrap_parameters :dependents_application, format: [:json]
 
       service_tag 'dependent-change'
@@ -287,6 +289,17 @@ module DependentsBenefits
       # Creates a new monitor instance for tracking events
       def monitor
         @monitor ||= DependentsBenefits::Monitor.new(nil, current_user)
+      end
+
+      ##
+      # Conditionally use the standard `authenticate` method based on a flipper flag
+      # The front-end should enable authentication, but it's always a good idea to
+      # have the back-end be the final arbiter.
+      #
+      # @return [void]
+      #
+      def authenticate_if_feature_flag_enabled
+        authenticate if Flipper.enabled?(:dependents_claims_controller_authentication, current_user)
       end
     end
   end
