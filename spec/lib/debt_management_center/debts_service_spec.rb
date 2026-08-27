@@ -222,4 +222,97 @@ RSpec.describe DebtManagementCenter::DebtsService do
       end
     end
   end
+
+  describe 'response caching' do
+    let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
+    let(:cache_key) { "debts_data_#{user.uuid}" }
+    let(:statsd_prefix) { described_class::STATSD_KEY_PREFIX }
+
+    before do
+      allow(Rails).to receive(:cache).and_return(memory_store)
+      allow(StatsD).to receive(:increment)
+      allow(Flipper).to receive(:enabled?).and_call_original
+    end
+
+    # Flag-independent: the type guard and the empty check both short-circuit
+    # before the flag is consulted.
+    it 'refuses to cache anything that is not an array' do
+      service = VCR.use_cassette('bgs/people_service/person_data') { described_class.new(user) }
+
+      expect(service.send(:cache_response?, { 'debtsCount' => 3 })).to be(false)
+      expect(service.send(:cache_response?, nil)).to be(false)
+      expect(service.send(:cache_response?, [])).to be(true)
+    end
+
+    it 'does not touch the cache for a count-only request' do
+      VCR.use_cassette('bgs/people_service/person_data') do
+        VCR.use_cassette('debts/get_letters_count_only', VCR::MATCH_EVERYTHING) do
+          described_class.new(user).get_debts(count_only: true)
+        end
+      end
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+
+    # Characterizes behavior that predates the debts_cache_dmc_full_response
+    # flag. These must keep passing while the flag is off.
+    context 'with debts_cache_dmc_full_response disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:debts_cache_dmc_full_response, user).and_return(false)
+      end
+
+      it 'does not cache a non-empty response' do
+        with_vcr_cassettes { described_class.new(user).get_debts }
+
+        expect(Rails.cache.read(cache_key)).to be_nil
+      end
+
+      it 'caches an empty response' do
+        VCR.use_cassette('bgs/people_service/person_data') do
+          VCR.use_cassette('debts/get_letters_empty_response', VCR::MATCH_EVERYTHING) do
+            described_class.new(user).get_debts
+          end
+        end
+
+        expect(Rails.cache.read(cache_key)).to eq([])
+        expect(StatsD).to have_received(:increment)
+          .with("#{statsd_prefix}.init_cached_debts.response_cached", tags: ['type:empty'])
+      end
+
+      it 'returns a cached response without calling DMC' do
+        Rails.cache.write(cache_key, [])
+
+        VCR.use_cassette('bgs/people_service/person_data') do
+          expect(described_class.new(user).get_debts[:debts]).to eq([])
+        end
+
+        expect(StatsD).to have_received(:increment).with("#{statsd_prefix}.init_cached_debts.cached_response_returned")
+      end
+    end
+
+    context 'with debts_cache_dmc_full_response enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:debts_cache_dmc_full_response, user).and_return(true)
+      end
+
+      it 'caches a non-empty response' do
+        with_vcr_cassettes { described_class.new(user).get_debts }
+
+        expect(Rails.cache.read(cache_key)).to be_an(Array)
+        expect(Rails.cache.read(cache_key)).not_to be_empty
+        expect(StatsD).to have_received(:increment)
+          .with("#{statsd_prefix}.init_cached_debts.response_cached", tags: ['type:full'])
+      end
+
+      it 'serves the cached debts on a subsequent call' do
+        with_vcr_cassettes { described_class.new(user).get_debts }
+
+        VCR.use_cassette('bgs/people_service/person_data') do
+          expect(described_class.new(user).get_debts[:debts]).to be_present
+        end
+
+        expect(StatsD).to have_received(:increment).with("#{statsd_prefix}.init_cached_debts.cached_response_returned")
+      end
+    end
+  end
 end

@@ -155,13 +155,23 @@ module DebtManagementCenter
 
       response = fetch_debts_from_dmc
 
-      if response.is_a?(Array) && response.empty?
+      if cache_response?(response)
         # DMC refreshes DB at 5am every morning
         Rails.cache.write(cache_key, response, expires_in: self.class.time_until_5am_utc)
-        StatsD.increment("#{statsd_key_prefix}.init_cached_debts.empty_response_cached")
+        StatsD.increment("#{statsd_key_prefix}.init_cached_debts.response_cached",
+                         tags: ["type:#{response.empty? ? 'empty' : 'full'}"])
       end
 
       response
+    end
+
+    # Empty responses were already cached before the flag existed. The flag adds
+    # non-empty ones.
+    def cache_response?(response)
+      return false unless response.is_a?(Array)
+      return true if response.empty?
+
+      Flipper.enabled?(:debts_cache_dmc_full_response, @user)
     end
 
     def fetch_debts_from_dmc(count_only: false)
