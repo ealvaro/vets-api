@@ -67,6 +67,63 @@ module SurvivorsBenefits
 
       INCOME_ENTRY_COUNT = INCOME_RECIPIENT_FIELDS.length
 
+      # Form data key per income block, so each block's fields overflow independently. Routing the
+      # four blocks through a single KEY array instead would hand them to
+      # PdfFill::HashConverter#transform_array, where one long value overflows the whole array:
+      # the default branch stamps the placeholder into `first_key`, a RadioButtonList widget, and
+      # `label_all` drops the nested monthlyIncome amounts.
+      INCOME_ENTRY_KEYS = %w[incomeEntryOne incomeEntryTwo incomeEntryThree incomeEntryFour].freeze
+
+      # Question suffix per income block: 9I, 9J, 9K, 9L.
+      INCOME_ENTRY_SUFFIXES = %w[I J K L].freeze
+
+      # Characters each Section IX income widget shows in full, measured from the V2022 template
+      # (CourierNewPSMT 10pt, 0.6 em advance, no /MaxLen, DoNotScroll set).
+      RECIPIENT_NAME_LIMIT = 28
+      INCOME_TYPE_OTHER_LIMIT = 28
+      INCOME_PAYER_LIMIT = 24
+
+      class << self
+        # Overflow metadata for a KEY entry: +limit+ is what HashConverter#overflow? trips on, and
+        # the question fields are what ExtrasGeneratorV2 needs to place and label the value.
+        def overflow_hash(max, number, suffix, label, text)
+          {
+            limit: max,
+            question_num: number,
+            question_suffix: suffix,
+            question_label: label,
+            question_text: text
+          }
+        end
+
+        # KEY fragment for one income block. The three free-text fields carry overflow metadata so a
+        # value too wide for its widget is replaced on the form by the placeholder and printed in
+        # full on the overflow page; without it the widget silently clips the text.
+        def income_entry_key(index)
+          ordinal = index + 1
+          suffix = INCOME_ENTRY_SUFFIXES[index]
+
+          {
+            'recipient' => { key: INCOME_RECIPIENT_FIELDS[index] },
+            'recipientName' =>
+              overflow_hash(RECIPIENT_NAME_LIMIT, 9, suffix, "Recipient name #{ordinal}",
+                            "RECIPIENT NAME #{ordinal}").merge(key: INCOME_CHILD_NAME_FIELDS[index]),
+            'incomeType' => { key: INCOME_TYPE_FIELDS[index] },
+            'incomeTypeOther' =>
+              overflow_hash(INCOME_TYPE_OTHER_LIMIT, 9, suffix, "Type of income #{ordinal}",
+                            "TYPE OF INCOME #{ordinal}").merge(key: INCOME_OTHER_TYPE_FIELDS[index]),
+            'incomePayer' =>
+              overflow_hash(INCOME_PAYER_LIMIT, 9, suffix, "Income payer #{ordinal}",
+                            "INCOME PAYER #{ordinal}").merge(key: INCOME_PAYER_FIELDS[index]),
+            'monthlyIncome' => {
+              'thousands' => { key: INCOME_AMOUNT_THOUSANDS_FIELDS[index] },
+              'dollars' => { key: INCOME_AMOUNT_DOLLARS_FIELDS[index] },
+              'cents' => { key: INCOME_AMOUNT_CENTS_FIELDS[index] }
+            }
+          }
+        end
+      end
+
       RECIPIENT_VALUES = {
         'SURVIVING_SPOUSE' => '0',
         'CHILD' => '1'
@@ -109,38 +166,10 @@ module SurvivorsBenefits
         },
         'landMarketable' => { key: 'form1[0].#subform[211].RadioButtonList[28]' },
         'moreThanFourIncomeSources' => { key: 'form1[0].#subform[211].RadioButtonList[29]' },
-        'otherIncome' => { key: 'form1[0].#subform[211].RadioButtonList[32]' },
-        'incomeEntries' => {
-          limit: INCOME_ENTRY_COUNT,
-          first_key: 'recipient',
-          'recipient' => {
-            key_from_iterator: ->(iterator) { INCOME_RECIPIENT_FIELDS[iterator] }
-          },
-          'recipientName' => {
-            key_from_iterator: ->(iterator) { INCOME_CHILD_NAME_FIELDS[iterator] }
-          },
-          'incomeType' => {
-            key_from_iterator: ->(iterator) { INCOME_TYPE_FIELDS[iterator] }
-          },
-          'incomeTypeOther' => {
-            key_from_iterator: ->(iterator) { INCOME_OTHER_TYPE_FIELDS[iterator] }
-          },
-          'incomePayer' => {
-            key_from_iterator: ->(iterator) { INCOME_PAYER_FIELDS[iterator] }
-          },
-          'monthlyIncome' => {
-            'thousands' => {
-              key_from_iterator: ->(iterator) { INCOME_AMOUNT_THOUSANDS_FIELDS[iterator] }
-            },
-            'dollars' => {
-              key_from_iterator: ->(iterator) { INCOME_AMOUNT_DOLLARS_FIELDS[iterator] }
-            },
-            'cents' => {
-              key_from_iterator: ->(iterator) { INCOME_AMOUNT_CENTS_FIELDS[iterator] }
-            }
-          }
-        }
-      }.freeze
+        'otherIncome' => { key: 'form1[0].#subform[211].RadioButtonList[32]' }
+      }.merge(
+        INCOME_ENTRY_KEYS.each_with_index.to_h { |name, index| [name, income_entry_key(index)] }
+      ).freeze
 
       def expand(form_data = {})
         form_data['p15HeaderVeteranSocialSecurityNumber'] = split_ssn(form_data['veteranSocialSecurityNumber'])
@@ -157,9 +186,9 @@ module SurvivorsBenefits
         # --- Expand income entries ---
         entries = Array(form_data['incomeEntries'])
 
-        form_data['incomeEntries'] = INCOME_ENTRY_COUNT.times.map do |index|
+        INCOME_ENTRY_KEYS.each_with_index do |entry_key, index|
           entry = entries[index]
-          entry.present? ? transform_income_entry(entry) : empty_income_entry
+          form_data[entry_key] = entry.present? ? transform_income_entry(entry) : empty_income_entry
         end
 
         more_than_four = form_data['moreThanFourIncomeSources']

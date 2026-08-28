@@ -165,6 +165,122 @@ describe SurvivorsBenefits::PdfFill::Va21p534ez do
     end
   end
 
+  # Section 9's income widgets carry no /MaxLen and set the DoNotScroll flag, so a value wider than
+  # the field is silently clipped with no visual cue that text was lost. Anything that does not fit
+  # must therefore be replaced on the form by the overflow placeholder and printed in full on the
+  # ATTACHMENT page.
+  #
+  # 'Social Security Administration' is the case that reaches production: the frontend hides the
+  # payer question for Social Security income and injects that 30-character string at submit time
+  # (vets-website addPayerNameForSocialSecurity), while Income_Payer[n] shows only 24 characters at
+  # CourierNewPSMT 10pt. Measured field capacities: Income_Payer 24, Name_Of_Child 28,
+  # Specify_Type_Of_Income 29.
+  describe 'section 9 income overflow' do
+    # Long enough to overflow every one of the three fields under test.
+    let(:payer) { 'Social Security Administration' }
+    let(:recipient_name) { 'Bartholomew Q Featherstonehaugh' }
+    let(:income_type_other) { 'Quarterly royalty distribution' }
+
+    let(:income_entries) do
+      [{
+        'recipient' => 'CHILD',
+        'recipientName' => recipient_name,
+        'incomeType' => 'OTHER',
+        'incomeTypeOther' => income_type_other,
+        'incomePayer' => payer,
+        'monthlyIncome' => 1500
+      }]
+    end
+
+    # Runs the same path the real submission takes: merge_fields, then a hash converter built with
+    # extras_redesign: true so it uses ExtrasGeneratorV2 (what SavedClaim#to_stamped_pdf passes).
+    def fill_section9(entries)
+      form_data = {
+        'veteranSocialSecurityNumber' => '123456789',
+        'incomeSourcesCount' => 'ONE_TO_FOUR_SOURCES',
+        'incomeEntries' => entries
+      }
+      merged = described_class.new(form_data).merge_fields
+      converter = PdfFill::Filler.make_hash_converter(
+        SurvivorsBenefits::FORM_ID, described_class,
+        Utilities::DateParser.parse('2025-10-08'), { extras_redesign: true }, merged
+      )
+      [converter.transform_data(form_data: merged, pdftk_keys: described_class.key), converter.extras_generator]
+    end
+
+    # The generated extras PDF is the actual ATTACHMENT page, so assert against its text rather than
+    # the generator's internals -- the assertion then holds for either question shape. PDF::Reader
+    # recovers the glyphs but not the inter-word spacing from Prawn's SourceSans3 subset, so strip
+    # whitespace from both sides of the comparison (see #squished).
+    def attachment_text(extras)
+      path = extras.generate
+      @extras_paths << path
+      squished(PDF::Reader.new(path).pages.map(&:text).join("\n"))
+    end
+
+    def squished(value)
+      value.gsub(/\s+/, '')
+    end
+
+    before { @extras_paths = [] }
+
+    after { @extras_paths.each { |path| Common::FileHelpers.delete_file_if_exists(path) } }
+
+    shared_examples 'overflows the section 9 income fields' do |subform|
+      let(:placeholder) { PdfFill::ExtrasGeneratorV2.new.placeholder_text }
+
+      it 'writes the placeholder into the income payer widget instead of clipping it' do
+        pdftk_form, = fill_section9(income_entries)
+
+        expect(pdftk_form["form1[0].##{subform}.Income_Payer[0]"]).to eq(placeholder)
+      end
+
+      it 'prints the full income payer on the attachment page' do
+        _, extras = fill_section9(income_entries)
+
+        expect(extras.text?).to be(true)
+        expect(attachment_text(extras)).to include(squished(payer))
+      end
+
+      it 'overflows the recipient name and other-income-type fields too' do
+        pdftk_form, extras = fill_section9(income_entries)
+        text = attachment_text(extras)
+
+        expect(pdftk_form["form1[0].##{subform}.Name_Of_Child[0]"]).to eq(placeholder)
+        expect(pdftk_form["form1[0].##{subform}.Specify_Type_Of_Income[3]"]).to eq(placeholder)
+        expect(text).to include(squished(recipient_name))
+        expect(text).to include(squished(income_type_other))
+      end
+
+      it 'leaves values that fit on the form and off the attachment page' do
+        pdftk_form, extras = fill_section9(
+          [income_entries.first.merge('incomePayer' => 'HUD', 'recipientName' => 'Jane Doe',
+                                      'incomeTypeOther' => 'Royalties')]
+        )
+
+        expect(pdftk_form["form1[0].##{subform}.Income_Payer[0]"]).to eq('HUD')
+        expect(pdftk_form["form1[0].##{subform}.Name_Of_Child[0]"]).to eq('Jane Doe')
+        expect(extras.text?).to be(false)
+      end
+    end
+
+    context 'when the 2025 feature flag is disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_2025_version_enabled).and_return(false)
+      end
+
+      include_examples 'overflows the section 9 income fields', 'subform[215]'
+    end
+
+    context 'when the 2025 feature flag is enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:survivors_benefits_form_2025_version_enabled).and_return(true)
+      end
+
+      include_examples 'overflows the section 9 income fields', 'subform[160]'
+    end
+  end
+
   describe '#merge_fields' do
     shared_examples 'section12 date signed field selection' do
       it 'uses dateSignedAlt for the custodian relationship' do
