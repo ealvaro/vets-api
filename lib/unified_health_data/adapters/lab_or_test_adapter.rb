@@ -152,13 +152,26 @@ module UnifiedHealthData
         end
       end
 
+      # Falls back to resource.code.coding when the only category is LAB
       def get_code(record)
+        category_code(record) || report_code(record['resource'])
+      end
+
+      def category_code(record)
         return nil if record['resource']['category'].blank?
 
         coding = record['resource']['category'].find do |category|
           category['coding'].present? && category['coding'][0]['code'] != 'LAB'
         end
         coding ? coding['coding'][0]['code'] : nil
+      end
+
+      def report_code(resource)
+        codings = resource.dig('code', 'coding')
+        return nil if codings.blank?
+
+        loinc = codings.find { |c| c['system'] == 'http://loinc.org' && c['code'].present? }
+        (loinc || codings.find { |c| c['code'].present? })&.dig('code')
       end
 
       # Normalize code for display mapping only (preserves raw code in test_code field)
@@ -183,6 +196,10 @@ module UnifiedHealthData
         # Fall back to display/text from the category coding in FHIR data
         category_display = get_category_display(record)
         return category_display if category_display.present?
+
+        # Fall back to display/text from resource.code (for LOINC-fallback records)
+        report_display = extract_codeable_concept_display(record['resource']['code'], prefer: :coding)
+        return report_display if report_display.present?
 
         # Final fallback: use the normalized code
         normalized_code

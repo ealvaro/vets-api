@@ -1314,6 +1314,101 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
         expect(result).to be_nil
       end
     end
+
+    context 'when only category is LAB' do
+      it 'falls back to LOINC code from resource.code.coding' do
+        record = {
+          'resource' => {
+            'category' => [{ 'coding' => [{ 'code' => 'LAB' }] }],
+            'code' => {
+              'coding' => [
+                { 'system' => 'http://loinc.org', 'code' => '29771-3', 'display' => 'iFOBT Stool' }
+              ]
+            }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to eq('29771-3')
+      end
+
+      it 'prefers LOINC over other code systems' do
+        record = {
+          'resource' => {
+            'category' => [{ 'coding' => [{ 'code' => 'LAB' }] }],
+            'code' => {
+              'coding' => [
+                { 'system' => 'http://other-system.org', 'code' => 'OTHER-1' },
+                { 'system' => 'http://loinc.org', 'code' => '29771-3' }
+              ]
+            }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to eq('29771-3')
+      end
+
+      it 'falls back to first coding when no LOINC system present' do
+        record = {
+          'resource' => {
+            'category' => [{ 'coding' => [{ 'code' => 'LAB' }] }],
+            'code' => {
+              'coding' => [
+                { 'system' => 'http://other-system.org', 'code' => 'OTHER-1' }
+              ]
+            }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to eq('OTHER-1')
+      end
+
+      it 'falls back to first coding with a present code when first coding has no code' do
+        record = {
+          'resource' => {
+            'category' => [{ 'coding' => [{ 'code' => 'LAB' }] }],
+            'code' => {
+              'coding' => [
+                { 'system' => 'http://other-system.org', 'display' => 'No code present' },
+                { 'system' => 'http://other-system.org', 'code' => 'OTHER-2' }
+              ]
+            }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to eq('OTHER-2')
+      end
+
+      it 'returns nil when code.coding is also absent' do
+        record = {
+          'resource' => {
+            'category' => [{ 'coding' => [{ 'code' => 'LAB' }] }],
+            'code' => { 'text' => 'Some test' }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to be_nil
+      end
+    end
+
+    context 'when a non-LAB category exists' do
+      it 'uses the category code and ignores resource.code.coding' do
+        record = {
+          'resource' => {
+            'category' => [
+              { 'coding' => [{ 'code' => 'LAB' }] },
+              { 'coding' => [{ 'code' => 'CH' }] }
+            ],
+            'code' => {
+              'coding' => [
+                { 'system' => 'http://loinc.org', 'code' => '29771-3' }
+              ]
+            }
+          }
+        }
+
+        expect(adapter.send(:get_code, record)).to eq('CH')
+      end
+    end
   end
 
   describe '#parse_single_record test_code_display mapping' do
@@ -1448,6 +1543,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       it 'falls back to extracted code for unknown VistA URN when no display available' do
         record = base_record.deep_dup
         record['resource']['category'] = [{ 'coding' => [{ 'code' => 'urn:va:lab-category:XX' }] }]
+        record['resource']['code'] = {}
 
         result = adapter.send(:parse_single_record, record)
 
@@ -1485,6 +1581,7 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
       it 'falls back to normalized code when no display or text available' do
         record = base_record.deep_dup
         record['resource']['category'] = [{ 'coding' => [{ 'code' => 'UNKNOWN' }] }]
+        record['resource']['code'] = {}
 
         result = adapter.send(:parse_single_record, record)
 
@@ -1502,6 +1599,36 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
 
         expect(result.test_code).to eq('CH')
         expect(result.test_code_display).to eq('Chemistry and hematology')
+      end
+    end
+
+    context 'with LAB-only category and LOINC fallback code' do
+      it 'falls back to resource.code.coding.display for test_code_display' do
+        record = base_record.deep_dup
+        record['resource']['category'] = [{ 'coding' => [{ 'code' => 'LAB' }] }]
+        record['resource']['code'] = {
+          'coding' => [{ 'system' => 'http://loinc.org', 'code' => '29771-3', 'display' => 'iFOBT Stool' }],
+          'text' => 'iFOBT Stool'
+        }
+
+        result = adapter.send(:parse_single_record, record)
+
+        expect(result.test_code).to eq('29771-3')
+        expect(result.test_code_display).to eq('iFOBT Stool')
+      end
+
+      it 'falls back to resource.code.text when coding has no display' do
+        record = base_record.deep_dup
+        record['resource']['category'] = [{ 'coding' => [{ 'code' => 'LAB' }] }]
+        record['resource']['code'] = {
+          'coding' => [{ 'system' => 'http://loinc.org', 'code' => '29771-3' }],
+          'text' => 'iFOBT Stool'
+        }
+
+        result = adapter.send(:parse_single_record, record)
+
+        expect(result.test_code).to eq('29771-3')
+        expect(result.test_code_display).to eq('iFOBT Stool')
       end
     end
   end
@@ -2537,6 +2664,34 @@ RSpec.describe UnifiedHealthData::Adapters::LabOrTestAdapter, type: :service do
           )
 
           adapter.send(:parse_single_record, record)
+        end
+      end
+
+      context 'when only category is LAB but resource has code.coding' do
+        it 'parses the record using the LOINC code' do
+          record = base_record.deep_dup
+          record['resource']['status'] = 'final'
+          record['resource']['category'] = [{ 'coding' => [{ 'code' => 'LAB' }] }]
+          record['resource']['code'] = {
+            'coding' => [{ 'system' => 'http://loinc.org', 'code' => '29771-3', 'display' => 'iFOBT Stool' }],
+            'text' => 'iFOBT Stool'
+          }
+          record['resource']['contained'] = [
+            {
+              'resourceType' => 'Observation',
+              'id' => 'obs-1',
+              'code' => { 'text' => 'iFOBT' },
+              'valueString' => 'Negative',
+              'status' => 'final'
+            }
+          ]
+
+          result = adapter.send(:parse_single_record, record)
+
+          expect(result).not_to be_nil
+          expect(result.test_code).to eq('29771-3')
+          expect(result.test_code_display).to eq('iFOBT Stool')
+          expect(result.observations.size).to eq(1)
         end
       end
     end
