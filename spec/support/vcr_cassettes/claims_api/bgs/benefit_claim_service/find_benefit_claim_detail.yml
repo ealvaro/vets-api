@@ -1,0 +1,77 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: "<BGS_BASE_URL>/BenefitClaimServiceBean/BenefitClaimWebService"
+    body:
+      encoding: UTF-8
+      string: |
+        <?xml version="1.0" encoding="UTF-8"?>
+          <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tns="http://services.share.benefits.vba.va.gov/" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
+          <env:Header>
+          <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+            <wsse:UsernameToken>
+              <wsse:Username>VAgovAPI</wsse:Username>
+            </wsse:UsernameToken>
+            <vaws:VaServiceHeaders xmlns:vaws="http://vbawebservices.vba.va.gov/vawss">
+              <vaws:CLIENT_MACHINE>127.0.0.1</vaws:CLIENT_MACHINE>
+              <vaws:STN_ID>281</vaws:STN_ID>
+              <vaws:applicationName>VAgovAPI</vaws:applicationName>
+              <vaws:ExternalUid>xUid</vaws:ExternalUid>
+              <vaws:ExternalKey>xKey</vaws:ExternalKey>
+            </vaws:VaServiceHeaders>
+          </wsse:Security>
+        </env:Header>
+
+          <env:Body>
+            <tns:findBenefitClaimDetail><benefitClaimId>600912467</benefitClaimId>
+        </tns:findBenefitClaimDetail>
+          </env:Body>
+          </env:Envelope>
+    headers:
+      User-Agent:
+      - "<FARADAY_VERSION>"
+      Content-Type:
+      - text/xml;charset=UTF-8
+      Host:
+      - ".vba.va.gov"
+      Soapaction:
+      - '"findBenefitClaimDetail"'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 27 Aug 2026 19:35:34 GMT
+      Server:
+      - Apache/2.4.37 (Red Hat Enterprise Linux) OpenSSL/1.1.1k
+      X-Oneagent-Js-Injection:
+      - 'true'
+      Server-Timing:
+      - dtSInfo;desc="0", dtRpid;desc="-1618761599"
+      Transfer-Encoding:
+      - chunked
+      Content-Type:
+      - text/xml; charset=utf-8
+      Strict-Transport-Security:
+      - max-age=16000000; includeSubDomains; preload;
+    body:
+      encoding: UTF-8
+      string: <?xml version='1.0' encoding='UTF-8'?><S:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+        xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"><env:Header/><S:Body><ns0:findBenefitClaimDetailResponse
+        xmlns:ns0="http://services.share.benefits.vba.va.gov/"><return><benefitClaimRecord><bddSiteName></bddSiteName><benefitClaimID>600912467</benefitClaimID><benefitClaimReturnLabel>BNFT_CLAIM</benefitClaimReturnLabel><claimPriorityIndicator></claimPriorityIndicator><claimReceiveDate>03/13/2026</claimReceiveDate><claimStationOfJurisdiction>348</claimStationOfJurisdiction><claimTemporaryStationOfJurisdiction>499</claimTemporaryStationOfJurisdiction><claimTypeCode>130SSRDE</claimTypeCode><claimTypeName>Self
+        Service - Removal of Dependent Exception</claimTypeName><claimantFirstName>JERRY</claimantFirstName><claimantLastName>CURTIS</claimantLastName><claimantMiddleName>J</claimantMiddleName><claimantPersonOrOrganizationIndicator>P</claimantPersonOrOrganizationIndicator><claimantSuffix></claimantSuffix><cpBenefitClaimID>600912467</cpBenefitClaimID><cpClaimID>1084974</cpClaimID><cpClaimReturnLabel>CP_CLAIM</cpClaimReturnLabel><cpLocationID>376</cpLocationID><directDepositAccountID></directDepositAccountID><endProductTypeCode>131</endProductTypeCode><informalIndicator></informalIndicator><journalDate>04/24/2026</journalDate><journalObjectID>bipclaimsapi.updateTempSoj</journalObjectID><journalStation>283</journalStation><journalStatusTypeCode>U</journalStatusTypeCode><journalUserId>NWQSYSACCT</journalUserId><lastPaidDate></lastPaidDate><mailingAddressID>17368912</mailingAddressID><numberOfBenefitClaimRecords>001</numberOfBenefitClaimRecords><numberOfCPClaimRecords>001</numberOfCPClaimRecords><organizationName></organizationName><organizationTitleTypeName></organizationTitleTypeName><participantClaimantID>600052699</participantClaimantID><participantVetID>600052699</participantVetID><payeeTypeCode>00</payeeTypeCode><paymentAddressID>16433972</paymentAddressID><preDischargeInd>N</preDischargeInd><preDschrgTypeCd></preDschrgTypeCd><programTypeCode>CPL</programTypeCode><returnCode>SHAR
+        9999</returnCode><returnMessage>Records found</returnMessage><serviceTypeCode>CP</serviceTypeCode><statusTypeCode>PEND</statusTypeCode><vetFirstName>JERRY</vetFirstName><vetLastName>CURTIS</vetLastName><vetMiddleName>J</vetMiddleName><vetSuffix></vetSuffix></benefitClaimRecord><lifeCycleRecord><lifeCycleRecords><actionFirstName>VAGOVAPI</actionFirstName><actionLastName>SYSTEMACCOUNTDONOTDELETE</actionLastName><actionMiddleName></actionMiddleName><actionStationNumber>281</actionStationNumber><actionSuffix></actionSuffix><benefitClaimID>600912467</benefitClaimID><caseAssignmentLocationID></caseAssignmentLocationID><caseAssignmentStatusNumber></caseAssignmentStatusNumber><caseID></caseID><changedDate>03/13/2026</changedDate><closedDate></closedDate><journalDate>03/13/2026</journalDate><journalObjectID>VAGOVAPI  -
+        CEST</journalObjectID><journalStation>281</journalStation><journalStatusTypeCode>I</journalStatusTypeCode><journalUserID>VAGOVAPI</journalUserID><lifeCycleStatusID>108360445</lifeCycleStatusID><lifeCycleStatusTypeName>Open</lifeCycleStatusTypeName><reasonText></reasonText><stationofJurisdiction>348</stationofJurisdiction><statusReasonTypeCode></statusReasonTypeCode><statusReasonTypeName></statusReasonTypeName></lifeCycleRecords><numberOfRecords>1</numberOfRecords><returnCode>SHAR
+        9999</returnCode><returnMessage>Records found</returnMessage></lifeCycleRecord><participantRecord/><returnCode>SHAR
+        9999</returnCode><returnMessage>Records found</returnMessage><suspenceRecord><numberOfRecords>1</numberOfRecords><returnCode>SHAR
+        9999</returnCode><returnMessage>Records found</returnMessage><suspenceRecords><claimSuspenceDate>04/12/2026</claimSuspenceDate><firstName>VAGOVAPI</firstName><journalDate>03/13/2026</journalDate><journalObjectID>VAGOVAPI  -
+        CEST</journalObjectID><journalStation>281</journalStation><journalStatusTypeCode>I</journalStatusTypeCode><journalUserID>VAGOVAPI</journalUserID><lastName>SYSTEMACCOUNTDONOTDELETE</lastName><middleName></middleName><suffix></suffix><suspenceActionDate>03/13/2026</suspenceActionDate><suspenceCode>054</suspenceCode><suspenceReasonText>Initial
+        Review Pending</suspenceReasonText></suspenceRecords></suspenceRecord></return></ns0:findBenefitClaimDetailResponse></S:Body></S:Envelope>
+  recorded_at: Thu, 27 Aug 2026 19:35:34 GMT
+recorded_with: VCR 6.4.0

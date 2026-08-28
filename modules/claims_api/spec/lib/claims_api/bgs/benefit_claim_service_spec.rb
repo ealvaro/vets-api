@@ -30,4 +30,32 @@ describe ClaimsApi::BenefitClaimService do
       end
     end
   end
+
+  describe '#find_benefit_claim_detail' do
+    let(:benefit_claim_id) { '600912467' }
+
+    it 'returns the details of a benefit claim' do
+      VCR.use_cassette('claims_api/bgs/benefit_claim_service/find_benefit_claim_detail') do
+        result = subject.find_benefit_claim_detail(benefit_claim_id)
+
+        expect(result).to be_a Hash
+        expect(result.dig(:return, :benefit_claim_record, :benefit_claim_id)).to eq benefit_claim_id
+      end
+    end
+  end
+
+  describe '#find_benefit_claim' do
+    let(:file_number) { '796163672' }
+
+    it 'returns the benefit claims for a file number' do
+      VCR.use_cassette('claims_api/bgs/benefit_claim_service/find_benefit_claim') do
+        result = subject.find_benefit_claim(file_number)
+
+        # returns hash shape of records, message records found, with selection containing claims
+        expect(result).to be_a Hash
+        expect(result.dig(:return, :participant_record, :return_message)).to eq 'Records found'
+        expect(result.dig(:return, :participant_record, :selection)).to be_an Array
+      end
+    end
+  end
 end

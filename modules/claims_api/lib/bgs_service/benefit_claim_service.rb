@@ -30,5 +30,23 @@ module ClaimsApi
 
       make_request(endpoint: bean_name, action: 'updateBenefitClaim', body:)
     end
+
+    # returns the details of a specific benefit claim by its ID
+    def find_benefit_claim_detail(benefit_claim_id)
+      body = Nokogiri::XML::DocumentFragment.parse <<~EOXML
+        <benefitClaimId>#{benefit_claim_id}</benefitClaimId>
+      EOXML
+
+      make_request(endpoint: bean_name, action: 'findBenefitClaimDetail', body:)
+    end
+
+    # returns all benefit claims for a file number
+    def find_benefit_claim(file_number)
+      body = Nokogiri::XML::DocumentFragment.parse <<~EOXML
+        <fileNumber>#{file_number}</fileNumber>
+      EOXML
+
+      make_request(endpoint: bean_name, action: 'findBenefitClaim', body:)
+    end
   end
 end
