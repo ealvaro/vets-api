@@ -21,10 +21,13 @@ module IvcChampva
           transaction_uuid_map = transaction_uuid_map_for(form_uuids)
           transaction_uuids = transaction_uuid_map.keys
 
-          retry_after = earliest_rate_limit(transaction_uuids)
-          return render_rate_limited(retry_after) if retry_after
+          unless rate_limit_disabled?
+            retry_after = earliest_rate_limit(transaction_uuids)
+            return render_rate_limited(retry_after) if retry_after
 
-          enforce_rate_limit(transaction_uuids)
+            enforce_rate_limit(transaction_uuids)
+          end
+
           results = eligibility_results(transaction_uuid_map)
 
           render json: { data: { results:, form_uuids: } }, status: :ok
@@ -39,6 +42,20 @@ module IvcChampva
       # @return [Boolean] whether the on-demand eligibility feature is enabled for the user
       def feature_enabled?
         Flipper.enabled?(:ivc_champva_ves_eligibility_on_demand, @current_user)
+      end
+
+      # @return [Boolean] whether the per-transaction rate limit is bypassed for the user --
+      #   defaults on in development (see config/features.yml) so local/staging testing of the
+      #   refresh flow isn't blocked. Environment-guarded (not just flag-gated) so an
+      #   accidental global Flipper enable in production can't bypass the rate limit there --
+      #   same environments IvcChampva::StagingScenarioStub itself is allowed to activate in
+      #   (config/initializers/ivc_champva_staging_scenario_stub.rb), kept in sync deliberately
+      #   since both exist for the same staging-review purpose.
+      def rate_limit_disabled?
+        allowed_env = Rails.env.development? || Rails.env.test? || Settings.vsp_environment.to_s == 'staging'
+        return false unless allowed_env
+
+        Flipper.enabled?(:champva_eligibility_rate_limit_disabled, @current_user)
       end
 
       # Extracts the form_uuids array from the request body.

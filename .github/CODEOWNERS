@@ -895,6 +895,7 @@ config/initializers/httpi.rb @software/va-platform-backend
 config/initializers/ial.rb @software/octo-identity
 config/initializers/inflections.rb @software/va-platform-backend
 config/initializers/integration_recorder.rb @software/va-platform-backend
+config/initializers/ivc_champva_staging_scenario_stub.rb @software/health-apps-backend
 config/initializers/jsonapi_serializer_blank_id_patch.rb @software/va-platform-backend
 config/initializers/kms_encrypted.rb @software/va-platform-backend
 config/initializers/loa.rb @software/octo-identity
@@ -1678,6 +1679,7 @@ spec/fixtures/vbms @software/benefits-lifestage
 spec/fixtures/veteran_enrollment_system @software/health-apps-backend
 spec/helpers/parameter_filter_helper_spec.rb @software/va-platform-backend
 spec/initializers/httpi_spec.rb @software/va-platform-backend
+spec/initializers/ivc_champva_staging_scenario_stub_spec.rb @software/health-apps-backend
 spec/initializers/rails_semantic_logger_patch_spec.rb @software/va-platform-backend
 spec/lib/apps @software/lighthouse-pivot
 spec/lib/bb @software/vfs-vaos

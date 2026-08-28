@@ -642,8 +642,8 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           )
         end
 
-        it 'populates the response-root repeatIneligibilityAlert with the applicant name substituted, ' \
-           'only once true' do
+        it 'populates the response-root repeatIneligibilityAlert with the applicant name substituted ' \
+           'into the title only, once true' do
           applicant = create_applicant('3b', status: 'INELIGIBLE')
           applicant.update!(applicant_first_name: 'Jane')
           add_letter(applicant, mail_status_date: '2026-01-03')
@@ -659,8 +659,12 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           )[:repeat_ineligibility_alert]
           expect(alert['title']).to include('Jane')
           expect(alert['title']).not_to include('[Name]')
-          expect(alert['description']).to include('Jane')
+          # The description is fixed, name-free copy ("They are still not eligible...") so it
+          # reads correctly for one or many applicants without repeating names or picking a
+          # singular/plural pronoun -- only the heading names the affected applicant(s).
+          expect(alert['description']).not_to include('Jane')
           expect(alert['description']).not_to include('[Name]')
+          expect(alert['description']).to start_with('They are still not eligible for CHAMPVA benefits.')
         end
 
         it 'returns nil (not a hash of blank strings) when the alert config template fails to load, ' \
@@ -805,7 +809,9 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::ClaimBuilder do
           )[:repeat_ineligibility_alert]
 
           expect(alert['title']).to include("Jane, John, and Sam's eligibility")
-          expect(alert['description']).to start_with('Jane, John, and Sam is still not eligible')
+          # The description is the fixed, name-free "They are..." copy regardless of how many
+          # applicants are flagged -- it never needs Oxford-comma joining itself.
+          expect(alert['description']).to start_with('They are still not eligible for CHAMPVA benefits.')
         end
 
         it 'omits an unaffected applicant\'s name from the shared alert even when a sibling applicant is flagged' do

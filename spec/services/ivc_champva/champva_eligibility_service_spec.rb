@@ -86,6 +86,63 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       expect(ves_client).to have_received(:get_icns_for_transaction).once
     end
 
+    it 'recovers via decrypt-and-match when create! races with another process on the same ' \
+       'applicant (RecordNotUnique), instead of raising PG::UndefinedColumn' do
+      sponsor_icn = '0000001200603250V008079000000'
+      concurrent_sponsor = nil
+
+      # Simulates another concurrent run's create! landing first for this exact
+      # (transaction_uuid, applicant_icn) pair, in the window between this run's own
+      # existing-records check and its own create! call -- the real unique index on
+      # (transaction_uuid, applicant_icn_ciphertext) then raises RecordNotUnique for this
+      # run's create!, exactly as it would in production. The row has to actually exist
+      # for the rescue's decrypt-and-match fallback to find it, since applicant_icn isn't
+      # a queryable column (see the model's has_encrypted declaration) --
+      # find_by/where(applicant_icn:) raises PG::UndefinedColumn, which is the bug this
+      # regression-tests. Pre-creating the row before .call runs isn't equivalent: it
+      # would satisfy existing_applicant_records' cache check and short-circuit the whole
+      # sync before create_applicant_record's rescue is ever reached.
+      allow(IvcChampvaApplicant).to receive(:create!).and_wrap_original do |original, **kwargs|
+        if kwargs[:applicant_icn] == sponsor_icn
+          concurrent_sponsor = original.call(**kwargs)
+          raise ActiveRecord::RecordNotUnique, 'duplicate key'
+        else
+          original.call(**kwargs)
+        end
+      end
+
+      result = described_class.new(transaction_uuid).call
+
+      expect(result[:status]).to eq('success')
+      expect(result[:created_count]).to eq(1) # beneficiary only -- sponsor already existed
+      expect(result[:existing_count]).to eq(1) # sponsor recovered via the rescue branch
+      expect(IvcChampvaApplicant.where(transaction_uuid:).count).to eq(2)
+
+      sponsor_applicant = IvcChampvaApplicant.where(transaction_uuid:)
+                                             .find { |record| record.applicant_icn == sponsor_icn }
+      expect(sponsor_applicant.id).to eq(concurrent_sponsor.id)
+    end
+
+    it 're-raises RecordNotUnique when the decrypt-and-match fallback finds no matching row' do
+      sponsor_icn = '0000001200603250V008079000000'
+
+      # Simulates RecordNotUnique firing for a reason OTHER than the normal concurrent-
+      # create race this rescue assumes (e.g. the other process's row was deleted before
+      # this rescue could re-fetch it) -- the decrypt-and-match lookup then finds nothing,
+      # and that must fail loudly and locally rather than writing nil into
+      # existing_by_icn, where persist_person_records' own .uniq(&:id) would raise a
+      # confusing NoMethodError on nil.id far from the real cause.
+      allow(IvcChampvaApplicant).to receive(:create!).and_wrap_original do |original, **kwargs|
+        if kwargs[:applicant_icn] == sponsor_icn
+          raise ActiveRecord::RecordNotUnique, 'duplicate key'
+        else
+          original.call(**kwargs)
+        end
+      end
+
+      expect { described_class.new(transaction_uuid).call }.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
     it 'continues to re-query VES for an applicant that is not yet eligible' do
       ineligible_summary = ee_summary_response.deep_dup
       ineligible_summary['vfmpProgramsInfo']['relationships'].first['champvaEligibilities'].first['status'] =

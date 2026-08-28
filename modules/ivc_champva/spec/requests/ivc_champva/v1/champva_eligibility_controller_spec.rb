@@ -37,6 +37,9 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
     allow(Flipper).to receive(:enabled?)
       .with(:ivc_champva_ves_eligibility_on_demand, anything)
       .and_return(feature_enabled)
+    allow(Flipper).to receive(:enabled?)
+      .with(:champva_eligibility_rate_limit_disabled, anything)
+      .and_return(rate_limit_disabled)
 
     allow_any_instance_of(IvcChampva::V1::ChampvaEligibilityController)
       .to receive(:eligibility_results).and_return(eligibility_results)
@@ -50,6 +53,7 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
     end
 
     let(:feature_enabled) { true }
+    let(:rate_limit_disabled) { false }
     let(:request_body) { { form_uuids: [form_uuid] } }
     let!(:form) { create(:ivc_champva_form, form_uuid:, transaction_uuid:) }
 
@@ -113,6 +117,31 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
         expect(response).to have_http_status(:too_many_requests)
         expect(response.headers['Retry-After']).to be_present
         expect(response.parsed_body['error_message']).to eq('Rate limit exceeded. Please try again later.')
+      end
+
+      context 'when the rate limit is disabled via feature flag' do
+        let(:rate_limit_disabled) { true }
+
+        it 'bypasses the rate limit and does not stamp last_ves_fetch_at' do
+          stamped_at = form.last_ves_fetch_at
+
+          make_request
+
+          expect(response).to have_http_status(:ok)
+          expect(form.reload.last_ves_fetch_at).to eq(stamped_at)
+        end
+
+        it 'still enforces the rate limit in production, even with the flag on -- an ' \
+           'accidental global Flipper enable there must not bypass it' do
+          allow(Rails.env).to receive_messages(development?: false, test?: false)
+          allow(Settings).to receive(:vsp_environment).and_return('production')
+          stamped_at = form.last_ves_fetch_at
+
+          make_request
+
+          expect(response).to have_http_status(:too_many_requests)
+          expect(form.reload.last_ves_fetch_at).to eq(stamped_at)
+        end
       end
     end
 

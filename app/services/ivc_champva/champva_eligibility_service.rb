@@ -294,8 +294,22 @@ module IvcChampva
       @created_count += 1
       applicant
     rescue ActiveRecord::RecordNotUnique
-      # Another concurrent run created the applicant row first.
-      existing = IvcChampvaApplicant.find_by(transaction_uuid: @transaction_uuid, applicant_icn:)
+      # Another concurrent run created the applicant row first. applicant_icn is a
+      # Lockbox-encrypted attribute (see the class-level has_encrypted declaration), not a
+      # real column -- only applicant_icn_ciphertext is -- so find_by/where can't query it
+      # directly (PG::UndefinedColumn). Fetch by the indexed transaction_uuid instead and
+      # match the decrypted value in Ruby, same as persist_person_records' own
+      # existing_by_icn lookup does.
+      existing = IvcChampvaApplicant.where(transaction_uuid: @transaction_uuid)
+                                    .find { |a| a.applicant_icn == applicant_icn }
+      # A nil here means the unique-constraint violation wasn't actually the concurrent-
+      # insert race this rescue assumes (e.g. the other process's row was deleted before
+      # we could re-fetch it, or a decrypt mismatch) -- re-raise so that fails loud and
+      # local, instead of writing nil into existing_by_icn, where persist_person_records'
+      # own .uniq(&:id) would raise a NoMethodError on nil.id far from the real cause, and
+      # @existing_count would be incremented for a record that doesn't actually exist.
+      raise if existing.nil?
+
       existing_by_icn[applicant_icn] = existing
       @existing_count += 1
       existing

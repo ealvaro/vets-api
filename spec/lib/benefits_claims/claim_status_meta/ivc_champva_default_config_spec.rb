@@ -268,9 +268,13 @@ RSpec.describe BenefitsClaims::ClaimStatusMeta::ConfigLoader, '#load ivc_champva
       expect { variant_config }.not_to raise_error
     end
 
-    it 'has title and description with a [Name] placeholder' do
+    it 'has a [Name] placeholder in the title, but a fixed, name-free description' do
+      # The description deliberately has no [Name] placeholder -- its "They are still not
+      # eligible" wording must read correctly for one or many applicants without dynamically
+      # repeating names or picking singular/plural pronouns. Only the heading still names the
+      # affected applicant(s).
       expect(variant_config['title']).to include('[Name]')
-      expect(variant_config['description']).to include('[Name]')
+      expect(variant_config['description']).not_to include('[Name]')
     end
   end
 

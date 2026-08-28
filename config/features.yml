@@ -545,6 +545,10 @@ features:
   champva_pega_update_status_disabled:
     actor_type: user
     description: When enabled on the staging environment only, the IVC CHAMPVA Pega status callback endpoint (POST /ivc_champva/v1/forms/status_updates) acknowledges callbacks without modifying any records. This flag has no effect in any other environment (production, development, etc.), where callbacks are always processed. Used to stop Pega staging callbacks from overwriting pega_status during accessibility testing.
+  champva_eligibility_rate_limit_disabled:
+    actor_type: user
+    enable_in_development: true
+    description: When enabled, bypasses the 30-minute per-transaction rate limit on POST /ivc_champva/v1/forms/champva_eligibility (ChampvaEligibilityController#update), so repeated on-demand VES eligibility refreshes aren't blocked. Defaults on in development so local testing of the refresh button isn't rate limited. Leave off in staging/production so the rate limit still protects VES from repeated polling; enable there only temporarily for active QA/testing of the refresh flow. On staging ONLY, this same flag also has a second effect -- enabling it as a GLOBAL/boolean toggle (not scoped to an actor) additionally activates IvcChampva::StagingScenarioStub (config/initializers/ivc_champva_staging_scenario_stub.rb), which replaces VES/MPI responses with canned demo data for one CHAMPVA application so a reviewer can step it through a fixed sequence of eligibility scenarios. A per-actor-only enable does NOT activate that stub -- see the initializer's own doc for the full setup/review-session steps.
   champva_cst_file_uploader_docs_only_resubmission:
     actor_type: user
     description: Enables docs-only resubmission flow for IVC CHAMPVA CST file uploader

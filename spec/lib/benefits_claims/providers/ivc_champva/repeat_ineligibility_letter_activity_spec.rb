@@ -55,15 +55,15 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterA
       expect(described_class.alert_for([applicant])).to be_nil
     end
 
-    it 'substitutes a single first name into the template' do
+    it 'substitutes a single first name into the title, but not the description' do
       applicant = build_stubbed(:ivc_champva_applicant, applicant_first_name: 'Jane')
 
       result = described_class.alert_for([applicant])
 
       expect(result).to eq(
         'title' => "Our decision on Jane's eligibility hasn't changed",
-        'description' => 'Jane is still not eligible for CHAMPVA benefits. Read our updated application decision ' \
-                         'for details.'
+        'description' => 'They are still not eligible for CHAMPVA benefits. Read our updated application ' \
+                         'decision for details.'
       )
     end
 
@@ -75,6 +75,17 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterA
       result = described_class.alert_for([jane1, john, jane2])
 
       expect(result['title']).to eq("Our decision on Jane, John, and Jane's eligibility hasn't changed")
+    end
+
+    it "uses the fixed 'They are' body regardless of applicant count, never repeating names in the body" do
+      jane = build_stubbed(:ivc_champva_applicant, applicant_first_name: 'Jane')
+      john = build_stubbed(:ivc_champva_applicant, applicant_first_name: 'John')
+
+      result = described_class.alert_for([jane, john])
+
+      expect(result['description']).to eq(
+        'They are still not eligible for CHAMPVA benefits. Read our updated application decision for details.'
+      )
     end
 
     it "falls back to 'This applicant' when no applicant has a first name" do
@@ -90,7 +101,7 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterA
     it 'loads the repeat_ineligibility_alert config for ivc_champva' do
       expect(described_class.alert_template).to eq(
         'title' => "Our decision on [Name]'s eligibility hasn't changed",
-        'description' => '[Name] is still not eligible for CHAMPVA benefits. Read our updated application ' \
+        'description' => 'They are still not eligible for CHAMPVA benefits. Read our updated application ' \
                          'decision for details.'
       )
     end
