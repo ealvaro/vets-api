@@ -33,6 +33,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
       external_id: 'I2-INVOICE1',
       facility_id: organization_id,
       facility: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+      city: 'Columbus',
       current_balance: 105.24,
       invoice_date: '2025-12-20T04:00:00Z',
       statement_generated_day: 11
@@ -84,6 +85,10 @@ RSpec.describe MedicalCopays::FacilityAccounts::LighthouseBuilder do
 
     it 'names the facility from the invoice issuer display' do
       expect(accounts.first.facility_name).to eq('Chalmers P. Wylie Veterans Outpatient Clinic')
+    end
+
+    it 'takes the city from the invoice' do
+      expect(accounts.first.city).to eq('Columbus')
     end
 
     it 'fetches each organization once across station and name lookups' do

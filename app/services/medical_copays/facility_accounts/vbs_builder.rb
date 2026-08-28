@@ -54,6 +54,7 @@ module MedicalCopays
         attributes = {
           station_id:,
           facility_name: statement.dig('station', 'facilitYDesc'),
+          city: statement.dig('station', 'city'),
           is_cerner: true,
           current_balance:,
           past_due_balance: past_due_balance(statement, due_date, current_balance),

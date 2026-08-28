@@ -115,6 +115,10 @@ RSpec.describe MedicalCopays::FacilityAccounts::VBSBuilder do
       expect(accounts.first.facility_name).to eq('CHALMERS P WYLIE VA ACC (757)')
     end
 
+    it 'takes the city from the station block' do
+      expect(accounts.first.city).to eq('COLUMBUS')
+    end
+
     it 'marks accounts cerner, since the VBS branch is the cerner branch' do
       expect(accounts.first.is_cerner).to be(true)
     end

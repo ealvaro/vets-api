@@ -23,7 +23,7 @@ RSpec.describe 'V1::FacilityAccounts', type: :request do
 
   def facility_account(**overrides)
     MedicalCopays::FacilityAccounts::FacilityAccount.new(
-      { station_id: '757', is_cerner: false, current_balance: 105.24 }.merge(overrides)
+      { station_id: '757', city: 'Columbus', is_cerner: false, current_balance: 105.24 }.merge(overrides)
     )
   end
 
@@ -45,7 +45,9 @@ RSpec.describe 'V1::FacilityAccounts', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body['totalCurrentBalance']).to eq(105.24)
-      expect(response.parsed_body['facilities'].first['isCerner']).to be false
+      expect(response.parsed_body['facilities'].first).to include(
+        'isCerner' => false, 'city' => 'Columbus'
+      )
     end
 
     it 'serves a Cerner user from VBS' do
@@ -142,6 +144,7 @@ RSpec.describe 'V1::FacilityAccounts', type: :request do
         expect(response.parsed_body).to eq(
           'stationId' => '757',
           'facilityName' => 'Chalmers P. Wylie Veterans Outpatient Clinic',
+          'city' => 'Columbus',
           'isCerner' => false,
           'accountNumber' => '123456',
           'currentBalance' => 105.24,

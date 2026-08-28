@@ -16,6 +16,7 @@ module MedicalCopays
 
       attribute :station_id, String
       attribute :facility_name, String
+      attribute :city, String
       attribute :is_cerner, Bool
       attribute :account_number, String
       attribute :current_balance, Float

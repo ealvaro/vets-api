@@ -6,6 +6,7 @@ module MedicalCopays
       ATTRIBUTES = %i[
         station_id
         facility_name
+        city
         is_cerner
         account_number
         current_balance

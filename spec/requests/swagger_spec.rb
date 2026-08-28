@@ -3956,6 +3956,7 @@ RSpec.describe 'the v1 API documentation', order: :defined, type: %i[apivore req
               build_facility_accounts: [
                 MedicalCopays::FacilityAccounts::FacilityAccount.new(
                   station_id: '757', facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+                  city: 'Columbus',
                   is_cerner: false, current_balance: 105.24, past_due_balance: 0.0,
                   statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5)
                 )
@@ -4032,6 +4033,7 @@ RSpec.describe 'the v1 API documentation', order: :defined, type: %i[apivore req
           stub_show(
             MedicalCopays::FacilityAccounts::FacilityAccount.new(
               station_id: '757', facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+              city: 'Columbus',
               is_cerner: false, account_number: '123456', current_balance: 105.24, past_due_balance: 0.0,
               statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5),
               transactions: [{ id: 'B1', type: 'charge', date: '2025-12-01', description: 'RX COPAY',

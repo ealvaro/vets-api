@@ -273,6 +273,10 @@ class Swagger::V1::Requests::MedicalCopays
                        type: :string,
                        example: 'Chalmers P. Wylie Veterans Outpatient Clinic'
 
+              property :city,
+                       type: :string,
+                       example: 'Columbus'
+
               property :isCerner,
                        type: :boolean,
                        example: false,
@@ -359,6 +363,10 @@ class Swagger::V1::Requests::MedicalCopays
           property :facilityName,
                    type: :string,
                    example: 'Chalmers P. Wylie Veterans Outpatient Clinic'
+
+          property :city,
+                   type: :string,
+                   example: 'Columbus'
 
           property :isCerner,
                    type: :boolean,

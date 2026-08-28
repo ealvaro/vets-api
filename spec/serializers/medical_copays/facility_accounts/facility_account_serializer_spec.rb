@@ -18,7 +18,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
       result = described_class.show(facility_account)
 
       expect(result.keys).to contain_exactly(
-        'stationId', 'facilityName', 'isCerner', 'accountNumber', 'currentBalance',
+        'stationId', 'facilityName', 'city', 'isCerner', 'accountNumber', 'currentBalance',
         'pastDueBalance', 'statementDate', 'dueDate', 'transactions'
       )
     end
@@ -56,7 +56,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
 
     expect(result.keys).to contain_exactly('totalCurrentBalance', 'facilities')
     expect(result['facilities'].first.keys).to contain_exactly(
-      'stationId', 'facilityName', 'isCerner', 'accountNumber', 'currentBalance',
+      'stationId', 'facilityName', 'city', 'isCerner', 'accountNumber', 'currentBalance',
       'pastDueBalance', 'statementDate', 'dueDate', 'transactions'
     )
   end
@@ -73,7 +73,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
 
   it 'emits dates as ISO strings and keeps unset attributes null' do
     account = facility_account(
-      facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic',
+      facility_name: 'Chalmers P. Wylie Veterans Outpatient Clinic', city: 'Columbus',
       current_balance: 105.24, past_due_balance: 0.0,
       statement_date: Date.new(2025, 12, 11), due_date: Date.new(2026, 1, 5)
     )
@@ -84,6 +84,7 @@ RSpec.describe MedicalCopays::FacilityAccounts::FacilityAccountSerializer do
         {
           'stationId' => '757',
           'facilityName' => 'Chalmers P. Wylie Veterans Outpatient Clinic',
+          'city' => 'Columbus',
           'isCerner' => false,
           'accountNumber' => nil,
           'currentBalance' => 105.24,

@@ -39,6 +39,7 @@ module MedicalCopays
         attributes = {
           station_id:,
           facility_name: invoices.first.facility,
+          city: invoices.first.city,
           is_cerner: false,
           current_balance: FacilityAccount.sum_balances(invoices),
           past_due_balance: FacilityAccount.sum_balances(invoices.select { |invoice| past_due?(invoice) }),
