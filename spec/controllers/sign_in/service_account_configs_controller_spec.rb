@@ -207,6 +207,22 @@ RSpec.describe SignIn::ServiceAccountConfigsController, type: :controller do
             expect(response).to have_http_status(:ok)
           end
         end
+
+        context 'when re-sending an existing, unchanged cert' do
+          let(:existing_cert) { create(:sign_in_certificate) }
+
+          before { service_account_config.certs << existing_cert }
+
+          it 'updates successfully and keeps the cert' do
+            put :update, params: {
+              service_account_id:,
+              service_account_config: { certs_attributes: [{ id: existing_cert.id, pem: existing_cert.pem }] }
+            }, as: :json
+
+            expect(response).to have_http_status(:ok)
+            expect(response_body['certs']).to include(a_hash_including('id' => existing_cert.id))
+          end
+        end
       end
     end
 

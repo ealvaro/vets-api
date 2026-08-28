@@ -41,7 +41,7 @@ RSpec.describe SignIn::CodeValidator do
                user_verification_id:)
       end
       let(:client_id) { client_config.client_id }
-      let(:client_config) { create(:client_config, pkce:, auth_method: 'pkce') }
+      let(:client_config) { create(:client_config, auth_method: 'pkce') }
       let(:pkce) { true }
       let(:code_container_code) { code }
       let(:code_challenge) { 'some-code-challenge' }
@@ -288,7 +288,7 @@ RSpec.describe SignIn::CodeValidator do
         let(:stored_client_secret) { 'super-secret-client-secret' }
         let(:client_secret) { stored_client_secret }
         let(:client_config) do
-          create(:client_config, pkce:, client_secret: stored_client_secret, auth_method: 'client_secret')
+          create(:client_config, client_secret: stored_client_secret, auth_method: 'client_secret')
         end
 
         context 'and provided client id does not match the code container client id' do

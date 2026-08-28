@@ -57,7 +57,6 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
       create(:client_config,
              authentication:,
              anti_csrf:,
-             pkce:,
              enforced_terms:,
              shared_sessions:,
              auth_method:)
@@ -584,7 +583,7 @@ RSpec.describe V0::SignIn::TokenController, type: :controller do
             let(:client_assertion_type) { {} }
             let(:client_secret_plain) { 'super-secret-client-secret' }
             let!(:client_config) do
-              create(:client_config, authentication:, anti_csrf:, pkce:, enforced_terms:, shared_sessions:,
+              create(:client_config, authentication:, anti_csrf:, enforced_terms:, shared_sessions:,
                                      client_secret: client_secret_plain, auth_method: 'client_secret')
             end
 

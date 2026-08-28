@@ -9,7 +9,7 @@ RSpec.describe V0::SignIn::AuthorizeController, type: :controller do
     end
 
     let!(:client_config) do
-      create(:client_config, authentication:, pkce:, credential_service_providers:, service_levels:, shared_sessions:,
+      create(:client_config, authentication:, credential_service_providers:, service_levels:, shared_sessions:,
                              auth_method:)
     end
     let(:pkce) { true }

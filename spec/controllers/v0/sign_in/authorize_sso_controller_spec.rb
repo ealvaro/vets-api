@@ -27,7 +27,7 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
     let(:shared_sessions) { true }
     let!(:client_config) do
-      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:, pkce:, auth_method:)
+      create(:client_config, shared_sessions:, json_api_compatibility: false, client_id:, auth_method:)
     end
     let(:pkce) { true }
     let(:auth_method) { pkce ? 'pkce' : 'private_key_jwt' }

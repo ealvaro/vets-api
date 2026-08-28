@@ -38,8 +38,6 @@ module SignIn
     enum :auth_method, { pkce: 'pkce', client_secret: 'client_secret', private_key_jwt: 'private_key_jwt' },
          prefix: true
 
-    attr_accessor :pkce
-
     def self.valid_client_id?(client_id:)
       find_by(client_id:).present?
     end
@@ -90,7 +88,7 @@ module SignIn
 
     def certs_attributes=(attributes)
       normalized_attributes = attributes.is_a?(Hash) ? attributes.values : Array(attributes)
-      self.config_certificates_attributes = normalized_attributes.map do |cert_attrs|
+      self.config_certificates_attributes = normalized_attributes.filter_map do |cert_attrs|
         cert_attrs = cert_attrs.to_h.symbolize_keys
         should_destroy = ActiveModel::Type::Boolean.new.cast(cert_attrs[:_destroy])
 

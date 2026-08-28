@@ -19,7 +19,7 @@ module SignIn
 
     def certs_attributes=(attributes)
       normalized_attributes = attributes.is_a?(Hash) ? attributes.values : Array(attributes)
-      self.config_certificates_attributes = normalized_attributes.map do |cert_attrs|
+      self.config_certificates_attributes = normalized_attributes.filter_map do |cert_attrs|
         cert_attrs = cert_attrs.to_h.symbolize_keys
         should_destroy = ActiveModel::Type::Boolean.new.cast(cert_attrs[:_destroy])
 

@@ -26,7 +26,7 @@ RSpec.describe SignIn::StatePayloadJwtEncoder do
     let(:type) { 'some-type' }
     let(:scope) { nil }
     let(:nonce) { nil }
-    let(:client_config) { create(:client_config, pkce:, shared_sessions:, authentication:, auth_method:) }
+    let(:client_config) { create(:client_config, shared_sessions:, authentication:, auth_method:) }
     let(:pkce) { true }
     let(:auth_method) { 'pkce' }
     let(:shared_sessions) { false }

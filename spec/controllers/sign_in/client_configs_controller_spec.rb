@@ -146,6 +146,13 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
         expect(client_config.client_id).to eq('new_client_id')
       end
 
+      it 'persists the oidc flag' do
+        put :update, params: { client_id:, client_config: { oidc: true } }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(client_config.reload.oidc).to be(true)
+      end
+
       it 'updates the client secret digest without exposing it in the response' do
         secret_client_config = create(:client_config, auth_method: 'client_secret')
         secret = 'updated-super-secret'
@@ -208,6 +215,47 @@ RSpec.describe SignIn::ClientConfigsController, type: :controller do
           }, as: :json
 
           expect(response).to have_http_status(:ok)
+        end
+      end
+
+      context 'when re-sending an existing, unchanged cert' do
+        let(:client_config) { create(:client_config, auth_method: 'private_key_jwt') }
+        let(:existing_cert) { create(:sign_in_certificate) }
+
+        before { client_config.certs << existing_cert }
+
+        it 'updates successfully and keeps the cert' do
+          put :update, params: {
+            client_id:,
+            client_config: { certs_attributes: [{ id: existing_cert.id, pem: existing_cert.pem }] }
+          }, as: :json
+
+          expect(response).to have_http_status(:ok)
+          expect(response_body['certs']).to include(a_hash_including('id' => existing_cert.id))
+        end
+      end
+
+      context 'when adding a new cert to a config that already has one' do
+        let(:client_config) { create(:client_config, auth_method: 'private_key_jwt') }
+        let(:existing_cert) { create(:sign_in_certificate) }
+        let(:new_cert) { build(:sign_in_certificate) }
+
+        before { client_config.certs << existing_cert }
+
+        it 'adds the new cert while keeping the existing one' do
+          put :update, params: {
+            client_id:,
+            client_config: {
+              certs_attributes: [
+                { id: existing_cert.id, pem: existing_cert.pem },
+                { pem: new_cert.pem }
+              ]
+            }
+          }, as: :json
+
+          expect(response).to have_http_status(:ok)
+          expect(response_body['certs'].pluck('id')).to include(existing_cert.id)
+          expect(response_body['certs'].size).to eq(2)
         end
       end
     end
