@@ -2594,6 +2594,9 @@ features:
   profile_show_privacy_policy:
     actor_type: user
     description: Show/Hide the privacy policy section on profile pages
+  profile_show_foia_category_notification_settings:
+    actor_type: user
+    description: Show FOIA category on Email and text notifications page in Profile
   profile_show_pronouns_and_sexual_orientation:
     actor_type: user
     description: Show/hide Pronouns and Sexual Orientation fields on profile page
