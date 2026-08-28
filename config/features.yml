@@ -1620,6 +1620,9 @@ features:
   form214138_browser_monitoring_enabled:
     actor_type: user
     description: Form 214138 Datadog RUM monitoring
+  form214138_flat_review_page:
+    actor_type: user
+    description: If enabled, Form 21-4138 uses the flat Edit-by-page review layout instead of the accordion
   form214140:
     actor_type: user
     description: If enabled shows the digital form experience for form 21-4140
