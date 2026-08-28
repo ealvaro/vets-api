@@ -58,4 +58,124 @@ describe SearchKendra::Configuration do
         .with(region: 'us-gov-west-1')
     end
   end
+
+  describe '#base_path' do
+    it 'returns a Kendra URI' do
+      expect(subject.base_path).to eq("kendra://#{Settings.search_kendra.region}")
+    end
+  end
+
+  describe '#breakers_matcher' do
+    it 'never matches requests' do
+      expect(subject.breakers_matcher.call).to be(false)
+    end
+  end
+
+  describe '#breakers_exception_handler' do
+    it 'handles Kendra service errors' do
+      error = Aws::Kendra::Errors::ServiceError.new(nil, 'Kendra error')
+
+      expect(subject.breakers_exception_handler.call(error)).to be(true)
+    end
+
+    it 'does not handle unrelated errors' do
+      expect(subject.breakers_exception_handler.call(StandardError.new)).to be(false)
+    end
+  end
+
+  describe '#with_breakers' do
+    it 'records a Kendra service error' do
+      error = Aws::Kendra::Errors::ServiceError.new(nil, 'Kendra error')
+
+      expect do
+        subject.with_breakers { raise error }
+      end.to raise_error(Aws::Kendra::Errors::ServiceError)
+
+      expect(subject.breakers_service.latest_outage).to be_present
+    end
+  end
+
+  describe '#outage_blocks_request?' do
+    let(:service) { instance_double(Breakers::Service) }
+    let(:outage) { instance_double(Breakers::Outage) }
+
+    it 'blocks an active outage that is not ready for retest' do
+      allow(outage).to receive_messages(
+        ended?: false,
+        forced?: false,
+        ready_for_retest?: false
+      )
+      allow(service).to receive(:seconds_before_retry).and_return(60)
+
+      expect(subject.send(:outage_blocks_request?, outage, service)).to be(true)
+    end
+
+    it 'allows an ended outage' do
+      allow(outage).to receive(:ended?).and_return(true)
+
+      expect(subject.send(:outage_blocks_request?, outage, service)).to be(false)
+    end
+
+    it 'allows a forced outage' do
+      allow(outage).to receive_messages(ended?: false, forced?: true)
+
+      expect(subject.send(:outage_blocks_request?, outage, service)).to be(false)
+    end
+
+    it 'allows an outage ready for retest' do
+      allow(outage).to receive_messages(
+        ended?: false,
+        forced?: false,
+        ready_for_retest?: true
+      )
+      allow(service).to receive(:seconds_before_retry).and_return(60)
+
+      expect(subject.send(:outage_blocks_request?, outage, service)).to be(false)
+    end
+  end
+
+  describe '#notify_plugins' do
+    let(:service) { instance_double(Breakers::Service) }
+    let(:plugin) { double('plugin') }
+
+    before do
+      allow(Breakers.client).to receive(:plugins).and_return([plugin])
+    end
+
+    it 'notifies plugins for skipped requests' do
+      allow(plugin).to receive(:on_skipped_request)
+
+      subject.send(:notify_plugins, :on_skipped_request, service)
+
+      expect(plugin).to have_received(:on_skipped_request).with(service)
+    end
+
+    it 'notifies plugins for successful requests' do
+      allow(plugin).to receive(:on_success)
+
+      subject.send(:notify_plugins, :on_success, service)
+
+      expect(plugin).to have_received(:on_success).with(service, nil, nil)
+    end
+
+    it 'notifies plugins for failed requests' do
+      allow(plugin).to receive(:on_error)
+
+      subject.send(:notify_plugins, :on_error, service)
+
+      expect(plugin).to have_received(:on_error).with(service, nil, nil)
+    end
+
+    it 'skips plugins that do not support the hook' do
+      allow(plugin).to receive(:on_success)
+
+      other_plugin = double('other_plugin')
+
+      allow(Breakers.client).to receive(:plugins).and_return([other_plugin])
+
+      subject.send(:notify_plugins, :on_success, service)
+
+      expect(plugin).not_to have_received(:on_success)
+    end
+  end
 end

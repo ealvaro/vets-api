@@ -11,11 +11,21 @@ describe SearchKendra::Service do
 
   let(:client) { instance_double(Aws::Kendra::Client) }
 
+  let(:relevance_tuning_config) do
+    [
+      {
+        name: 'crawl_depth',
+        relevance: { importance: 3, rank_order: 'DESCENDING' }
+      }
+    ]
+  end
+
   let(:config) do
     instance_double(
       SearchKendra::Configuration,
       client:,
-      index_id: 'TEST_INDEX'
+      index_id: 'TEST_INDEX',
+      relevance_tuning_config:
     )
   end
 
@@ -33,6 +43,10 @@ describe SearchKendra::Service do
     allow(SearchKendra::Configuration)
       .to receive(:instance)
       .and_return(config)
+
+    allow(config)
+      .to receive(:with_breakers)
+      .and_yield
 
     allow(client)
       .to receive(:query)
@@ -179,10 +193,9 @@ describe SearchKendra::Service do
   end
 
   describe '#query_params' do
-    let(:query) { 'DD 214 test@example.com 123-45-6789' }
-
     it 'redacts PII from query parameter' do
-      params = subject.send(:query_params)
+      service = described_class.new('DD 214 test@example.com 123-45-6789')
+      params = service.send(:query_params)
 
       expect(params[:query_text]).to eq('dd 214 [REDACTED - email] [REDACTED - ssn]')
     end
@@ -198,6 +211,12 @@ describe SearchKendra::Service do
       params = subject.send(:query_params)
 
       expect(params[:index_id]).to eq('TEST_INDEX')
+    end
+
+    it 'includes the configured relevance tuning' do
+      params = subject.send(:query_params)
+
+      expect(params[:document_relevance_override_configurations]).to eq(relevance_tuning_config)
     end
 
     it 'includes the configured page_size' do

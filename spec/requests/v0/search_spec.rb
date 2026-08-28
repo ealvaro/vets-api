@@ -276,6 +276,20 @@ Rspec.describe 'V0::Search', type: :request do
           end
         end
       end
+
+      context 'when the Kendra breaker is open' do
+        it 'returns service unavailable' do
+          VCR.use_cassette('search/kendra_error') do
+            get '/v0/search', params: { query: 'benefits' }
+
+            expect(response).to have_http_status(:bad_request)
+
+            get '/v0/search', params: { query: 'benefits' }
+
+            expect(response).to have_http_status(:service_unavailable)
+          end
+        end
+      end
     end
   end
 

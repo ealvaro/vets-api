@@ -36,7 +36,7 @@ module SearchKendra
     #
     def results
       with_monitoring do
-        query_result = config.client.query(query_params).data
+        query_result = config.with_breakers { config.client.query(query_params) }.data
         kendra_response = SearchKendra::ResponseAdapter.new(query_result, processed_query, page_number)
         Search::ResultsResponse.from(kendra_response)
       end
@@ -50,15 +50,13 @@ module SearchKendra
       @config ||= SearchKendra::Configuration.instance
     end
 
-    # Required params [index_id, query_text]
-    # Optional params [page_size, page_number]
-    #
     def query_params
       {
+        document_relevance_override_configurations: config.relevance_tuning_config,
         index_id: config.index_id,
-        query_text: processed_query,
+        page_number:,
         page_size:,
-        page_number:
+        query_text: processed_query
       }
     end
 

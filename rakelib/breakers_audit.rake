@@ -52,11 +52,9 @@ namespace :breakers do
     # must include a comment explaining the gap and linking to the follow-up.
     # Remove an entry once the underlying issue is resolved.
     known_exclusions = {
-      # Service#track_click calls bare Faraday.post() directly instead of
-      # config.connection, so the registered breaker circuit never receives
-      # real traffic. Fix requires re-recording VCR cassettes against staging
-      # credentials. Tracked as a follow-up PR.
-      'SearchClickTracking::Configuration' => 'follow-up PR required: Service#track_click bypasses config.connection'
+      'SearchKendra::Configuration' => 'inherits Base and defines no connection by design -- ' \
+                                       'breaker protection is implemented via with_breakers against ' \
+                                       'the AWS SDK client, not Faraday'
     }.freeze
 
     # Find direct subclasses of each class so we can identify abstract bases
