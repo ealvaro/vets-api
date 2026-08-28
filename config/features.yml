@@ -1192,7 +1192,7 @@ features:
     description: >
       Enables content and design enhancements for supporting evidence
       in the 526 disability compensation workflow.
-    enable_in_development: false
+    enable_in_development: true
   disability_526_supporting_evidence_file_input_v3:
     actor_type: user
     description: >
@@ -2953,7 +2953,7 @@ features:
   subform_8940_4192:
     actor_type: user
     description: Form 526 subforms for unemployability & connected employment information
-    enable_in_development: true
+    enable_in_development: false
   unified_search_sync_research_and_support:
     actor_type: user
     description: Controls on/off status for a redis job that syncs R&S data to Kendra data source
