@@ -4,6 +4,7 @@ require 'hexapdf'
 require 'hexapdf/cli'
 
 require 'common/file_helpers'
+require 'pdf_utilities/datestamp_pdf'
 
 # Utility classes and functions for VA PDF
 module PDFUtilities
@@ -13,6 +14,10 @@ module PDFUtilities
 
     # metric stat key
     STATS_KEY = 'api.pdf_stamper.error'
+    # metric stat key for fallback to pdftk
+    PDFTK_FALLBACK_STATS_KEY = 'api.pdf_stamper.pdftk_fallback'
+    # timeout in seconds for hexapdf
+    HEXAPDF_TIMEOUT = 30
 
     # defined stamp sets to be used
     STAMP_SETS = {} # rubocop:disable Style/MutableConstant
@@ -173,15 +178,16 @@ module PDFUtilities
       reader = PDF::Reader.new(stamp_path)
       pages = multistamp ? [*1..reader.page_count].join(',') : '1'
 
-      if Flipper.enabled?(:enable_hexapdf_watermark_direct_processing)
-        # This method of call 'watermark' will raise an error if something goes wrong,
-        # which is desirable  as it allows us to rescue/log/reraise it for later
-        # debugging. The alternate approach below calls `exit(1)` on error and
-        # just kills the process.
-        HexaPDF::CLI::Application.new.parse(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp',
-                                             pdf_path, stamped_pdf])
-      else
-        HexaPDF::CLI.run(['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', pdf_path, stamped_pdf])
+      begin
+        Timeout.timeout(HEXAPDF_TIMEOUT, HexaPDF::Error, "HexaPDF watermark timed out after #{HEXAPDF_TIMEOUT}s") do
+          hexa_stamping(stamp_path, pages, pdf_path, stamped_pdf)
+        end
+      rescue HexaPDF::Error => e
+        raise unless Flipper.enabled?(:enable_pdf_stamper_pdftk_fallback)
+
+        report_error_stats(e)
+
+        pdftk_stamping(pdf_path, stamp_path, stamped_pdf)
       end
 
       raise StampGenerationError, 'Stamped PDF was not created' unless File.exist?(stamped_pdf)
@@ -190,6 +196,49 @@ module PDFUtilities
     rescue => e
       Common::FileHelpers.delete_file_if_exists(stamped_pdf)
       log_and_raise_error('Failed to generate stamp', e, STATS_KEY)
+    end
+
+    # merges the stamp onto the source pdf by invoking HexaPDF's watermark CLI in-process
+    #
+    # @param stamp_path [String] path to the generated stamp/background pdf
+    # @param pages [String] pdftk/hexapdf page range spec, eg. '1' or '1,2,3'
+    # @param pdf_path [String] path to the source pdf being stamped
+    # @param stamped_pdf [String] path the merged, stamped pdf will be written to
+    def hexa_stamping(stamp_path, pages, pdf_path, stamped_pdf)
+      if Flipper.enabled?(:enable_hexapdf_watermark_direct_processing)
+        # This method of call 'watermark' will raise an error if something goes wrong,
+        # which is desirable  as it allows us to rescue/log/reraise it for later debugging.
+        # The alternate approach below calls `exit(1)` on error and just kills the process.
+        HexaPDF::CLI::Application.new.parse(
+          ['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', pdf_path, stamped_pdf]
+        )
+      else
+        HexaPDF::CLI.run(
+          ['watermark', '-w', stamp_path, '-i', pages, '-t', 'stamp', pdf_path, stamped_pdf]
+        )
+      end
+    end
+
+    # merges the stamp onto the source pdf using pdftk - the fallback used when HexaPDF fails
+    # or times out (see #stamp_pdf)
+    #
+    # @param pdf_path [String] path to the source pdf being stamped
+    # @param stamp_path [String] path to the generated stamp/background pdf
+    # @param stamped_pdf [String] path the merged, stamped pdf will be written to
+    def pdftk_stamping(pdf_path, stamp_path, stamped_pdf)
+      if multistamp
+        PDFUtilities::PDFTK.multistamp(pdf_path, stamp_path, stamped_pdf)
+      else
+        PDFUtilities::PDFTK.stamp(pdf_path, stamp_path, stamped_pdf)
+      end
+    end
+
+    # logs and tracks a HexaPDF watermark failure before attempting the pdftk fallback
+    #
+    # @param e [HexaPDF::Error] the error HexaPDF raised (or the timeout error, see HEXAPDF_TIMEOUT)
+    def report_error_stats(e)
+      Rails.logger.warn('PDFStamper: HexaPDF watermark failed, falling back to pdftk stamping', exception: e)
+      StatsD.increment(PDFTK_FALLBACK_STATS_KEY)
     end
   end
 end

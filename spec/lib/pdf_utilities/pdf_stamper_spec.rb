@@ -119,6 +119,114 @@ RSpec.describe PDFUtilities::PDFStamper do
 
           expect { instance.run random_pdf }.to raise_error RuntimeError, /bad news bears/
         end
+
+        context 'when HexaPDF fails to serialize the watermarked pdf' do
+          let(:hexapdf_error) { HexaPDF::Error.new("Can't serialize PDF stream without object identifier") }
+
+          before do
+            allow_any_instance_of(HexaPDF::CLI::Application).to receive(:parse).and_raise(hexapdf_error)
+          end
+
+          context 'when the pdftk fallback flag is off' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:enable_pdf_stamper_pdftk_fallback).and_return(false)
+            end
+
+            it 'raises the original HexaPDF error without attempting a fallback' do
+              expect(PDFUtilities::PDFTK).not_to receive(:stamp)
+              expect(PDFUtilities::PDFTK).not_to receive(:multistamp)
+
+              expect { instance.run random_pdf }.to raise_error(HexaPDF::Error, /Can't serialize PDF stream/)
+            end
+          end
+
+          context 'when the pdftk fallback flag is on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:enable_pdf_stamper_pdftk_fallback).and_return(true)
+            end
+
+            it 'falls back to pdftk and succeeds' do
+              expect(PDFUtilities::PDFTK).to receive(:stamp) do |_pdf_path, _stamp_path, stamped_pdf|
+                FileUtils.touch(stamped_pdf)
+              end
+              expect(StatsD).to receive(:increment).with(PDFUtilities::PDFStamper::PDFTK_FALLBACK_STATS_KEY)
+
+              out_path = instance.run(random_pdf)
+
+              expect(File.exist?(out_path)).to be true
+              File.delete(out_path)
+            end
+
+            it 'uses multistamp when the stamp set is a multistamp' do
+              stamp_template = [{ text: 'VA.GOV', x: 5, y: 5, page_number: 0, template: random_pdf,
+                                  multistamp: true }]
+              with_template = PDFUtilities::PDFStamper.new(stamp_template)
+
+              expect(PDFUtilities::PDFTK).to receive(:multistamp) do |_pdf_path, _stamp_path, stamped_pdf|
+                FileUtils.touch(stamped_pdf)
+              end
+
+              out_path = with_template.run(random_pdf)
+
+              expect(File.exist?(out_path)).to be true
+              File.delete(out_path)
+            end
+
+            it 'still raises if the pdftk fallback also fails' do
+              expect(PDFUtilities::PDFTK).to receive(:stamp).and_raise(PdfForms::PdftkError, 'still broken')
+
+              expect { instance.run random_pdf }.to raise_error(PdfForms::PdftkError, /still broken/)
+            end
+
+            it 'logs a warning with the underlying exception alongside the fallback' do
+              allow(PDFUtilities::PDFTK).to receive(:stamp) do |_pdf_path, _stamp_path, stamped_pdf|
+                FileUtils.touch(stamped_pdf)
+              end
+
+              expect(Rails.logger).to receive(:warn).with(
+                'PDFStamper: HexaPDF watermark failed, falling back to pdftk stamping',
+                exception: hexapdf_error
+              )
+
+              out_path = instance.run(random_pdf)
+              File.delete(out_path)
+            end
+          end
+        end
+
+        context 'when the HexaPDF watermark call hangs' do
+          before do
+            stub_const('PDFUtilities::PDFStamper::HEXAPDF_TIMEOUT', 0.1)
+            allow_any_instance_of(HexaPDF::CLI::Application).to receive(:parse) { sleep 1 }
+          end
+
+          context 'when the pdftk fallback flag is off' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:enable_pdf_stamper_pdftk_fallback).and_return(false)
+            end
+
+            it 'raises a HexaPDF::Error instead of hanging indefinitely' do
+              expect { instance.run random_pdf }.to raise_error(HexaPDF::Error, /timed out/)
+            end
+          end
+
+          context 'when the pdftk fallback flag is on' do
+            before do
+              allow(Flipper).to receive(:enabled?).with(:enable_pdf_stamper_pdftk_fallback).and_return(true)
+            end
+
+            it 'falls back to pdftk instead of hanging indefinitely' do
+              expect(PDFUtilities::PDFTK).to receive(:stamp) do |_pdf_path, _stamp_path, stamped_pdf|
+                FileUtils.touch(stamped_pdf)
+              end
+
+              out_path = instance.run(random_pdf)
+
+              expect(File.exist?(out_path)).to be true
+              File.delete(out_path)
+            end
+          end
+        end
       end
     end
   end

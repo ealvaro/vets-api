@@ -4189,6 +4189,9 @@ features:
   enable_hexapdf_watermark_direct_processing:
     actor_type: user
     description: If on, use the 'direct' method of calling HexaPDF::Watermark rather than using the CLI approach
+  enable_pdf_stamper_pdftk_fallback:
+    actor_type: user
+    description: If on, PDFUtilities::PDFStamper falls back to pdftk when HexaPDF fails to watermark a PDF
   track_pdf_overflow_by_field:
     actor_type: user
     description: Enables monitoring of PDF field and array overflow after claim creation
