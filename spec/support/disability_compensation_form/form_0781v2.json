@@ -12,12 +12,12 @@
     "veteranPhone": "2024561111",
     "veteranSecondaryPhone": "",
     "veteranServiceNumber": "",
-    "eventTypes": [
-      { "combat": true },
-      { "mst": true },
-      { "nonMst": true },
-      { "other": true }
-    ],
+    "eventTypes": {
+      "combat": true,
+      "mst": true,
+      "nonMst": true,
+      "other": true
+    },
     "events": [
       {
         "details": "Lorem ipsum dolor sit amet.",
@@ -25,7 +25,7 @@
         "timing": "2000"
       },
       {
-        "details": "Lorem ipsum dolor sit amet.", 
+        "details": "Lorem ipsum dolor sit amet.",
         "location": "Back alley in Big Town, USA",
         "timing": "2001",
         "otherReports": { "police": true },
@@ -33,7 +33,7 @@
         "city": "Dallas",
         "state": "Texas",
         "township": "",
-        "country": "USA"   
+        "country": "USA"
       },
       {
         "details": "Lorem ipsum dolor sit amet.",
@@ -117,4 +117,3 @@
     "additionalInformation": "Lorem ipsum dolor sit amet."
   }
 }
-  
