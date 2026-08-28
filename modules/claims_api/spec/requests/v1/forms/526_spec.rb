@@ -31,6 +31,8 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
   before do
     stub_poa_verification
     stub_claims_api_poa_lookup
+    allow_any_instance_of(ClaimsApi::V1::Forms::DisabilityCompensationController)
+      .to receive(:verify_power_of_attorney!).and_return(true)
     Timecop.freeze(Time.zone.now)
     stub_claims_api_auth_token
 
@@ -4170,6 +4172,58 @@ RSpec.describe 'ClaimsApi::V1::Forms::526', type: :request do
             duplicate_submit_parsed = JSON.parse(response.body)
             duplicate_id = duplicate_submit_parsed['data']['id']
             expect(@original_id).to eq(duplicate_id)
+          end
+        end
+      end
+    end
+  end
+
+  describe '#verify_power_of_attorney_relationship!' do
+    let(:path) { '/services/claims/v1/forms/526' }
+    let(:data) do
+      temp = Rails.root.join('modules', 'claims_api', 'spec', 'fixtures', 'form_526_json_api.json').read
+      temp = JSON.parse(temp)
+      temp['data']['attributes']['claimDate'] = (Time.zone.today - 1.day).to_s
+      temp['data']['attributes']['applicationExpirationDate'] = (Time.zone.today + 1.day).to_s
+      temp.to_json
+    end
+
+    it 'returns 401 when POA relationship is invalid' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::DisabilityCompensationController)
+        .to receive(:verify_power_of_attorney!).and_return(false)
+
+      mock_acg(scopes) do |auth_header|
+        post path, params: data, headers: headers.merge(auth_header)
+        expect(response).to have_http_status(:unauthorized)
+        expect(JSON.parse(response.body)['errors'].first['detail']).to eq(
+          ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+        )
+      end
+    end
+
+    it 'proceeds when POA relationship is valid' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::DisabilityCompensationController)
+        .to receive(:verify_power_of_attorney!).and_return(true)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/claims/claims') do
+          VCR.use_cassette('claims_api/brd/countries') do
+            post path, params: data, headers: headers.merge(auth_header)
+            expect(response).to have_http_status(:ok)
+          end
+        end
+      end
+    end
+
+    it 'proceeds when verify returns nil (CCG token path)' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::DisabilityCompensationController)
+        .to receive(:verify_power_of_attorney!).and_return(nil)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/claims/claims') do
+          VCR.use_cassette('claims_api/brd/countries') do
+            post path, params: data, headers: headers.merge(auth_header)
+            expect(response).to have_http_status(:ok)
           end
         end
       end

@@ -3,7 +3,8 @@
 module ClaimsApi
   module PoaVerification
     extend ActiveSupport::Concern
-
+    REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE =
+      "Power of Attorney code doesn't match Veteran's"
     #
     # Validate poa code provided exists in OGC dataset, that provided poa code is a valid/active poa code
     # @param poa_code [String] poa code to validate
@@ -64,10 +65,8 @@ module ClaimsApi
       )
 
       exactly_one_rep_match?(reps_by_first_and_last_name, poa_code) ||
-        find_by_suffix(poa_code) ||
-        find_by_middle_initial(poa_code) ||
-        find_by_poa_code(poa_code) ||
-        find_by_email(poa_code) ||
+        find_by_suffix(poa_code) || find_by_middle_initial(poa_code) ||
+        find_by_poa_code(poa_code) || find_by_email(poa_code) ||
         handle_not_found(reps_by_first_and_last_name, poa_code)
     end
 

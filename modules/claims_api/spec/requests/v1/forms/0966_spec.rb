@@ -29,6 +29,8 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
   before do
     stub_poa_verification
     stub_claims_api_poa_lookup
+    allow_any_instance_of(ClaimsApi::V1::Forms::IntentToFileController)
+      .to receive(:verify_power_of_attorney!).and_return(true)
   end
 
   describe '#0966' do
@@ -295,6 +297,45 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
             post path, params: data.to_json, headers: headers.merge(auth_header)
             expect(response).to have_http_status(:unprocessable_content)
           end
+        end
+      end
+    end
+  end
+
+  describe '#verify_power_of_attorney_relationship!' do
+    it 'returns 401 when POA relationship is invalid' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::IntentToFileController)
+        .to receive(:verify_power_of_attorney!).and_return(false)
+
+      mock_acg(scopes) do |auth_header|
+        post path, params: data.to_json, headers: headers.merge(auth_header)
+        expect(response).to have_http_status(:unauthorized)
+        expect(JSON.parse(response.body)['errors'].first['detail']).to eq(
+          ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+        )
+      end
+    end
+
+    it 'proceeds when POA relationship is valid' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::IntentToFileController)
+        .to receive(:verify_power_of_attorney!).and_return(true)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
+          post path, params: data.to_json, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    it 'proceeds when verify returns nil (CCG token path)' do
+      allow_any_instance_of(ClaimsApi::V1::Forms::IntentToFileController)
+        .to receive(:verify_power_of_attorney!).and_return(nil)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/intent_to_file_web_service/insert_intent_to_file') do
+          post path, params: data.to_json, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:ok)
         end
       end
     end

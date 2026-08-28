@@ -14,7 +14,7 @@ module ClaimsApi
         before_action only: :active do
           permit_scopes %w[claim.read claim.write]
         end
-        before_action :verify_power_of_attorney!, if: :header_request?
+        before_action :verify_power_of_attorney_relationship!, if: :header_request?
         skip_before_action :validate_veteran_identifiers, only: %i[submit_form_0966 validate]
 
         FORM_NUMBER = '0966'
@@ -86,6 +86,17 @@ module ClaimsApi
         end
 
         private
+
+        def verify_power_of_attorney_relationship!
+          return unless verify_power_of_attorney! == false
+
+          claims_v1_logging(
+            'itf',
+            message: ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+          )
+          raise ::Common::Exceptions::Unauthorized,
+                detail: ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+        end
 
         def intent_to_file_options
           options = {

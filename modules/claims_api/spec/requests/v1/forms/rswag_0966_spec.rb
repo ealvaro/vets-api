@@ -7,6 +7,11 @@ require_relative '../../../rails_helper'
 require_relative '../../../support/swagger_shared_components/v1'
 
 Rspec.describe 'Intent to file', openapi_spec: 'modules/claims_api/app/swagger/claims_api/v1/swagger.json' do
+  before do
+    allow_any_instance_of(ClaimsApi::V1::Forms::IntentToFileController)
+      .to receive(:verify_power_of_attorney!).and_return(true)
+  end
+
   path '/forms/0966' do
     get 'Get 0966 JSON Schema for form.' do
       deprecated true

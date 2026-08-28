@@ -32,7 +32,7 @@ module ClaimsApi
           permit_scopes %w[claim.write]
         end
         skip_before_action :validate_json_format, only: %i[upload_supporting_documents]
-        before_action :verify_power_of_attorney!, if: :header_request?
+        before_action :verify_power_of_attorney_relationship!, if: :header_request?
         skip_before_action :validate_veteran_identifiers, only: %i[submit_form_526 validate_form_526]
         before_action :edipi_check, only: %i[submit_form_526 upload_form_526 validate_form_526]
 
@@ -209,6 +209,17 @@ module ClaimsApi
         # rubocop:enable Metrics/MethodLength
 
         private
+
+        def verify_power_of_attorney_relationship!
+          return unless verify_power_of_attorney! == false
+
+          claims_v1_logging(
+            '526',
+            message: ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+          )
+          raise ::Common::Exceptions::Unauthorized,
+                detail: ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+        end
 
         def sanitize_account_type
           form_attributes['directDeposit']['accountType'] = form_attributes['directDeposit']['accountType'].upcase

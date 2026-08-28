@@ -46,6 +46,9 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
     stub_poa_verification
     stub_claims_api_poa_lookup
 
+    allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+      .to receive(:verify_power_of_attorney!).and_return(true)
+
     # Stub participant validation for legacy request specs that use VCR cassettes with
     # participant IDs that may not match the test veteran.
     allow_any_instance_of(ClaimsApi::V1::ClaimsController)
@@ -715,6 +718,45 @@ RSpec.describe 'ClaimsApi::V1::Claims', type: :request do
           expect(body['errors'][0]['detail']).not_to eq('Claim not found')
           expect(body['errors'][0]['source']).to eq('400')
           expect(body['errors'][0]['detail']).to include('Claim not established')
+        end
+      end
+    end
+  end
+
+  describe '#verify_power_of_attorney_relationship!' do
+    it 'returns 401 when POA relationship is invalid' do
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:verify_power_of_attorney!).and_return(false)
+
+      mock_acg(scopes) do |auth_header|
+        get '/services/claims/v1/claims', params: nil, headers: request_headers.merge(auth_header)
+        expect(response).to have_http_status(:unauthorized)
+        expect(JSON.parse(response.body)['errors'].first['detail']).to eq(
+          ClaimsApi::PoaVerification::REPRESENTATIVE_NOT_AUTHORIZED_FOR_VETERAN_ERROR_MESSAGE
+        )
+      end
+    end
+
+    it 'proceeds when POA relationship is valid' do
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:verify_power_of_attorney!).and_return(true)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/claims/claims') do
+          get '/services/claims/v1/claims', params: nil, headers: request_headers.merge(auth_header)
+          expect(response).to have_http_status(:ok)
+        end
+      end
+    end
+
+    it 'proceeds when verify returns nil (CCG token path)' do
+      allow_any_instance_of(ClaimsApi::V1::ClaimsController)
+        .to receive(:verify_power_of_attorney!).and_return(nil)
+
+      mock_acg(scopes) do |auth_header|
+        VCR.use_cassette('claims_api/bgs/claims/claims') do
+          get '/services/claims/v1/claims', params: nil, headers: request_headers.merge(auth_header)
+          expect(response).to have_http_status(:ok)
         end
       end
     end
