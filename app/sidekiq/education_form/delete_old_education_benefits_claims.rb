@@ -6,6 +6,7 @@ module EducationForm
 
     FORM_TYPES = %w[
       22-0803
+      22-0810
       22-0839
       22-0976
       22-0989
