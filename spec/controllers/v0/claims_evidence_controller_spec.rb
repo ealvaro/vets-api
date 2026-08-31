@@ -7,7 +7,7 @@ RSpec.describe V0::ClaimsEvidenceController, type: :controller do
   let(:file) { fixture_file_upload('doctors-note.pdf') }
   let(:doc_type_id) { 34 }
   let(:sc_id) { 'SC10879' }
-  let(:ce_success) { build(:claims_evidence_service_files_response, :success) }
+  let(:base_tags) { ClaimsEvidence::Metrics::TAGS }
 
   before do
     sign_in_as(user)
@@ -16,24 +16,89 @@ RSpec.describe V0::ClaimsEvidenceController, type: :controller do
     allow(Flipper).to receive(:enabled?)
       .with(:cst_supplemental_claims_evidence_upload, instance_of(User))
       .and_return(true)
-    allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
-      .to receive(:upload)
-      .and_return(ce_success)
+    # No Claims Evidence stub: every example here is rejected before the upload service runs.
+    expect_any_instance_of(ClaimsEvidenceApi::Service::Files).not_to receive(:upload)
+  end
+
+  def post_create(**overrides)
+    params = { file:, documentTypeId: doc_type_id, supplementalClaimId: sc_id }.merge(overrides).compact
+    post :create, params:
   end
 
   describe 'POST #create' do
-    it 'releases the duplicate lock after successful upload and persistence' do
-      duplicate_check = instance_double(ClaimsEvidence::DuplicateCheck,
-                                        presumed_duplicate?: false,
-                                        acquire_lock: true,
-                                        release_lock: true)
-      allow(ClaimsEvidence::DuplicateCheck).to receive(:new).and_return(duplicate_check)
+    describe 'the validation failure counter' do
+      before { allow(StatsD).to receive(:increment).and_call_original }
 
-      post :create, params: { file:, documentTypeId: doc_type_id, supplementalClaimId: sc_id }
+      def expect_validation_failure(reason)
+        expect(StatsD).to have_received(:increment).with(
+          'api.claims_evidence.validation.failure', tags: base_tags + ["reason:#{reason}"]
+        )
+      end
 
-      expect(response).to have_http_status(:ok)
-      # retry_blocked:false — the row exists, so the DB layer covers a stranded lock.
-      expect(duplicate_check).to have_received(:release_lock).with(retry_blocked: false).once
+      it 'counts a missing file' do
+        post_create(file: nil)
+        expect_validation_failure('missing_file')
+      end
+
+      it 'counts a file param that is not an upload' do
+        post_create(file: 'not-a-file')
+        expect_validation_failure('invalid_file')
+      end
+
+      it 'counts an empty file' do
+        post_create(file: fixture_file_upload('empty-file.jpg', 'image/jpeg'))
+        expect_validation_failure('empty_file')
+      end
+
+      it 'counts a file over the size limit' do
+        stub_const('V0::ClaimsEvidenceController::MAX_FILE_SIZE', 10)
+        post_create
+        expect_validation_failure('file_too_large')
+      end
+
+      it 'counts an unsupported file type' do
+        post_create(file: fixture_file_upload('va.gif', 'image/gif'))
+        expect_validation_failure('unsupported_file_type')
+      end
+
+      it 'counts a missing documentTypeId' do
+        post_create(documentTypeId: nil)
+        expect_validation_failure('missing_document_type_id')
+      end
+
+      it 'counts a malformed documentTypeId' do
+        post_create(documentTypeId: '34abc')
+        expect_validation_failure('malformed_document_type_id')
+      end
+
+      it 'counts an unsupported documentTypeId' do
+        post_create(documentTypeId: 9999)
+        expect_validation_failure('unsupported_document_type_id')
+      end
+
+      it 'counts a missing supplementalClaimId' do
+        post_create(supplementalClaimId: nil)
+        expect_validation_failure('missing_supplemental_claim_id')
+      end
+
+      it 'counts a malformed supplementalClaimId' do
+        post_create(supplementalClaimId: 'foo')
+        expect_validation_failure('malformed_supplemental_claim_id')
+      end
+
+      it 'counts a PDF rejection under the reason the unlocker gives' do
+        allow_any_instance_of(ClaimsEvidence::PdfUnlocker).to receive(:unlock!).and_raise(
+          ClaimsEvidence::PdfUnlocker::Rejected.new(reason: 'incorrect_password',
+                                                    code: 'DOC_UPLOAD_INCORRECT_PASSWORD')
+        )
+
+        post_create(password: 'wrong')
+
+        expect_validation_failure('incorrect_password')
+        expect(StatsD).not_to have_received(:increment).with(
+          'api.claims_evidence.upload.failure', anything
+        )
+      end
     end
   end
 end

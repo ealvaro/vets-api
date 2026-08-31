@@ -13,7 +13,7 @@ FactoryBot.define do
     transient do
       file_name { 'doctors-note.pdf' }
       document_type_id { 34 }
-      document_type { V0::ClaimsEvidenceController::DOCUMENT_TYPES[document_type_id] }
+      document_type { ClaimsEvidence::DocumentType.label(document_type_id) }
     end
 
     association :user_account, factory: :user_account

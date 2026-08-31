@@ -14,8 +14,7 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
   # Match the factory defaults, so an unmodified factory row counts as a duplicate.
   # file is nil because DuplicateCheck never reads it.
   let(:upload_attrs) do
-    { file: nil, doc_type_id: 34, sc_id: 'SC10879', document_type: 'Correspondence',
-      file_name: 'doctors-note.pdf', file_size: 1234 }
+    { file: nil, doc_type_id: 34, sc_id: 'SC10879', file_name: 'doctors-note.pdf', file_size: 1234 }
   end
 
   def build_check(current_user: self.current_user, **overrides)
@@ -39,7 +38,7 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
       end
 
       it 'does not flag an upload with a different document type id' do
-        expect(build_check(doc_type_id: 80, document_type: 'Photographs')).not_to be_presumed_duplicate
+        expect(build_check(doc_type_id: 80)).not_to be_presumed_duplicate
       end
 
       it 'does not flag an upload with a different file name' do
@@ -91,7 +90,7 @@ RSpec.describe ClaimsEvidence::DuplicateCheck do
 
     it 'does not block the same file when document type id differs' do
       duplicate_check.acquire_lock
-      expect(build_check(doc_type_id: 80, document_type: 'Photographs').acquire_lock).to be(true)
+      expect(build_check(doc_type_id: 80).acquire_lock).to be(true)
     end
 
     it 'does not block a different file' do

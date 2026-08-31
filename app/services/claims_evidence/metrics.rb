@@ -11,5 +11,10 @@ module ClaimsEvidence
       'itportfolio:benefits-delivery',
       'dependency:claims-evidence-api'
     ].freeze
+
+    # @param name [String] the metric name below the prefix, eg. 'upload.failure'
+    def self.increment(name, **tags)
+      StatsD.increment("#{PREFIX}.#{name}", tags: TAGS + tags.compact.map { |k, v| "#{k}:#{v}" })
+    end
   end
 end

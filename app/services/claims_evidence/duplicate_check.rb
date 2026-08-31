@@ -68,9 +68,8 @@ module ClaimsEvidence
       @cache.delete(lock_key, namespace: LOCK_NAMESPACE)
     rescue => e
       Rails.logger.warn("#{LOCK_RELEASE_FAILED_MESSAGE}: #{e.class}")
-      StatsD.increment("#{ClaimsEvidence::Metrics::PREFIX}.duplicate_check.release_failure",
-                       tags: ClaimsEvidence::Metrics::TAGS + ["error_class:#{e.class.name}",
-                                                              "retry_blocked:#{retry_blocked}"])
+      ClaimsEvidence::Metrics.increment('duplicate_check.release_failure',
+                                        error_class: e.class.name, retry_blocked:)
       nil
     end
 
@@ -78,10 +77,8 @@ module ClaimsEvidence
 
     # @return [true] always: no lock means no dedupe, not a blocked upload
     def lock_unavailable(error = nil)
-      error_tags = error ? ["error_class:#{error.class.name}"] : []
       Rails.logger.warn([LOCK_UNAVAILABLE_MESSAGE, error&.class].compact.join(': '))
-      StatsD.increment("#{ClaimsEvidence::Metrics::PREFIX}.duplicate_check.skipped",
-                       tags: ClaimsEvidence::Metrics::TAGS + error_tags)
+      ClaimsEvidence::Metrics.increment('duplicate_check.skipped', error_class: error&.class&.name)
       true
     end
 
