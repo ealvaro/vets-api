@@ -94,12 +94,17 @@ RSpec.describe PDFUtilities::PDFStamper do
         expect { instance.run random_pdf }.to raise_error RuntimeError, /bad news bears/
       end
 
-      it 'logs and raises error in #stamp_pdf' do
-        allow(HexaPDF::CLI::Application).to receive(:new).and_raise(error_message)
-        expect(logging_monitor_double).not_to receive(:track_request)
+      it 'catches SystemExit errors in #stamp_pdf' do
+        allow(HexaPDF::CLI::Application).to receive(:new).and_raise(SystemExit.new('oh no'))
+        expect(logging_monitor_double).to receive(:track_request).at_least(:once).with(
+          :error,
+          /oh no/,
+          PDFUtilities::PDFStamper::STATS_KEY,
+          anything
+        )
         expect do
           instance.run random_pdf
-        end.to raise_error(SystemExit).and output(/might indicate a faulty PDF/).to_stderr
+        end.to raise_error(StandardError, /oh no/)
       end
 
       context 'with alternate processing flag enabled' do

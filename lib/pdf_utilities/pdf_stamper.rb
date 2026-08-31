@@ -193,6 +193,9 @@ module PDFUtilities
       raise StampGenerationError, 'Stamped PDF was not created' unless File.exist?(stamped_pdf)
 
       stamped_pdf
+    rescue SystemExit => e
+      Common::FileHelpers.delete_file_if_exists(stamped_pdf)
+      log_and_raise_error('Stamper tried to system exit', StandardError.new(e.message), STATS_KEY)
     rescue => e
       Common::FileHelpers.delete_file_if_exists(stamped_pdf)
       log_and_raise_error('Failed to generate stamp', e, STATS_KEY)
