@@ -8,7 +8,7 @@ module BGS
     FILTERED_ERRORS = [
       'insertBenefitClaim: Invalid zipcode.',
       'Maximum number of EPs reached for this bnftClaimTypeCd',
-      'This update is being elevated for additional review due to an Incident Flash associated with this Beneficiary',
+      'This update is being elevated for additional review due to an Incident',
       'ORA-20099: Error - File Number and Social Security number are different',
       'ORA-00001: unique constraint',
       'The length of the EXTERNAL_UID or EXTERNAL_KEY exceeds the maximum'

@@ -120,4 +120,29 @@ RSpec.describe BGS::Job, type: :job do
       # rubocop:enable Layout/LineLength
     end
   end
+
+  describe 'FILTERED_ERRORS' do
+    def filtered?(message)
+      BGS::Job::FILTERED_ERRORS.any? { |filtered| message.include?(filtered) }
+    end
+
+    it 'matches the original Incident Flash message' do
+      message = 'This update is being elevated for additional review due to an Incident Flash ' \
+                'associated with this Beneficiary'
+
+      expect(filtered?(message)).to be true
+    end
+
+    it 'matches a differently-truncated Incident Flag message' do
+      message = 'GUIE50022&FABusnsTranRule(CFABUSNS_TRAN) Failed with Exception!!  FILE: ' \
+                'FABTInterfaceCreator.cpp  LINE: 361This update is being elevated for additional ' \
+                'review due to an Incident Flas:ORA-0000: normal, successful completion'
+
+      expect(filtered?(message)).to be true
+    end
+
+    it 'does not match unrelated error messages' do
+      expect(filtered?('Temporary network error')).to be false
+    end
+  end
 end

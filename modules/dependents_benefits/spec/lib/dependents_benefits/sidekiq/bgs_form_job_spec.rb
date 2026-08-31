@@ -458,6 +458,18 @@ RSpec.describe DependentsBenefits::Sidekiq::BGSFormJob, type: :job do
     end
   end
 
+  describe '#permanent_failure? with the real BGS::Job::FILTERED_ERRORS list' do
+    it 'is permanent for the truncated Incident Flag message seen in production' do
+      error = StandardError.new(
+        'GUIE50022&FABusnsTranRule(CFABUSNS_TRAN) Failed with Exception!!  FILE: ' \
+        'FABTInterfaceCreator.cpp  LINE: 361This update is being elevated for additional ' \
+        'review due to an Incident Flas:ORA-0000: normal, successful completion'
+      )
+
+      expect(job.send(:permanent_failure?, error)).to be true
+    end
+  end
+
   describe '#generate_proc_id' do
     let(:bgs_service) { instance_double(BGS::Service) }
     let(:monitor) { instance_double(DependentsBenefits::Monitor) }
