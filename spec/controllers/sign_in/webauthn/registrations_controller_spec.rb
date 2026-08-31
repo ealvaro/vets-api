@@ -25,6 +25,81 @@ RSpec.describe SignIn::Webauthn::RegistrationsController, type: :controller do
     request.headers['Authorization'] = "Bearer #{encoded_access_token}"
   end
 
+  describe 'GET index' do
+    context 'when the user has passkeys' do
+      let(:credential) { create(:webauthn_credential) }
+      let!(:passkey_verification) do
+        create(:user_verification, user_account:, webauthn_credential: credential, idme_uuid: nil)
+      end
+
+      let(:second_credential) { create(:webauthn_credential) }
+      let!(:second_passkey_verification) do
+        create(:user_verification, user_account:, webauthn_credential: second_credential, idme_uuid: nil)
+      end
+
+      let(:other_user_account) { create(:user_account) }
+      let(:other_credential) { create(:webauthn_credential) }
+      let!(:other_passkey_verification) do
+        create(:user_verification,
+               user_account: other_user_account,
+               webauthn_credential: other_credential,
+               idme_uuid: nil)
+      end
+
+      it "returns only the current user's credentials" do
+        get :index
+
+        expect(response).to have_http_status(:ok)
+        ids = JSON.parse(response.body)['webauthn_credentials'].pluck('credential_id')
+        expect(ids).to contain_exactly(credential.credential_id, second_credential.credential_id)
+        expect(ids).not_to include(other_credential.credential_id)
+      end
+
+      it 'returns only the non-sensitive fields' do
+        get :index
+
+        credential_json = JSON.parse(response.body)['webauthn_credentials'].first
+        expect(credential_json.keys).to match_array(%w[credential_id aaguid created_at last_used_at])
+      end
+
+      it 'logs the listing with user account context' do
+        get :index
+
+        expect(sign_in_logger).to have_received(:info)
+          .with('webauthn registrations listed', expected_log_context)
+      end
+    end
+
+    context 'when the user has a revoked passkey' do
+      let(:credential) { create(:webauthn_credential) }
+      let!(:passkey_verification) do
+        create(:user_verification, user_account:, webauthn_credential: credential, idme_uuid: nil)
+      end
+
+      let(:revoked_credential) { create(:webauthn_credential, revoked_at: Time.zone.now) }
+      let!(:revoked_passkey_verification) do
+        create(:user_verification, user_account:, webauthn_credential: revoked_credential, idme_uuid: nil)
+      end
+
+      it 'returns only the active credentials' do
+        get :index
+
+        ids = JSON.parse(response.body)['webauthn_credentials'].pluck('credential_id')
+        expect(ids).to eq([credential.credential_id])
+        expect(ids).not_to include(revoked_credential.credential_id)
+      end
+    end
+
+    context 'when the user has no passkeys' do
+      it 'returns an empty collection' do
+        get :index
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['webauthn_credentials']).to eq([])
+      end
+    end
+  end
+
   describe 'POST #options' do
     let(:webauthn_options) { { 'challenge' => 'some-challenge' } }
     let(:challenge_id) { 'some-challenge-id' }

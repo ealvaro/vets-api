@@ -9,6 +9,13 @@ module SignIn
       before_action :set_webauthn_credential, only: :destroy
       after_action :set_csrf_header
 
+      def index
+        credentials = @user_account.webauthn_credentials.active
+
+        sign_in_logger.info('webauthn registrations listed', log_context)
+        render json: { webauthn_credentials: serialized_credentials(credentials) }, status: :ok
+      end
+
       def options
         options, challenge_id = Registration::OptionsGenerator.new(user_verification: @user_verification).perform
 
@@ -85,6 +92,17 @@ module SignIn
 
       def challenge_id
         params.require(:challenge_id)
+      end
+
+      def serialized_credentials(credentials)
+        credentials.map do |credential|
+          {
+            credential_id: credential.credential_id,
+            aaguid: credential.aaguid,
+            created_at: credential.created_at,
+            last_used_at: credential.last_used_at
+          }
+        end
       end
 
       def credential_id

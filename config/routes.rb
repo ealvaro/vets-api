@@ -46,7 +46,7 @@ Rails.application.routes.draw do
 
     unless Settings.vsp_environment == 'production'
       namespace :webauthn do
-        resources :registrations, only: :destroy, param: :credential_id do
+        resources :registrations, only: %i[index destroy], param: :credential_id do
           collection do
             post :options
             post :verify
