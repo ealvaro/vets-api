@@ -57,6 +57,11 @@ class AccreditedIndividual < ApplicationRecord
       'AND accreditations.deactivated_at IS NULL)'
     )
   }
+  scope :eligible_for_search, lambda {
+    where.not(location: nil)
+         .where.not(individual_type: INDIVIDUAL_TYPE_VSO_REPRESENTATIVE)
+         .or(where.not(location: nil).representatives.with_active_accreditation)
+  }
   scope :with_location, lambda {
     where('location IS NOT NULL OR (lat IS NOT NULL AND "long" IS NOT NULL)')
   }

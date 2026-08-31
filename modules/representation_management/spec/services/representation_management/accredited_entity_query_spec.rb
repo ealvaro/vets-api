@@ -2,118 +2,217 @@
 
 require 'rails_helper'
 
+ACCREDITED_FIRST_NAMES = %w[Michael James John David Robert Patricia Emily].freeze
+
+ACCREDITED_LAST_NAMES = %w[Smith Johnson Jones Lee Williams Brown Rodriguez].freeze
+
 RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
-  let!(:individual1) do
-    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Law')
-  end
-  let!(:individual2) do
-    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'Bob', last_name: 'Smith')
-  end
-  let!(:individual3) { create(:accredited_individual, :with_location, :attorney, first_name: 'aaaabc', last_name: '') }
-  let!(:individual4) do
-    create(:accredited_individual, :with_location, :claims_agent, first_name: 'aaaab', last_name: '')
-  end
-  let!(:individual5) do
-    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaabcde', last_name: '')
-  end
-  let!(:individual6) do
-    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaa', last_name: '')
-  end
-  let!(:individual7) do
-    create(:accredited_individual, :with_location, :with_active_accreditation, first_name: 'aaaabcd', last_name: '')
-  end
-
-  let!(:organization1) { create(:accredited_organization, name: 'Bob Law Firm') }
-  let!(:organization2) { create(:accredited_organization, name: 'Bob Smith Firm') }
-  let!(:organization3) { create(:accredited_organization, name: 'aaaabcdefgh') }
-  let!(:organization4) { create(:accredited_organization, name: 'aaaabcdefg') }
-  let!(:organization5) { create(:accredited_organization, name: 'aaaabcdefghij') }
-  let!(:organization6) { create(:accredited_organization, name: 'aaaabcdef') }
-  let!(:organization7) { create(:accredited_organization, name: 'aaaabcdefghi') }
-
   describe '#results' do
     it 'returns nothing for a blank query string' do
       expect(described_class.new('').results).to be_empty
     end
+  end
 
-    it 'returns individuals and organizations in the sorted order' do
-      results = described_class.new('Bob').results
-
-      expect(results.size).to eq(4)
-      expect(results.first).to be_a(AccreditedIndividual)
-      expect(results.first.full_name).to eq('Bob Law')
-      expect(results.second).to be_a(AccreditedIndividual)
-      expect(results.second.full_name).to eq('Bob Smith')
-      expect(results.third).to be_a(AccreditedOrganization)
-      expect(results.third.name).to eq('Bob Law Firm')
-      expect(results.last).to be_a(AccreditedOrganization)
-      expect(results.last.name).to eq('Bob Smith Firm')
+  describe 'using more realistic names' do
+    let!(:base_individuals) do
+      (0..6).map do |i|
+        create(:accredited_individual,
+               :with_location,
+               :with_active_accreditation,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[i])
+      end
     end
 
-    it 'sorts individuals by levenshtein distance' do
-      results = described_class.new('aaaa').results
-      individual_results = results.select { |result| result.is_a?(AccreditedIndividual) }
-
-      expect(individual_results.map(&:full_name)).to eq(%w[aaaa aaaab aaaabc aaaabcd aaaabcde])
+    let!(:claims_agents) do
+      (7..13).map do |i|
+        create(:accredited_individual,
+               :with_location,
+               :claims_agent,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 1) % 7])
+      end
     end
 
-    it 'sorts organizations by levenshtein distance' do
-      results = described_class.new('aaaa').results
-      organization_results = results.select { |result| result.is_a?(AccreditedOrganization) }
-
-      expect(organization_results.map(&:name)).to eq(%w[aaaabcdef aaaabcdefg aaaabcdefgh aaaabcdefghi aaaabcdefghij])
+    let!(:attorneys) do
+      (14..20).map do |i|
+        create(:accredited_individual,
+               :with_location,
+               :attorney,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 2) % 7])
+      end
     end
 
-    it 'sorts individuals and organizations together by levenshtein distance' do
-      results = described_class.new('aaaa').results
-
-      expect(results.size).to eq(10)
-      expect(results.map(&:id)).to eq([individual6.id,
-                                       individual4.id,
-                                       individual3.id,
-                                       individual7.id,
-                                       individual5.id,
-                                       organization6.id,
-                                       organization4.id,
-                                       organization3.id,
-                                       organization7.id,
-                                       organization5.id])
+    let!(:organizations) do
+      (0..6).map do |i|
+        create(:accredited_organization,
+               :with_location,
+               name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(6 - i) % 7]} Firm")
+      end +
+        (7..13).map do |i|
+          create(:accredited_organization,
+                 :with_location,
+                 name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(5 - i) % 7]} Firm")
+        end
     end
 
-    it 'can return organizations as the first result' do
-      results = described_class.new('Bob Law Firm').results
+    describe 'with trigram flipper enabled (now always on)' do
+      it 'returns nothing for a blank query string' do
+        expect(described_class.new('').results).to be_empty
+      end
 
-      expect(results.first).to be_a(AccreditedOrganization)
-      expect(results.first.name).to eq('Bob Law Firm')
+      it 'returns individuals and organizations in the sorted order' do
+        results = described_class.new('James').results
+
+        expect(results.size).to eq(5)
+        expect(results[0]).to be_a(AccreditedOrganization)
+        expect(results[0].name).to eq('James Williams Firm')
+        expect(results[1]).to be_a(AccreditedOrganization)
+        expect(results[1].name).to eq('James Brown Firm')
+        expect(results[2]).to be_a(AccreditedIndividual)
+        expect(results[2].full_name).to eq('James Lee')
+        expect(results[3]).to be_a(AccreditedIndividual)
+        expect(results[3].full_name).to eq('James Jones')
+      end
+
+      it 'sorts individuals by trigram distance' do
+        results = described_class.new('James Jo').results
+        individual_results = results.select { |result| result.is_a?(AccreditedIndividual) }
+
+        expect(individual_results.map(&:full_name)).to eq(['James Jones', 'James Johnson', 'James Lee'])
+      end
+
+      it 'sorts organizations by trigram distance' do
+        results = described_class.new('Michael R').results
+        organization_results = results.select { |result| result.is_a?(AccreditedOrganization) }
+
+        expect(organization_results.map(&:name)).to eq(['Michael Rodriguez Firm', 'Michael Brown Firm'])
+      end
+
+      it 'excludes organizations without a location' do
+        create(:accredited_organization, name: 'Null Location Firm')
+        create(:accredited_organization, :with_location, name: 'With Location Firm')
+
+        results = described_class.new('With Location Firm').results
+
+        expect(results.map(&:name)).to eq(['With Location Firm'])
+      end
+
+      it 'sorts individuals and organizations together by trigram distance' do
+        results = described_class.new('John').results
+
+        expect(results.size).to eq(10)
+        expect(results.map(&:name)).to eq(['John Lee Firm',
+                                           'John Williams Firm',
+                                           'John Williams',
+                                           'John Lee',
+                                           'John Jones',
+                                           'Robert Johnson Firm',
+                                           'Patricia Johnson Firm',
+                                           'Emily Johnson',
+                                           'Michael Johnson',
+                                           'James Johnson'])
+      end
+
+      it 'sorts last initial realistically' do
+        results = described_class.new('John W').results
+
+        expect(results.size).to eq(5)
+        expect(results.map(&:name)).to eq(['John Williams Firm', 'John Williams', 'John Lee Firm', 'John Lee',
+                                           'John Jones'])
+      end
+
+      it 'can return organizations as the first result' do
+        results = described_class.new('Michael Rodriguez').results
+
+        expect(results.first).to be_a(AccreditedOrganization)
+        expect(results.first.name).to eq('Michael Rodriguez Firm')
+      end
+
+      it 'returns at most 10 results' do
+        create_list(:accredited_individual, 20, :with_location, :with_active_accreditation,
+                    first_name: 'Bob', last_name: '')
+
+        results = described_class.new('Bob').results
+
+        expect(results.size).to eq(10)
+      end
+    end
+  end
+
+  describe 'parity with original entity query trigram behavior' do
+    before do
+      (0..6).each do |i|
+        create(:representative, :with_address, :vso,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[i],
+               representative_id: format('%05d', i + 1))
+      end
+
+      (7..13).each do |i|
+        create(:representative, :with_address, :claim_agents,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 1) % 7],
+               representative_id: format('%05d', i + 1))
+      end
+
+      (14..20).each do |i|
+        create(:representative, :with_address,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 2) % 7],
+               representative_id: format('%05d', i + 1))
+      end
+
+      (0..6).each do |i|
+        create(:organization, :with_address,
+               name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(6 - i) % 7]} Firm",
+               poa: format('%03d', i + 1))
+      end
+
+      (7..13).each do |i|
+        create(:organization, :with_address,
+               name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(5 - i) % 7]} Firm",
+               poa: format('%03d', i + 1))
+      end
+
+      (0..6).each do |i|
+        create(:accredited_individual, :with_location,
+               :with_active_accreditation,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[i])
+      end
+
+      (7..13).each do |i|
+        create(:accredited_individual, :with_location, :claims_agent,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 1) % 7])
+      end
+
+      (14..20).each do |i|
+        create(:accredited_individual, :with_location, :attorney,
+               first_name: ACCREDITED_FIRST_NAMES[i % 7],
+               last_name: ACCREDITED_LAST_NAMES[(i + 2) % 7])
+      end
+
+      (0..6).each do |i|
+        create(:accredited_organization, :with_location,
+               name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(6 - i) % 7]} Firm")
+      end
+
+      (7..13).each do |i|
+        create(:accredited_organization, :with_location,
+               name: "#{ACCREDITED_FIRST_NAMES[i % 7]} #{ACCREDITED_LAST_NAMES[(5 - i) % 7]} Firm")
+      end
     end
 
-    it 'returns at most 10 results' do
-      create_list(:accredited_individual, 20, :with_location, :with_active_accreditation, first_name: 'Bob',
-                                                                                          last_name: '')
+    it 'returns the same sorted names for equivalent data' do
+      query = 'John'
 
-      results = described_class.new('Bob').results
+      original_names = RepresentationManagement::OriginalEntityQuery.new(query).results.map(&:name)
+      accredited_names = described_class.new(query).results.map(&:name)
 
-      expect(results.size).to eq(10)
-    end
-
-    it "returns 9 results with a query of 'aaaab' and the standard threshold" do
-      results = described_class.new('aaaab').results
-
-      expect(results.size).to eq(9)
-    end
-
-    it "returns more than 9 results with a query of 'aaaab' and a threshold of 0.5" do
-      stub_const('RepresentationManagement::AccreditedEntityQuery::WORD_SIMILARITY_THRESHOLD', 0.5)
-      results = described_class.new('aaaab').results
-
-      expect(results.size).to be > 9
-    end
-
-    it "returns less than 9 results with a query of 'aaaab' and a threshold of 0.9" do
-      stub_const('RepresentationManagement::AccreditedEntityQuery::WORD_SIMILARITY_THRESHOLD', 0.9)
-      results = described_class.new('aaaab').results
-
-      expect(results.size).to be < 9
+      expect(accredited_names).to eq(original_names)
     end
 
     context 'when a representative has no active accreditations' do
@@ -164,6 +263,17 @@ RSpec.describe RepresentationManagement::AccreditedEntityQuery, type: :model do
       before do
         create(:accreditation_data_ingestion_log, :trexler_file, :completed)
       end
+
+      let!(:individual1) do
+        create(:accredited_individual, :with_location, :with_active_accreditation,
+               first_name: 'Bob', last_name: 'Smith')
+      end
+      let!(:individual2) do
+        create(:accredited_individual, :with_location, :with_active_accreditation,
+               first_name: 'Bob', last_name: 'Jones')
+      end
+      let!(:organization1) { create(:accredited_organization, :with_location, name: 'Bob Smith Firm') }
+      let!(:organization2) { create(:accredited_organization, :with_location, name: 'Bob Jones Firm') }
 
       it 'still returns Accredited* records, not legacy records' do
         results = described_class.new('Bob').results

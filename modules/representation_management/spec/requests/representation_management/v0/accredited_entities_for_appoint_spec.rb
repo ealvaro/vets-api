@@ -49,10 +49,10 @@ RSpec.describe 'RepresentationManagement::V0::AccreditedEntitiesForAppoint', typ
 
       parsed_response = JSON.parse(response.body)
       expect(parsed_response.size).to eq(4)
-      expect(parsed_response[0]['data']['attributes']['full_name']).to eq('Bob Law')
-      expect(parsed_response[1]['data']['attributes']['full_name']).to eq('Bob Smith')
-      expect(parsed_response[2]['data']['attributes']['name']).to eq('Bob Law Firm')
-      expect(parsed_response[3]['data']['attributes']['name']).to eq('Bob Smith Firm')
+      expect(parsed_response[0]['data']['attributes']['name']).to eq('Bob Smith Firm')
+      expect(parsed_response[1]['data']['attributes']['name']).to eq('Bob Law Firm')
+      expect(parsed_response[2]['data']['attributes']['full_name']).to eq('Bob Smith')
+      expect(parsed_response[3]['data']['attributes']['full_name']).to eq('Bob Law')
     end
 
     it 'gates a nested organization can_accept_digital_poa_requests by the per-rep acceptance_mode' do

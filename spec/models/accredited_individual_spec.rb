@@ -203,6 +203,48 @@ RSpec.describe AccreditedIndividual, type: :model do
     end
   end
 
+  describe '.eligible_for_search' do
+    let!(:active_representative) do
+      create(:accredited_individual, :with_location, :with_organizations,
+             individual_type: 'representative')
+    end
+    let!(:representative_without_accreditation) do
+      create(:accredited_individual, :with_location, individual_type: 'representative')
+    end
+    let!(:representative_with_deactivated_accreditation) do
+      create(:accredited_individual, :with_location, individual_type: 'representative')
+    end
+    let!(:deactivated_accreditation) do
+      create(:accreditation, accredited_individual: representative_with_deactivated_accreditation,
+                             deactivated_at: Time.current)
+    end
+    let!(:attorney) { create(:accredited_individual, :with_location, :attorney) }
+    let!(:claims_agent) { create(:accredited_individual, :with_location, :claims_agent) }
+    let!(:individual_without_location) { create(:accredited_individual) }
+
+    it 'returns only attorneys, claims agents, and representatives with an active accreditation and location' do
+      expect(described_class.eligible_for_search.pluck(:id)).to contain_exactly(
+        active_representative.id, attorney.id, claims_agent.id
+      )
+    end
+
+    context 'when a representative has an organization but no accreditation record' do
+      let!(:representative) do
+        create(:accredited_individual, :with_location, :with_organizations, individual_type: 'representative')
+      end
+
+      before do
+        # Removing the join (Accreditation) leaves the organization row unlinked but present, showing
+        # that eligibility depends on an active accreditation and not just organization data existing.
+        representative.accreditations.destroy_all
+      end
+
+      it 'excludes the representative' do
+        expect(described_class.eligible_for_search.pluck(:id)).not_to include(representative.id)
+      end
+    end
+  end
+
   describe '#poa_codes' do
     context 'when the individual has no poa code' do
       let(:individual) { create(:accredited_individual) }
