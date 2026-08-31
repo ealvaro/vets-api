@@ -139,6 +139,16 @@ RSpec.describe InProgressForm, type: :model do
       end
     end
 
+    context 'when 21-526EZ-V2' do
+      before do
+        in_progress_form.form_id = '21-526EZ-V2'
+      end
+
+      it 'value is 1 year (parity with 21-526EZ)' do
+        expect(in_progress_form.expires_after).to eq(1.year)
+      end
+    end
+
     context 'when unrecognized form' do
       before do
         in_progress_form.form_id = 'abcd-1234'
@@ -150,6 +160,17 @@ RSpec.describe InProgressForm, type: :model do
 
       it 'value is 60 days' do
         expect(in_progress_form.expires_after).to eq(60.days)
+      end
+    end
+  end
+
+  describe '#next_expires_at' do
+    context 'when 21-526EZ-V2' do
+      it 'keeps the fixed expires_at rather than sliding it (parity with 21-526EZ)' do
+        in_progress_form.form_id = '21-526EZ-V2'
+        in_progress_form.expires_at = 1.year.from_now.change(usec: 0)
+
+        expect(in_progress_form.next_expires_at).to eq(in_progress_form.expires_at)
       end
     end
   end

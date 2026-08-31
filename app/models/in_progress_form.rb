@@ -108,7 +108,7 @@ class InProgressForm < ApplicationRecord
   #
   def expires_after
     @expires_after ||= case form_id
-                       when '21-526EZ', '21P-527EZ', '21P-530EZ', '686C-674-V2'
+                       when '21-526EZ', '21-526EZ-V2', '21P-527EZ', '21P-530EZ', '686C-674-V2'
                          1.year
                        else
                          60.days
@@ -116,7 +116,7 @@ class InProgressForm < ApplicationRecord
   end
 
   def next_expires_at
-    skippable_forms = %w[21P-527EZ 21-526EZ 5655]
+    skippable_forms = %w[21P-527EZ 21-526EZ 21-526EZ-V2 5655]
     skippable_forms.include?(form_id) ? expires_at : (Time.current + expires_after)
   end
 

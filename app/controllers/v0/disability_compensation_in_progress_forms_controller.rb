@@ -55,6 +55,7 @@ module V0
       Rails.logger.info(
         'Form526 InProgressForm update',
         in_progress_form_id: updated_form&.id,
+        form_id:,
         user_uuid: @current_user&.uuid,
         return_url: params.dig(:metadata, :returnUrl) || params.dig(:metadata, :return_url)
       )
@@ -67,6 +68,7 @@ module V0
       log_started_form_version(data, 'get IPF')
       Rails.logger.info('Form526 InProgressForm show',
                         in_progress_form_id: existing_form.id,
+                        form_id:,
                         user_uuid: @current_user&.uuid,
                         return_url: existing_form.metadata&.dig('returnUrl') ||
                           existing_form.metadata&.dig('return_url'))
@@ -77,6 +79,7 @@ module V0
       # next call to #update will create the IPF
       Rails.logger.info(
         'Form526 InProgressForm show (prefill IPF)',
+        form_id:,
         user_uuid: @current_user&.uuid
       )
       track_prefill_engagement_event
@@ -202,7 +205,7 @@ module V0
         event:,
         in_progress_form_id: ipf_id,
         user_uuid: @current_user&.uuid,
-        form_id: FormProfiles::VA526ez::FORM_ID
+        form_id:
       )
     end
 
@@ -215,8 +218,36 @@ module V0
       metadata[:had_unpaired_condition_removal] = latches[:removal]
     end
 
+    # V1 and V2 share this route; the path id selects the version. Only
+    # 21-526EZ-V2 (for a v2 user) resolves to the v2 record, so drafts never mix.
+    V1_FORM_ID = FormProfiles::VA526ez::FORM_ID # '21-526EZ'
+    V2_FORM_ID = "#{FormProfiles::VA526ez::FORM_ID}-V2".freeze # '21-526EZ-V2'
+
     def form_id
-      FormProfiles::VA526ez::FORM_ID
+      @form_id ||= resolve_form_id
+    end
+
+    def resolve_form_id
+      return V1_FORM_ID unless params[:id] == V2_FORM_ID
+      return V2_FORM_ID if v2_form_enabled?
+
+      # A v2 id that can't resolve to v2 (flag off and no v2 draft) falls back to
+      # v1 rather than erroring, so the shared route stays a smooth experience.
+      V1_FORM_ID
+    end
+
+    # On v2 when the flag is on (new enrollment) or a v2 draft already exists
+    # (stay-on-v2, so resume works with the flag off).
+    def v2_form_enabled?
+      Flipper.enabled?(:disability_526_all_claims_v2, @current_user) ||
+        active_v2_in_progress_form?
+    end
+
+    # Any v2 record (no submission_pending filter) keeps the V2 path on v2 — even
+    # mid-submission ('processing') — so v2 never leaks into v1. Matches the write
+    # path's plain form_for_user lookup.
+    def active_v2_in_progress_form?
+      InProgressForm.form_for_user(V2_FORM_ID, @current_user).present?
     end
 
     def data_and_metadata_with_updated_rated_disabilities
@@ -343,9 +374,13 @@ module V0
 
       if form_data['ratedDisabilities'].present? &&
          form_data.dig('view:claimType', 'view:claimingIncrease')
-        return_url = '/disabilities/rated-disabilities'
-        # For the new conditions flow, use a different return URL
-        return_url = '/conditions/summary' if [true, 'true'].include?(form_data[WORKFLOW_FLAG_KEY])
+        # The old rated-disabilities page only exists in the v1 flow; v2 and the
+        # new-conditions workflow land on the conditions summary instead.
+        return_url = if form_id == V2_FORM_ID || [true, 'true'].include?(form_data[WORKFLOW_FLAG_KEY])
+                       '/conditions/summary'
+                     else
+                       '/disabilities/rated-disabilities'
+                     end
         metadata['returnUrl'] = return_url
       end
       # Use as_json instead of JSON.parse(to_json) to avoid string allocation overhead

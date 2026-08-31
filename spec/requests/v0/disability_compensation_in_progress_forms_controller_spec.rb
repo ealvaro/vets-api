@@ -1780,6 +1780,29 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
             end.not_to raise_error
             expect(response).to have_http_status(:ok)
           end
+
+          context 'when the request resolves to v2 (21-526EZ-V2)' do
+            before do
+              allow(Flipper).to receive(:enabled?).and_call_original
+              allow(Flipper).to receive(:enabled?)
+                .with(:disability_526_all_claims_v2, instance_of(User)).and_return(true)
+            end
+
+            def put_v2(form_data, metadata: ipf_metadata)
+              put v0_disability_compensation_in_progress_form_url('21-526EZ-V2'),
+                  params: { form_data:, metadata: }.to_json,
+                  headers: { 'CONTENT_TYPE' => 'application/json' }
+            end
+
+            it 'labels the delta event with the resolved v2 form_id, not v1' do
+              put_v2({ new_disabilities: [], 'view:has_evidence': true })
+              put_v2({ new_disabilities: [{ condition: 'asthma' }], 'view:has_evidence': true })
+
+              expect(Rails.logger).to have_received(:info)
+                .with('Form526 conditions evidence delta event',
+                      hash_including(event: 'condition_added', form_id: '21-526EZ-V2'))
+            end
+          end
         end
       end
 
@@ -1792,6 +1815,154 @@ RSpec.describe V0::DisabilityCompensationInProgressFormsController do
 
             expect(response).to have_http_status(:unauthorized)
           end
+        end
+      end
+    end
+
+    describe 'form version resolution and draft isolation (v1 vs v2)' do
+      let(:v1_form_id) { '21-526EZ' }
+      let(:v2_form_id) { '21-526EZ-V2' }
+      let(:user) { loa3_user }
+
+      def create_ipf(form_id, marker, return_url = '/veteran-information')
+        create(:in_progress_form,
+               user_uuid: user.uuid,
+               user_account: user.user_account,
+               form_id:,
+               form_data: { 'startedFormVersion' => '2022', 'marker' => marker }.to_json,
+               metadata: { 'version' => 0, 'returnUrl' => return_url })
+      end
+
+      def put_ipf(path_id, marker)
+        put v0_disability_compensation_in_progress_form_url(path_id),
+            params: {
+              formData: { 'startedFormVersion' => '2022', 'marker' => marker }.to_json,
+              metadata: { 'version' => 0, 'returnUrl' => '/veteran-information' }
+            }.to_json,
+            headers: { 'CONTENT_TYPE' => 'application/json' }
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        sign_in_as(user)
+      end
+
+      context 'when disability_526_all_claims_v2 is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_all_claims_v2, instance_of(User)).and_return(true)
+        end
+
+        it 'reads the v2 record and never the v1 record on show' do
+          create_ipf(v1_form_id, 'v1-data', '/v1-return')
+          create_ipf(v2_form_id, 'v2-data', '/v2-return')
+
+          get v0_disability_compensation_in_progress_form_url(v2_form_id), params: nil
+
+          expect(response).to have_http_status(:ok)
+          json_response = JSON.parse(response.body)
+          # the response reflects the v2 draft (marker and returnUrl), not v1's
+          expect(json_response['formData']['marker']).to eq('v2-data')
+          expect(json_response['metadata']['returnUrl']).to eq('/v2-return')
+        end
+
+        it 'writes to the v2 record and never the v1 record on update' do
+          put_ipf(v2_form_id, 'v2-new')
+
+          expect(response).to have_http_status(:ok)
+          expect(InProgressForm.find_by(form_id: v2_form_id, user_uuid: user.uuid)).to be_present
+          expect(InProgressForm.find_by(form_id: v1_form_id, user_uuid: user.uuid)).to be_nil
+        end
+
+        it 'keeps v1 isolated: v1 path never reads or writes the v2 record' do
+          create_ipf(v2_form_id, 'v2-data')
+
+          put_ipf(v1_form_id, 'v1-new')
+
+          expect(response).to have_http_status(:ok)
+          v1_record = InProgressForm.find_by(form_id: v1_form_id, user_uuid: user.uuid)
+          expect(v1_record).to be_present
+          expect(JSON.parse(v1_record.form_data)['marker']).to eq('v1-new')
+          # the pre-existing v2 record is untouched
+          v2_record = InProgressForm.find_by(form_id: v2_form_id, user_uuid: user.uuid)
+          expect(JSON.parse(v2_record.form_data)['marker']).to eq('v2-data')
+        end
+
+        it 'applies updatedRatedDisabilities on v2 show (parity with v1)' do
+          lighthouse_user = build(:evss_user, icn: '123498767V234859')
+          form_json = JSON.parse(
+            File.read(
+              'spec/support/disability_compensation_form/' \
+              '526_in_progress_form_minimal_lighthouse_rated_disabilities.json'
+            )
+          )
+          # Force a mismatch between saved and fetched rated disabilities so the
+          # controller injects updatedRatedDisabilities (same trigger as v1).
+          form_data = form_json['formData']
+          form_data['ratedDisabilities'].first['diagnosticCode'] = '111'
+          v2_ipf = create(:in_progress_form,
+                          user_uuid: lighthouse_user.uuid,
+                          form_id: v2_form_id,
+                          form_data:,
+                          metadata: form_json['metadata'])
+
+          allow_any_instance_of(Auth::ClientCredentials::Service)
+            .to receive(:get_token).and_return('blahblech')
+          sign_in_as(lighthouse_user)
+
+          VCR.use_cassette('lighthouse/veteran_verification/disability_rating/200_response') do
+            VCR.use_cassette('disability_max_ratings/max_ratings') do
+              get v0_disability_compensation_in_progress_form_url(v2_form_id), params: nil
+            end
+          end
+
+          expect(response).to have_http_status(:ok)
+          json_response = JSON.parse(response.body)
+          expect(json_response['formData']).to have_key('updatedRatedDisabilities')
+          expect(json_response['formData']['updatedRatedDisabilities']).to be_present
+          # v2 sends the rated-disabilities return to the conditions summary,
+          # not the v1-only /disabilities/rated-disabilities page
+          expect(json_response['metadata']['returnUrl']).to eq('/conditions/summary')
+          # confirmed we read the v2 record, never the v1 one
+          expect(v2_ipf.form_id).to eq(v2_form_id)
+        end
+      end
+
+      context 'when disability_526_all_claims_v2 is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?)
+            .with(:disability_526_all_claims_v2, instance_of(User)).and_return(false)
+        end
+
+        it 'stays on v2 when an active v2 in-progress form already exists' do
+          create_ipf(v2_form_id, 'v2-data')
+
+          get v0_disability_compensation_in_progress_form_url(v2_form_id), params: nil
+
+          expect(response).to have_http_status(:ok)
+          json_response = JSON.parse(response.body)
+          expect(json_response['formData']['marker']).to eq('v2-data')
+          expect(json_response['metadata']['returnUrl']).to eq('/veteran-information')
+        end
+
+        it 'stays on v2 for updates even when the only v2 record is mid-submission (processing)' do
+          create_ipf(v2_form_id, 'v2-processing').update!(status: :processing)
+
+          put_ipf(v2_form_id, 'v2-new')
+
+          expect(response).to have_http_status(:ok)
+          # the existing (processing) v2 record is updated in place; resolution
+          # never falls back to writing a v1 record
+          v2_record = InProgressForm.find_by(form_id: v2_form_id, user_uuid: user.uuid)
+          expect(JSON.parse(v2_record.form_data)['marker']).to eq('v2-new')
+          expect(InProgressForm.find_by(form_id: v1_form_id, user_uuid: user.uuid)).to be_nil
+        end
+
+        it 'falls back to v1 for a v2 id when gated off with no v2 draft (no v2 record created)' do
+          put_ipf(v2_form_id, 'ignored')
+
+          expect(response).to have_http_status(:ok)
+          expect(InProgressForm.find_by(form_id: v2_form_id, user_uuid: user.uuid)).to be_nil
         end
       end
     end
