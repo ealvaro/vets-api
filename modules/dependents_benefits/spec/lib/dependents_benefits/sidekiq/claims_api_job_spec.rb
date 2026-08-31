@@ -171,6 +171,42 @@ RSpec.describe DependentsBenefits::Sidekiq::ClaimsApiJob, type: :job do
           expect(FormSubmissionAttempt.first.error_message).to eq('something went wrong')
         end
       end
+
+      context 'when the claims api call fails' do
+        let(:stub_monitor) { instance_double(DependentsBenefits::Monitor) }
+
+        before do
+          allow(BEP::Claims::Service).to receive(:new).and_call_original
+          allow(DependentsBenefits::Monitor).to receive(:new).and_return(stub_monitor)
+          allow(stub_monitor).to receive(:track_info_event)
+          allow(stub_monitor).to receive(:track_error_event)
+        end
+
+        it 'logs the api error message' do
+          error_message = 'the server responded with status 400 - method and url are not available due' \
+                          ' to include_request: false on Faraday::Response::RaiseError middleware'
+          expected_response_hash = hash_including({
+                                                    'severity' => 'ERROR',
+                                                    'status' => '400',
+                                                    'text' => 'Could not assign third digit modifier, none available'
+                                                  })
+          VCR.use_cassette('bep/claims/create_claim_failure') do
+            expect { perform }.to raise_error(Common::Client::Errors::ClientError)
+            expect(stub_monitor).to have_received(:track_error_event).with('Failed to create claim via claims api',
+                                                                           hash_including(:action, :component, :error,
+                                                                                          :parent_claim_id))
+            expect(stub_monitor).to have_received(:track_error_event).with(
+              'Submission attempt failure in DependentsBenefits::Sidekiq::ClaimsApiJob',
+              hash_including({
+                               action: 'claim.error',
+                               parent_claim_id: parent_claim.id,
+                               error: error_message,
+                               response: hash_including({ 'messages' => [expected_response_hash] })
+                             })
+            )
+          end
+        end
+      end
     end
 
     context 'with a 674-only form' do

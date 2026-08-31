@@ -11,6 +11,7 @@ require 'bgs/children'
 require 'bgs/student_school'
 require 'bgs/dependent_higher_ed_attendance'
 require 'bgs/person_cache'
+require 'logging/helper/data_scrubber'
 
 module DependentsBenefits::Sidekiq
   ##
@@ -52,9 +53,10 @@ module DependentsBenefits::Sidekiq
       mark_submission_attempt_succeeded(submission_attempt)
       DependentsBenefits::ServiceResponse.new(status: true)
     rescue => e
+      api_response = extract_api_response(e)
       monitor.track_error_event("Submission attempt failure in #{self.class}",
                                 action: 'claim.error', component:, error: e.message,
-                                parent_claim_id: parent_claim.id)
+                                parent_claim_id: parent_claim.id, response: api_response)
       mark_submission_attempt_failed(submission_attempt, e)
       raise # re-raise so super class can catch and call handle_job_failure
     end
@@ -335,6 +337,16 @@ module DependentsBenefits::Sidekiq
       return '' if full_name.blank?
 
       "#{full_name['first']} #{full_name['last']}"
+    end
+
+    # Extract api error message(s) from raised error
+    #
+    # @param [Common::Client::Errors::ClientError] full_name
+    # @return [Hash] error messages
+    def extract_api_response(e)
+      return nil unless e.is_a?(Common::Client::Errors::ClientError)
+
+      Logging::Helper::DataScrubber.scrub(e.body)
     end
   end
 end

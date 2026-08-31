@@ -1,0 +1,71 @@
+---
+http_interactions:
+  - request:
+      method: post
+      uri: https://fake_url.com/api/v1/claims
+      body:
+        encoding: UTF-8
+        string: '{"serviceTypeCode":"CP","programTypeCode":"CPL","benefitClaimTypeCode":"130DPNEBNADJ","claimant":{"participantId":"600036156"},"veteran":{"participantId":"600036156","firstName":"Jerry","lastName":"Brooks"},"dateOfClaim":"2026-08-27T15:17:33Z","tempStationOfJurisdiction":281,"submtrRoleTypeCd":"VBA","submtrApplcnTypeCd":"VBMS"}'
+      headers:
+        Authorization:
+          - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJmMjkwZWI3Yy0yYzVmLTRiZWYtOWYwNy0xNDc1YWY3NzhmMTgiLCJpYXQiOjE3ODgwMTE5NjMsImV4cCI6MTc4ODAxMzk2MywiaXNzIjoidmV0cy1hcGkiLCJhcHBsaWNhdGlvbklEIjoiVkJNUyIsInVzZXJJRCI6IlZBR09WU1lTQUNDVCIsInN0YXRpb25JRCI6IjI4MyJ9.MSfvv77wFW0EfK0RIIjpoD9ZNxOqVGpaQisLG7uRuo4
+        Accept:
+          - application/json
+        User-Agent:
+          - Faraday v2.14.3
+        Content-Type:
+          - application/json
+        Accept-Encoding:
+          - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+    response:
+      status:
+        code: 400
+        message: Bad Request
+      headers:
+        Date:
+          - Sat, 29 Aug 2026 13:59:34 GMT
+        Content-Type:
+          - application/problem+json
+        Transfer-Encoding:
+          - chunked
+        Connection:
+          - keep-alive
+        X-Oneagent-Js-Injection:
+          - "true"
+        Server-Timing:
+          - dtRpid;desc="-1962536179", dtSInfo;desc="0"
+        Vary:
+          - Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+        X-Content-Type-Options:
+          - nosniff
+        X-Xss-Protection:
+          - "0"
+        Cache-Control:
+          - no-cache, no-store, max-age=0, must-revalidate
+        Pragma:
+          - no-cache
+        Expires:
+          - "0"
+        Strict-Transport-Security:
+          - max-age=31536000; includeSubDomains
+        X-Frame-Options:
+          - DENY
+        Content-Security-Policy:
+          - script-src 'self'
+        X-Envoy-Upstream-Service-Time:
+          - "579"
+      body:
+        encoding: UTF-8
+        string: |-
+          {
+            "messages" : [ {
+              "timestamp" : "2026-08-29T13:59:34.485+0000",
+              "key" : "bip.vetservices.createclaims.no.available.thirddigitmodifiers",
+              "severity" : "ERROR",
+              "status" : "400",
+              "text" : "Could not assign third digit modifier, none available",
+              "httpStatus" : "BAD_REQUEST"
+            } ]
+          }
+    recorded_at: Sat, 29 Aug 2026 13:59:34 GMT
+recorded_with: VCR 6.4.0
