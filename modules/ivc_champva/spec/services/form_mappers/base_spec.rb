@@ -65,6 +65,15 @@ RSpec.describe IvcChampva::FormMappers::Base do
     it 'returns nil for nil' do
       expect(instance.format_address_string(nil)).to be_nil
     end
+
+    context 'when the champva_pdf_address_overflow_fix flag is enabled' do
+      before { allow(Flipper).to receive(:enabled?).with(:champva_pdf_address_overflow_fix).and_return(true) }
+
+      it 'condenses more than 3 lines so city/state and zip remain visible' do
+        input = "123 Main St\nApt 4\nBuilding B\nSpringfield, IL\n62701"
+        expect(instance.format_address_string(input)).to eq('123 Main St, Apt 4, Building B\nSpringfield, IL\n62701')
+      end
+    end
   end
 
   describe '#gender_radio' do

@@ -67,6 +67,9 @@ module IvcChampva
 
     def stamp_and_fill_pdf(stamped_template_path, generated_form_path, current_loa)
       PdfStamper.stamp_pdf(stamped_template_path, form, current_loa)
+      if Flipper.enabled?(:champva_pdf_address_overflow_fix)
+        IvcChampva::PdfFieldAutosizer.apply!(stamped_template_path, form_number)
+      end
       pdftk = PdfForms.new(Settings.binaries.pdftk)
       pdftk.fill_form(stamped_template_path, generated_form_path, mapped_data, flatten: true)
     end

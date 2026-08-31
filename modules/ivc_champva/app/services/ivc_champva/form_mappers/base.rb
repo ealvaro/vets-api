@@ -16,7 +16,7 @@ module IvcChampva
       end
 
       def format_address_string(str)
-        str&.split(/\n/)&.join('\n')
+        IvcChampva::PdfAddressFormatter.format(str)
       end
 
       def gender_radio(val)

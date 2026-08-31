@@ -596,10 +596,13 @@ features:
     actor_type: user
     description: Enables the authenticated GET /ivc_champva/v1/champva_card endpoint that returns CHAMPVA benefits card metadata from VES
     enable_in_development: true
+  champva_pdf_address_overflow_fix:
+    actor_type: user
+    description: If enabled, fixes generated PDF address fields being cut off when all three street
+      lines are used, for forms 10-10d, 10-7959c, and 10-7959f-2 (see #152932).
   champva_pdf_stamper_use_hexapdf:
     actor_type: user
-    description:
-      If enabled, IVC CHAMPVA PdfStamper uses HexaPDF directly for overlay stamping instead of pdftk
+    description: If enabled, IVC CHAMPVA PdfStamper uses HexaPDF directly for overlay stamping instead of pdftk
       (pdftk with a HexaPDF fallback is used when disabled).
   chapter_36_form_dd_rum_monitoring:
     actor_type: user

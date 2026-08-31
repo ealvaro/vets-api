@@ -51,6 +51,48 @@ describe IvcChampva::PdfFiller do
         expect(pdf_filler.generate).to match(%r{tmp/#{uuid}_#{form_number}-tmp\.pdf})
       end
 
+      context 'when the champva_pdf_address_overflow_fix flag is enabled' do
+        it 'runs the field autosizer before filling the PDF' do
+          form_number = forms.first
+          uuid = 'pdf-filler-autosizer-enabled'
+          file_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', "#{form_number}.json")
+          data = JSON.parse(File.read(file_path))
+          form = "IvcChampva::#{form_number.titleize.gsub(' ', '')}".constantize.new(data)
+          pdf_filler = described_class.new(form_number:, form:, uuid:)
+
+          allow(File).to receive(:exist?).and_return(true)
+          allow(IvcChampva::PdfStamper).to receive(:stamp_pdf)
+          allow(PdfForms).to receive(:new).and_return(double(fill_form: true))
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(Flipper).to receive(:enabled?).with(:champva_pdf_address_overflow_fix).and_return(true)
+
+          expect(IvcChampva::PdfFieldAutosizer).to receive(:apply!).with(anything, form_number)
+
+          pdf_filler.generate
+        end
+      end
+
+      context 'when the champva_pdf_address_overflow_fix flag is disabled' do
+        it 'does not run the field autosizer' do
+          form_number = forms.first
+          uuid = 'pdf-filler-autosizer-disabled'
+          file_path = Rails.root.join('modules', 'ivc_champva', 'spec', 'fixtures', 'form_json', "#{form_number}.json")
+          data = JSON.parse(File.read(file_path))
+          form = "IvcChampva::#{form_number.titleize.gsub(' ', '')}".constantize.new(data)
+          pdf_filler = described_class.new(form_number:, form:, uuid:)
+
+          allow(File).to receive(:exist?).and_return(true)
+          allow(IvcChampva::PdfStamper).to receive(:stamp_pdf)
+          allow(PdfForms).to receive(:new).and_return(double(fill_form: true))
+          allow(Common::FileHelpers).to receive(:delete_file_if_exists)
+          allow(Flipper).to receive(:enabled?).with(:champva_pdf_address_overflow_fix).and_return(false)
+
+          expect(IvcChampva::PdfFieldAutosizer).not_to receive(:apply!)
+
+          pdf_filler.generate
+        end
+      end
+
       context 'when transliterating address fields' do
         before do
           allow(Flipper).to receive(:enabled?).with(:champva_foreign_address_fix).and_return(true)
