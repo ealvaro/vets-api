@@ -180,7 +180,10 @@ module DebtManagementCenter
         payload = { fileNumber: @file_number }
         payload[:countOnly] = true if count_only
 
-        response = perform(:post, Settings.dmc.debts_endpoint, payload, nil, options).body
+        latency_key = "#{statsd_key_prefix}.fetch_debts_from_dmc.#{count_only ? 'count_only' : 'full_fetch'}.latency"
+        response = measure_latency(latency_key) do
+          perform(:post, Settings.dmc.debts_endpoint, payload, nil, options).body
+        end
 
         return extract_debts_count(response) if count_only
 

@@ -223,6 +223,43 @@ RSpec.describe DebtManagementCenter::DebtsService do
     end
   end
 
+  describe 'DMC call latency' do
+    let(:statsd_prefix) { described_class::STATSD_KEY_PREFIX }
+
+    before { allow(StatsD).to receive(:measure) }
+
+    it 'records latency under the full key for a full fetch' do
+      with_vcr_cassettes { described_class.new(user).get_debts }
+
+      expect(StatsD).to have_received(:measure)
+        .with("#{statsd_prefix}.fetch_debts_from_dmc.full_fetch.latency", kind_of(Numeric))
+    end
+
+    it 'records latency under the count key for a count-only request' do
+      VCR.use_cassette('bgs/people_service/person_data') do
+        VCR.use_cassette('debts/get_letters_count_only', VCR::MATCH_EVERYTHING) do
+          described_class.new(user).get_debts(count_only: true)
+        end
+      end
+
+      expect(StatsD).to have_received(:measure)
+        .with("#{statsd_prefix}.fetch_debts_from_dmc.count_only.latency", kind_of(Numeric))
+    end
+
+    it 'does not record latency when the call raises' do
+      VCR.use_cassette('bgs/people_service/no_person_data') do
+        VCR.use_cassette('debts/get_letters_empty_ssn', VCR::MATCH_EVERYTHING) do
+          expect { described_class.new(user_no_ssn).get_debts }.to raise_error(
+            Common::Exceptions::BackendServiceException
+          )
+        end
+      end
+
+      expect(StatsD).not_to have_received(:measure)
+        .with("#{statsd_prefix}.fetch_debts_from_dmc.full_fetch.latency", anything)
+    end
+  end
+
   describe 'response caching' do
     let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
     let(:cache_key) { "debts_data_#{user.uuid}" }
