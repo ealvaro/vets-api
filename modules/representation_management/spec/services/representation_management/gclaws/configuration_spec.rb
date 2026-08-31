@@ -15,7 +15,7 @@ describe RepresentationManagement::GCLAWS::Configuration do
     end
 
     it 'sets the search params' do
-      expect(subject.connection.params).to eq({ 'sortColumn' => 'LastName', 'sortOrder' => 'ASC', 'page' => 1,
+      expect(subject.connection.params).to eq({ 'sortColumn' => 'poa', 'sortOrder' => 'ASC', 'page' => 1,
                                                 'pageSize' => 10 })
     end
 

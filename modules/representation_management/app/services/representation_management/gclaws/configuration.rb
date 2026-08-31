@@ -7,7 +7,9 @@ module RepresentationManagement
     class Configuration
       DEFAULT_SORT_PARAMS = {
         'agents' => {
-          'sortColumn' => 'LastName',
+          # Use the POA key for deterministic pagination to avoid
+          # duplicate/missing records when sorting by a non-unique field like LastName.
+          'sortColumn' => 'poa',
           'sortOrder' => 'ASC'
         },
         'attorneys' => {

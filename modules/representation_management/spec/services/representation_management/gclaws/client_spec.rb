@@ -33,7 +33,7 @@ RSpec.describe RepresentationManagement::GCLAWS::Client do
       context 'when the request is successful' do
         it 'returns a successful response' do
           stub_request(:get, Settings.gclaws.accreditation.agents.url)
-            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'LastName', 'sortOrder' => 'ASC' })
+            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'poa', 'sortOrder' => 'ASC' })
             .to_return(status: 200, body: parsed_body.to_json, headers: { 'Content-Type' => 'application/json' })
 
           response = subject.get_accredited_entities(type:)
@@ -46,7 +46,7 @@ RSpec.describe RepresentationManagement::GCLAWS::Client do
       context 'when the request is unauthorized' do
         it 'logs the error and returns an unauthorized status' do
           stub_request(:get, Settings.gclaws.accreditation.agents.url)
-            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'LastName', 'sortOrder' => 'ASC' })
+            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'poa', 'sortOrder' => 'ASC' })
             .to_raise(Faraday::UnauthorizedError.new('GCLAWS Accreditation unauthorized'))
 
           expect(Rails.logger).to receive(:error).with(
@@ -65,7 +65,7 @@ RSpec.describe RepresentationManagement::GCLAWS::Client do
       context 'when the connection fails' do
         it 'logs the error and returns a service unavailable status' do
           stub_request(:get, Settings.gclaws.accreditation.agents.url)
-            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'LastName', 'sortOrder' => 'ASC' })
+            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'poa', 'sortOrder' => 'ASC' })
             .to_raise(Faraday::ConnectionFailed.new('GCLAWS Accreditation unavailable'))
 
           expect(Rails.logger).to receive(:error).with(
@@ -84,7 +84,7 @@ RSpec.describe RepresentationManagement::GCLAWS::Client do
       context 'when the request times out' do
         it 'logs the error and returns a request timeout status' do
           stub_request(:get, Settings.gclaws.accreditation.agents.url)
-            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'LastName', 'sortOrder' => 'ASC' })
+            .with(query: { 'page' => 1, 'pageSize' => 1000, 'sortColumn' => 'poa', 'sortOrder' => 'ASC' })
             .to_raise(Faraday::TimeoutError.new('GCLAWS Accreditation request timed out'))
 
           expect(Rails.logger).to receive(:error).with(
