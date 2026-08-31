@@ -1,0 +1,61 @@
+{
+  "applicantName": {
+    "first": "Jane",
+    "middle": "Chicken",
+    "last": "Smith"
+  },
+  "mailingAddress": {
+    "isMilitary": false,
+    "country": "DEU",
+    "street": "100 First Ave",
+    "street2": "Building 4",
+    "street3": "Suite 220",
+    "city": "Berlin",
+    "state": "BE",
+    "postalCode": "10115"
+  },
+  "emailAddress": "jane@randallware.net",
+  "homePhone": "4018614700",
+  "mobilePhone": "5086773030",
+  "vaFileNumber": "123456789",
+  "payeeNumber": "12",
+  "hasPreviouslyApplied": true,
+  "vaBenefitProgram": "chapter35",
+  "testName": "SAT",
+  "organizationName": "College Board",
+  "organizationAddress": {
+    "street": "250 Vesey Street",
+    "street2": "Floor 4",
+    "street3": "Suite B",
+    "city": "New York",
+    "state": "NY",
+    "postalCode": "10281",
+    "country": "USA"
+  },
+  "supportingDocuments": [
+    {
+      "documentId": "{641adc9f-9968-45fd-aa96-413444f94e2e}",
+      "documentTypeLabel": "Prep Course Enrollment Verification",
+      "originalFileName": "Jane_Smith_Prep_Course_Enrollment_Verification.pdf",
+      "trackedItemId": null,
+      "uploadDate": "2026-01-07",
+      "uploadDateTime": "2026-01-07T15:04:14Z"
+    }
+  ],
+  "prepCourseName": "SAT Prep Course: The Quick Brown Fox Jumped Over The Lazy Dog Repeatedly For A While",
+  "prepCourseOrganizationName": "Prep Academy",
+  "prepCourseOrganizationAddress": {
+    "street": "10 Education Way",
+    "city": "Boston",
+    "state": "MA",
+    "postalCode": "02110",
+    "country": "USA"
+  },
+  "prepCourseTakenOnline": true,
+  "prepCourseStartDate": "2024-01-01",
+  "prepCourseEndDate": "2024-02-01",
+  "prepCourseCost": 499.00,
+  "remarks": "Fee item 1\nFee item 2\nFee item 3\nFee item 4\nFee item 5\nFee item 6\nFee item 7\nFee item 8\nFee item 9\nFee item 10\nFee item 11\nFee item 12\nFee item 13\nFee item 14\nFee item 15\nFee item 16\nFee item 17\nFee item 18\nFee item 19\nFee item 20\nFee item 21\nFee item 22\nFee item 23\nFee item 24\nFee item 25\nFee item 26\nFee item 27\nFee item 28\nFee item 29\nFee item 30\nFee item 31\nFee item 32\nFee item 33\nFee item 34\nFee item 35\nFee item 36\nFee item 37\nFee item 38",
+  "statementOfTruthSignature": "Jane Smith",
+  "dateSigned": "2024-02-02"
+}
