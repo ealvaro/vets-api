@@ -726,7 +726,8 @@ RSpec.describe FormProfile, type: :model do
       'bankRoutingNumber' => '*****0503',
       'startedFormVersion' => '2022',
       'syncModern0781Flow' => true,
-      'disabilityCompNewConditionsWorkflow' => true
+      'disabilityCompNewConditionsWorkflow' => true,
+      'disabilityCompConditionsEvidenceMessagingTest' => true
     }
   end
   let(:vfeedback_tool_expected) do

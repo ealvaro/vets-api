@@ -101,4 +101,29 @@ RSpec.describe FormProfiles::VA526ez do
       end
     end
   end
+
+  describe '#initialize_form526_prefill' do
+    context 'disability_comp_conditions_evidence_messaging_test flag' do
+      it 'sets value to true when the Flipper toggle is enabled' do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:disability_compensation_conditions_evidence_messaging_test, user)
+          .and_return(true)
+        prefill = profile.send(:initialize_form526_prefill)
+
+        expect(prefill.disability_comp_conditions_evidence_messaging_test).to be(true)
+      end
+
+      it 'sets value to false when the Flipper toggle is disabled' do
+        allow(Flipper).to receive(:enabled?).and_call_original
+        allow(Flipper).to receive(:enabled?)
+          .with(:disability_compensation_conditions_evidence_messaging_test, user)
+          .and_return(false)
+
+        prefill = profile.send(:initialize_form526_prefill)
+
+        expect(prefill.disability_comp_conditions_evidence_messaging_test).to be(false)
+      end
+    end
+  end
 end
