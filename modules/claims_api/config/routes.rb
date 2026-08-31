@@ -69,7 +69,8 @@ ClaimsApi::Engine.routes.draw do
   namespace :v3, defaults: { format: 'json' } do
     namespace :veterans do
       post '/526', to: 'disability_compensation#submit'
-      post '/526/generatePDF/minimum-validations', to: 'disability_compensation#generate_pdf'
+      post '/526/generatePDF', to: 'disability_compensation#generate_pdf'
+      post '/526/:id/attachments', to: 'disability_compensation#upload_supporting_documents'
     end
   end
 
