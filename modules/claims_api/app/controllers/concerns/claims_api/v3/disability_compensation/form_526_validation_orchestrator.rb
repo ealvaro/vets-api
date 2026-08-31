@@ -16,7 +16,10 @@ module ClaimsApi
           return if @form_attributes.empty?
 
           errors = Errors.new
+          # returning claim_date so it can be used for memoization or further processing
+          _claim_date, claim_date_errors = validate_claim_date
 
+          errors.merge(claim_date_errors)
           errors.merge(validate_veteran_identification)
           # ex: errors.merge(validate_service_information)
 
@@ -29,6 +32,12 @@ module ClaimsApi
           Sections::VeteranIdentification.new(
             @form_attributes['veteranIdentification'],
             valid_countries:
+          ).validate
+        end
+
+        def validate_claim_date
+          Sections::ClaimDate.new(
+            @form_attributes['claimDate']
           ).validate
         end
       end
