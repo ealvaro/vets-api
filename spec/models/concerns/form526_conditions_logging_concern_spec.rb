@@ -96,4 +96,216 @@ RSpec.describe Form526ConditionsLoggingConcern do
       )
     end
   end
+
+  describe '#log_conditions_evidence_metrics' do
+    let!(:in_progress_form) { create(:in_progress_526_form, user_uuid: submission.user_uuid) }
+    let(:raw_form) do
+      {
+        'newPrimaryDisabilities' => [
+          { 'condition' => 'acne' },
+          { 'condition' => 'bronchitis' }
+        ],
+        'ratedDisabilities' => [
+          { 'name' => 'tinnitus', 'disabilityActionType' => 'INCREASE' },
+          { 'name' => 'existing rating', 'disabilityActionType' => 'NONE' }
+        ],
+        'vaTreatmentFacilities' => [{ 'treatmentCenterName' => 'VA Medical Center' }],
+        'form4142' => { 'providerFacility' => [{ 'name' => 'Private Provider A' },
+                                               { 'name' => 'Private Provider B' }] },
+        'attachments' => [{ 'name' => 'post_surgery_report.pdf' }],
+        'toxicExposure' => {
+          'otherExposures' => { 'asbestos' => true }
+        }
+      }
+    end
+
+    before do
+      allow(Rails.logger).to receive(:info)
+      allow(submission.saved_claim).to receive(:parsed_form).and_return(raw_form)
+    end
+
+    it 'logs the evidence metrics with submission identifiers' do
+      submission.log_conditions_evidence_metrics
+
+      expect(Rails.logger).to have_received(:info).with(
+        'Form526 conditions evidence metrics',
+        submission_id: submission.id,
+        user_uuid: submission.user_uuid,
+        in_progress_form_id: in_progress_form.id,
+        toxic_exposure: true,
+        evidence_va: 1,
+        evidence_private: 2,
+        evidence_uploads: 1,
+        evidence_any: true,
+        total_conditions: 3
+      )
+    end
+
+    context 'when no toxic exposure questions are answered affirmatively' do
+      let(:raw_form) do
+        {
+          'toxicExposure' => {
+            'gulfWar1990' => { 'afghanistan' => false },
+            'gulfWar2001' => { 'yemen' => false }
+          }
+        }
+      end
+
+      it 'sets toxic_exposure to false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: false)
+        )
+      end
+    end
+
+    context 'when only "notsure" or "none" toxic exposure answers are present' do
+      # "notsure" and "none" should not count as toxic exposure being reported.
+      let(:raw_form) do
+        {
+          'toxicExposure' => {
+            'gulfWar1990' => { 'notsure' => true },
+            'herbicide' => { 'none' => true },
+            'otherExposures' => { 'none' => true }
+          }
+        }
+      end
+
+      it 'sets toxic_exposure to false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: false)
+        )
+      end
+    end
+
+    context 'when otherHerbicideLocations has a description' do
+      # a description for otherHerbicideLocations should count as toxic exposure being reported.
+      let(:raw_form) do
+        {
+          'toxicExposure' => {
+            'otherHerbicideLocations' => { 'description' => 'A location not in the list' }
+          }
+        }
+      end
+
+      it 'sets toxic_exposure to true' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: true)
+        )
+      end
+    end
+
+    context 'when specifyOtherExposures has a description' do
+      # a description for specifyOtherExposures should count as toxic exposure being reported.
+      let(:raw_form) do
+        {
+          'toxicExposure' => {
+            'specifyOtherExposures' => { 'description' => 'Some other substance' }
+          }
+        }
+      end
+
+      it 'sets toxic_exposure to true' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: true)
+        )
+      end
+    end
+
+    context 'when otherHerbicideLocations and specifyOtherExposures have blank descriptions' do
+      let(:raw_form) do
+        {
+          'toxicExposure' => {
+            'otherHerbicideLocations' => { 'description' => '' },
+            'specifyOtherExposures' => { 'description' => nil }
+          }
+        }
+      end
+
+      it 'sets toxic_exposure to false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: false)
+        )
+      end
+    end
+
+    context 'when toxicExposure is absent' do
+      let(:raw_form) { {} }
+
+      it 'sets toxic_exposure to false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(toxic_exposure: false)
+        )
+      end
+    end
+
+    context 'when no evidence is present' do
+      let(:raw_form) { {} }
+
+      it 'sets all evidence counts to zero and evidence_any to false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(evidence_va: 0, evidence_private: 0, evidence_uploads: 0, evidence_any: false)
+        )
+      end
+    end
+
+    context 'when disabilityCompConditionsEvidenceMessagingTest is true' do
+      let(:raw_form) { { 'disabilityCompConditionsEvidenceMessagingTest' => true } }
+
+      it 'includes the flag value in the payload when the value is true' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(disability_comp_conditions_evidence_messaging_test: true)
+        )
+      end
+    end
+
+    context 'when disabilityCompConditionsEvidenceMessagingTest is false' do
+      let(:raw_form) { { 'disabilityCompConditionsEvidenceMessagingTest' => false } }
+
+      it 'includes the flag value in the payload when the value is false' do
+        submission.log_conditions_evidence_metrics
+
+        expect(Rails.logger).to have_received(:info).with(
+          'Form526 conditions evidence metrics',
+          hash_including(disability_comp_conditions_evidence_messaging_test: false)
+        )
+      end
+    end
+
+    it 'rescues errors and does not raise' do
+      # Ensures a logging failure never blocks submission.
+      allow(submission.saved_claim).to receive(:parsed_form).and_raise(StandardError, 'boom')
+      allow(Rails.logger).to receive(:error)
+
+      expect { submission.log_conditions_evidence_metrics }.not_to raise_error
+      expect(Rails.logger).to have_received(:error).with(
+        "Form526ClaimsFastTrackingConcern #{submission.id} encountered an error",
+        submission_id: submission.id,
+        error_message: 'boom'
+      )
+    end
+  end
 end

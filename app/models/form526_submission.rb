@@ -94,6 +94,7 @@ class Form526Submission < ApplicationRecord
     log_max_cfi_metrics_on_submit
     log_document_type_metrics
     log_conditions_date_metrics
+    log_conditions_evidence_metrics
     start_evss_submission_job
   end
 
