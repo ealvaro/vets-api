@@ -138,6 +138,30 @@
                 "mailingAddress"
             ],
             "properties": {
+                "firstName": {
+                    "description": "Veteran's first name.",
+                    "type": ["null", "string"],
+                    "minLength": 1,
+                    "maxLength": 30,
+                    "pattern": "^([-a-zA-Z']+( ?))+$",
+                    "nullable": true
+                },
+                "middleInitial": {
+                    "description": "Veteran's middle initial.",
+                    "type": ["null", "string"],
+                    "minLength": 1,
+                    "maxLength": 1,
+                    "pattern": "^[a-zA-Z]$",
+                    "nullable": true
+                },
+                "lastName": {
+                    "description": "Veteran's last name.",
+                    "type": ["null", "string"],
+                    "minLength": 1,
+                    "maxLength": 30,
+                    "pattern": "^([-a-zA-Z']+( ?))+$",
+                    "nullable": true
+                },
                 "socialSecurityNumber": {
                     "description": "Veteran's Social Security Number (SSN)",
                     "type": ["null", "string"],
@@ -700,6 +724,13 @@
                     "allOf": [{ "$ref": "#/definitions/nullableDateYearMonthDay" }]
                 }
             }
+        },
+        "generatePdf": {
+            "description": "When true the PDF will be generated for the established claim",
+            "type": ["boolean", "null"],
+            "example": false,
+            "nullable": true,
+            "default": false
         }
     }
 }
