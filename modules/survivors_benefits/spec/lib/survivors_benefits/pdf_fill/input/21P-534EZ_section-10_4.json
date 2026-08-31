@@ -1,0 +1,9 @@
+{
+  "careExpenses": [
+    {
+      "recipient": "SURVIVING_SPOUSE",
+      "careType": "ADULT_DAYCARE",
+      "paymentFrequency": "MONTHLY"
+    }
+  ]
+}

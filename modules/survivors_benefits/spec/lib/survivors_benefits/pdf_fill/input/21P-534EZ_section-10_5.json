@@ -1,0 +1,9 @@
+{
+  "careExpenses": [
+    {
+      "recipient": "SURVIVING_SPOUSE",
+      "careType": "NURSING_HOME",
+      "paymentFrequency": "MONTHLY"
+    }
+  ]
+}
