@@ -135,7 +135,14 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
       let(:statsd_failure) { SignIn::Constants::Statsd::STATSD_SIS_DESTROY_SESSION_FAILURE }
       let(:expected_error_json) { { 'errors' => expected_error_message } }
       let(:expected_error_log) { '[SignInService] [V0::SignInController] destroy error' }
-      let(:expected_error_context) { { errors: expected_error_message, error_code: } }
+      let(:expected_error_context) do
+        { user_uuid: access_token_object.user_uuid,
+          session_handle: nil,
+          client_id: nil,
+          credential_type: nil,
+          errors: expected_error_message,
+          error_code: }
+      end
       let(:expected_error_status) { :unauthorized }
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
@@ -180,7 +187,16 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
         target_session
       end
 
-      it_behaves_like 'error response'
+      it_behaves_like 'error response' do
+        let(:expected_error_context) do
+          { user_uuid: access_token_object.user_uuid,
+            session_handle: target_session.handle,
+            client_id: target_session.client_id,
+            credential_type: target_session.user_verification.credential_type,
+            errors: expected_error_message,
+            error_code: }
+        end
+      end
 
       context 'and the target session has a companion record' do
         let!(:target_record) { create(:session_record, handle: target_session.handle) }
@@ -199,7 +215,8 @@ RSpec.describe V0::SignIn::SessionsController, type: :controller do
         {
           user_uuid: access_token_object.user_uuid,
           session_handle: target_session.handle,
-          client_id: target_session.client_id
+          client_id: target_session.client_id,
+          credential_type: target_session.user_verification.credential_type
         }
       end
       let(:expected_status) { :ok }

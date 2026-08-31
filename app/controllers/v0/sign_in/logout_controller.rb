@@ -63,6 +63,11 @@ module V0
         @csp_type ||= params[:csp_type].presence
       end
 
+      def logout_type
+        type = params[:logout_type].presence
+        ::SignIn::Constants::Auth::LOGOUT_TYPES.include?(type) ? type : nil
+      end
+
       def okta_client?
         client_id == IdentitySettings.sign_in.okta_client_id
       end
@@ -88,6 +93,7 @@ module V0
           client_id: @access_token.client_id,
           post_logout_redirect_uri:,
           csp_type:,
+          logout_type:,
           session_duration: Time.zone.now.to_i - session.created_at.to_i,
           user_uuid: @access_token.user_uuid,
           session_handle: @access_token.session_handle
@@ -97,7 +103,7 @@ module V0
       end
 
       def log_logout_error(error)
-        context = { client_id:, post_logout_redirect_uri:, csp_type: }
+        context = { client_id:, post_logout_redirect_uri:, csp_type:, logout_type: }
         sign_in_logger.error("#{logout_event} error", exception: error, context:)
         StatsD.increment(logout_failure_statsd_key)
       end

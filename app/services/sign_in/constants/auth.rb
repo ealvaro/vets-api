@@ -52,6 +52,7 @@ module SignIn
       JWT_ENCODE_ALGORITHM = 'RS256'
       LOA = [LOA_ONE = 1, LOA_THREE = 3].freeze
       LOGOUT_ROUTE_PATH = '/v0/sign_in/logout'
+      LOGOUT_TYPES = [LOGOUT_USER = 'user', LOGOUT_IDLE = 'idle'].freeze
       OPERATION_TYPES = [SIGN_UP = 'sign_up',
                          AUTHORIZE = 'authorize',
                          AUTHORIZE_SSO = 'authorize_sso',

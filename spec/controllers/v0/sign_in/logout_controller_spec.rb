@@ -46,7 +46,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
       let(:expected_error_context) do
         { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri:,
-          csp_type: nil }
+          csp_type: nil, logout_type: nil }
       end
       let(:expected_error_status) { :bad_request }
       let(:expected_error_json) { { 'errors' => expected_error_message } }
@@ -75,7 +75,7 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
       let(:expected_error_log) { '[SignInService] [V0::SignInController] logout error' }
       let(:expected_error_context) do
         { errors: expected_error_message, error_code:, client_id: client_id_value, post_logout_redirect_uri:,
-          csp_type: nil }
+          csp_type: nil, logout_type: nil }
       end
       let(:error_code) { SignIn::Constants::ErrorCode::INVALID_REQUEST }
 
@@ -127,7 +127,8 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
           client_id: access_token_object.client_id,
           session_duration: expected_session_duration,
           post_logout_redirect_uri:,
-          csp_type: nil
+          csp_type: nil,
+          logout_type: nil
         }
       end
       let(:expected_status) { :redirect }
@@ -153,6 +154,24 @@ RSpec.describe V0::SignIn::LogoutController, type: :controller do
 
       it 'triggers statsd increment for successful call' do
         expect { subject }.to trigger_statsd_increment(statsd_success)
+      end
+
+      context 'and a valid logout_type param is provided' do
+        let(:logout_params) { { client_id: client_id_value, logout_type: 'user' } }
+
+        it 'includes logout_type in the log' do
+          expect(Rails.logger).to receive(:info).with(expected_log, hash_including(logout_type: 'user'))
+          subject
+        end
+      end
+
+      context 'and an unrecognized logout_type param is provided' do
+        let(:logout_params) { { client_id: client_id_value, logout_type: 'invalid_type' } }
+
+        it 'logs logout_type as nil' do
+          expect(Rails.logger).to receive(:info).with(expected_log, hash_including(logout_type: nil))
+          subject
+        end
       end
 
       context 'and authenticated credential is Login.gov' do

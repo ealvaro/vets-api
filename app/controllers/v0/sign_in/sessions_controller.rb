@@ -28,16 +28,16 @@ module V0
         session.destroy!
         ::SignIn::SessionRecord.sign_out(session.handle)
 
-        sign_in_logger.info('destroy', destroy_session_logger_context(session))
+        sign_in_logger.info('destroy', destroy_log_context(session))
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_DESTROY_SESSION_SUCCESS)
 
         render status: :ok
       rescue ::SignIn::Errors::MalformedParamsError => e
-        sign_in_logger.error('destroy error', exception: e)
+        sign_in_logger.error('destroy error', exception: e, context: destroy_log_context(session))
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_DESTROY_SESSION_FAILURE)
         render json: { errors: e }, status: :bad_request
       rescue ::SignIn::Errors::StandardError => e
-        sign_in_logger.error('destroy error', exception: e)
+        sign_in_logger.error('destroy error', exception: e, context: destroy_log_context(session))
         StatsD.increment(::SignIn::Constants::Statsd::STATSD_SIS_DESTROY_SESSION_FAILURE)
         render json: { errors: e }, status: :unauthorized
       end
@@ -48,11 +48,12 @@ module V0
         @current_session ||= ::SignIn::OAuthSession.find_by(handle: access_token.session_handle)
       end
 
-      def destroy_session_logger_context(session)
+      def destroy_log_context(session)
         {
           user_uuid: access_token.user_uuid,
-          session_handle: session.handle,
-          client_id: session.client_id
+          session_handle: session&.handle,
+          client_id: session&.client_id,
+          credential_type: session&.user_verification&.credential_type
         }
       end
     end
