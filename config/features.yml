@@ -3659,11 +3659,6 @@ features:
     description: >-
       If enabled, SubmitCareerCounselingJob will use VANotify::V2::QueueEmailJob instead of
       VANotify::EmailJob for confirmation emails
-  va_notify_v2_next_steps_email:
-    actor_type: user
-    description: >-
-      If enabled, RepresentationManagement::V0::NextStepsEmailController will use
-      VANotify::V2::QueueEmailJob instead of VANotify::EmailJob
   va_notify_v2_persistent_attachment_remediation:
     actor_type: user
     description: >-

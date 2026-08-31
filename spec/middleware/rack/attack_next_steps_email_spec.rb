@@ -28,10 +28,7 @@ RSpec.describe 'Rack::Attack NextStepsEmail Throttling', type: :request do
     allow(Flipper).to receive(:enabled?)
       .with(:appoint_a_representative_enable_confirmation_email)
       .and_return(true)
-    allow(Flipper).to receive(:enabled?)
-      .with(:va_notify_v2_next_steps_email)
-      .and_return(false)
-    allow(VANotify::EmailJob).to receive(:perform_async)
+    allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
   end
 
   after do

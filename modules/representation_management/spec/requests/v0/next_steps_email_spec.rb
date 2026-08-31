@@ -24,10 +24,6 @@ RSpec.describe 'NextStepsEmailController', type: :request do
     end
 
     context 'When submitting all fields with valid data' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:va_notify_v2_next_steps_email).and_return(false)
-      end
-
       it 'responds with a ok status' do
         post(base_path, params:)
         expect(response).to have_http_status(:ok)
@@ -39,12 +35,11 @@ RSpec.describe 'NextStepsEmailController', type: :request do
       end
 
       it 'enqueues the email' do
-        allow(VANotify::EmailJob).to receive(:perform_async)
         allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
 
         post(base_path, params:)
 
-        expect(VANotify::EmailJob).to have_received(:perform_async).with(
+        expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
           params[:next_steps_email][:email_address],
           'appoint_a_representative_confirmation_email_template_id', # This is the actual value from the settings file
           {
@@ -58,7 +53,7 @@ RSpec.describe 'NextStepsEmailController', type: :request do
             'representative name' => 'Bob Law',
             'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
           },
-          'fake_secret',
+          'Settings.vanotify.services.va_gov.api_key',
           { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
             callback_metadata: {
               form_number: '21-22',
@@ -68,73 +63,6 @@ RSpec.describe 'NextStepsEmailController', type: :request do
               }
             } }
         )
-      end
-
-      context 'when va_notify_v2_next_steps_email is disabled' do
-        before do
-          allow(VANotify::EmailJob).to receive(:perform_async)
-        end
-
-        it 'sends email via V1 EmailJob' do
-          post(base_path, params:)
-
-          expect(VANotify::EmailJob).to have_received(:perform_async).with(
-            params[:next_steps_email][:email_address],
-            'appoint_a_representative_confirmation_email_template_id',
-            {
-              'first_name' => 'First',
-              'form name' => 'Form Name',
-              'form number' => '21-22',
-              'representative type' => 'attorney',
-              'representative name' => 'Bob Law',
-              'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
-            },
-            'fake_secret',
-            { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
-              callback_metadata: {
-                form_number: '21-22',
-                statsd_tags: {
-                  service: 'representation-management',
-                  function: 'appoint_a_representative_confirmation_email'
-                }
-              } }
-          )
-        end
-      end
-
-      context 'when va_notify_v2_next_steps_email is enabled' do
-        before do
-          allow(Flipper).to receive(:enabled?).with(:va_notify_v2_next_steps_email).and_return(true)
-          allow(VANotify::V2::QueueEmailJob).to receive(:enqueue)
-          allow(VANotify::EmailJob).to receive(:perform_async)
-        end
-
-        it 'sends email via V2 QueueEmailJob' do
-          post(base_path, params:)
-
-          expect(VANotify::V2::QueueEmailJob).to have_received(:enqueue).with(
-            params[:next_steps_email][:email_address],
-            'appoint_a_representative_confirmation_email_template_id',
-            {
-              'first_name' => 'First',
-              'form name' => 'Form Name',
-              'form number' => '21-22',
-              'representative type' => 'attorney',
-              'representative name' => 'Bob Law',
-              'representative address' => '123 Fake St Bldg 2 Suite 3 Portland, OR 97214 USA'
-            },
-            'Settings.vanotify.services.va_gov.api_key',
-            { callback_klass: 'AccreditedRepresentativePortal::EmailDeliveryStatusCallback',
-              callback_metadata: {
-                form_number: '21-22',
-                statsd_tags: {
-                  service: 'representation-management',
-                  function: 'appoint_a_representative_confirmation_email'
-                }
-              } }
-          )
-          expect(VANotify::EmailJob).not_to have_received(:perform_async)
-        end
       end
     end
 
