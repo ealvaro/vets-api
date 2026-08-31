@@ -43,6 +43,7 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
 
     allow_any_instance_of(IvcChampva::V1::ChampvaEligibilityController)
       .to receive(:eligibility_results).and_return(eligibility_results)
+    allow(StatsD).to receive(:increment)
   end
 
   describe 'POST /ivc_champva/v1/forms/champva_eligibility' do
@@ -66,6 +67,13 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
         expect(response).to have_http_status(:not_found)
         expect(response.parsed_body['error_message']).to eq('Not found')
       end
+
+      it 'increments the request metric tagged outcome:not_found' do
+        make_request
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.request', tags: ['outcome:not_found'])
+      end
     end
 
     context 'when form_uuids is missing' do
@@ -76,6 +84,13 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
 
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.parsed_body['error_message']).to eq('form_uuids must be a non-empty array')
+      end
+
+      it 'increments the request metric tagged outcome:invalid' do
+        make_request
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.request', tags: ['outcome:invalid'])
       end
     end
 
@@ -104,6 +119,15 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
         expect(result['eligibility_updated_count']).to eq(2)
         expect(form.reload.last_ves_fetch_at).to be_present
       end
+
+      it 'increments the request metric tagged outcome:success and the applications-processed count' do
+        make_request
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.request', tags: ['outcome:success'])
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.applications_processed', 1)
+      end
     end
 
     context 'when the application is rate limited' do
@@ -117,6 +141,13 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
         expect(response).to have_http_status(:too_many_requests)
         expect(response.headers['Retry-After']).to be_present
         expect(response.parsed_body['error_message']).to eq('Rate limit exceeded. Please try again later.')
+      end
+
+      it 'increments the request metric tagged outcome:rate_limited' do
+        make_request
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.request', tags: ['outcome:rate_limited'])
       end
 
       context 'when the rate limit is disabled via feature flag' do
@@ -157,6 +188,13 @@ RSpec.describe 'IvcChampva::V1::ChampvaEligibilityController', type: :request do
         expect(response).to have_http_status(:internal_server_error)
         expect(response.parsed_body['error_message']).to eq('Error: boom')
         expect(form.reload.last_ves_fetch_at).to be_present
+      end
+
+      it 'increments the request metric tagged outcome:error' do
+        make_request
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility_controller.request', tags: ['outcome:error'])
       end
     end
   end

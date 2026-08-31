@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'benefits_claims/claim_status_meta/config_loader'
+require 'ivc_champva/config_file_loader'
 
 module BenefitsClaims
   module Providers
@@ -25,6 +26,8 @@ module BenefitsClaims
             'Failed to load VES sent letter statuses',
             { message: e.message }
           )
+          StatsD.increment(::IvcChampva::ConfigFileLoader::SILENT_FAILURE_METRIC,
+                           tags: ["context:#{::IvcChampva::ConfigFileLoader.sanitize_tag_value(name)}"])
           Set.new.freeze
         end
 
@@ -87,6 +90,10 @@ module BenefitsClaims
             '[BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterActivity] ' \
             'Failed to load repeat ineligibility alert config',
             { message: e.message }
+          )
+          StatsD.increment(
+            ::IvcChampva::ConfigFileLoader::SILENT_FAILURE_METRIC,
+            tags: ["context:#{::IvcChampva::ConfigFileLoader.sanitize_tag_value("#{name}.alert_template")}"]
           )
           {}
         end

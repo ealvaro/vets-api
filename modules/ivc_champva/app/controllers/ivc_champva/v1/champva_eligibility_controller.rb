@@ -9,35 +9,60 @@ module IvcChampva
 
       RATE_LIMIT_TTL = 30.minutes
 
+      # Every request to this endpoint, tagged by how it concluded, so overall
+      # traffic and the mix of outcomes (not_found/invalid/rate_limited/success/error)
+      # are both visible -- a spike in non-success outcomes, or a drop in total volume,
+      # is what a DataDog monitor on this metric should catch.
+      REQUEST_METRIC = 'ivc_champva.eligibility_controller.request'
+      # Count of distinct applications (transaction UUIDs) actually sent to
+      # ChampvaEligibilityService per successful request.
+      APPLICATIONS_PROCESSED_METRIC = 'ivc_champva.eligibility_controller.applications_processed'
+
       # Resolves VES eligibility for the applications behind the given form UUIDs.
       # Gated by a feature flag and a per-transaction rate limit.
       def update
         Datadog::Tracing.trace('IVC Champva Forms - ChampVA Eligibility Update') do
-          return render_not_found unless feature_enabled?
+          return track_outcome('not_found') { render_not_found } unless feature_enabled?
 
           form_uuids = form_uuids_param
-          return render_invalid_form_uuids unless valid_form_uuids?(form_uuids)
+          return track_outcome('invalid') { render_invalid_form_uuids } unless valid_form_uuids?(form_uuids)
 
           transaction_uuid_map = transaction_uuid_map_for(form_uuids)
           transaction_uuids = transaction_uuid_map.keys
 
           unless rate_limit_disabled?
             retry_after = earliest_rate_limit(transaction_uuids)
-            return render_rate_limited(retry_after) if retry_after
+            return track_outcome('rate_limited') { render_rate_limited(retry_after) } if retry_after
 
             enforce_rate_limit(transaction_uuids)
           end
 
           results = eligibility_results(transaction_uuid_map)
+          StatsD.increment(APPLICATIONS_PROCESSED_METRIC, transaction_uuids.size)
 
-          render json: { data: { results:, form_uuids: } }, status: :ok
+          track_outcome('success') { render json: { data: { results:, form_uuids: } }, status: :ok }
         end
       rescue => e
         Rails.logger.error "Error in ChampVA eligibility update: #{e.message}"
-        render json: { error_message: "Error: #{e.message}" }, status: :internal_server_error
+        track_outcome('error') do
+          render json: { error_message: "Error: #{e.message}" }, status: :internal_server_error
+        end
       end
 
       private
+
+      # Increments only after the block completes, so a block that raises isn't also
+      # counted as this outcome -- e.g. a serialization error inside the 'success'
+      # render must not double-count as both outcome:success and (from the outer
+      # rescue's own track_outcome('error') call) outcome:error for the same request.
+      #
+      # @param outcome [String]
+      # @return the block's own return value
+      def track_outcome(outcome)
+        yield.tap do
+          StatsD.increment(REQUEST_METRIC, tags: ["outcome:#{outcome}"])
+        end
+      end
 
       # @return [Boolean] whether the on-demand eligibility feature is enabled for the user
       def feature_enabled?

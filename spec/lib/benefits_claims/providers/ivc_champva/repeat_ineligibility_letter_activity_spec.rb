@@ -113,6 +113,13 @@ RSpec.describe BenefitsClaims::Providers::IvcChampva::RepeatIneligibilityLetterA
         'Failed to load repeat ineligibility alert config',
         { message: 'boom' }
       )
+      # ':' is stripped from the context tag value (see ConfigFileLoader.sanitize_tag_value) --
+      # Datadog tag parsing treats ':' as the tag's own key/value separator, so Ruby's '::'
+      # module separator would otherwise fragment the tag.
+      expect(StatsD).to receive(:increment).with(
+        'ivc_champva.config_file_loader.silent_failure',
+        tags: ['context:BenefitsClaimsProvidersIvcChampvaRepeatIneligibilityLetterActivity.alert_template']
+      )
 
       expect(described_class.alert_template).to eq({})
     end

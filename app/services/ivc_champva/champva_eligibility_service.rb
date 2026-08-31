@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ves_api/client'
+require 'ivc_champva/config_file_loader'
 require 'benefits_claims/providers/ivc_champva/repeat_ineligibility_letter_activity'
 
 module IvcChampva
@@ -22,6 +23,33 @@ module IvcChampva
   #         change over time; the controller's rate limit guards against excessive
   #         requests.
   class ChampvaEligibilityService
+    STATS_KEY = 'ivc_champva.eligibility'
+    # Terminal outcome of a single #call, tagged status:success/pending/error -- 'pending'
+    # and 'error' are VES call failures that #call already rescues and turns into a normal
+    # response hash, so without this metric they're invisible outside the logs.
+    CALL_OUTCOME_METRIC = "#{STATS_KEY}.call".freeze
+    # Tagged eligible:true/false whenever an applicant's VES eligibility is persisted.
+    APPLICANT_RESOLVED_METRIC = "#{STATS_KEY}.applicant_resolved".freeze
+    # Every individual VES API call failure, tagged operation:icn_lookup/ee_summary and
+    # status:pending/error -- fires from #log_ves_error, the single point every VES rescue
+    # in this service routes through, so a per-applicant EE Summary failure (caught and
+    # skipped inside #sync_applicant_eligibility, never bubbling up to #call's rescue) is
+    # just as visible as the top-level ICN lookup failure that becomes the whole call's
+    # result. CALL_OUTCOME_METRIC only reflects the latter -- this metric is what to alert
+    # on for "a VES call failed", including failures the service otherwise absorbs and
+    # continues past.
+    VES_API_ERROR_METRIC = "#{STATS_KEY}.ves_api_error".freeze
+    # Incremented once per applicant flagged as needing additional documents.
+    DOCUMENTS_REQUESTED_METRIC = "#{STATS_KEY}.documents_requested".freeze
+    # Incremented on a successful #call when the application is older than
+    # STUCK_APPLICATION_THRESHOLD but still has an unresolved applicant. Piggybacks on
+    # this service's normal request-driven flow (the FE already calls this on-demand,
+    # e.g. whenever a user views their CST/MyVA card) rather than a separate scheduled
+    # sweep job, so a stuck application is only reported when someone actually checks
+    # it -- no added background/DB overhead for applications nobody is looking at.
+    STUCK_APPLICATION_METRIC = "#{STATS_KEY}.stuck_application".freeze
+    STUCK_APPLICATION_THRESHOLD = 30.days
+
     DOCUMENTS_REQUESTED_STATUSES_PATH =
       Rails.root.join('config', 'benefits_claims', 'ves_documents_requested_statuses.json').freeze
 
@@ -32,6 +60,8 @@ module IvcChampva
         'ChampvaEligibilityService: Failed to load VES documents requested statuses',
         { message: e.message }
       )
+      StatsD.increment(IvcChampva::ConfigFileLoader::SILENT_FAILURE_METRIC,
+                       tags: ["context:#{IvcChampva::ConfigFileLoader.sanitize_tag_value(name)}"])
       {}
     end
 
@@ -169,6 +199,8 @@ module IvcChampva
     #
     # @return [Hash]
     def success_result(applicants, names_updated_count, eligibility_updated_count)
+      StatsD.increment(CALL_OUTCOME_METRIC, tags: ['status:success'])
+      track_if_stuck(applicants)
       {
         status: 'success',
         persons: applicants.map { |applicant| person_hash(applicant) },
@@ -187,19 +219,28 @@ module IvcChampva
     # @param error [StandardError]
     # @return [Hash]
     def failure_result(status, error, level: :error)
-      log_ves_error("application #{status}", error, level:)
+      log_ves_error("application #{status}", error, operation: 'icn_lookup', level:)
+      StatsD.increment(CALL_OUTCOME_METRIC, tags: ["status:#{status}"])
       { status:, persons: [], created_count: 0, existing_count: 0, error: error.message }
     end
 
-    # Logs a VES error against this transaction at the given severity.
+    # Logs a VES error against this transaction at the given severity, and increments
+    # VES_API_ERROR_METRIC -- the single point every VES rescue in this service routes
+    # through, so every VES call failure is tracked the same way regardless of whether
+    # it terminates the whole #call (icn_lookup) or is caught and skipped per-applicant
+    # (ee_summary, see #sync_applicant_eligibility).
     #
-    # @param context [String] short description of what failed
+    # @param context [String] short description of what failed, for the log message
     # @param error [StandardError]
-    # @param level [Symbol] Rails logger severity (:info, :error, ...)
-    def log_ves_error(context, error, level: :error)
+    # @param operation [String] which VES call failed -- 'icn_lookup' or 'ee_summary'
+    # @param level [Symbol] Rails logger severity (:info, :error, ...) -- also determines
+    #   the metric's status:pending/error tag (:info => pending, anything else => error)
+    def log_ves_error(context, error, operation:, level: :error)
       Rails.logger.public_send(
         level, "ChampvaEligibilityService: #{context} for #{@transaction_uuid}: #{error.message}"
       )
+      status = level == :info ? 'pending' : 'error'
+      StatsD.increment(VES_API_ERROR_METRIC, tags: ["operation:#{operation}", "status:#{status}"])
     end
 
     # Returns the applicant records for this transaction (Step 1), querying VES only
@@ -378,10 +419,10 @@ module IvcChampva
 
       persist_eligibility(applicant, data)
     rescue IvcChampva::VesApi::VesApplicationPendingError => e
-      log_ves_error('EE summary pending', e, level: :info)
+      log_ves_error('EE summary pending', e, operation: 'ee_summary', level: :info)
       false
     rescue IvcChampva::VesApi::VesApiError => e
-      log_ves_error('EE summary error', e)
+      log_ves_error('EE summary error', e, operation: 'ee_summary')
       false
     end
 
@@ -401,6 +442,7 @@ module IvcChampva
 
       applicant.update!(eligibility_attributes(eligibility))
       persist_sponsor(eligibility)
+      StatsD.increment(APPLICANT_RESOLVED_METRIC, tags: ["eligible:#{applicant.eligible?}"])
       true
     end
 
@@ -523,6 +565,24 @@ module IvcChampva
       nil
     end
 
+    # Increments STUCK_APPLICATION_METRIC when this application was submitted longer
+    # ago than STUCK_APPLICATION_THRESHOLD but still has at least one applicant with
+    # eligibility_resolved: false -- i.e. it still shows 'claimReceived' rather than
+    # 'complete' (see BenefitsClaims::Providers::IvcChampva::ClaimBuilder.status_for).
+    #
+    # @param applicants [Array<IvcChampvaApplicant>]
+    # @return [void]
+    def track_if_stuck(applicants)
+      return if applicants.blank?
+      # Reuses the same "fully resolved" definition ClaimBuilder uses to derive the
+      # FE-visible status ('complete' vs 'claimReceived'), rather than an independent
+      # copy of that check, so this metric can't silently drift from what the FE shows.
+      return if IvcChampvaApplicant.all_resolved_for?(@transaction_uuid)
+      return if application_submitted_at.blank? || application_submitted_at > STUCK_APPLICATION_THRESHOLD.ago
+
+      StatsD.increment(STUCK_APPLICATION_METRIC)
+    end
+
     # Earliest CHAMPVA form creation time for this transaction, used as a proxy
     # for the application's submission date (no explicit submitted_at exists).
     #
@@ -592,9 +652,11 @@ module IvcChampva
     # @return [Boolean]
     def documents_requested?(status, reason)
       normalized_status = status.to_s.downcase.strip
-      return true if DOCUMENTS_REQUESTED_STATUSES.include?(normalized_status)
-
-      normalized_status.include?('ineligible') && DOCUMENTS_REQUESTED_REASONS.include?(reason.to_s.downcase.strip)
+      requested = DOCUMENTS_REQUESTED_STATUSES.include?(normalized_status) ||
+                  (normalized_status.include?('ineligible') &&
+                   DOCUMENTS_REQUESTED_REASONS.include?(reason.to_s.downcase.strip))
+      StatsD.increment(DOCUMENTS_REQUESTED_METRIC) if requested
+      requested
     end
 
     # Digs the first CHAMPVA eligibility entry out of the EE Summary response.

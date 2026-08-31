@@ -49,6 +49,7 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       allow(ves_client).to receive(:get_icns_for_transaction).with(transaction_uuid).and_return(ves_response)
       allow(ves_client).to receive(:get_ee_summary).and_return(ee_summary_response)
       allow(mpi_service).to receive(:lookup_name_by_icn).and_return(name_response)
+      allow(StatsD).to receive(:increment)
     end
 
     it 'creates applicants, backfills names, and resolves eligibility on first run' do
@@ -633,6 +634,155 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       # eligibility_updated_count is 0 on the second run.
       expect(second_result[:eligibility_updated_count]).to eq(0)
       expect(ves_client).to have_received(:get_ee_summary).with(icn: '0000001200603250V008079000000').twice
+    end
+
+    describe 'DataDog instrumentation' do
+      it 'increments the call-outcome metric tagged status:success' do
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.call', tags: ['status:success'])
+      end
+
+      it 'increments the call-outcome metric tagged status:pending when the ICN lookup is pending' do
+        allow(ves_client).to receive(:get_icns_for_transaction)
+          .with(transaction_uuid)
+          .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'still processing')
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.call', tags: ['status:pending'])
+      end
+
+      it 'increments the call-outcome metric tagged status:error when the ICN lookup errors' do
+        allow(ves_client).to receive(:get_icns_for_transaction)
+          .with(transaction_uuid)
+          .and_raise(IvcChampva::VesApi::VesApiError, 'boom')
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.call', tags: ['status:error'])
+      end
+
+      it 'increments the ves-api-error metric tagged operation:icn_lookup, status:pending on a pending ICN lookup' do
+        allow(ves_client).to receive(:get_icns_for_transaction)
+          .with(transaction_uuid)
+          .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'still processing')
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.ves_api_error', tags: ['operation:icn_lookup', 'status:pending'])
+      end
+
+      it 'increments the ves-api-error metric tagged operation:icn_lookup, status:error on an ICN lookup error' do
+        allow(ves_client).to receive(:get_icns_for_transaction)
+          .with(transaction_uuid)
+          .and_raise(IvcChampva::VesApi::VesApiError, 'boom')
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.ves_api_error', tags: ['operation:icn_lookup', 'status:error'])
+      end
+
+      it 'increments the ves-api-error metric for a per-applicant EE Summary failure, even though ' \
+         '#call as a whole still succeeds' do
+        allow(ves_client).to receive(:get_ee_summary)
+          .with(icn: '0000001200603250V008079000000')
+          .and_raise(IvcChampva::VesApi::VesApiError, 'ee summary boom')
+        allow(ves_client).to receive(:get_ee_summary)
+          .with(icn: '0000001200603251V181504000000')
+          .and_return(ee_summary_response)
+
+        result = described_class.new(transaction_uuid).call
+
+        expect(result[:status]).to eq('success')
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.ves_api_error', tags: ['operation:ee_summary', 'status:error'])
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.call', tags: ['status:success'])
+      end
+
+      it 'increments the ves-api-error metric for a pending per-applicant EE Summary lookup' do
+        allow(ves_client).to receive(:get_ee_summary)
+          .with(icn: '0000001200603250V008079000000')
+          .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'processing')
+        allow(ves_client).to receive(:get_ee_summary)
+          .with(icn: '0000001200603251V181504000000')
+          .and_return(ee_summary_response)
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.ves_api_error', tags: ['operation:ee_summary', 'status:pending'])
+      end
+
+      it 'does not increment the stuck-application metric when all applicants are resolved, ' \
+         'even if submitted long ago' do
+        IvcChampvaForm.where(transaction_uuid:).update_all(created_at: 35.days.ago) # rubocop:disable Rails/SkipsModelValidations
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).not_to have_received(:increment).with('ivc_champva.eligibility.stuck_application')
+      end
+
+      context 'when the application has an unresolved applicant' do
+        let(:ee_summary_response) { { 'vfmpProgramsInfo' => { 'relationships' => [] } } }
+
+        it 'increments the stuck-application metric once submitted longer ago than the threshold' do
+          IvcChampvaForm.where(transaction_uuid:).update_all(created_at: 35.days.ago) # rubocop:disable Rails/SkipsModelValidations
+
+          described_class.new(transaction_uuid).call
+
+          expect(StatsD).to have_received(:increment).with('ivc_champva.eligibility.stuck_application')
+        end
+
+        it 'does not increment the stuck-application metric while still within the threshold' do
+          described_class.new(transaction_uuid).call
+
+          expect(StatsD).not_to have_received(:increment).with('ivc_champva.eligibility.stuck_application')
+        end
+      end
+
+      it 'increments the applicant-resolved metric tagged eligible:true when an applicant is resolved eligible' do
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.applicant_resolved', tags: ['eligible:true']).twice
+      end
+
+      it 'increments the applicant-resolved metric tagged eligible:false when an applicant is resolved ineligible' do
+        ineligible_summary = ee_summary_response.deep_dup
+        ineligible_summary['vfmpProgramsInfo']['relationships'].first['champvaEligibilities'].first['status'] =
+          'Ineligible'
+        allow(ves_client).to receive(:get_ee_summary).and_return(ineligible_summary)
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment)
+          .with('ivc_champva.eligibility.applicant_resolved', tags: ['eligible:false']).twice
+      end
+
+      it 'increments the documents-requested metric when an applicant is flagged as needing documents' do
+        ineligible_summary = ee_summary_response.deep_dup
+        eligibility = ineligible_summary['vfmpProgramsInfo']['relationships'].first['champvaEligibilities'].first
+        eligibility['status'] = 'Ineligible'
+        eligibility['reason'] = IvcChampva::ChampvaEligibilityService::DOCUMENTS_REQUESTED_REASONS.first
+        allow(ves_client).to receive(:get_ee_summary).and_return(ineligible_summary)
+
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).to have_received(:increment).with('ivc_champva.eligibility.documents_requested').twice
+      end
+
+      it 'does not increment the documents-requested metric when documents are not needed' do
+        described_class.new(transaction_uuid).call
+
+        expect(StatsD).not_to have_received(:increment).with('ivc_champva.eligibility.documents_requested')
+      end
     end
   end
 
