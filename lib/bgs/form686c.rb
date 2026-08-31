@@ -93,7 +93,8 @@ module BGS
         veteran:,
         dependents: veteran_dependents,
         step_children: children[:step_children],
-        user: @user
+        user: @user,
+        person_cache: @person_cache
       ).create_all
     end
 

@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 require_relative 'service'
+require_relative 'person_cache'
 
 module BGS
   class VnpRelationships
-    def initialize(proc_id:, veteran:, step_children:, dependents:, user:)
-      @user = user
-      @veteran = veteran
-      @proc_id = proc_id
-      @step_children = step_children
-      @dependents = dependents
+    def initialize(options = {})
+      @user = options[:user]
+      @veteran = options[:veteran]
+      @proc_id = options[:proc_id]
+      @step_children = options[:step_children]
+      @dependents = options[:dependents]
+      @person_cache = options[:person_cache] || PersonCache.new(@user)
     end
 
     def create_all
@@ -32,13 +34,13 @@ module BGS
       end
 
       step_children.each do |step_child|
-        bgs_service.create_relationship(
+        @person_cache.create_relationship(
           vnp_relationship.params_for_686c(step_child[:guardian_particpant_id], step_child)
         )
       end
 
       step_children_parents.each do |step_child_parent|
-        bgs_service.create_relationship(
+        @person_cache.create_relationship(
           vnp_relationship.params_for_686c(@veteran[:vnp_participant_id], step_child_parent)
         )
       end
@@ -46,7 +48,7 @@ module BGS
 
     def send_vet_dependent_relationships(vet_dependents)
       vet_dependents.each do |dependent|
-        bgs_service.create_relationship(
+        @person_cache.create_relationship(
           vnp_relationship.params_for_686c(@veteran[:vnp_participant_id], dependent)
         )
       end
@@ -54,7 +56,7 @@ module BGS
 
     def send_spouse_marriage_history_relationships(spouse, spouse_marriages)
       spouse_marriages.each do |dependent|
-        bgs_service.create_relationship(
+        @person_cache.create_relationship(
           vnp_relationship.params_for_686c(spouse[:vnp_participant_id], dependent)
         )
       end

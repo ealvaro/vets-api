@@ -114,7 +114,8 @@ module BGS
         veteran:,
         dependents:,
         step_children: [],
-        user: @user
+        user: @user,
+        person_cache: @person_cache
       ).create_all
 
       dependents.each do |dependent|

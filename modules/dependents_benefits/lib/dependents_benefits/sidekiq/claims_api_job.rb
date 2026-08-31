@@ -221,7 +221,8 @@ module DependentsBenefits::Sidekiq
       ::BGS::VnpRelationships.new(
         proc_id:, veteran:, user:,
         dependents: dependents + marriages + children[:dependents] + students,
-        step_children: children[:step_children]
+        step_children: children[:step_children],
+        person_cache:
       ).create_all
     end
 

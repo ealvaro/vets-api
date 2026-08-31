@@ -104,4 +104,88 @@ RSpec.describe BGS::PersonCache do
       end
     end
   end
+
+  describe '#create_relationship' do
+    let(:relationship_params) do
+      {
+        vnp_proc_id: '1234',
+        vnp_ptcpnt_id_a: '146189',
+        vnp_ptcpnt_id_b: '149456',
+        ptcpnt_rlnshp_type_nm: 'Child',
+        family_rlnshp_type_nm: 'Biological'
+      }
+    end
+
+    context 'with no existing person' do
+      it 'calls the bgs service and does not save anything' do
+        VCR.use_cassette('bgs/vnp_relationships/create/child') do
+          expect(bgs_service).to receive(:create_relationship).and_call_original
+          result = cache.create_relationship(relationship_params)
+          expect(result[:family_rlnshp_type_nm]).to eq('Biological')
+          expect(result[:ptcpnt_rlnshp_type_nm]).to eq('Child')
+
+          internal = cache.instance_variable_get('@cache')
+          expect(internal.size).to eq(0)
+        end
+      end
+    end
+
+    context 'with a relationship cache miss' do
+      before do
+        # Seed the cache with the person, but not any relationships
+        VCR.use_cassette('bgs/service/create_person') do
+          VCR.use_cassette('bgs/service/create_participant') do
+            cache.create_person(person_params)
+          end
+        end
+      end
+
+      it 'calls the bgs service and stores the result' do
+        internal = cache.instance_variable_get('@cache')
+        expect(internal.size).to eq(1)
+
+        VCR.use_cassette('bgs/vnp_relationships/create/child') do
+          expect(bgs_service).to receive(:create_relationship).and_call_original
+          result = cache.create_relationship(relationship_params)
+          expect(result[:family_rlnshp_type_nm]).to eq('Biological')
+          expect(result[:ptcpnt_rlnshp_type_nm]).to eq('Child')
+
+          internal = cache.instance_variable_get('@cache')
+          expect(internal.size).to eq(1)
+          relationships = internal.first[1][:relationships]
+          expect(relationships).to have_key('146189-149456-Child-Biological')
+          expect(relationships['146189-149456-Child-Biological'][:vnp_ptcpnt_rlnshp_id]).to eq('78532')
+        end
+      end
+    end
+
+    context 'with a cache hit' do
+      before do
+        # Seed the cache with the person, and the relationship
+        VCR.use_cassette('bgs/service/create_person') do
+          VCR.use_cassette('bgs/service/create_participant') do
+            VCR.use_cassette('bgs/vnp_relationships/create/child') do
+              cache.create_person(person_params)
+              cache.create_relationship(relationship_params)
+            end
+          end
+        end
+      end
+
+      it 'returns the existing relationship and does not call bgs' do
+        internal = cache.instance_variable_get('@cache')
+        expect(internal.size).to eq(1)
+        relationships = internal.first[1][:relationships]
+        expect(relationships).to have_key('146189-149456-Child-Biological')
+        expect(relationships['146189-149456-Child-Biological'][:vnp_ptcpnt_rlnshp_id]).to eq('78532')
+
+        VCR.use_cassette('bgs/vnp_relationships/create/child') do
+          expect(bgs_service).not_to receive(:create_relationship).and_call_original
+          result = cache.create_relationship(relationship_params)
+          expect(result[:family_rlnshp_type_nm]).to eq('Biological')
+          expect(result[:ptcpnt_rlnshp_type_nm]).to eq('Child')
+        end
+      end
+    end
+  end
 end

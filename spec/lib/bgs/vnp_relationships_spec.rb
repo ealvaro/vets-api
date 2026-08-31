@@ -251,5 +251,84 @@ RSpec.describe BGS::VnpRelationships do
         end
       end
     end
+
+    context 'with a initialized person_cache' do
+      let(:person_cache) { BGS::PersonCache.new(user_object) }
+      let(:person_params) do
+        {
+          vnp_proc_id: '1234',
+          vnp_ptcpnt_id: nil,
+          first_nm: 'Joe',
+          middle_nm: 'P',
+          last_nm: 'Whitlock',
+          suffix_nm: nil,
+          brthdy_dt: '2026-02-05T12:00:00+00:00',
+          birth_cntry_nm: 'USA',
+          birth_state_cd: 'ID',
+          birth_city_nm: 'Nowhere',
+          file_nbr: '123456789',
+          ssn_nbr: '123456789',
+          death_dt: nil,
+          ever_maried_ind: 'N',
+          vet_ind: 'Y',
+          martl_status_type_cd: 'N',
+          vnp_srusly_dsabld_ind: 'N'
+        }
+      end
+      let(:bgs_service) { BGS::Service.new(user_object) }
+
+      before do
+        allow(BGS::Service).to receive(:new).and_return(bgs_service)
+        VCR.use_cassette('bgs/service/create_person') do
+          VCR.use_cassette('bgs/service/create_participant') do
+            person_cache.create_person(person_params)
+          end
+        end
+      end
+
+      it 'only calls the BGS api once for the same relationship' do
+        VCR.use_cassette('bgs/vnp_relationships/create/child') do
+          child = {
+            vnp_participant_id: '149456',
+            participant_relationship_type_name: 'Child',
+            family_relationship_type_name: 'Biological',
+            begin_date: nil,
+            end_date: nil,
+            event_date: nil,
+            marriage_state: nil,
+            marriage_city: nil,
+            divorce_state: nil,
+            divorce_city: nil,
+            marriage_termination_type_code: 'Death',
+            living_expenses_paid_amount: nil,
+            type: 'child'
+          }
+
+          # Same child twice. This is essentially what happens when BGS:Form686 and
+          # BGS::Form674 work independently
+          dependent_array = [child, child]
+
+          # Make sure cache has person in it
+          internal = person_cache.instance_variable_get('@cache')
+          expect(internal.size).to eq(1)
+
+          expect(bgs_service).to receive(:create_relationship).and_call_original.once
+
+          dependents = BGS::VnpRelationships.new(
+            proc_id:,
+            veteran: veteran_hash,
+            dependents: dependent_array,
+            step_children: [],
+            user: user_object,
+            person_cache:
+          ).create_all
+
+          expect(dependents.first).to include(
+            participant_relationship_type_name: 'Child',
+            family_relationship_type_name: 'Biological'
+          )
+        end
+      end
+    end
   end
 end
