@@ -51,6 +51,10 @@ ask_va_api:
     service_name: VEIS-API
     tenant_id: <%= ENV['ask_va_api__crm_api__tenant_id'] %>
     veis_api_path: eis/vagov.lob.ava/api
+  # predictive-category-initiative - Prediction Service configuration
+  prediction_service:
+    timeout: 4
+    url: <%= ENV['ask_va_api__prediction_service__url'] %>
   prefill: true
   use_mocks: false
 authorization_server_scopes_api:

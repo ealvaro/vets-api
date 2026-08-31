@@ -36,6 +36,9 @@ AskVAApi::Engine.routes.draw do
     get '/education_facilities/:id', to: 'education_facilities#show'
     get '/education_facilities/:id/children', to: 'education_facilities#children'
 
+    # predictive-category-initiative
+    post '/predict/category', to: 'predictions#category'
+
     # diagnostics (non-production only)
     get '/diagnostics', to: 'diagnostics#show' unless Settings.vsp_environment.to_s == 'production'
   end

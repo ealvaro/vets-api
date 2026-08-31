@@ -165,6 +165,15 @@
         :uid_locator: '\/eis\/api\/btsss\/travelclaim\/api\/v1\/expenses\/airtravel\/(.+)'
       :response_delay: 0.3
 
+# Ask VA Prediction Service #predictive-category-initiative
+- :name: "Ask VA Prediction Service"
+  :base_uri: "<%= URI(Settings.ask_va_api.prediction_service.url).host %>:<%= URI(Settings.ask_va_api.prediction_service.url).port %>"
+  :endpoints:
+    - :method: :post
+      :path: "/predictions/category"
+      :file_path: "/ask_va/predictions/category/default"
+      :response_delay: 0.5
+
 #CRM Token post
 - :name: "CRM VEIS Auth Service"
   :base_uri: <%= "#{URI(Settings.ask_va_api.crm_api.auth_url).host}:#{URI(Settings.ask_va_api.crm_api.auth_url).port}" %>

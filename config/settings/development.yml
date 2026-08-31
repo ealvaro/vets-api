@@ -51,6 +51,9 @@ ask_va_api:
     service_name: VEIS-API
     tenant_id: abcdefgh-1234-5678-12345-11e8b8ce491e
     veis_api_path: eis/vagov.lob.ava/api
+  prediction_service:
+    timeout: 4
+    url: http://askva-prediction-service-api.askva-prediction-service-api.svc.cluster.local:8120
   prefill: true
   use_mocks: false
 authorization_server_scopes_api:
