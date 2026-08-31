@@ -175,20 +175,7 @@ module PDFUtilities
 
       stamped_pdf = "#{Common::FileHelpers.random_file_path}.pdf"
 
-      reader = PDF::Reader.new(stamp_path)
-      pages = multistamp ? [*1..reader.page_count].join(',') : '1'
-
-      begin
-        Timeout.timeout(HEXAPDF_TIMEOUT, HexaPDF::Error, "HexaPDF watermark timed out after #{HEXAPDF_TIMEOUT}s") do
-          hexa_stamping(stamp_path, pages, pdf_path, stamped_pdf)
-        end
-      rescue HexaPDF::Error => e
-        raise unless Flipper.enabled?(:enable_pdf_stamper_pdftk_fallback)
-
-        report_error_stats(e)
-
-        pdftk_stamping(pdf_path, stamp_path, stamped_pdf)
-      end
+      apply_stamp(pdf_path, stamp_path, stamped_pdf)
 
       raise StampGenerationError, 'Stamped PDF was not created' unless File.exist?(stamped_pdf)
 
@@ -199,6 +186,27 @@ module PDFUtilities
     rescue => e
       Common::FileHelpers.delete_file_if_exists(stamped_pdf)
       log_and_raise_error('Failed to generate stamp', e, STATS_KEY)
+    end
+
+    # watermarks the source pdf with the generated stamp, falling back to pdftk when HexaPDF
+    # fails or times out (see HEXAPDF_TIMEOUT)
+    #
+    # @param pdf_path [String] path to the source pdf being stamped
+    # @param stamp_path [String] path to the generated stamp/background pdf
+    # @param stamped_pdf [String] path the merged, stamped pdf will be written to
+    def apply_stamp(pdf_path, stamp_path, stamped_pdf)
+      reader = PDF::Reader.new(stamp_path)
+      pages = multistamp ? [*1..reader.page_count].join(',') : '1'
+
+      Timeout.timeout(HEXAPDF_TIMEOUT, HexaPDF::Error, "HexaPDF watermark timed out after #{HEXAPDF_TIMEOUT}s") do
+        hexa_stamping(stamp_path, pages, pdf_path, stamped_pdf)
+      end
+    rescue HexaPDF::Error => e
+      raise unless Flipper.enabled?(:enable_pdf_stamper_pdftk_fallback)
+
+      report_error_stats(e)
+
+      pdftk_stamping(pdf_path, stamp_path, stamped_pdf)
     end
 
     # merges the stamp onto the source pdf by invoking HexaPDF's watermark CLI in-process
