@@ -206,9 +206,9 @@ describe 'sm client' do
           VCR.use_cassette('sm_client/get_unique_care_systems') do
             collection = client.get_all_triage_teams('1234')
 
-            # VCR cassette has station 979, which should be converted to 552 in non-prod
+            # VCR cassette has station 979, which should be converted to 660 in non-prod
             team = collection.data.find { |t| t.triage_team_id == 4_399_547 }
-            expect(team.station_number).to eq('552')
+            expect(team.station_number).to eq('660')
           end
         end
       end
@@ -251,9 +251,9 @@ describe 'sm client' do
           VCR.use_cassette('sm_client/get_unique_care_systems') do
             collection = client.get_all_triage_teams('1234')
 
-            # Station 979 → 552 gets NON_PROD_SYSTEM_NAMES override
+            # Station 979 → 660 gets NON_PROD_SYSTEM_NAMES override
             team = collection.data.find { |t| t.triage_team_id == 4_399_547 }
-            expect(team.health_care_system_name).to eq('VA Dayton health care')
+            expect(team.health_care_system_name).to eq('VA Salt Lake City health care')
           end
         end
       end
@@ -265,7 +265,7 @@ describe 'sm client' do
 
             cached_data = TriageTeamCache.get_cached('1234-all-triage-teams-station-numbers')
             cached_team = cached_data.find { |t| t.triage_team_id == 4_399_547 }
-            expect(cached_team.station_number).to eq('552')
+            expect(cached_team.station_number).to eq('660')
           end
         end
       end

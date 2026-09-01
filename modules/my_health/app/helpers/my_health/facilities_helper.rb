@@ -18,8 +18,8 @@ module MyHealth
     }.freeze
 
     NON_PROD_SYSTEM_NAMES = {
-      '979' => 'VA Dayton health care',
-      '989' => 'VA Cheyenne health care'
+      '979' => 'VA Salt Lake City health care',
+      '989' => 'VA Dayton health care'
     }.freeze
 
     def set_health_care_system_names(all_triage_teams_collection)
@@ -51,9 +51,9 @@ module MyHealth
 
       case id
       when '979'
-        '552'
+        '660'
       when '989'
-        '442'
+        '552'
       else
         id
       end

@@ -32,7 +32,7 @@ RSpec.describe MyHealth::FacilitiesHelper do
         allow(Settings).to receive(:hostname).and_return('staging-api.va.gov')
       end
 
-      it 'converts station 979 to 552 and applies non-prod name override' do
+      it 'converts station 979 to 660 and applies non-prod name override' do
         collection = build_collection([
                                         { triage_team_id: 1, name: 'Team A', station_number: '979' }
                                       ])
@@ -40,11 +40,11 @@ RSpec.describe MyHealth::FacilitiesHelper do
         described_class.set_health_care_system_names(collection)
 
         team = collection.records.first
-        expect(team.station_number).to eq('552')
-        expect(team.health_care_system_name).to eq('VA Dayton health care')
+        expect(team.station_number).to eq('660')
+        expect(team.health_care_system_name).to eq('VA Salt Lake City health care')
       end
 
-      it 'converts station 989 to 442 and applies non-prod name override' do
+      it 'converts station 989 to 552 and applies non-prod name override' do
         collection = build_collection([
                                         { triage_team_id: 1, name: 'Team A', station_number: '989' }
                                       ])
@@ -52,8 +52,8 @@ RSpec.describe MyHealth::FacilitiesHelper do
         described_class.set_health_care_system_names(collection)
 
         team = collection.records.first
-        expect(team.station_number).to eq('442')
-        expect(team.health_care_system_name).to eq('VA Cheyenne health care')
+        expect(team.station_number).to eq('552')
+        expect(team.health_care_system_name).to eq('VA Dayton health care')
       end
 
       it 'applies non-prod override even when API provides a health_care_system_name' do
@@ -65,7 +65,7 @@ RSpec.describe MyHealth::FacilitiesHelper do
         described_class.set_health_care_system_names(collection)
 
         team = collection.records.first
-        expect(team.health_care_system_name).to eq('VA Dayton health care')
+        expect(team.health_care_system_name).to eq('VA Salt Lake City health care')
       end
     end
 
@@ -178,8 +178,8 @@ RSpec.describe MyHealth::FacilitiesHelper do
         teams = collection.records
         expect(teams[0].station_number).to eq('528')
         expect(teams[0].health_care_system_name).to eq('VA New York State Healthcare (multiple facilities)')
-        expect(teams[1].station_number).to eq('552')
-        expect(teams[1].health_care_system_name).to eq('VA Dayton health care')
+        expect(teams[1].station_number).to eq('660')
+        expect(teams[1].health_care_system_name).to eq('VA Salt Lake City health care')
         expect(teams[2].station_number).to eq('520')
         expect(teams[2].health_care_system_name).to eq('VA Gulf Coast health care')
       end
@@ -204,12 +204,12 @@ RSpec.describe MyHealth::FacilitiesHelper do
     context 'in non-prod' do
       before { allow(Settings).to receive(:hostname).and_return('staging-api.va.gov') }
 
-      it 'converts 979 to 552' do
-        expect(described_class.convert_non_prod_id('979')).to eq('552')
+      it 'converts 979 to 660' do
+        expect(described_class.convert_non_prod_id('979')).to eq('660')
       end
 
-      it 'converts 989 to 442' do
-        expect(described_class.convert_non_prod_id('989')).to eq('442')
+      it 'converts 989 to 552' do
+        expect(described_class.convert_non_prod_id('989')).to eq('552')
       end
 
       it 'returns other IDs unchanged' do
@@ -232,12 +232,12 @@ RSpec.describe MyHealth::FacilitiesHelper do
     context 'with non-staging non-prod hostname' do
       before { allow(Settings).to receive(:hostname).and_return('dev-api.va.gov') }
 
-      it 'still converts 979 to 552' do
-        expect(described_class.convert_non_prod_id('979')).to eq('552')
+      it 'still converts 979 to 660' do
+        expect(described_class.convert_non_prod_id('979')).to eq('660')
       end
 
-      it 'still converts 989 to 442' do
-        expect(described_class.convert_non_prod_id('989')).to eq('442')
+      it 'still converts 989 to 552' do
+        expect(described_class.convert_non_prod_id('989')).to eq('552')
       end
     end
   end
@@ -266,7 +266,7 @@ RSpec.describe MyHealth::FacilitiesHelper do
 
       it 'converts all non-prod IDs in the array' do
         result = described_class.convert_non_prod_ids(%w[979 989 528])
-        expect(result).to eq(%w[552 442 528])
+        expect(result).to eq(%w[660 552 528])
       end
 
       it 'returns empty array when given empty array' do
