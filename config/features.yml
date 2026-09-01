@@ -3212,6 +3212,12 @@ features:
   vre_send_icn_to_res:
     actor_type: user
     description: Enables sending ICN to RES service
+  vre_step_7_changes:
+    actor_type: user
+    description: Enables step 7 changes for the track-your-vre-benefits application
+  vre_28_1900_ui_changes:
+    actor_type: user
+    description: Enables UI changes for form 28-1900
   priority_processing_request_apply_vsi_flash:
     actor_type: user
     description: Enables VSI (Very Seriously Injured) flash functionality for form 20-10207 submissions
