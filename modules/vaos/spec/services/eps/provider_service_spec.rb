@@ -295,6 +295,41 @@ describe Eps::ProviderService do
       end
     end
 
+    # The id lookup is paginated by the same nextToken contract as the location search, so a
+    # request for more ids than fit on one page has to follow the token or it drops providers.
+    context 'when the id lookup spans multiple pages' do
+      before do
+        allow(config).to receive(:pagination_timeout_seconds).and_return(45)
+        allow(service).to receive(:perform).and_return(
+          double('Page1', status: 200,
+                          body: { count: 1, provider_services: [{ id: 'provider1' }],
+                                  next_token: 'token-page-2' },
+                          response_headers: {}),
+          double('Page2', status: 200,
+                          body: { count: 1, provider_services: [{ id: 'provider2' }] },
+                          response_headers: {})
+        )
+      end
+
+      it 'aggregates providers across pages and reports the combined count' do
+        result = service.get_provider_services_by_ids(provider_ids:)
+
+        expect(result[:provider_services].pluck(:id)).to eq(%w[provider1 provider2])
+        expect(result[:count]).to eq(2)
+      end
+
+      it 'drops the id query string on follow-up pages in favor of the token alone' do
+        service.get_provider_services_by_ids(provider_ids:)
+
+        expect(service).to have_received(:perform).with(
+          :get, '/api/v1/provider-services?id=provider1&id=provider2', {}, headers
+        ).ordered
+        expect(service).to have_received(:perform).with(
+          :get, '/api/v1/provider-services', { nextToken: 'token-page-2' }, headers
+        ).ordered
+      end
+    end
+
     context 'when the request fails' do
       let(:response) { double('Response', status: 500, body: 'Unknown service exception') }
       let(:exception) do
@@ -707,14 +742,6 @@ describe Eps::ProviderService do
   describe '#search_provider_services' do
     let(:npi) { '7894563210' }
     let(:specialty) { 'Cardiology' }
-    let(:address) do
-      {
-        street1: '1105 Palmetto Ave',
-        city: 'Melbourne',
-        state: 'FL',
-        zip: '32901'
-      }
-    end
 
     context 'when required parameters are missing or blank' do
       it 'raises ArgumentError and logs personal information when npi is nil' do
@@ -727,19 +754,19 @@ describe Eps::ProviderService do
         )
 
         expect do
-          service.search_provider_services(npi: nil, specialty:, address:)
+          service.search_provider_services(npi: nil, specialty:)
         end.to raise_error(ArgumentError, 'Provider NPI is required and cannot be blank')
       end
 
       it 'raises ArgumentError when npi is empty string' do
         expect do
-          service.search_provider_services(npi: '', specialty:, address:)
+          service.search_provider_services(npi: '', specialty:)
         end.to raise_error(ArgumentError, 'Provider NPI is required and cannot be blank')
       end
 
       it 'raises ArgumentError when npi is blank' do
         expect do
-          service.search_provider_services(npi: '   ', specialty:, address:)
+          service.search_provider_services(npi: '   ', specialty:)
         end.to raise_error(ArgumentError, 'Provider NPI is required and cannot be blank')
       end
 
@@ -753,41 +780,20 @@ describe Eps::ProviderService do
         )
 
         expect do
-          service.search_provider_services(npi:, specialty: nil, address:)
+          service.search_provider_services(npi:, specialty: nil)
         end.to raise_error(ArgumentError, 'Provider specialty is required and cannot be blank')
       end
 
       it 'raises ArgumentError when specialty is empty string' do
         expect do
-          service.search_provider_services(npi:, specialty: '', address:)
+          service.search_provider_services(npi:, specialty: '')
         end.to raise_error(ArgumentError, 'Provider specialty is required and cannot be blank')
       end
 
       it 'raises ArgumentError when specialty is blank' do
         expect do
-          service.search_provider_services(npi:, specialty: '   ', address:)
+          service.search_provider_services(npi:, specialty: '   ')
         end.to raise_error(ArgumentError, 'Provider specialty is required and cannot be blank')
-      end
-
-      it 'raises ArgumentError and logs personal information when address is nil' do
-        expect(PersonalInformationLog).to receive(:create).with(
-          error_class: 'eps_provider_address_missing',
-          data: hash_including(
-            npi:,
-            search_params: hash_including(specialty:),
-            failure_reason: 'Address parameter is blank'
-          )
-        )
-
-        expect do
-          service.search_provider_services(npi:, specialty:, address: nil)
-        end.to raise_error(ArgumentError, 'Provider address is required and cannot be blank')
-      end
-
-      it 'raises ArgumentError when address is empty hash' do
-        expect do
-          service.search_provider_services(npi:, specialty:, address: {})
-        end.to raise_error(ArgumentError, 'Provider address is required and cannot be blank')
       end
     end
 
@@ -821,7 +827,7 @@ describe Eps::ProviderService do
             )
           )
 
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
         end
       end
@@ -852,7 +858,7 @@ describe Eps::ProviderService do
             )
           )
 
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
         end
       end
@@ -877,7 +883,7 @@ describe Eps::ProviderService do
         end
 
         it 'returns nil' do
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
         end
       end
@@ -940,7 +946,7 @@ describe Eps::ProviderService do
             )
           )
 
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
           expected_controller_name = 'VAOS::V2::AppointmentsController'
           expected_station_number = user.va_treatment_facility_ids&.first
@@ -976,7 +982,7 @@ describe Eps::ProviderService do
         end
 
         it 'returns the provider' do
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_a(OpenStruct)
           expect(result.id).to eq('provider123')
         end
@@ -1014,7 +1020,7 @@ describe Eps::ProviderService do
             'api.vaos.provider_service.no_self_schedulable',
             tags: ['service:community_care_appointments']
           )
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
           expected_controller_name = 'VAOS::V2::AppointmentsController'
           expected_station_number = user.va_treatment_facility_ids&.first
@@ -1062,7 +1068,7 @@ describe Eps::ProviderService do
             'api.vaos.provider_service.no_self_schedulable',
             tags: ['service:community_care_appointments']
           )
-          result = service.search_provider_services(npi:, specialty:, address:)
+          result = service.search_provider_services(npi:, specialty:)
           expect(result).to be_nil
           expected_controller_name = 'VAOS::V2::AppointmentsController'
           expected_station_number = user.va_treatment_facility_ids&.first
@@ -1079,15 +1085,6 @@ describe Eps::ProviderService do
       end
 
       context 'when multiple self-schedulable providers exist' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
         let(:response_body) do
           {
             count: 2,
@@ -1118,122 +1115,13 @@ describe Eps::ProviderService do
         end
 
         it 'returns the first matching provider' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
+          result = service.search_provider_services(npi:, specialty: 'Cardiology')
           expect(result).to be_a(OpenStruct)
           expect(result.id).to eq('provider1')
         end
       end
 
-      # New comprehensive tests for specialty and address matching
-      context 'when both specialty and address match perfectly' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 1,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-        end
-
-        it 'returns the matching provider' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('provider123')
-        end
-      end
-
-      context 'when specialty matches but address does not' do
-        let(:non_matching_address) do
-          {
-            street1: '123 Different Street',
-            city: 'COLUMBUS',
-            state: 'Ohio',
-            zip: '43201'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'returns nil, logs warning, and logs personal information' do
-          expect(PersonalInformationLog).to receive(:create).with(
-            error_class: 'eps_provider_address_mismatch',
-            data: hash_including(
-              npi:,
-              search_params: hash_including(specialty_matches_count: 2),
-              failure_reason: match(/No address match found among 2 specialty-matched providers/)
-            )
-          )
-
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: non_matching_address)
-          expect(result).to be_nil
-          expect(Rails.logger).to have_received(:warn).with(
-            'Community Care Appointments: No address match found among 2 provider(s) for NPI',
-            hash_including(
-              specialty_matches_count: 2
-            )
-          )
-        end
-      end
-
       context 'when specialty matching is case-insensitive' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
         let(:response_body) do
           {
             count: 1,
@@ -1258,550 +1146,9 @@ describe Eps::ProviderService do
         end
 
         it 'matches specialty regardless of case' do
-          result = service.search_provider_services(npi:, specialty: 'cardiology', address: matching_address)
+          result = service.search_provider_services(npi:, specialty: 'cardiology')
           expect(result).to be_a(OpenStruct)
           expect(result.id).to eq('provider123')
-        end
-      end
-
-      context 'when address has zip+4 vs 5-digit zip' do
-        let(:zip_5_digit_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 1,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-        end
-
-        it 'matches 5-digit zip against zip+4' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: zip_5_digit_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('provider123')
-        end
-      end
-
-      context 'when zip code does not match' do
-        let(:different_zip_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '43201'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'returns nil' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: different_zip_address)
-          expect(result).to be_nil
-        end
-      end
-
-      context 'when street address does not match' do
-        let(:different_street_address) do
-          {
-            street1: '999 Different Street',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'returns nil and logs partial match warning' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: different_street_address)
-          expect(result).to be_nil
-          expect(Rails.logger).to have_received(:warn).with(
-            'Community Care Appointments: Provider address partial match',
-            hash_including(
-              street_matches: false,
-              zip_matches: true
-            )
-          )
-        end
-      end
-
-      context 'when multiple providers match specialty and address validation is performed' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'returns the provider with matching address' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('provider123')
-        end
-      end
-
-      context 'when multiple providers match specialty but none match address' do
-        let(:non_matching_address) do
-          {
-            street1: '999 Nowhere Street',
-            city: 'TOLEDO',
-            state: 'Ohio',
-            zip: '43604'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'returns nil and logs warning' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: non_matching_address)
-          expect(result).to be_nil
-          expect(Rails.logger).to have_received(:warn).with(
-            'Community Care Appointments: No address match found among 2 provider(s) for NPI',
-            hash_including(
-              specialty_matches_count: 2
-            )
-          )
-        end
-      end
-
-      context 'when provider has missing address components' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 1,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: 'Incomplete Address'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:info)
-        end
-
-        it 'returns the provider when it is the only specialty match, regardless of address parsing' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('provider123')
-        end
-
-        it 'logs that address validation was skipped' do
-          service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(Rails.logger).to have_received(:info)
-            .with('Single specialty match found for NPI, skipping address validation')
-        end
-      end
-
-      # Test cases for zip code extraction with street addresses containing 5-digit numbers
-      context 'when handling zip code extraction with various address formats' do
-        let(:response_body) do
-          {
-            count: 3,
-            provider_services: [
-              self_schedulable_provider(
-                id: 'provider1',
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848, US' # 4-digit street, zip+4
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider2',
-                location: {
-                  address: '16011 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848' # 5-digit street, zip+4
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider3',
-                location: {
-                  address: '16011 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414, US' # 5-digit street, 5-digit zip
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-        end
-
-        context 'when matching against 4-digit street address with zip+4' do
-          let(:matching_address) do
-            {
-              street1: '1601 NEEDMORE RD ; STE 1 & 2',
-              city: 'DAYTON',
-              state: 'Ohio',
-              zip: '45414'
-            }
-          end
-
-          it 'correctly extracts zip code ignoring street number' do
-            result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-            expect(result).to be_a(OpenStruct)
-            expect(result.id).to eq('provider1')
-          end
-        end
-
-        context 'when matching against 5-digit street address with zip+4' do
-          let(:matching_address) do
-            {
-              street1: '16011 NEEDMORE RD ; STE 1 & 2',
-              city: 'DAYTON',
-              state: 'Ohio',
-              zip: '45414'
-            }
-          end
-
-          it 'correctly extracts last zip code, not street number' do
-            result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-            expect(result).to be_a(OpenStruct)
-            expect(result.id).to eq('provider2')
-          end
-        end
-
-        context 'when matching against 5-digit street address with 5-digit zip' do
-          let(:matching_address) do
-            {
-              street1: '16011 NEEDMORE RD ; STE 1 & 2',
-              city: 'DAYTON',
-              state: 'Ohio',
-              zip: '45414'
-            }
-          end
-
-          it 'correctly extracts last zip code, not street number' do
-            result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-            expect(result).to be_a(OpenStruct)
-            # Both provider2 and provider3 have same street and same zip, so either could match
-            expect(result.id).to be_in(%w[provider2 provider3])
-          end
-        end
-
-        context 'when street number matches but zip does not' do
-          let(:non_matching_address) do
-            {
-              street1: '16011 NEEDMORE RD ; STE 1 & 2',
-              city: 'DAYTON',
-              state: 'Ohio',
-              zip: '43201' # Different zip
-            }
-          end
-
-          before do
-            allow(Rails.logger).to receive(:warn)
-          end
-
-          it 'does not match against street number' do
-            result = service.search_provider_services(npi:, specialty: 'Cardiology', address: non_matching_address)
-            expect(result).to be_nil
-          end
-        end
-
-        context 'when street address contains zip+4 format number' do
-          let(:response_body) do
-            {
-              count: 1,
-              provider_services: [
-                self_schedulable_provider(
-                  id: 'provider_extreme',
-                  location: {
-                    # Extreme case: street address has 45414-3333 format, but actual zip is 12345
-                    address: '45414-3333 FAKE STREET, COLUMBUS, OH 12345-6789, US'
-                  }
-                )
-              ]
-            }
-          end
-          let(:matching_address) do
-            {
-              street1: '45414-3333 FAKE STREET',
-              city: 'COLUMBUS',
-              state: 'Ohio',
-              zip: '12345' # Should match the LAST zip code (12345), not the street number (45414)
-            }
-          end
-          let(:response) do
-            double('Response', status: 200, body: response_body,
-                               response_headers: { 'Content-Type' => 'application/json' })
-          end
-
-          before do
-            allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          end
-
-          it 'extracts actual zip code, not zip-like street number' do
-            result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-            expect(result).to be_a(OpenStruct)
-            expect(result.id).to eq('provider_extreme')
-          end
-        end
-      end
-
-      context 'when only one provider matches specialty' do
-        let(:any_address) do
-          {
-            street1: '999 Different Street',
-            city: 'TOLEDO',
-            state: 'Ohio',
-            zip: '43604'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 1,
-            provider_services: [
-              self_schedulable_provider(
-                id: 'single_provider',
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:info)
-        end
-
-        it 'returns the provider without address validation' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: any_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('single_provider')
-        end
-
-        it 'logs that address validation was skipped' do
-          service.search_provider_services(npi:, specialty: 'Cardiology', address: any_address)
-          expect(Rails.logger).to have_received(:info)
-            .with('Single specialty match found for NPI, skipping address validation')
-        end
-
-        it 'returns provider even when address does not match' do
-          non_matching_address = {
-            street1: '999 Nowhere Street',
-            city: 'TOLEDO',
-            state: 'Ohio',
-            zip: '43604'
-          }
-
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: non_matching_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('single_provider')
-        end
-      end
-
-      context 'when multiple providers match specialty' do
-        let(:matching_address) do
-          {
-            street1: '1601 NEEDMORE RD ; STE 1 & 2',
-            city: 'DAYTON',
-            state: 'Ohio',
-            zip: '45414'
-          }
-        end
-
-        let(:response_body) do
-          {
-            count: 2,
-            provider_services: [
-              self_schedulable_provider(
-                location: {
-                  address: '1601 NEEDMORE RD ; STE 1 & 2, DAYTON, OH 45414-3848'
-                }
-              ),
-              self_schedulable_provider(
-                id: 'provider456',
-                location: {
-                  address: '2200 Oak Street, COLUMBUS, OH 43201-1234'
-                }
-              )
-            ]
-          }
-        end
-
-        let(:response) do
-          double('Response', status: 200, body: response_body,
-                             response_headers: { 'Content-Type' => 'application/json' })
-        end
-
-        before do
-          allow_any_instance_of(VAOS::SessionService).to receive(:perform).and_return(response)
-          allow(Rails.logger).to receive(:warn)
-        end
-
-        it 'performs address validation and returns matching provider' do
-          result = service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(result).to be_a(OpenStruct)
-          expect(result.id).to eq('provider123')
-        end
-
-        it 'does not log single match message when multiple providers exist' do
-          allow(Rails.logger).to receive(:info)
-          service.search_provider_services(npi:, specialty: 'Cardiology', address: matching_address)
-          expect(Rails.logger).not_to have_received(:info)
-            .with('Single specialty match found for NPI, skipping address validation')
         end
       end
     end
@@ -1817,7 +1164,7 @@ describe Eps::ProviderService do
       end
 
       it 'raises an error' do
-        expect { service.search_provider_services(npi:, specialty:, address:) }
+        expect { service.search_provider_services(npi:, specialty:) }
           .to raise_error(Common::Exceptions::BackendServiceException, /VA900/)
       end
     end
@@ -1892,6 +1239,125 @@ describe Eps::ProviderService do
       )
 
       expect(result.map { |p| p[:id] }).to eq(['provider-self-urology'])
+    end
+
+    # Wellhive paginates ProviderServiceSearchResult via nextToken. Reading only the first
+    # page silently dropped providers from any search whose results spilled past it.
+    context 'when the result set spans multiple pages' do
+      let(:first_page) do
+        {
+          provider_services: [
+            { id: 'page1-provider', specialties: [{ name: 'Urology' }],
+              features: { is_digital: true, direct_booking: { is_enabled: true } } }
+          ],
+          next_token: 'token-page-2'
+        }
+      end
+      let(:second_page) do
+        {
+          provider_services: [
+            { id: 'page2-provider', specialties: [{ name: 'Urology' }],
+              features: { is_digital: true, direct_booking: { is_enabled: true } } }
+          ]
+        }
+      end
+
+      # Stubbed on the service instance rather than via allow_any_instance_of: RSpec's
+      # any_instance support is not designed for several expectations on one method, and
+      # this context needs to assert on the arguments of two successive perform calls.
+      before do
+        allow(config).to receive(:pagination_timeout_seconds).and_return(45)
+        allow(service).to receive(:perform).and_return(
+          double('Page1', status: 200, body: first_page, response_headers: {}),
+          double('Page2', status: 200, body: second_page, response_headers: {})
+        )
+      end
+
+      it 'follows nextToken and returns providers from every page' do
+        result = perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+
+        expect(result.map { |p| p[:id] }).to eq(%w[page1-provider page2-provider])
+      end
+
+      it 'sends the token alone on follow-up pages, since Wellhive ignores other params' do
+        perform_search(coordinates: { latitude: '28.08', longitude: '-80.6' }, radius: 30)
+
+        expect(service).to have_received(:perform).with(
+          :get, '/api/v1/provider-services', hash_including(nearLocation: '28.08,-80.6'), headers
+        ).ordered
+        expect(service).to have_received(:perform).with(
+          :get, '/api/v1/provider-services', { nextToken: 'token-page-2' }, headers
+        ).ordered
+      end
+
+      it 'stops paginating once a page comes back without a token' do
+        perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+
+        expect(service).to have_received(:perform).twice
+      end
+
+      # A Wellhive bug that returned a cycling nextToken would otherwise spend the whole
+      # 45s timeout window firing requests at a partner API.
+      context 'when every page keeps returning a token' do
+        before do
+          allow(service).to receive(:perform).and_return(
+            double('Page', status: 200, body: first_page, response_headers: {})
+          )
+        end
+
+        it 'stops at the page cap instead of looping until the timeout' do
+          perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+
+          expect(service).to have_received(:perform).exactly(described_class::MAX_SEARCH_PAGES).times
+        end
+
+        it 'logs and counts the truncation rather than truncating silently' do
+          perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+
+          expect(Rails.logger).to have_received(:warn).with(
+            /pagination hit page cap/, hash_including(max_pages: described_class::MAX_SEARCH_PAGES)
+          )
+          expect(StatsD).to have_received(:increment)
+            .with(described_class::PROVIDER_SEARCH_PAGE_CAP_METRIC, anything)
+        end
+      end
+
+      # The page cap bounds how many requests a search makes, not how long they take: 20
+      # slow pages can still hold the request open well past the window slots pagination
+      # has always been held to. Checked between pages only, so the first page is never
+      # cut short and a single-page search never touches the timeout at all.
+      context 'when pagination runs past the timeout window' do
+        before do
+          allow(service).to receive(:perform) do
+            Timecop.travel(46.seconds)
+            double('Page', status: 200, body: first_page, response_headers: {})
+          end
+        end
+
+        it 'raises PROVIDER_SEARCH_TIMEOUT rather than fetching another page' do
+          Timecop.freeze(Time.zone.parse('2024-01-01 12:00:00')) do
+            expect do
+              perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+            end.to raise_error(Common::Exceptions::BackendServiceException) { |error|
+              expect(error.key).to eq('PROVIDER_SEARCH_TIMEOUT')
+            }
+
+            expect(service).to have_received(:perform).once
+          end
+        end
+
+        it 'logs the timeout with the configured window' do
+          Timecop.freeze(Time.zone.parse('2024-01-01 12:00:00')) do
+            expect do
+              perform_search(coordinates: { latitude: 28.08, longitude: -80.6 }, radius: 30)
+            end.to raise_error(Common::Exceptions::BackendServiceException)
+          end
+
+          expect(Rails.logger).to have_received(:error).with(
+            /Provider services pagination timeout/, hash_including(timeout_seconds: 45)
+          )
+        end
+      end
     end
 
     it 'returns self-schedulable providers when specialty is not provided' do

@@ -176,8 +176,12 @@ module VAOS
           :provider_service_id,
           :slot_id,
           :comment,
+          # +gender+ and +sex+ are both accepted: Wellhive's submit payload names this
+          # field +sex+, while its +features.directBooking.requiredFields+ list calls the
+          # same thing "gender". The FE sends +gender+, so both are permitted here and
+          # normalized to the documented +sex+ in Eps::AppointmentService.
           additional_patient_attributes: [
-            :phone, :email, :birth_date, :gender,
+            :phone, :email, :birth_date, :gender, :sex,
             { name: [:family, { given: [] }] },
             { address: [:type, :city, :state, :country, :postal_code, { line: [] }] }
           ]

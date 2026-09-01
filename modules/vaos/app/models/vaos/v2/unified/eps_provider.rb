@@ -94,12 +94,7 @@ module VAOS
         end
 
         def self.extract_phone(provider)
-          contacts = provider[:contact_details]
-          return nil if contacts.blank?
-
-          phone_contact = contacts.find { |c| c[:system] == 'phone' && c[:use] == 'for_patient' }
-          phone_contact ||= contacts.find { |c| c[:system] == 'phone' }
-          phone_contact&.dig(:value)
+          Eps::ContactPoint.phone_number(provider[:contact_details])
         end
 
         def self.extract_npi(provider)

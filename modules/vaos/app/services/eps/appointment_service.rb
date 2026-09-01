@@ -2,6 +2,10 @@
 
 module Eps
   class AppointmentService < BaseService
+    # The only values Wellhive's AppointmentPatientAttributes.sex enum accepts.
+    # See https://wellhive.github.io/api-docs/ (openapi3.yaml, AppointmentPatientAttributes).
+    PATIENT_SEX_VALUES = %w[male female].freeze
+
     ##
     # Get a specific appointment from EPS by ID
     #
@@ -210,10 +214,48 @@ module Eps
       }
 
       if params[:additional_patient_attributes]
-        payload[:additional_patient_attributes] = params[:additional_patient_attributes]
+        payload[:additional_patient_attributes] =
+          normalize_patient_attributes(params[:additional_patient_attributes])
       end
 
       payload
+    end
+
+    ##
+    # Renames +gender+ to the +sex+ key Wellhive's AppointmentPatientAttributes schema
+    # actually documents. Wellhive advertises this required field as "gender" in
+    # +features.directBooking.requiredFields+ but reads it as +sex+ on submit, so a
+    # payload built straight from the FE's +gender+ key dropped the value silently.
+    #
+    # An explicit +sex+ from the caller wins; +gender+ is only used as a fallback.
+    # Operates on symbol keys, which is what the controller's +deep_symbolize_keys+ yields.
+    #
+    # The value is downcased to match the enum, then checked against it. Wellhive reports a
+    # rejected enum value as the undiagnosable +bad-request+ in +AppointmentResult.error+,
+    # with no field name, so an invalid value is caught here instead -- the resulting
+    # ArgumentError carries the allowed values and shares the 400 path with
+    # {#validate_submit_params!}. The submitted value is deliberately left out of the
+    # message so it stays out of the logs.
+    #
+    # @param attrs [Hash] additional patient attributes from the caller
+    # @raise [ArgumentError] If the resolved sex is outside +PATIENT_SEX_VALUES+
+    # @return [Hash] attributes with +gender+ folded into a normalized +sex+
+    #
+    def normalize_patient_attributes(attrs)
+      return attrs unless attrs.is_a?(Hash)
+
+      normalized = attrs.dup
+      gender = normalized.delete(:gender)
+      sex = normalized[:sex].presence || gender.presence
+      return normalized if sex.blank?
+
+      sex = sex.to_s.strip.downcase
+      unless PATIENT_SEX_VALUES.include?(sex)
+        raise ArgumentError, "sex must be one of: #{PATIENT_SEX_VALUES.join(', ')}"
+      end
+
+      normalized[:sex] = sex
+      normalized
     end
 
     def validate_submit_params!(appointment_id, params)

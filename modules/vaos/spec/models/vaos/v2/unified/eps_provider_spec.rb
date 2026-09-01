@@ -28,7 +28,7 @@ RSpec.describe VAOS::V2::Unified::EpsProvider do
         },
         network_ids: ['sandboxnetwork-5vuTac8v'],
         contact_details: [
-          { system: 'phone', use: 'for_patient', value: '555-555-0001' }
+          { type: 'phone', use: 'for-patient', value: '555-555-0001' }
         ],
         specialties: [
           { id: '208800000X', name: 'Urology' }

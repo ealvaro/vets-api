@@ -74,16 +74,7 @@ module VAOS
       end
 
       def extract_phone_number
-        contact_details = provider&.[](:contact_details)
-        return nil if contact_details.blank?
-
-        # Filter to phone entries only
-        phone_contacts = contact_details.select { |c| c[:system] == 'phone' }
-        return nil if phone_contacts.blank?
-
-        # Find contact with use == 'for_patient', or use the first phone contact
-        contact = phone_contacts.find { |c| c[:use] == 'for_patient' } || phone_contacts.first
-        contact&.dig(:value)
+        Eps::ContactPoint.phone_number(provider&.[](:contact_details))
       end
 
       def build_location_data

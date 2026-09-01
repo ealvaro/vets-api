@@ -16,6 +16,17 @@ module Eps
     PROVIDER_SERVICE_NO_PARAMS_METRIC = "#{STATSD_PREFIX}.provider_service.no_params".freeze
     # StatsD metric for when providers are found but none are self-schedulable
     PROVIDER_SERVICE_NO_SELF_SCHEDULABLE_METRIC = "#{STATSD_PREFIX}.provider_service.no_self_schedulable".freeze
+    # StatsD metric for provider searches truncated by the pagination page cap
+    PROVIDER_SEARCH_PAGE_CAP_METRIC = "#{STATSD_PREFIX}.provider_service.search_page_cap".freeze
+
+    ##
+    # Upper bound on provider-services pages followed in one search. The wall-clock timeout
+    # alone would allow hundreds of requests against Wellhive if it ever returned a repeating
+    # or cycling nextToken; this bounds the blast radius. Hitting it truncates results, which
+    # is logged and counted rather than passed off as a complete set.
+    #
+    MAX_SEARCH_PAGES = 20
+
     ##
     # Get provider data from EPS
     #
@@ -49,9 +60,9 @@ module Eps
         # This is required by the backend service (not standard, but necessary)
         query_string = provider_ids.map { |id| "id=#{CGI.escape(id.to_s)}" }.join('&')
         url_with_params = "/#{config.base_path}/provider-services?#{query_string}"
-        response = perform(:get, url_with_params, {}, request_headers_with_correlation_id)
+        all_providers = fetch_all_provider_services(initial_url: url_with_params)
 
-        OpenStruct.new(response.body)
+        OpenStruct.new(provider_services: all_providers, count: all_providers.length)
       end
     rescue Eps::ServiceException => e
       handle_eps_error!(e, 'get_provider_services_by_ids')
@@ -125,18 +136,17 @@ module Eps
     end
 
     ##
-    # Search for provider services using NPI, specialty and address.
+    # Search for provider services using NPI and specialty.
     #
     # @param npi [String] NPI number to search for
     # @param specialty [String] Specialty to match (case-insensitive)
-    # @param address [Hash] Address object with :street1, :city, :state, :zip keys
     # @param referral_number [String] Optional referral/consultation number for logging
     #
-    # @return OpenStruct response containing the provider service where an individual provider has
-    # matching NPI, specialty and address.
+    # @return OpenStruct response containing the first self-schedulable provider service whose
+    # individual provider matches the NPI and specialty.
     #
-    def search_provider_services(npi:, specialty:, address:, referral_number: nil)
-      validate_search_params(npi, specialty, address, referral_number)
+    def search_provider_services(npi:, specialty:, referral_number: nil)
+      validate_search_params(npi, specialty, referral_number)
 
       response = fetch_provider_services(npi)
       all_providers = response.body[:provider_services] || []
@@ -151,7 +161,7 @@ module Eps
       specialty_matches = check_specialty_matches(self_schedulable_providers, specialty, npi, referral_number)
       return nil if specialty_matches.nil?
 
-      check_address_match(specialty_matches, address, npi, referral_number)
+      OpenStruct.new(specialty_matches.first)
     rescue Eps::ServiceException => e
       handle_eps_error!(e, 'search_provider_services')
       raise e
@@ -182,9 +192,10 @@ module Eps
       )
 
       with_monitoring do
-        response = perform(:get, "/#{config.base_path}/provider-services", query_params,
-                           request_headers_with_correlation_id)
-        all_providers = response.body[:provider_services] || []
+        all_providers = fetch_all_provider_services(
+          initial_url: "/#{config.base_path}/provider-services",
+          initial_params: query_params
+        )
         apply_specialty_filters(all_providers, query.specialty, normalized_specialty_ids,
                                 self_schedulable_only: query.self_schedulable_only)
       end
@@ -210,6 +221,85 @@ module Eps
       return candidates if normalized_specialty_ids || specialty.blank?
 
       filter_by_specialty(candidates, specialty)
+    end
+
+    ##
+    # Fetches every page of a provider-services search.
+    #
+    # Wellhive's ProviderServiceSearchResult is paginated: +nextToken+ comes back whenever
+    # more results exist, and per the spec every other query param is ignored once
+    # +nextToken+ is supplied -- so follow-up pages send the token alone. Previously only
+    # the first page was read, silently truncating any result set that spilled past it.
+    #
+    # @param initial_url [String] path for the first page (may already carry a query string)
+    # @param initial_params [Hash] query params for the first page
+    # @return [Array<Hash>] provider services from every page
+    #
+    def fetch_all_provider_services(initial_url:, initial_params: {})
+      all_providers = []
+      next_token = nil
+      start_time = Time.current
+      pages = 0
+
+      loop do
+        url = next_token ? "/#{config.base_path}/provider-services" : initial_url
+        params = next_token ? { nextToken: next_token } : initial_params
+
+        response = perform(:get, url, params, request_headers_with_correlation_id)
+        body = response.body || {}
+        all_providers.concat(extract_provider_services(body))
+        pages += 1
+
+        next_token = body[:next_token]
+        break if next_token.blank?
+
+        if pages >= MAX_SEARCH_PAGES
+          log_provider_search_page_cap(pages, all_providers.length)
+          break
+        end
+
+        # Checked only between pages: the first page always has to be fetched, and a
+        # single-page search should never touch the pagination timeout at all.
+        check_provider_search_timeout(start_time)
+      end
+
+      all_providers
+    end
+
+    ##
+    # Records that pagination stopped at the page cap with results still outstanding, so the
+    # truncation is visible instead of looking like a complete result set.
+    #
+    def log_provider_search_page_cap(pages, provider_count)
+      StatsD.increment(PROVIDER_SEARCH_PAGE_CAP_METRIC, tags: [COMMUNITY_CARE_SERVICE_TAG])
+      Rails.logger.warn(
+        "#{CC_APPOINTMENTS}: Provider services pagination hit page cap; results truncated",
+        { pages:, provider_count:, max_pages: MAX_SEARCH_PAGES }.merge(common_logging_context)
+      )
+    end
+
+    def extract_provider_services(body)
+      providers = body[:provider_services]
+      providers.is_a?(Array) ? providers : []
+    end
+
+    ##
+    # Guards provider-services pagination against a runaway +nextToken+ loop, mirroring
+    # the slots pagination timeout.
+    #
+    # @param start_time [Time] when pagination started
+    # @raise [Common::Exceptions::BackendServiceException] if the timeout is exceeded
+    #
+    def check_provider_search_timeout(start_time)
+      timeout_seconds = config.pagination_timeout_seconds
+      return unless Time.current - start_time > timeout_seconds
+
+      Rails.logger.error("#{CC_APPOINTMENTS}: Provider services pagination timeout",
+                         { timeout_seconds: }.merge(common_logging_context))
+      raise Common::Exceptions::BackendServiceException.new(
+        'PROVIDER_SEARCH_TIMEOUT',
+        source: self.class.to_s
+      )
     end
 
     ##
@@ -264,13 +354,11 @@ module Eps
     #
     # @param npi [String] Provider NPI
     # @param specialty [String] Provider specialty
-    # @param address [Hash] Provider address
     # @raise [ArgumentError] If any required parameter is blank
     #
-    def validate_search_params(npi, specialty, address, referral_number = nil)
-      validate_npi_param(npi, specialty, address, referral_number)
-      validate_specialty_param(specialty, npi, address, referral_number)
-      validate_address_param(address, npi, specialty, referral_number)
+    def validate_search_params(npi, specialty, referral_number = nil)
+      validate_npi_param(npi, specialty, referral_number)
+      validate_specialty_param(specialty, npi, referral_number)
     end
 
     ##
@@ -345,19 +433,6 @@ module Eps
     end
 
     ##
-    # Checks for address match among specialty matches
-    #
-    # @param specialty_matches [Array] Providers matching specialty
-    # @param address [Hash] Address to match against
-    # @return [OpenStruct, nil] First matching provider or nil if none found
-    #
-    def check_address_match(specialty_matches, address, npi, referral_number = nil)
-      return handle_single_specialty_match(specialty_matches) if specialty_matches.size == 1
-
-      find_address_match(specialty_matches, address, npi, referral_number)
-    end
-
-    ##
     # Filters providers to only those that are self-schedulable
     #
     # A provider is self-schedulable if:
@@ -388,53 +463,6 @@ module Eps
       providers.select do |provider|
         specialty_matches?(provider, specialty)
       end
-    end
-
-    ##
-    # Handles the case when only one specialty match is found
-    #
-    # @param specialty_matches [Array] List of specialty matches
-    # @return [OpenStruct] The single provider match
-    #
-    def handle_single_specialty_match(specialty_matches)
-      Rails.logger.info('Single specialty match found for NPI, skipping address validation')
-      OpenStruct.new(specialty_matches.first)
-    end
-
-    ##
-    # Finds provider that matches both specialty and address
-    #
-    # @param specialty_matches [Array] List of specialty matches
-    # @param address [Hash] Address to match against
-    # @return [OpenStruct, nil] Provider match or nil if no match found
-    #
-    def find_address_match(specialty_matches, address, npi, referral_number = nil)
-      address_match = specialty_matches.find do |provider|
-        address_matches?(provider, address)
-      end
-
-      log_address_mismatch(specialty_matches.size, address, npi, referral_number) if address_match.nil?
-
-      address_match&.then { |provider| OpenStruct.new(provider) }
-    end
-
-    def log_address_mismatch(specialty_matches_count, address, npi, referral_number)
-      warn_data = {
-        specialty_matches_count:
-      }.merge(common_logging_context)
-      message = "#{CC_APPOINTMENTS}: No address match found among #{specialty_matches_count} provider(s) for NPI"
-      Rails.logger.warn(message, warn_data)
-
-      log_personal_information_error('eps_provider_address_mismatch', {
-                                       npi:,
-                                       referral_number:,
-                                       search_params: {
-                                         specialty_matches_count:,
-                                         address: address&.except(:zip)
-                                       },
-                                       failure_reason: 'No address match found among ' \
-                                                       "#{specialty_matches_count} specialty-matched providers"
-                                     })
     end
 
     ##
@@ -498,90 +526,6 @@ module Eps
     end
 
     ##
-    # Check if provider's address matches the requested address using simplified matching
-    # Compares street address, city, and 5-digit zip code (ignores state to avoid format complexity)
-    #
-    # @param provider [Hash] Provider data from EPS response
-    # @param address [Hash] Address object with :street1, :city, :state, :zip keys
-    # @return [Boolean] True if address matches, false otherwise
-    #
-    def address_matches?(provider, address)
-      return false if provider.dig(:location, :address).blank? || address.blank?
-
-      provider_address = provider[:location][:address]
-
-      # Compare the two reliable components: street and 5-digit zip
-      street_matches = street_address_matches?(provider_address, address[:street1])
-      zip_matches = zip_code_matches?(provider_address, address[:zip])
-
-      # Log for monitoring if some components match but not all (helps identify format issues)
-      if zip_matches && !street_matches
-        warn_data = {
-          street_matches:,
-          zip_matches:,
-          provider_address:,
-          referral_address: "#{address[:street1]}, #{address[:zip]}"
-        }.merge(common_logging_context)
-        Rails.logger.warn("#{CC_APPOINTMENTS}: Provider address partial match", warn_data)
-      end
-
-      street_matches && zip_matches
-    end
-
-    ##
-    # Check if street address matches by comparing referral street to beginning of provider address
-    #
-    # @param provider_address [String] Full provider address string
-    # @param referral_street [String] Street address from referral
-    # @return [Boolean] True if provider address starts with referral street
-    #
-    def street_address_matches?(provider_address, referral_street)
-      return false if provider_address.blank? || referral_street.blank?
-
-      normalized_provider = normalize_address_text(provider_address)
-      normalized_referral = normalize_address_text(referral_street)
-
-      normalized_provider.start_with?(normalized_referral)
-    end
-
-    ##
-    # Check if zip codes match by extracting zip from provider address string
-    #
-    # @param provider_address [String] Full provider address string
-    # @param referral_zip [String] Zip code from referral
-    # @return [Boolean] True if 5-digit zip codes match
-    #
-    def zip_code_matches?(provider_address, referral_zip)
-      return false if provider_address.blank? || referral_zip.blank?
-
-      # Extract the LAST 5-digit zip code from provider address string
-      # This handles cases where street addresses contain 5-digit numbers (e.g., "16011 NEEDMORE RD")
-      # We want the zip code, not the street number
-      all_zip_matches = provider_address.scan(/(\d{5})(-\d{4})?/)
-      return false if all_zip_matches.empty?
-
-      # Get the last match (should be the actual zip code, not street address number)
-      provider_5_digit = all_zip_matches.last[0]
-
-      # Extract 5 digits from referral zip
-      referral_5_digit = referral_zip.to_s.gsub(/\D/, '')[0, 5]
-
-      provider_5_digit == referral_5_digit && referral_5_digit.length == 5
-    end
-
-    ##
-    # Normalize address text by removing extra spaces and converting to lowercase
-    #
-    # @param text [String] Address text to normalize
-    # @return [String] Normalized address text
-    #
-    def normalize_address_text(text)
-      return '' if text.blank?
-
-      text.to_s.strip.downcase.gsub(/\s+/, ' ')
-    end
-
-    ##
     # Builds search parameters from the given input parameters.
     #
     # @param params [Hash] A hash containing search filter keys:
@@ -630,42 +574,26 @@ module Eps
       [Float(latitude), Float(longitude), Integer(radius.presence || 25)]
     end
 
-    def validate_npi_param(npi, specialty, address, referral_number)
+    def validate_npi_param(npi, specialty, referral_number)
       return if npi.present?
 
       log_personal_information_error('eps_provider_npi_missing', {
                                        referral_number:,
-                                       search_params: {
-                                         specialty:,
-                                         address: address&.except(:zip)
-                                       },
+                                       search_params: { specialty: },
                                        failure_reason: 'NPI parameter is blank'
                                      })
       raise ArgumentError, 'Provider NPI is required and cannot be blank'
     end
 
-    def validate_specialty_param(specialty, npi, address, referral_number)
+    def validate_specialty_param(specialty, npi, referral_number)
       return if specialty.present?
 
       log_personal_information_error('eps_provider_specialty_missing', {
                                        npi:,
                                        referral_number:,
-                                       search_params: { address: address&.except(:zip) },
                                        failure_reason: 'Specialty parameter is blank'
                                      })
       raise ArgumentError, 'Provider specialty is required and cannot be blank'
-    end
-
-    def validate_address_param(address, npi, specialty, referral_number)
-      return if address.present?
-
-      log_personal_information_error('eps_provider_address_missing', {
-                                       npi:,
-                                       referral_number:,
-                                       search_params: { specialty: },
-                                       failure_reason: 'Address parameter is blank'
-                                     })
-      raise ArgumentError, 'Provider address is required and cannot be blank'
     end
 
     def log_no_providers_found(npi, referral_number = nil)

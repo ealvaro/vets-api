@@ -641,6 +641,92 @@ describe Eps::AppointmentService do
 
         service.submit_appointment(appointment_id, params_with_attributes)
       end
+
+      # Wellhive's AppointmentPatientAttributes schema names this field +sex+, while its
+      # directBooking.requiredFields list advertises it as "gender". The FE sends +gender+,
+      # so it has to be renamed on the way out or the value is dropped silently.
+      def expect_submitted_patient_attributes(attributes, expected)
+        params_with_attributes = valid_params.merge(additional_patient_attributes: attributes)
+        expected_payload = {
+          network_id: valid_params[:network_id],
+          provider_service_id: valid_params[:provider_service_id],
+          slot_ids: valid_params[:slot_ids],
+          referral: { referral_number: valid_params[:referral_number] },
+          additional_patient_attributes: expected
+        }
+        path = "/#{config.base_path}/appointments/#{appointment_id}/submit"
+
+        expect_any_instance_of(VAOS::SessionService).to receive(:perform)
+          .with(:post, path, expected_payload, kind_of(Hash))
+          .and_return(successful_response)
+
+        service.submit_appointment(appointment_id, params_with_attributes)
+      end
+
+      it 'renames gender to the sex key Wellhive documents' do
+        expect_submitted_patient_attributes(
+          { email: 'john@example.com', gender: 'female' },
+          { email: 'john@example.com', sex: 'female' }
+        )
+      end
+
+      it 'prefers an explicit sex over gender' do
+        expect_submitted_patient_attributes({ gender: 'female', sex: 'male' }, { sex: 'male' })
+      end
+
+      it 'leaves attributes untouched when neither gender nor sex is present' do
+        expect_submitted_patient_attributes(
+          { email: 'john@example.com' },
+          { email: 'john@example.com' }
+        )
+      end
+
+      # Wellhive's enum is lowercase male/female only, so a capitalized value from the FE
+      # would be rejected upstream as an undiagnosable +bad-request+.
+      it 'downcases the value to match the documented enum' do
+        expect_submitted_patient_attributes({ gender: 'Female' }, { sex: 'female' })
+      end
+
+      it 'strips surrounding whitespace from the value' do
+        expect_submitted_patient_attributes({ sex: ' MALE ' }, { sex: 'male' })
+      end
+
+      it 'leaves a blank sex alone rather than validating it' do
+        expect_submitted_patient_attributes({ sex: '' }, { sex: '' })
+      end
+
+      context 'when the value is outside the documented enum' do
+        it 'raises ArgumentError for an unsupported value' do
+          expect { submit_with_patient_attributes({ gender: 'nonbinary' }) }
+            .to raise_error(ArgumentError, 'sex must be one of: male, female')
+        end
+
+        it 'raises ArgumentError for an abbreviated value' do
+          expect { submit_with_patient_attributes({ gender: 'F' }) }
+            .to raise_error(ArgumentError, 'sex must be one of: male, female')
+        end
+
+        it 'raises ArgumentError for an unsupported explicit sex' do
+          expect { submit_with_patient_attributes({ sex: 'unknown' }) }
+            .to raise_error(ArgumentError, 'sex must be one of: male, female')
+        end
+
+        it 'does not submit the appointment' do
+          expect_any_instance_of(VAOS::SessionService).not_to receive(:perform)
+
+          expect { submit_with_patient_attributes({ gender: 'nonbinary' }) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'keeps the submitted value out of the error message' do
+          expect { submit_with_patient_attributes({ gender: 'nonbinary' }) }
+            .to raise_error(ArgumentError) { |error| expect(error.message).not_to include('nonbinary') }
+        end
+
+        def submit_with_patient_attributes(attributes)
+          service.submit_appointment(appointment_id, valid_params.merge(additional_patient_attributes: attributes))
+        end
+      end
     end
 
     context 'with invalid parameters' do

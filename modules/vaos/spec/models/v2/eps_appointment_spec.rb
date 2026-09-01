@@ -179,14 +179,14 @@ describe VAOS::V2::EpsAppointment do
           provider_organization: { name: 'Smith Medical' },
           location: { name: 'Main Office' },
           contact_details: [
-            { system: 'email', value: 'test@example.com' },
-            { system: 'phone', value: '555-1234', use: 'work' },
-            { system: 'phone', value: '555-5678', use: 'for_patient' }
+            { type: 'email', value: 'test@example.com' },
+            { type: 'phone', value: '555-1234', use: 'work' },
+            { type: 'phone', value: '555-5678', use: 'for-patient' }
           ]
         }
       end
 
-      it 'returns provider details with phone number preferring for_patient use' do
+      it 'returns provider details with phone number preferring for-patient use' do
         appointment = described_class.new(params, provider_with_multiple_phones)
         result = appointment.provider_details
 
@@ -197,14 +197,14 @@ describe VAOS::V2::EpsAppointment do
       end
     end
 
-    context 'when provider has contact_details with only non-for_patient phone numbers' do
+    context 'when provider has contact_details with only non-for-patient phone numbers' do
       let(:provider_with_regular_phone) do
         {
           id: 'provider-456',
           name: 'Dr. Jones',
           contact_details: [
-            { system: 'email', value: 'jones@example.com' },
-            { system: 'phone', value: '555-9999', use: 'work' }
+            { type: 'email', value: 'jones@example.com' },
+            { type: 'phone', value: '555-9999', use: 'work' }
           ]
         }
       end
