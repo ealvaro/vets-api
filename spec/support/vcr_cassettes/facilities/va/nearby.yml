@@ -1,0 +1,29 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://sandbox-api.va.gov/services/va_facilities/v1/nearby?lat=40.7128&long=-74.006
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Vets.gov Agent
+      Apikey:
+      - "<LIGHTHOUSE_API_KEY>"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"data":[{"id":"vha_630","type":"nearby_facility","attributes":{"minTime":10,"maxTime":20}},{"id":"vha_526GD","type":"nearby_facility","attributes":{"minTime":20,"maxTime":30}},{"id":"vha_561GE","type":"nearby_facility","attributes":{"minTime":20,"maxTime":30}}],"meta":{"bandVersion":"JAN2026"}}'
+  recorded_at: Fri, 07 Aug 2026 23:00:00 GMT
+recorded_with: VCR 6.3.1

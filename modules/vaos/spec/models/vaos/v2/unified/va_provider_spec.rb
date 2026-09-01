@@ -35,6 +35,7 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
     let(:facility) do
       double(
         'FacilitiesApi::V2::Lighthouse::Facility',
+        id: 'vha_983',
         unique_id: '983',
         name: 'Cheyenne VA Medical Center',
         address: {
@@ -75,6 +76,7 @@ RSpec.describe VAOS::V2::Unified::VAProvider do
 
       expect(provider.id).to eq('1014')
       expect(provider.location_id).to eq('983')
+      expect(provider.facility_id).to eq('vha_983')
       expect(provider.facility_name).to eq('Cheyenne VA Medical Center')
       expect(provider.name).to eq('CHY AUDIOLOGY')
       expect(provider.provider_type).to eq('va')

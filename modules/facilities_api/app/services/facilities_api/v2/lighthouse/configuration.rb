@@ -16,6 +16,18 @@ module FacilitiesApi
           'Lighthouse_Facilities'
         end
 
+        # i18n prefix handed to RaiseCustomError. Pinned to the base service name rather
+        # than #service_name so per-endpoint subclasses (see {NearbyConfiguration}) can
+        # carry their own breaker identity without minting exception keys that have no
+        # entry in config/locales/exceptions.en.yml.
+        def error_prefix
+          'Lighthouse_Facilities'
+        end
+
+        def instrumentation_name
+          'lighthouse.facilities.v2.request.faraday'
+        end
+
         def self.base_request_headers
           super.merge('apiKey' => Settings.lighthouse.facilities.api_key)
         end
@@ -23,13 +35,13 @@ module FacilitiesApi
         def connection
           Faraday.new(base_path, headers: base_request_headers, request: request_options) do |conn|
             conn.use(:breakers, service_name:)
-            conn.request :instrumentation, name: 'lighthouse.facilities.v2.request.faraday'
+            conn.request :instrumentation, name: instrumentation_name
 
             # Uncomment this if you want curl command equivalent or response output to log
             # conn.request(:curl, ::Logger.new(STDOUT), :warn) unless Rails.env.production?
             # conn.response(:logger, ::Logger.new(STDOUT), bodies: true) unless Rails.env.production?
 
-            conn.response :raise_custom_error, error_prefix: service_name
+            conn.response(:raise_custom_error, error_prefix:)
             conn.response :lighthouse_facilities_errors
 
             conn.adapter Faraday.default_adapter

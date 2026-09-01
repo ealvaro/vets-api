@@ -11,7 +11,11 @@ module VAOS
         # All other VA medical facilities are treated as VistA-backed for scheduling purposes.
         CERNER_FACILITY_TYPES = %w[va_cerner_facility].freeze
 
-        attr_accessor :location_id, :facility_type, :service_type
+        # +facility_id+ is the untranslated Lighthouse composite id (e.g. "vha_630"),
+        # kept distinct from +location_id+ (the VAOS-facing station) so drive-time
+        # enrichment can join against the VA Facilities +nearby+ response, which keys
+        # bands by that composite id.
+        attr_accessor :location_id, :facility_id, :facility_type, :service_type
 
         def initialize(attrs = {})
           super
@@ -38,6 +42,7 @@ module VAOS
           new(
             id: clinic[:id],
             location_id: facility.unique_id,
+            facility_id: facility.id,
             name: clinic[:service_name],
             facility_name: facility.name,
             address: parse_lighthouse_address(facility.address),

@@ -189,6 +189,9 @@ Rails.application.reloader.to_prepare do
     BenefitsReferenceData::Staging::Configuration.instance.breakers_service,
     DirectDeposit::Configuration.instance.breakers_service,
     Lighthouse::Facilities::Configuration.instance.breakers_service,
+    # /nearby only -- kept off the shared 'Lighthouse_Facilities' breaker so a nearby
+    # outage can't open the circuit for the /facilities call it depends on.
+    FacilitiesApi::V2::Lighthouse::NearbyConfiguration.instance.breakers_service,
     Lighthouse::HealthcareCostAndCoverage::Configuration.instance.breakers_service,
     # Lighthouse::LettersGenerator::Configuration.instance.breakers_service,
     VeteranVerification::Configuration.instance.breakers_service,

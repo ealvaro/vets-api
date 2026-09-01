@@ -82,20 +82,25 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
 
   describe '#search' do
     let(:lighthouse_client) { instance_double(FacilitiesApi::V2::Lighthouse::Client) }
+    # /nearby rides a separate client (and so a separate breaker) from /facilities.
+    let(:nearby_client) { instance_double(FacilitiesApi::V2::Lighthouse::NearbyClient) }
     let(:eps_provider_service) { instance_double(Eps::ProviderService) }
 
     before do
       allow(FacilitiesApi::V2::Lighthouse::Client).to receive(:new).and_return(lighthouse_client)
+      allow(FacilitiesApi::V2::Lighthouse::NearbyClient).to receive(:new).and_return(nearby_client)
       allow(Eps::ProviderService).to receive(:new).and_return(eps_provider_service)
       allow(VAOS::V2::SystemsService).to receive(:new).with(user).and_return(systems_service)
       allow(VAOS::V2::Unified::EligibilityService).to receive(:new).with(user).and_return(eligibility_service)
       allow(eligibility_service).to receive(:check_eligibility).and_return({ direct_eligible: true })
 
+      # +get_facilities+ returns the VA facility fixture; +nearby+ / +get_drive_times+ get
+      # benign defaults so blocks that reset Flipper via +and_call_original+ (which reverts
+      # the drive-time flag to its test-env-on default) don't hit an unstubbed message --
+      # the verifying-double error is not a StandardError, so it would escape the fail-open
+      # rescue. The dedicated drive-time describe block overrides these with real data / a raise.
       allow(lighthouse_client).to receive(:get_facilities).and_return([lighthouse_facility])
-      # +get_drive_times+ gets a benign default so blocks that reset Flipper via
-      # +and_call_original+ (which reverts the drive-time flag to its test-env-on
-      # default) don't hit an unstubbed message. The dedicated drive-time describe
-      # block overrides it with real data / a raise.
+      allow(nearby_client).to receive(:nearby).and_return([])
       allow(eps_provider_service).to receive_messages(
         search_by_location: [eps_provider_hash],
         get_drive_times: OpenStruct.new(destinations: {})
@@ -719,11 +724,19 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
         OpenStruct.new(destinations: { d0: { drive_time_in_seconds_without_traffic: seconds } })
       end
 
+      # Stand-in for a VA Facilities NearbyFacility: id + drive-time band (minutes).
+      # The default fixture facility is 'vha_983', so a 10-20 minute band collapses to
+      # the 15-minute midpoint => 900 seconds.
+      def nearby_band(id, min_time, max_time)
+        double('NearbyFacility', id:, min_time:, max_time:)
+      end
+
       context 'when the flag is enabled' do
         before do
           allow(Flipper).to receive(:enabled?)
             .with(:va_online_scheduling_unified_drive_time, user).and_return(true)
           allow(eps_provider_service).to receive(:get_drive_times).and_return(drive_times_response(420))
+          allow(nearby_client).to receive(:nearby).and_return([nearby_band('vha_983', 10, 20)])
         end
 
         it 'populates drive_time_in_seconds on EPS providers from the batched EPS call' do
@@ -733,11 +746,39 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           expect(eps.drive_time_in_seconds).to eq(420)
         end
 
-        it 'leaves VA providers with a nil drive time (deferred to a separate ticket)' do
+        it 'populates drive_time_in_seconds on VA providers from the nearby band midpoint' do
+          results = service.search(referral:)
+          va = results.find { |p| p.provider_type == 'va' }
+
+          expect(va.drive_time_in_seconds).to eq(900)
+        end
+
+        it 'calls VA nearby once with the user origin' do
+          service.search(referral:)
+
+          expect(nearby_client).to have_received(:nearby).once.with(lat: 28.08, long: -80.60)
+        end
+
+        it 'leaves a VA provider nil when its facility is absent from the nearby response' do
+          allow(nearby_client).to receive(:nearby).and_return([])
+
           results = service.search(referral:)
           va = results.find { |p| p.provider_type == 'va' }
 
           expect(va.drive_time_in_seconds).to be_nil
+        end
+
+        it 'fails open when the VA nearby call raises (providers still returned, drive time nil)' do
+          allow(nearby_client).to receive(:nearby).and_raise(StandardError.new('boom'))
+          allow(Rails.logger).to receive(:warn)
+
+          results = service.search(referral:)
+          va = results.find { |p| p.provider_type == 'va' }
+
+          expect(results.map(&:provider_type)).to include('va', 'eps')
+          expect(va.drive_time_in_seconds).to be_nil
+          expect(Rails.logger).to have_received(:warn)
+            .with(/drive-time enrichment failed/, hash_including(source: 'va'))
         end
 
         it 'calls EPS drive-times once with the batched destinations and user origin' do
@@ -777,12 +818,14 @@ RSpec.describe VAOS::V2::Unified::ProviderSearchService do
           allow(Flipper).to receive(:enabled?)
             .with(:va_online_scheduling_unified_drive_time, user).and_return(false)
           allow(eps_provider_service).to receive(:get_drive_times)
+          allow(nearby_client).to receive(:nearby)
         end
 
-        it 'never calls EPS drive-times and leaves all providers with a nil drive time' do
+        it 'never calls the drive-time services and leaves all providers with a nil drive time' do
           results = service.search(referral:)
 
           expect(eps_provider_service).not_to have_received(:get_drive_times)
+          expect(nearby_client).not_to have_received(:nearby)
           expect(results.map(&:drive_time_in_seconds)).to all(be_nil)
         end
       end
