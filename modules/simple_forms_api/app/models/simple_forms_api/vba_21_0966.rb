@@ -60,6 +60,15 @@ module SimpleFormsApi
                 'country') == 'USA' || @data.dig('surviving_dependent_mailing_address', 'country') == 'USA'
     end
 
+    def full_address(address_key)
+      address = @data[address_key]
+      return '' if address.blank?
+
+      street = [address['street'], address['street2'], address['street3']].compact_blank.join(' ')
+      locality = [address['city'], address['state']].compact_blank.join(', ')
+      [street, locality, address['postal_code'], address['country']].compact_blank.join(', ')
+    end
+
     def relationship_to_veteran_radio
       relationship = @data.dig('relationship_to_veteran', 'relationship_to_veteran')
       ['', 'spouse', 'child'].find_index(relationship) if relationship
