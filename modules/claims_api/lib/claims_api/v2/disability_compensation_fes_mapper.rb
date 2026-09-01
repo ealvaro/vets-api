@@ -42,7 +42,7 @@ module ClaimsApi
         map_reserves(info[:reservesNationalGuardService]) if info&.dig(:reservesNationalGuardService).present?
         map_federal_activation_to_reserves(info[:federalActivation]) if info&.dig(:federalActivation).present?
         map_confinements(info[:confinements]) if info&.dig(:confinements).present?
-        map_separation_location if separation_location_code_present?
+        map_separation_location_code if separation_location_code_present?
       end
 
       # servicePeriods are required via the schema
@@ -88,10 +88,6 @@ module ClaimsApi
         @fes_claim[:serviceInformation].merge!(
           { confinements: mapped_confinements }.compact_blank
         )
-      end
-
-      def map_separation_location
-        @fes_claim[:serviceInformation][:separationLocationCode] = return_separation_location_code
       end
 
       def current_mailing_address
@@ -251,8 +247,7 @@ module ClaimsApi
       end
 
       def claim_meta
-        raw_date = @data[:claimDate].presence || @auto_claim.created_at.strftime('%Y-%m-%d')
-        @fes_claim[:claimDate] = normalize_claim_date(raw_date)
+        @fes_claim[:claimDate] = effective_claim_date
       end
 
       def wrap_in_request_structure
@@ -307,20 +302,6 @@ module ClaimsApi
       def extract_veteran_participant_id
         @auto_claim.auth_headers&.dig('va_eauth_pid') ||
           @auto_claim.auth_headers&.dig('participant_id')
-      end
-
-      def return_separation_location_code
-        return_most_recent_service_period&.dig(:separationLocationCode)
-      end
-
-      def separation_location_code_present?
-        return_most_recent_service_period&.dig(:separationLocationCode).present?
-      end
-
-      def return_most_recent_service_period
-        @data[:serviceInformation][:servicePeriods]&.max_by do |period|
-          Date.parse(period[:activeDutyBeginDate])
-        end
       end
 
       def claim_submission_source

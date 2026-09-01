@@ -260,7 +260,7 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
                 'serviceBranch' => 'Public Health Service',
                 'serviceComponent' => 'Active',
                 'activeDutyBeginDate' => '2021-11-14',
-                'activeDutyEndDate' => '2023-10-30',
+                'activeDutyEndDate' => 1.year.from_now.to_date.iso8601,
                 'separationLocationCode' => '98765'
               }, {
                 'serviceBranch' => 'Army',
@@ -276,6 +276,8 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
           end
 
           it 'maps separation location correctly when present' do
+            form_data['data']['attributes']['serviceInformation']['servicePeriods'][0]['activeDutyEndDate'] =
+              1.year.from_now.to_date.iso8601
             auto_claim = create(:auto_established_claim,
                                 form_data: form_data['data']['attributes'],
                                 auth_headers: { 'va_eauth_pid' => '600061742' })
@@ -294,6 +296,16 @@ describe ClaimsApi::V2::DisabilityCompensationFesMapper do
             fes_data = ClaimsApi::V2::DisabilityCompensationFesMapper.new(auto_claim).map_claim
 
             expect(fes_data[:data][:form526][:serviceInformation][:separationLocationCode]).to eq('98765')
+          end
+
+          it 'does not map separation location when end date is in the past' do
+            auto_claim = create(:auto_established_claim,
+                                form_data: form_data['data']['attributes'],
+                                auth_headers: { 'va_eauth_pid' => '600061742' })
+
+            fes_data = ClaimsApi::V2::DisabilityCompensationFesMapper.new(auto_claim).map_claim
+
+            expect(fes_data[:data][:form526][:serviceInformation]).not_to have_key(:separationLocationCode)
           end
 
           it 'handles separation code when it is not present in most recent service period' do

@@ -15,6 +15,13 @@ module ClaimsApi
       Date.parse(raw_date).strftime('%Y-%m-%d')
     end
 
+    def effective_claim_date
+      raw = @data[:claimDate].presence ||
+            @auto_claim.created_at&.strftime('%Y-%m-%d') ||
+            Date.current.strftime('%Y-%m-%d')
+      normalize_claim_date(raw)
+    end
+
     def map_separation_location_code
       @fes_claim[:serviceInformation][:separationLocationCode] = return_separation_location_code
     end
@@ -24,7 +31,11 @@ module ClaimsApi
     end
 
     def separation_location_code_present?
-      return_most_recent_service_period&.dig(:separationLocationCode).present?
+      period = return_most_recent_service_period
+      return false if period&.dig(:separationLocationCode).blank?
+
+      # FES only uses this field for pre-discharge claims
+      Date.parse(period[:activeDutyEndDate]) > Date.parse(effective_claim_date)
     end
 
     def return_most_recent_service_period
