@@ -223,8 +223,10 @@ class BenefitsIntakeStatusJob
     end
 
     # VRE
+    # 28-1900 claims may be SavedClaim::VeteranReadinessEmploymentClaim or (behind :vre_modular_api)
+    # VRE::VREVeteranReadinessEmploymentClaim; look up by id without an STI type scope.
     if %w[28-1900].include?(form_id)
-      claim = SavedClaim::VeteranReadinessEmploymentClaim.find(saved_claim_id)
+      claim = SavedClaim.find_by(id: saved_claim_id)
       email = claim.parsed_form['email'] if claim.present?
       if claim.present? && email.present?
         claim.send_email(:error)
@@ -233,6 +235,11 @@ class BenefitsIntakeStatusJob
         VRE::VREMonitor.new.log_silent_failure(context, call_location:)
       end
     end
+  rescue => e
+    Rails.logger.error('BenefitsIntakeStatusJob monitor_failure error', class: self.class.name, form_id:,
+                                                                        claim_id: saved_claim_id,
+                                                                        benefits_intake_uuid: bi_uuid,
+                                                                        message: e.message)
   end
   # rubocop:enable Metrics/MethodLength
 

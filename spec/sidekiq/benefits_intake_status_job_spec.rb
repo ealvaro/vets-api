@@ -426,6 +426,49 @@ RSpec.describe BenefitsIntakeStatusJob, type: :job do
           BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, claim.id, benefits_intake_uuid)
         end
       end
+
+      context 'when claim is a VRE::VREVeteranReadinessEmploymentClaim (vre_modular_api)' do
+        let(:claim) { create(:vre_veteran_readiness_employment_claim) }
+
+        it 'finds the claim despite the different STI type and sends the error email' do
+          expect_any_instance_of(VRE::NotificationEmail).to receive(:deliver).with(:error)
+
+          monitor = instance_double(VRE::VREMonitor)
+          allow(VRE::VREMonitor).to receive(:new).and_return(monitor)
+          expect(monitor).to receive(:log_silent_failure_avoided)
+
+          expect do
+            BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, claim.id, benefits_intake_uuid)
+          end.not_to raise_error
+        end
+      end
+
+      context 'when the claim no longer exists' do
+        it 'logs silent failure without raising' do
+          monitor = instance_double(VRE::VREMonitor)
+          allow(VRE::VREMonitor).to receive(:new).and_return(monitor)
+          expect(monitor).to receive(:log_silent_failure)
+
+          expect do
+            BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, 0, benefits_intake_uuid)
+          end.not_to raise_error
+        end
+      end
+    end
+
+    context 'when monitoring raises' do
+      let(:form_id) { '28-1900' }
+
+      it 'logs the error and does not propagate it' do
+        allow(SavedClaim).to receive(:find_by).and_raise(StandardError, 'boom')
+        expect(Rails.logger).to receive(:error).with('BenefitsIntakeStatusJob monitor_failure error',
+                                                     hash_including(form_id: '28-1900', claim_id: 123,
+                                                                    message: 'boom'))
+
+        expect do
+          BenefitsIntakeStatusJob.new.send(:monitor_failure, form_id, 123, benefits_intake_uuid)
+        end.not_to raise_error
+      end
     end
 
     context 'when form is PCPG 28-8832' do
