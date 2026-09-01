@@ -15,6 +15,11 @@ RSpec.describe MedicalCopays::VBS::Service do
           vha_facility_hash: { '757' => %w[36546], '358' => %w[36546] })
   end
   let(:today_date) { Time.zone.today.strftime('%m%d%Y') }
+  let(:memory_store) { ActiveSupport::Cache.lookup_store(:memory_store) }
+
+  before do
+    allow(Rails).to receive(:cache).and_return(memory_store)
+  end
 
   describe 'attributes' do
     it 'responds to request' do
@@ -41,8 +46,7 @@ RSpec.describe MedicalCopays::VBS::Service do
     context 'with a cached response' do
       it 'logs that a cached response was returned' do
         allow_any_instance_of(MedicalCopays::VBS::Service)
-          .to receive(:get_user_cached_response)
-          .and_return(Faraday::Response.new(status: 200, body: []))
+          .to receive(:get_user_cached_response).and_return([])
 
         expect { subject.get_copays }
           .to trigger_statsd_increment('api.mcp.vbs.init_cached_copays.fired')
@@ -62,7 +66,7 @@ RSpec.describe MedicalCopays::VBS::Service do
       it 'logs that an empty response was cached' do
         expect { subject.get_copays }
           .to trigger_statsd_increment('api.mcp.vbs.init_cached_copays.fired')
-          .and trigger_statsd_increment('api.mcp.vbs.init_cached_copays.empty_response_cached')
+          .and trigger_statsd_increment('api.mcp.vbs.init_cached_copays.response_cached', tags: ['type:empty'])
       end
     end
 
@@ -196,6 +200,13 @@ RSpec.describe MedicalCopays::VBS::Service do
   end
 
   describe '#get_cached_copay_response' do
+    let!(:vbs_response) do
+      {
+        'id' => '2f1569ff-64cf-4300-8dd1-5ec3caded615',
+        'pSStatementDate' => today_date
+      }
+    end
+
     before do
       allow(Flipper).to receive(:enabled?).with(:debts_copay_logging).and_return(true)
     end
@@ -203,7 +214,7 @@ RSpec.describe MedicalCopays::VBS::Service do
     context 'with a cached response' do
       before do
         allow_any_instance_of(MedicalCopays::VBS::Service).to receive(:get_user_cached_response)
-          .and_return(Faraday::Response.new(status: 200, body: []))
+          .and_return([])
       end
 
       it 'logs a cache hit' do
@@ -271,6 +282,50 @@ RSpec.describe MedicalCopays::VBS::Service do
         expect { subject.get_cached_copay_response }
           .to raise_error(MedicalCopays::VBS::Service::ServiceError)
           .and trigger_statsd_increment('api.mcp.vbs.summary.failure')
+      end
+    end
+
+    context 'with medical_copays_cache_vbs_full_response disabled' do
+      before do
+        allow_any_instance_of(MedicalCopays::VBS::Service).to receive(:get_user_cached_response).and_return(nil)
+        allow(Flipper).to receive(:enabled?).with(:medical_copays_cache_vbs_full_response, user).and_return(false)
+      end
+
+      it 'does not cache a non-empty response' do
+        allow(subject.request).to receive(:post).and_return(
+          Faraday::Response.new(status: 200, body: [vbs_response])
+        )
+
+        subject.get_cached_copay_response
+
+        expect(Rails.cache.read("vbs_copays_data_#{user.uuid}")).to be_nil
+      end
+
+      it 'caches an empty response' do
+        allow(subject.request).to receive(:post).and_return(Faraday::Response.new(status: 200, body: []))
+
+        expect { subject.get_cached_copay_response }
+          .to trigger_statsd_increment('api.mcp.vbs.init_cached_copays.response_cached', tags: ['type:empty'])
+
+        expect(Rails.cache.read("vbs_copays_data_#{user.uuid}")).to be_empty
+      end
+    end
+
+    context 'with medical_copays_cache_vbs_full_response enabled' do
+      before do
+        allow_any_instance_of(MedicalCopays::VBS::Service).to receive(:get_user_cached_response).and_return(nil)
+        allow(Flipper).to receive(:enabled?).with(:medical_copays_cache_vbs_full_response, user).and_return(true)
+      end
+
+      it 'caches a non-empty response' do
+        allow(subject.request).to receive(:post).and_return(
+          Faraday::Response.new(status: 200, body: [vbs_response])
+        )
+
+        expect { subject.get_cached_copay_response }
+          .to trigger_statsd_increment('api.mcp.vbs.init_cached_copays.response_cached', tags: ['type:full'])
+
+        expect(Rails.cache.read("vbs_copays_data_#{user.uuid}")).to be_present
       end
     end
   end
@@ -446,6 +501,22 @@ RSpec.describe MedicalCopays::VBS::Service do
         expect(Rails.logger).to have_received(:info)
           .with(a_string_including("success, statement_id: #{statement_id}, bytes:"))
       end
+    end
+  end
+
+  describe '#cache_response?' do
+    let!(:vbs_response) do
+      {
+        'id' => '2f1569ff-64cf-4300-8dd1-5ec3caded615',
+        'pSStatementDate' => today_date
+      }
+    end
+
+    it 'refuses to cache anything that is not an array' do
+      expect(subject.send(:cache_response?, vbs_response)).to be(false)
+      expect(subject.send(:cache_response?, [vbs_response])).to be(true)
+      expect(subject.send(:cache_response?, nil)).to be(false)
+      expect(subject.send(:cache_response?, [])).to be(true)
     end
   end
 end

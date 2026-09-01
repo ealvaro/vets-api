@@ -25,7 +25,7 @@ module MedicalCopays
       STATSD_RETRIEVAL_FAILURE = "#{STATSD_KEY_PREFIX}.pdf.failure".freeze
       STATSD_CACHED_COPAYS_FIRED = "#{STATSD_KEY_PREFIX}.init_cached_copays.fired".freeze
       STATSD_CACHED_COPAYS_RETURNED = "#{STATSD_KEY_PREFIX}.init_cached_copays.cached_response_returned".freeze
-      STATSD_CACHED_COPAYS_EMPTY = "#{STATSD_KEY_PREFIX}.init_cached_copays.empty_response_cached".freeze
+      STATSD_CACHED_COPAYS_RESPONSE_CACHED = "#{STATSD_KEY_PREFIX}.init_cached_copays.response_cached".freeze
       STATSD_CACHED_COPAYS_FAILURE = "#{STATSD_KEY_PREFIX}.summary.failure".freeze
       STATSD_COPAYS_INVALID_REQUEST = "#{STATSD_KEY_PREFIX}.summary.invalid_request".freeze
       STATSD_COPAY_NOT_FOUND = "#{STATSD_KEY_PREFIX}.summary.not_found".freeze
@@ -80,26 +80,27 @@ module MedicalCopays
         StatsD.increment(STATSD_CACHED_COPAYS_FIRED)
 
         cached_response = get_user_cached_response
+
         if cached_response
           StatsD.increment(STATSD_CACHED_COPAYS_RETURNED)
           info_if_logging('MedicalCopays::VBS::Service#get_cached_copay_response cache hit')
-          return cached_response
+
+          return Faraday::Response.new(status: 200, body: cached_response)
         end
 
         info_if_logging('MedicalCopays::VBS::Service#get_cached_copay_response cache miss, requesting from backend')
 
-        response = request.post(
-          "#{settings.base_path}/GetStatementsByEDIPIAndVistaAccountNumber", request_data.to_hash
-        )
+        response = request.post("#{settings.base_path}/GetStatementsByEDIPIAndVistaAccountNumber", request_data.to_hash)
 
         response_body = response.body
 
-        if response_body.is_a?(Array) && response_body.empty?
-          StatsD.increment(STATSD_CACHED_COPAYS_EMPTY)
-          Rails.cache.write("vbs_copays_data_#{user.uuid}", response, expires_in: self.class.time_until_5am_utc)
+        if cache_response?(response_body)
+          Rails.cache.write("vbs_copays_data_#{user.uuid}", response_body, expires_in: self.class.time_until_5am_utc)
+          StatsD.increment(STATSD_CACHED_COPAYS_RESPONSE_CACHED,
+                           tags: ["type:#{response_body.empty? ? 'empty' : 'full'}"])
         end
 
-        response
+        Faraday::Response.new(status: 200, body: response_body)
       rescue => e
         track_cached_copay_error(e)
         raise ServiceError
@@ -169,6 +170,14 @@ module MedicalCopays
 
       def info_if_logging(message)
         Rails.logger.info(message) if Flipper.enabled?(:debts_copay_logging)
+      end
+
+      # Empty responses were already cached before the flag existed. The flag adds non-empty ones.
+      def cache_response?(response)
+        return false unless response.is_a?(Array)
+        return true if response.empty?
+
+        Flipper.enabled?(:medical_copays_cache_vbs_full_response, user)
       end
 
       def track_invalid_request

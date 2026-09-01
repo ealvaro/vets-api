@@ -1897,6 +1897,10 @@ features:
   show_mbs_preneed_change_va_4010007:
     actor_type: user
     description: Updates to text in form VA 40-10007
+  medical_copays_cache_vbs_full_response:
+    actor_type: user
+    description: When enabled, caches non-empty VBS copay responses. When disabled, only the empty response is cached (pre-existing behavior).
+    enable_in_development: false
   medical_copays_six_mo_window:
     actor_type: user
     description: This will filter to only show medical copays within the last 6 months
