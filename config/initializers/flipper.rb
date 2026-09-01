@@ -83,7 +83,7 @@ Rails.application.reloader.to_prepare do
       end
 
       Rails.logger.info "The following feature flippers were added: #{added_flippers}" unless added_flippers.empty?
-      removed_features = Flipper.features.collect(&:name) - FLIPPER_FEATURE_CONFIG['features'].keys
+      removed_features = Flipper.features.map { |f| f.name.to_s } - FLIPPER_FEATURE_CONFIG['features'].keys
       unless removed_features.empty?
         Rails.logger.warn "Consider removing features no longer in config/features.yml: #{removed_features.join(', ')}"
       end
