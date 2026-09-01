@@ -6,18 +6,22 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Fields::ServiceNumber, typ
   let(:errors) { ClaimsApi::V3::DisabilityCompensation::Errors.new }
   let(:source) { '/serviceNumber' }
 
+  def validate(value)
+    described_class.new(value, source:).validate(errors:)
+  end
+
   it('nil') {
-    described_class.call(nil, source:, errors:)
+    validate(nil)
     expect(errors.any?).to be(false)
   }
 
   it('9 chars') {
-    described_class.call('123456789', source:, errors:)
+    validate('123456789')
     expect(errors.any?).to be(false)
   }
 
   it '10 chars' do
-    described_class.call('1234567890', source:, errors:)
+    validate('1234567890')
     expect(errors.messages.first[:detail]).to eq('serviceNumber is too long.')
   end
 end

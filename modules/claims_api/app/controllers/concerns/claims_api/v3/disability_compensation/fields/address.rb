@@ -18,9 +18,14 @@ module ClaimsApi
             validate_usa_zip(errors:)
             validate_no_intl_postal_when_usa(errors:)
             validate_intl_postal_when_not_usa(errors:)
+            validate_military_address(errors:)
           end
 
           private
+
+          def validate_military_address(errors:)
+            Rules::MilitaryAddressCityStateCoupling.call(@value, source: @source, errors:)
+          end
 
           def validate_country(errors:, valid_countries:)
             return if valid_countries.include?(@value['country'])

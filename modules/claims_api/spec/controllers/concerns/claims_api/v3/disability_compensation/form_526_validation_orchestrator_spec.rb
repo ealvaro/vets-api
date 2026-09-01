@@ -151,5 +151,64 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Form526ValidationOrchestra
         end
       end
     end
+
+    context 'service after 13th birthday (cross-section rule)' do
+      it 'adds an error when entryDate is before 13th birthday' do
+        attrs = {
+          'veteranIdentification' => {
+            'dateOfBirth' => '1990-06-15',
+            'mailingAddress' => { 'country' => 'USA', 'state' => 'NY', 'zipFirstFive' => '12345' }
+          },
+          'serviceInformation' => {
+            'servicePeriods' => [{ 'entryDate' => '2000-01-01', 'exitDate' => '2004-01-01' }]
+          }
+        }
+        result = described_class.new(attrs).validate
+        expect(result).to be_an(Array)
+        expect(result.any? { |e| e[:detail].include?('thirteenth birthday') }).to be(true)
+      end
+
+      it 'adds no error when entryDate is after 13th birthday' do
+        attrs = {
+          'veteranIdentification' => {
+            'dateOfBirth' => '1990-06-15',
+            'mailingAddress' => { 'country' => 'USA', 'state' => 'NY', 'zipFirstFive' => '12345' }
+          },
+          'serviceInformation' => {
+            'servicePeriods' => [{ 'entryDate' => '2010-01-01', 'exitDate' => '2014-01-01' }]
+          }
+        }
+        result = described_class.new(attrs).validate
+        expect(result).to be_nil
+      end
+
+      it 'skips when dateOfBirth is nil' do
+        attrs = {
+          'veteranIdentification' => {
+            'mailingAddress' => { 'country' => 'USA', 'state' => 'NY', 'zipFirstFive' => '12345' }
+          },
+          'serviceInformation' => {
+            'servicePeriods' => [{ 'entryDate' => '2000-01-01', 'exitDate' => '2004-01-01' }]
+          }
+        }
+        result = described_class.new(attrs).validate
+        expect(result).to be_nil
+      end
+
+      it 'falls back to auth_headers DOB when form dateOfBirth is nil' do
+        attrs = {
+          'veteranIdentification' => {
+            'mailingAddress' => { 'country' => 'USA', 'state' => 'NY', 'zipFirstFive' => '12345' }
+          },
+          'serviceInformation' => {
+            'servicePeriods' => [{ 'entryDate' => '2000-01-01', 'exitDate' => '2004-01-01' }]
+          }
+        }
+        auth_headers = { 'va_eauth_birthdate' => '1990-06-15' }
+        result = described_class.new(attrs, auth_headers:).validate
+        expect(result).to be_an(Array)
+        expect(result.any? { |e| e[:detail].include?('thirteenth birthday') }).to be(true)
+      end
+    end
   end
 end

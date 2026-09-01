@@ -4,16 +4,19 @@ module ClaimsApi
   module V3
     module DisabilityCompensation
       module Fields
-        module ServiceNumber
+        class ServiceNumber
           MAX_LENGTH = 9
 
-          module_function
+          def initialize(value, source:)
+            @value = value
+            @source = source
+          end
 
-          def call(value, source:, errors:)
-            return if value.nil?
-            return if value.length <= MAX_LENGTH
+          def validate(errors:)
+            return if @value.nil?
+            return if @value.length <= MAX_LENGTH
 
-            errors.add(source:, detail: 'serviceNumber is too long.')
+            errors.add(source: @source, detail: 'serviceNumber is too long.')
           end
         end
       end

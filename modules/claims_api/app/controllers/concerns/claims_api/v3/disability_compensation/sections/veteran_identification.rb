@@ -19,17 +19,10 @@ module ClaimsApi
               source: '/mailingAddress'
             ).validate(errors:, valid_countries: @valid_countries)
 
-            Rules::MilitaryAddressCityStateCoupling.call(
-              @payload['mailingAddress'],
-              source: '/mailingAddress',
-              errors:
-            )
-
-            Fields::ServiceNumber.call(
+            Fields::ServiceNumber.new(
               @payload['serviceNumber'],
-              source: '/serviceNumber',
-              errors:
-            )
+              source: '/serviceNumber'
+            ).validate(errors:)
 
             errors
           end
