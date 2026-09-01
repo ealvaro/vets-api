@@ -755,6 +755,10 @@ features:
     actor_type: user
     description: Use new Form526 Establishment Service (FES) for v2 disability compensation claims
     enable_in_development: true
+  lighthouse_claims_api_v3_526_submit_mocking:
+    actor_type: user
+    description: Enables mocking responses for the Lighthouse Claims API v3 submit endpoint
+    enable_in_development: true
   confirmation_page_new:
     actor_type: user
     description: Enables the 2024 version of the confirmation page view in simple forms
