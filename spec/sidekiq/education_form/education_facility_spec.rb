@@ -111,13 +111,6 @@ RSpec.describe EducationForm::EducationFacility do
       end
     end
 
-    context '22-0994' do
-      it 'routes to Eastern RPO' do
-        education_benefits_claim.saved_claim.form_id = '22-0994'
-        expect(described_class.region_for(education_benefits_claim)).to eq(:eastern)
-      end
-    end
-
     context '22-10297' do
       it 'routes to Eastern RPO' do
         education_benefits_claim.saved_claim.form_id = '22-10297'

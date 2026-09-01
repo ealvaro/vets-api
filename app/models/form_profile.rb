@@ -97,7 +97,7 @@ class FormProfile
     dependents_verification: %w[21-0538],
     dispute_debt: ['DISPUTE-DEBT'],
     edu: %w[22-1990 22-1990EMEB 22-1995 22-5490 22-5490E
-            22-0993 22-0994 FEEDBACK-TOOL 22-10203 22-1990EZ
+            22-0993 FEEDBACK-TOOL 22-10203 22-1990EZ
             22-10297 22-0803 22-10272 22-10278 22-0976 22-0989 22-0810 22-0839],
     evss: %w[21-526EZ 21-526EZ-V2],
     form214140: ['21-4140'],
@@ -209,7 +209,6 @@ class FormProfile
     '21P-530EZ' => Burials::FormProfiles::VA21p530ez,
     '21P-601' => ::FormProfiles::VA21p601,
     '22-0993' => ::FormProfiles::VA0993,
-    '22-0994' => ::FormProfiles::VA0994,
     '22-0803' => ::FormProfiles::VA0803,
     '22-0810' => ::FormProfiles::VA0810,
     '22-0839' => ::FormProfiles::VA0839,

@@ -16730,21 +16730,6 @@
             }
         },
         {
-            "id" : 1614,
-            "createDateTime" : "2022-06-14",
-            "modifiedDateTime" : "2022-06-14T16:46:22",
-            "name" : "L1614",
-            "description" : "VETERAN EMPLOYMENT THROUGH TECHNOLOGY EDUCATION COURSES (V0994)",
-            "isUserUploadable" : true,
-            "is526" : false,
-            "documentCategory" : {
-                "id" : 17,
-                "createDateTime" : "2012-01-25",
-                "modifiedDateTime" : "2014-04-28T14:44:52",
-                "description" : "Education"
-            }
-        },
-        {
             "id" : 1615,
             "createDateTime" : "2022-06-14",
             "modifiedDateTime" : "2022-06-14T16:46:22",

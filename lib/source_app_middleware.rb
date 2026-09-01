@@ -41,7 +41,6 @@ class SourceAppMiddleware
     '0845-auth-disclose',
     '0976-edu-benefits',
     '0989-edu-benefits',
-    '0994-edu-benefits',
     '10272-edu-benefits',
     '10275-edu-benefits',
     '10278-edu-benefits',

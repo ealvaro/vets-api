@@ -83,16 +83,6 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
       end
     end
 
-    context 'with a 0994 form' do
-      let(:application_1606) { create(:va0994_full_form).education_benefits_claim }
-
-      it 'tracks the 0994 form' do
-        expect(subject).to receive(:track_form_type).with('22-0994', 999)
-        result = subject.format_application(application_1606, rpo: 999)
-        expect(result).to be_a(EducationForm::Forms::VA0994)
-      end
-    end
-
     context 'with a 1990 form' do
       it 'tracks and returns a form object' do
         expect(subject).to receive(:track_form_type).with('22-1990', 999)
@@ -174,7 +164,6 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
         application_1606.saved_claim.save!(validate: false) # Make this claim super malformed
         create(:va1990_western_region)
         create(:va1995_full_form)
-        create(:va0994_full_form)
         # clear out old test files
         FileUtils.rm_rf(Dir.glob(spool_files))
         # ensure our test data is spread across 2 regions..
@@ -183,7 +172,7 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
 
       it 'processes the valid messages' do
         expect(Flipper).to receive(:enabled?).with(any_args).and_return(false).at_least(:once)
-        expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(4).to(0)
+        expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(3).to(0)
         expect(Dir[spool_files].count).to eq(2)
       end
     end
@@ -193,14 +182,13 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
         application_1606.saved_claim.form = {}.to_json
         create(:va1990_western_region)
         create(:va1995_full_form)
-        create(:va0994_full_form)
         ActionMailer::Base.deliveries.clear
       end
 
       it 'processes the valid messages' do
         with_settings(Settings, hostname: 'staging-api.va.gov') do
           expect(Flipper).to receive(:enabled?).with(any_args).and_return(false).at_least(:once)
-          expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(4).to(0)
+          expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(3).to(0)
           expect(ActionMailer::Base.deliveries.count).to be > 0
         end
       end
@@ -212,13 +200,12 @@ RSpec.describe EducationForm::CreateDailySpoolFiles, form: :education_benefits, 
         application_1606.saved_claim.form = {}.to_json
         create(:va1990_western_region)
         create(:va1995_full_form)
-        create(:va0994_full_form)
         ActionMailer::Base.deliveries.clear
       end
 
       it 'does not process the valid messages' do
         expect(Flipper).to receive(:enabled?).with(any_args).and_return(false).at_least(:once)
-        expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(4).to(0)
+        expect { subject.perform }.to change { EducationBenefitsClaim.unprocessed.count }.from(3).to(0)
         expect(ActionMailer::Base.deliveries.count).to be 0
       end
     end

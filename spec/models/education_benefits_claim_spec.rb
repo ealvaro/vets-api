@@ -7,7 +7,7 @@ RSpec.describe EducationBenefitsClaim, type: :model do
     create(:va1990).education_benefits_claim
   end
 
-  %w[1990 1995 5490 0993 0994 10203 10282 10216 10215 10297 1919 0839 10275 8794 0976 10272
+  %w[1990 1995 5490 0993 10203 10282 10216 10215 10297 1919 0839 10275 8794 0976 10272
      0810].each do |form_type|
     method = "is_#{form_type}?"
 
@@ -402,15 +402,6 @@ RSpec.describe EducationBenefitsClaim, type: :model do
 
         expect(benefits).to be_a(Hash)
         expect(benefits.keys).to be_a(Array)
-      end
-    end
-
-    context 'with form type 0994' do
-      it 'returns vettec benefit' do
-        claim = create(:va0994_minimum_form).education_benefits_claim
-        benefits = claim.selected_benefits
-
-        expect(benefits['vettec']).to be(true)
       end
     end
 
