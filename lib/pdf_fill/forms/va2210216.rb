@@ -7,15 +7,6 @@ module PdfFill
 
       ITERATOR = PdfFill::HashConverter::ITERATOR
 
-      # Template PDF is 2 pages; overflow pages start at page 3.
-      START_PAGE = 3
-
-      # Only the institution name is realistically long enough to overflow; other
-      # fields are fixed-format (codes, dates, counts) or short (title, signature).
-      QUESTION_KEY = [
-        { question_number: '1', question_text: 'Institution Name' }
-      ].freeze
-
       KEY = {
         'institutionDetails' => {
           'institutionName' => {

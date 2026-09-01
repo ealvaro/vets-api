@@ -1656,7 +1656,6 @@ spec/fixtures/pdf_fill/21P-0969 @software/benefits-lifestage
 spec/fixtures/pdf_fill/21P-530a @software/benefits-optimization-aquia
 spec/fixtures/pdf_fill/22-0803 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-0810 @software/govcio-vfep-codereviewers
-spec/fixtures/pdf_fill/22-0989 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10215 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10216 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10272 @software/govcio-vfep-codereviewers

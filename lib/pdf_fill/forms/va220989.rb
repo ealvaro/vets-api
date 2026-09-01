@@ -5,21 +5,6 @@ module PdfFill
     class Va220989 < FormBase
       include FormHelper
 
-      START_PAGE = 3
-
-      # Map question numbers to descriptive titles for overflow attachments
-      QUESTION_KEY = [
-        { question_number: '6', question_text: 'School name and address' }
-      ].freeze
-
-      # V2-style sections grouping question numbers for overflow pages
-      SECTIONS = [{
-        label: 'Part II - Information Needed to Review for Entitlement Restoration',
-        question_nums: ['6']
-      }].freeze
-
-      DEFAULT_LABEL_WIDTH = 91
-
       KEY = {
         'applicantName' => { key: 'applicant_name' },
         'vaFileNumber' => { key: 'va_file_number' },
@@ -32,8 +17,6 @@ module PdfFill
           key: 'closed_school_name_and_address',
           question_text: 'School name and address',
           question_num: 6,
-          question_suffix: 'B',
-          show_suffix: true,
           multiline_limit: 3
         },
         'didCompleteProgramOfStudy' => { key: 'did_complete_program_of_study' },

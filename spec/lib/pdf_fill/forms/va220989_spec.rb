@@ -6,10 +6,6 @@ require 'pdf_fill/forms/va220989'
 describe PdfFill::Forms::Va220989 do
   subject { described_class.new(form_data) }
 
-  before do
-    allow(Flipper).to receive(:enabled?).with(:saved_claim_pdf_overflow_tracking).and_return(false)
-  end
-
   let(:form_data) do
     JSON.parse(Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '0989', 'minimal.json').read)
   end
@@ -93,23 +89,7 @@ describe PdfFill::Forms::Va220989 do
         expect(get_field_value(fields, 'va_file_number')).to eq '123456789'
         expect(get_field_value(fields, 'signature')).to eq 'John Doe'
         expect(get_field_value(fields,
-                               'closed_school_name_and_address')).to eq 'See additional page'
-      end
-
-      it 'renders the overflow page using ExtrasGeneratorV2', run_at: '2025-01-01 00:00:00 -0500' do
-        the_extras_generator = nil
-        expect(PdfFill::Filler).to receive(:combine_extras).once do |old_file_path, extras_generator|
-          the_extras_generator = extras_generator
-          old_file_path
-        end
-
-        claim.to_pdf
-
-        expect(the_extras_generator).not_to be_nil, 'combine_extras should have been called'
-        extras_path = the_extras_generator.generate
-        expected_path = 'spec/fixtures/pdf_fill/22-0989/overflow_extras.pdf'
-
-        expect(extras_path).to match_file_exactly(expected_path)
+                               'closed_school_name_and_address')).to eq 'See add&apos;l info page'
       end
     end
 
