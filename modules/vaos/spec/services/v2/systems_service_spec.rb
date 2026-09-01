@@ -18,12 +18,48 @@ describe VAOS::V2::SystemsService do
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg, user).and_return(false)
       end
 
-      context 'with 7 clinics' do
-        it 'returns an array of size 7' do
+      context 'with 7 clinics, some ineligible for patient direct scheduling' do
+        it 'returns only the clinics eligible for patient direct scheduling' do
           VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200', match_requests_on: %i[method path query]) do
             response = subject.get_facility_clinics(location_id: '983', clinical_service: 'audiology')
-            expect(response.size).to eq(7)
-            expect(response[0][:id]).to eq('570')
+            expect(response.size).to eq(3)
+            expect(response.map(&:id)).to eq(%w[945 1014 1020])
+          end
+        end
+
+        it 'logs the filtered out clinic ids and their patient_direct_scheduling values' do
+          VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200', match_requests_on: %i[method path query]) do
+            allow(Rails.logger).to receive(:info)
+            expect(Rails.logger).to receive(:info).with(
+              'VAOS::V2::SystemsService#get_facility_clinics, clinics filtered out due to patient_direct_scheduling',
+              { location_id: '983', clinical_service: 'audiology',
+                filtered_clinics: [
+                  { id: '570', patient_direct_scheduling: false },
+                  { id: '947', patient_direct_scheduling: nil },
+                  { id: '1022', patient_direct_scheduling: nil },
+                  { id: '1072', patient_direct_scheduling: nil }
+                ] }
+            )
+            subject.get_facility_clinics(location_id: '983', clinical_service: 'audiology')
+          end
+        end
+
+        context 'when clinic_ids is specified' do
+          it 'returns all requested clinics, skipping the patient direct scheduling filter' do
+            VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200', match_requests_on: %i[method path query]) do
+              response = subject.get_facility_clinics(location_id: '983', clinic_ids: '570,945')
+              expect(response.map(&:id)).to eq(%w[570 945])
+            end
+          end
+
+          it 'does not log filtered clinics' do
+            VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200', match_requests_on: %i[method path query]) do
+              expect(Rails.logger).not_to receive(:info).with(
+                'VAOS::V2::SystemsService#get_facility_clinics, clinics filtered out due to patient_direct_scheduling',
+                anything
+              )
+              subject.get_facility_clinics(location_id: '983', clinic_ids: '570,945')
+            end
           end
         end
 
@@ -44,12 +80,12 @@ describe VAOS::V2::SystemsService do
         allow(Flipper).to receive(:enabled?).with(:va_online_scheduling_use_vpg, user).and_return(true)
       end
 
-      context 'with 7 clinics' do
-        it 'returns an array of size 7' do
+      context 'with 7 clinics, some ineligible for patient direct scheduling' do
+        it 'returns only the clinics eligible for patient direct scheduling' do
           VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200_vpg', match_requests_on: %i[method path query]) do
             response = subject.get_facility_clinics(location_id: '983', clinical_service: 'audiology')
-            expect(response.size).to eq(7)
-            expect(response[0][:id]).to eq('570')
+            expect(response.size).to eq(3)
+            expect(response.map(&:id)).to eq(%w[945 1014 1020])
           end
         end
       end

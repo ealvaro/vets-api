@@ -10,7 +10,14 @@ module VAOS
                                page_number: nil)
         with_monitoring do
           response = get_clinics(location_id:, clinical_service:, clinic_ids:, page_size:, page_number:)
-          response.body[:data].map { |clinic| OpenStruct.new(clinic) }
+          clinics = response.body[:data]
+
+          # When specific clinic ids are requested, skip the patient direct scheduling filter.
+          if clinic_ids.blank?
+            clinics = filter_clinics_by_patient_direct_scheduling(clinics, location_id:, clinical_service:)
+          end
+
+          clinics.map { |clinic| OpenStruct.new(clinic) }
         end
       end
 
@@ -52,6 +59,24 @@ module VAOS
       end
 
       private
+
+      # Clinics not enabled for patient direct scheduling should never be displayed for self-scheduling.
+      def filter_clinics_by_patient_direct_scheduling(clinics, location_id:, clinical_service:)
+        schedulable, unschedulable = clinics.partition { |clinic| clinic[:patient_direct_scheduling] }
+
+        if unschedulable.any?
+          filtered_clinics = unschedulable.map do |clinic|
+            { id: clinic[:id], patient_direct_scheduling: clinic[:patient_direct_scheduling] }
+          end
+
+          Rails.logger.info(
+            'VAOS::V2::SystemsService#get_facility_clinics, clinics filtered out due to patient_direct_scheduling',
+            { location_id:, clinical_service:, filtered_clinics: }
+          )
+        end
+
+        schedulable
+      end
 
       def get_clinics(location_id:, clinical_service:, clinic_ids:, page_size:, page_number:)
         page_size = 0 if page_size.nil? # 0 is the default for the VAOS service which means return all clinics

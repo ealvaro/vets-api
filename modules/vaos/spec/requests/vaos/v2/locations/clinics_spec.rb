@@ -23,16 +23,16 @@ RSpec.describe 'VAOS::V2::Locations::Clinics', type: :request do
     describe 'GET facility clinics' do
       context 'using VAOS' do
         context 'on successful query for clinics given service type' do
-          it 'returns a list of clinics' do
+          it 'returns a list of clinics eligible for patient direct scheduling' do
             VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200', match_requests_on: %i[method path query]) do
               get '/vaos/v2/locations/983/clinics?clinical_service=audiology', headers: inflection_header
               expect(response).to have_http_status(:ok)
               expect(response.body).to match_camelized_schema('vaos/v2/clinics', { strict: false })
               x = JSON.parse(response.body)
-              expect(x['data'].size).to eq(7)
-              expect(x['data'][0]['id']).to eq('570')
+              expect(x['data'].size).to eq(3)
+              expect(x['data'][0]['id']).to eq('945')
               expect(x['data'][0]['type']).to eq('clinics')
-              expect(x['data'][0]['attributes']['serviceName']).to eq('CHY C&P AUDIO')
+              expect(x['data'][0]['attributes']['serviceName']).to eq('FTC C&P AUDIO BEV')
             end
           end
         end
@@ -102,17 +102,17 @@ RSpec.describe 'VAOS::V2::Locations::Clinics', type: :request do
         end
 
         context 'on successful query for clinics given service type' do
-          it 'returns a list of clinics' do
+          it 'returns a list of clinics eligible for patient direct scheduling' do
             VCR.use_cassette('vaos/v2/systems/get_facility_clinics_200_vpg',
                              match_requests_on: %i[method path query]) do
               get '/vaos/v2/locations/983/clinics?clinical_service=audiology', headers: inflection_header
               expect(response).to have_http_status(:ok)
               expect(response.body).to match_camelized_schema('vaos/v2/clinics', { strict: false })
               x = JSON.parse(response.body)
-              expect(x['data'].size).to eq(7)
-              expect(x['data'][0]['id']).to eq('570')
+              expect(x['data'].size).to eq(3)
+              expect(x['data'][0]['id']).to eq('945')
               expect(x['data'][0]['type']).to eq('clinics')
-              expect(x['data'][0]['attributes']['serviceName']).to eq('CHY C&P AUDIO')
+              expect(x['data'][0]['attributes']['serviceName']).to eq('FTC C&P AUDIO BEV')
             end
           end
         end
