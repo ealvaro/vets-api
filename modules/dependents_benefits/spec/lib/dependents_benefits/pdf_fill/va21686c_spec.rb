@@ -237,6 +237,160 @@ RSpec.describe DependentsBenefits::PdfFill::Va21686c do
     end
   end
 
+  describe '#only_removing_dependents?' do
+    context 'when reporting a death' do
+      before do
+        form_data['view:selectable686_options'] = { 'report_death' => true }
+      end
+
+      it 'returns true' do
+        expect(va21686c.send(:only_removing_dependents?)).to be true
+      end
+    end
+
+    context 'when reporting a divorce' do
+      before do
+        form_data['dependents_application']['report_divorce'] = { 'full_name' => { 'first' => 'Jane' } }
+      end
+
+      it 'returns true' do
+        expect(va21686c.send(:only_removing_dependents?)).to be true
+      end
+    end
+
+    context 'when both adding and removing dependents' do
+      before do
+        form_data['view:selectable686_options'] = { 'add_child' => true, 'report_death' => true }
+      end
+
+      it 'returns false' do
+        expect(va21686c.send(:only_removing_dependents?)).to be false
+      end
+    end
+
+    context 'when only adding dependents' do
+      before do
+        form_data['view:selectable686_options'] = { 'add_spouse' => true }
+      end
+
+      it 'returns false' do
+        expect(va21686c.send(:only_removing_dependents?)).to be false
+      end
+    end
+
+    context 'when neither adding nor removing dependents' do
+      it 'returns false' do
+        expect(va21686c.send(:only_removing_dependents?)).to be false
+      end
+    end
+  end
+
+  describe '#merge_addendum_helpers' do
+    context 'household net worth question' do
+      context 'when reporting a death (removal only)' do
+        before do
+          form_data['view:selectable686_options'] = { 'report_death' => true }
+          form_data['dependents_application']['household_income'] = true
+        end
+
+        it 'omits the household net worth question from the addendum' do
+          va21686c.send(:merge_addendum_helpers)
+          expect(va21686c.form_data['addendum']).not_to include('net worth')
+        end
+      end
+
+      context 'when adding and removing dependents' do
+        before do
+          form_data['view:selectable686_options'] = { 'add_child' => true, 'report_death' => true }
+          form_data['dependents_application']['household_income'] = true
+        end
+
+        it 'includes the household net worth question in the addendum' do
+          va21686c.send(:merge_addendum_helpers)
+          expect(va21686c.form_data['addendum']).to include('net worth')
+        end
+      end
+
+      context 'when only adding dependents' do
+        before do
+          form_data['view:selectable686_options'] = { 'add_spouse' => true }
+          form_data['dependents_application']['household_income'] = true
+        end
+
+        it 'includes the household net worth question in the addendum' do
+          va21686c.send(:merge_addendum_helpers)
+          expect(va21686c.form_data['addendum']).to include('net worth')
+        end
+      end
+    end
+
+    context 'removal-flow dependent income questions' do
+      context 'when reporting a divorce' do
+        before do
+          form_data['dependents_application']['report_divorce'] = {
+            'full_name' => { 'first' => 'Jane', 'last' => 'Doe' },
+            'spouse_income' => 'Y'
+          }
+        end
+
+        context 'when the pension flag is off' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(false)
+          end
+
+          it 'includes the divorced spouse income question in the addendum' do
+            va21686c.send(:merge_addendum_helpers)
+            expect(va21686c.form_data['addendum']).to include('income in the last 365 days')
+          end
+        end
+
+        context 'when the pension flag is on' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(true)
+          end
+
+          it 'omits the divorced spouse income question from the addendum' do
+            va21686c.send(:merge_addendum_helpers)
+            expect(va21686c.form_data['addendum']).not_to include('income in the last 365 days')
+          end
+        end
+      end
+
+      context 'when reporting a death' do
+        before do
+          form_data['dependents_application']['deaths'] = [
+            {
+              'full_name' => { 'first' => 'John', 'last' => 'Doe' },
+              'deceased_dependent_income' => 'Y'
+            }
+          ]
+        end
+
+        context 'when the pension flag is off' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(false)
+          end
+
+          it 'includes the deceased dependent income question in the addendum' do
+            va21686c.send(:merge_addendum_helpers)
+            expect(va21686c.form_data['addendum']).to include('income in the last 365 days')
+          end
+        end
+
+        context 'when the pension flag is on' do
+          before do
+            allow(Flipper).to receive(:enabled?).with(:va_dependents_net_worth_and_pension).and_return(true)
+          end
+
+          it 'omits the deceased dependent income question from the addendum' do
+            va21686c.send(:merge_addendum_helpers)
+            expect(va21686c.form_data['addendum']).not_to include('income in the last 365 days')
+          end
+        end
+      end
+    end
+  end
+
   describe '#handle_street_overflow' do
     subject(:handle_overflow) { va21686c.send(:handle_street_overflow, address) }
 

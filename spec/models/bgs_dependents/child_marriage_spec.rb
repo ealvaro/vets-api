@@ -8,8 +8,7 @@ RSpec.describe BGSDependents::ChildMarriage do
       'date_married' => '1977-02-01',
       'ssn' => '555612341',
       'birth_date' => '2020-01-01',
-      'full_name' => { 'first' => 'Billy', 'middle' => 'Yohan', 'last' => 'Johnson', 'suffix' => 'Sr.' },
-      'dependent_income' => 'Y'
+      'full_name' => { 'first' => 'Billy', 'middle' => 'Yohan', 'last' => 'Johnson', 'suffix' => 'Sr.' }
     }
   end
 
@@ -22,8 +21,7 @@ RSpec.describe BGSDependents::ChildMarriage do
       'suffix' => 'Sr.',
       'ssn' => '555612341',
       'birth_date' => '2020-01-01',
-      'ever_married_ind' => 'Y',
-      'dependent_income' => 'Y'
+      'ever_married_ind' => 'Y'
     }
   end
 

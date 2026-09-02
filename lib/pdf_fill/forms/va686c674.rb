@@ -366,13 +366,6 @@ module PdfFill
               'spouse_does_live_with_veteran_yes' => { key: 'form1[0].#subform[17].YES[1]' },
               'spouse_does_live_with_veteran_no' => { key: 'form1[0].#subform[17].NO[1]' }
             },
-            'current_spouse_reason_for_separation' => {
-              key: 'form1[0].#subform[17].Reasonforseparation[0]',
-              limit: 20,
-              question_num: 13,
-              question_suffix: 'A',
-              question_text: 'INFORMATION NEEDED TO ADD SPOUSE > REASON FOR SEPARATION'
-            },
             'address' => {
               'address_line1' => {
                 key: 'form1[0].#subform[17].CurrentMailingAddress_NumberAndStreet[1]',
@@ -1930,8 +1923,29 @@ module PdfFill
         end
       end
 
+      ##
+      # Whether this submission consists solely of dependent-removal actions (no dependents being added)
+      #
+      # @return [Boolean]
+      def only_removing_dependents?
+        selectable_options = @form_data['view:selectable686_options'] || {}
+        dependents_app = @form_data['dependents_application'] || {}
+
+        adding = %w[add_child add_disabled_child add_spouse].any? { |option| selectable_options[option] }
+        return false if adding
+
+        removing = %w[
+          report_death
+          report_stepchild_not_in_household
+          report_marriage_of_child_under18
+          report_child18_or_older_is_not_attending_school
+        ].any? { |option| selectable_options[option] }
+        removing || dependents_app['report_divorce'].present?
+      end
+
       def merge_addendum_helpers
-        addendum_text = add_household_income
+        # The household net worth question isn't relevant when the veteran is only removing dependents
+        addendum_text = only_removing_dependents? ? '' : add_household_income
 
         # income question when adding spouse
         spouse_name = combine_full_name(@form_data.dig('dependents_application', 'spouse_information', 'full_name'))

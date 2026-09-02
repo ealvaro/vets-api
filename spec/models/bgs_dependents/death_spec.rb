@@ -5,7 +5,6 @@ require 'rails_helper'
 RSpec.describe BGSDependents::Death do
   let(:death_info_v2) do
     {
-      'deceased_dependent_income' => 'N',
       'dependent_death_location' => { 'location' => { 'city' => 'portland', 'state' => 'ME' } },
       'dependent_death_date' => '2024-08-01',
       'dependent_type' => 'DEPENDENT_PARENT',
@@ -23,8 +22,7 @@ RSpec.describe BGSDependents::Death do
       'birth_date' => '1960-01-01',
       'first' => 'first',
       'middle' => 'middle',
-      'last' => 'last',
-      'dependent_income' => 'N'
+      'last' => 'last'
     }
   end
 

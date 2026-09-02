@@ -18,17 +18,8 @@ module BGSDependents
         vet_ind: 'N',
         ssn: @divorce_info['ssn'],
         birth_date: @divorce_info['birth_date'],
-        type: 'divorce',
-        spouse_income:
+        type: 'divorce'
       }.merge(@divorce_info['full_name']).with_indifferent_access
-    end
-
-    def spouse_income
-      if @divorce_info['spouse_income'] == 'NA'
-        nil
-      else
-        @divorce_info['spouse_income']
-      end
     end
 
     # The BGS API expects the state to be nil if the divorce occurred outside the US,
