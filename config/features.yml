@@ -2423,6 +2423,16 @@ features:
     actor_type: user
     description: Enables/disables pending medications related work
     enable_in_development: true
+  mhv_medications_expected_fill_date_step_2:
+    actor_type: user
+    description: >-
+      If enabled, an initial fill (no prior dispense history) whose collapsed
+      "In progress" status has no refill_status but carries a future expected
+      fill date is shown in the "Fill in progress" step (Step 2) on the
+      Medications Refill status page. Refills are unaffected. Requires
+      mhv_medications_management_improvements to also be enabled; no effect on
+      its own. When disabled, step classification is unchanged.
+    enable_in_development: true
   mhv_medications_oh_renewal_message_rollout:
     actor_type: user
     description: Controls user rollout of the prescription renewal secure-message flow for Oracle Health facilities listed in mhv.oh_facility_checks.renewal_flow_rollout_oh_facilities
