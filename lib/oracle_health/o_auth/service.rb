@@ -6,44 +6,45 @@ require 'oracle_health/o_auth/errors'
 module OracleHealth
   module OAuth
     class Service < Common::Client::Base
+      TOKEN_EXPIRY_BUFFER = 30
+      ERROR_CODE_CLASS_MAP = {
+        'invalid_client' => Errors::InvalidClientError,
+        'invalid_scope' => Errors::InvalidScopeError
+      }.freeze
+
       configuration Configuration
 
       def get_token
-        Rails.logger.info("#{config.logging_prefix} get_token request")
-        response = perform(:post, config.token_path, params, authenticated_header)
-        body = response.body.is_a?(Hash) ? response.body : {}
-        normalize_response_body(body)
-      rescue Breakers::OutageException => e
-        raise e
+        Rails.cache.fetch(token_cache_key) do |_key, options|
+          request_and_cache_token(options)
+        end
       rescue Common::Client::Errors::ClientError => e
         error = classify_error(e)
-        code = error_code(e)
-        error_message = e.message
-        StatsD.increment("#{config.statsd_key_prefix}.get_token.failure", tags: ["error:#{code}"])
-        Rails.logger.error("#{config.logging_prefix} get_token #{code}",
-                           { error_message:, body: e.body, status: e.status })
+        StatsD.increment("#{config.statsd_key_prefix}.get_token.failure")
+        Rails.logger.error("#{config.logging_prefix} get_token error",
+                           { error_message: e.message, body: e.body, status: e.status })
         raise error
       rescue => e
-        error_message = e.message
-        StatsD.increment("#{config.statsd_key_prefix}.get_token.failure", tags: ["error:#{error_message}"])
-        Rails.logger.error("#{config.logging_prefix} get_token #{error_message}", { error_message: })
+        StatsD.increment("#{config.statsd_key_prefix}.get_token.failure")
+        Rails.logger.error("#{config.logging_prefix} get_token error", { error_message: e.message })
         raise e
       end
 
       private
 
-      def error_code(error)
-        error.body.is_a?(Hash) ? error.body['error'] : nil
-      end
-
       def classify_error(error)
-        klass = if error.status.nil? || error.status >= 500
+        klass = if error.is_a?(Errors::ValidationError)
+                  Errors::ValidationError
+                elsif error.status.nil? || error.status >= 500
                   Errors::ServiceUnavailableError
                 else
-                  { 'invalid_client' => Errors::InvalidClientError,
-                    'invalid_scope' => Errors::InvalidScopeError }.fetch(error_code(error), Errors::TokenError)
+                  ERROR_CODE_CLASS_MAP.fetch(oauth_error_identifier(error), Errors::TokenError)
                 end
         klass.new(error.message, error.status, error.body, headers: error.headers)
+      end
+
+      def oauth_error_identifier(error)
+        error.body.is_a?(Hash) ? error.body['error'] : nil
       end
 
       def params
@@ -66,12 +67,31 @@ module OracleHealth
       end
 
       def normalize_response_body(body)
+        raise Errors::ValidationError, 'Invalid token response body' unless body.is_a?(Hash)
+        unless body['expires_in'].to_i > TOKEN_EXPIRY_BUFFER
+          raise Errors::ValidationError,
+                "Invalid token response: expires_in must be greater than #{TOKEN_EXPIRY_BUFFER} seconds"
+        end
+
         {
           access_token: body['access_token'],
           scope: body['scope'],
           token_type: body['token_type'],
           expires_in: body['expires_in']
         }
+      end
+
+      def token_cache_key
+        "oracle_health_oauth_token_#{config.tenant_id}"
+      end
+
+      def request_and_cache_token(cache_options)
+        Rails.logger.info("#{config.logging_prefix} get_token request")
+        response = perform(:post, config.token_path, params, authenticated_header)
+        result = normalize_response_body(response.body)
+        cache_options.expires_in = result[:expires_in].to_i - TOKEN_EXPIRY_BUFFER
+        Rails.logger.info("#{config.logging_prefix} get_token success", expires_in: result[:expires_in])
+        result
       end
     end
   end

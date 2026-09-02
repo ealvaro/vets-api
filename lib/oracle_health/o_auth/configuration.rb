@@ -19,7 +19,11 @@ module OracleHealth
       end
 
       def token_path
-        "/tenants/#{IdentitySettings.oracle_health.oauth.tenant_id}/protocols/oauth2/profiles/smart-v1/token"
+        "/tenants/#{tenant_id}/protocols/oauth2/profiles/smart-v1/token"
+      end
+
+      def tenant_id
+        IdentitySettings.oracle_health.oauth.tenant_id
       end
 
       def client_id

@@ -5,6 +5,8 @@ module OracleHealth
     module Errors
       class TokenError < Common::Client::Errors::ClientError; end
 
+      class ValidationError < TokenError; end
+
       class InvalidClientError < TokenError; end
 
       class InvalidScopeError < TokenError; end

@@ -11,14 +11,14 @@ RSpec.describe OracleHealth::OAuth::Service do
     let(:logging_prefix) { '[OracleHealth][Service]' }
     let(:client_id) { 'test_client_id' }
     let(:client_secret) { 'test_client_secret' }
-    let(:token_path) { 'tenants/00224df3-b096-4cdb-852c-cbc83c0d3b06/protocols/oauth2/profiles/smart-v1/token' }
+    let(:tenant_id) { '00224df3-b096-4cdb-852c-cbc83c0d3b06' }
+    let(:token_path) { "tenants/#{tenant_id}/protocols/oauth2/profiles/smart-v1/token" }
     let(:base_path) { 'https://authorization.cerner.ehr.gov' }
     let(:expected_response_body) { { access_token:, scope:, token_type:, expires_in: } }
     let(:scope) { 'system/Patient.read system/Patient.write' }
     let(:token_type) { 'Bearer' }
     let(:expires_in) { 570 }
     let(:access_token) { 'some-access-token' }
-    let(:config) { instance_double(OracleHealth::OAuth::Configuration) }
     let(:statsd_key_prefix) { 'api.oracle_health.oauth' }
     let(:grant_type) { 'client_credentials' }
     let(:expected_request_body) { URI.encode_www_form(grant_type:, scope:) }
@@ -29,14 +29,16 @@ RSpec.describe OracleHealth::OAuth::Service do
         'Accept' => 'application/json'
       }
     end
+    let(:service) { described_class.new }
+    let(:token_cache_key) { service.send(:token_cache_key) }
 
     before do
       allow(Rails.logger).to receive(:info)
       allow(Rails.logger).to receive(:error)
       allow(StatsD).to receive(:increment)
       allow(IdentitySettings.oracle_health.oauth).to receive_messages(client_id:, client_secret:,
-                                                                      uri: base_path)
-      allow(OracleHealth::OAuth::Configuration).to receive(:new).and_return(config)
+                                                                      uri: base_path, tenant_id:)
+      Rails.cache.delete(token_cache_key)
     end
 
     context 'when the request is successful' do
@@ -44,6 +46,13 @@ RSpec.describe OracleHealth::OAuth::Service do
         VCR.use_cassette('oracle_health/get_token_success_200') do
           subject
           expect(Rails.logger).to have_received(:info).with("#{logging_prefix} get_token request")
+        end
+      end
+
+      it 'logs successful token call' do
+        VCR.use_cassette('oracle_health/get_token_success_200') do
+          subject
+          expect(Rails.logger).to have_received(:info).with("#{logging_prefix} get_token success", expires_in:)
         end
       end
 
@@ -68,6 +77,65 @@ RSpec.describe OracleHealth::OAuth::Service do
                  .with(body: expected_request_body)).to have_been_made
         end
       end
+
+      it 'sets cache TTL to expires_in minus token expiry buffer' do
+        cache_options = Struct.new(:expires_in).new
+        allow(Rails.cache).to receive(:fetch).with(token_cache_key).and_yield(token_cache_key, cache_options)
+
+        VCR.use_cassette('oracle_health/get_token_success_200') do
+          subject
+          expect(cache_options.expires_in).to eq(expires_in - described_class::TOKEN_EXPIRY_BUFFER)
+        end
+      end
+
+      it 'stores token in cache using tenant cache key with buffered TTL' do
+        cache_options = Struct.new(:expires_in).new
+
+        expect(Rails.cache).to receive(:fetch).with(token_cache_key).and_yield(token_cache_key, cache_options)
+
+        VCR.use_cassette('oracle_health/get_token_success_200') do
+          expect(subject).to eq(expected_response_body)
+          expect(cache_options.expires_in).to eq(expires_in - described_class::TOKEN_EXPIRY_BUFFER)
+        end
+      end
+    end
+
+    context 'when a token is present in the redis cache' do
+      it 'returns the cached token without re-requesting' do
+        allow(Rails.cache).to receive(:fetch).with(token_cache_key).and_return(expected_response_body)
+
+        result = subject
+
+        expect(result).to eq(expected_response_body)
+        expect(a_request(:post, "#{base_path}/#{token_path}")).not_to have_been_made
+        expect(Rails.logger).not_to have_received(:info).with("#{logging_prefix} get_token request")
+        expect(Rails.logger).not_to have_received(:info).with("#{logging_prefix} get_token success",
+                                                              expires_in:)
+      end
+    end
+
+    context 'when token response expires_in is at or below buffer' do
+      it 'raises a ValidationError' do
+        stub_const("#{described_class}::TOKEN_EXPIRY_BUFFER", expires_in)
+
+        VCR.use_cassette('oracle_health/get_token_success_200') do
+          expect { subject }.to raise_error(
+            OracleHealth::OAuth::Errors::ValidationError,
+            "Invalid token response: expires_in must be greater than #{expires_in} seconds"
+          )
+        end
+      end
+    end
+
+    context 'when an unexpected error occurs' do
+      it 'logs and re-raises a non-ClientError exception' do
+        allow(Rails.cache).to receive(:fetch).and_raise(StandardError, 'Unexpected error')
+
+        expect { subject }.to raise_error(StandardError, 'Unexpected error')
+        expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
+                                                           hash_including(:error_message))
+        expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
+      end
     end
 
     context 'when request gives an error' do
@@ -75,7 +143,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'logs the error' do
           VCR.use_cassette('oracle_health/get_token_invalid_client_error_401') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::InvalidClientError)
-            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token invalid_client",
+            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
                                                                hash_including(:error_message, :body, :status))
           end
         end
@@ -89,8 +157,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'increments StatsD' do
           VCR.use_cassette('oracle_health/get_token_invalid_client_error_401') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::InvalidClientError)
-            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure",
-                                                             tags: ['error:invalid_client'])
+            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
           end
         end
       end
@@ -99,7 +166,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'logs the error' do
           VCR.use_cassette('oracle_health/get_token_invalid_scope_error_400') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::InvalidScopeError)
-            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token invalid_scope",
+            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
                                                                hash_including(:error_message, :body, :status))
           end
         end
@@ -113,8 +180,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'increments StatsD' do
           VCR.use_cassette('oracle_health/get_token_invalid_scope_error_400') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::InvalidScopeError)
-            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure",
-                                                             tags: ['error:invalid_scope'])
+            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
           end
         end
       end
@@ -123,7 +189,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'logs the error' do
           VCR.use_cassette('oracle_health/get_token_nil_response_body_error_400') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::TokenError)
-            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token ",
+            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
                                                                hash_including(:error_message, :status, body: nil))
           end
         end
@@ -137,7 +203,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'increments StatsD' do
           VCR.use_cassette('oracle_health/get_token_nil_response_body_error_400') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::TokenError)
-            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure", tags: ['error:'])
+            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
           end
         end
       end
@@ -146,7 +212,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'logs the error' do
           VCR.use_cassette('oracle_health/get_token_error_500') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::ServiceUnavailableError)
-            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token ",
+            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
                                                                hash_including(:error_message, :body, :status))
           end
         end
@@ -160,7 +226,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'increments StatsD' do
           VCR.use_cassette('oracle_health/get_token_error_500') do
             expect { subject }.to raise_error(OracleHealth::OAuth::Errors::ServiceUnavailableError)
-            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure", tags: ['error:'])
+            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
           end
         end
       end
@@ -169,7 +235,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'logs the error' do
           VCR.use_cassette('oracle_health/get_token_unknown_error') do
             expect { subject }.to raise_error(StandardError)
-            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token Forbidden",
+            expect(Rails.logger).to have_received(:error).with("#{logging_prefix} get_token error",
                                                                hash_including(:error_message))
           end
         end
@@ -183,8 +249,7 @@ RSpec.describe OracleHealth::OAuth::Service do
         it 'increments StatsD' do
           VCR.use_cassette('oracle_health/get_token_unknown_error') do
             expect { subject }.to raise_error(StandardError)
-            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure",
-                                                             tags: ['error:Forbidden'])
+            expect(StatsD).to have_received(:increment).with("#{statsd_key_prefix}.get_token.failure")
           end
         end
       end
