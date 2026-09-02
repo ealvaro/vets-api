@@ -44,6 +44,10 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
     allow_any_instance_of(VRE::Ch31Form).to receive(:submit).and_return(true)
   end
 
+  it 'includes VREClaimsEvidenceUpload' do
+    expect(described_class.ancestors).to include(VREClaimsEvidenceUpload)
+  end
+
   describe '#add_claimant_info' do
     it 'adds veteran information' do
       claim.add_claimant_info(user_object)
@@ -205,13 +209,14 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
           allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
         end
 
-        it 'logs error with correct service name' do
+        it 'logs error with correct service name and error class' do
           allow(Rails.logger).to receive(:error)
           claim.upload_to_vbms(user: upload_user)
           expect(Rails.logger).to have_received(:error).with(
-            'Error uploading VRE claim to VBMS.',
+            'VRE modular claim: error uploading to VBMS, falling back to Lighthouse/CMP',
             {
               user_uuid: upload_user.uuid,
+              error_class: 'RuntimeError',
               message: 'SSN or VA File Number required'
             }
           )
@@ -224,15 +229,16 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
           allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
         end
 
-        it 'logs invalid identifier details' do
+        it 'logs invalid identifier details with error class' do
           allow(Rails.logger).to receive(:error)
           expected_message = 'Invalid veteran identifiers: SSN must be 9 digits; ' \
                              'VA File Number must be 7-9 digits with optional leading C'
           claim.upload_to_vbms(user: upload_user)
           expect(Rails.logger).to have_received(:error).with(
-            'Error uploading VRE claim to VBMS.',
+            'VRE modular claim: error uploading to VBMS, falling back to Lighthouse/CMP',
             {
               user_uuid: upload_user.uuid,
+              error_class: 'RuntimeError',
               message: expected_message
             }
           )
@@ -295,6 +301,31 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
         allow(Flipper).to receive(:enabled?).with(:vre_use_claims_evidence_api).and_return(true)
         allow(ClaimsEvidenceApi::Uploader).to receive(:new).and_return(ce_uploader)
         allow(ce_uploader).to receive(:upload_evidence).and_return('uuid-001')
+        # Stub folder lookup to succeed by default (simulates folder exists in Claims Evidence)
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Search).to receive(:find).and_return({})
+      end
+
+      context 'when Claims Evidence folder is not found' do
+        before do
+          allow(claim).to receive(:claims_evidence_folder_exists?).and_return(false)
+        end
+
+        it 'falls back to legacy VBMS instead of routing to Lighthouse/CMP' do
+          vbms_uploader = instance_double(ClaimsApi::VBMSUploader)
+          allow(vbms_uploader).to receive(:upload!).and_return({ vbms_document_series_ref_id: 'DOC-001' })
+          allow(ClaimsApi::VBMSUploader).to receive(:new).and_return(vbms_uploader)
+
+          expect(claim).not_to receive(:send_to_lighthouse!)
+          claim.upload_to_vbms(user: upload_user)
+        end
+
+        it 'logs the fallback to legacy VBMS' do
+          allow(ClaimsApi::VBMSUploader).to receive(:new)
+            .and_return(instance_double(ClaimsApi::VBMSUploader, upload!: { vbms_document_series_ref_id: 'X' }))
+          expect(Rails.logger).to receive(:warn)
+            .with('Claims Evidence API folder not found for VRE claim, falling back to legacy VBMS', anything)
+          claim.upload_to_vbms(user: upload_user)
+        end
       end
 
       context 'when veteran identitifer missing' do
@@ -303,13 +334,14 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
           allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
         end
 
-        it 'logs error with correct service name' do
+        it 'logs error with correct service name and error class' do
           allow(Rails.logger).to receive(:error)
           claim.upload_to_vbms(user: upload_user)
           expect(Rails.logger).to have_received(:error).with(
-            'Error uploading VRE claim to Claims Evidence API.',
+            'VRE modular claim: error uploading to Claims Evidence API, falling back to Lighthouse/CMP',
             {
               user_uuid: upload_user.uuid,
+              error_class: 'RuntimeError',
               message: 'SSN or VA File Number required'
             }
           )
@@ -322,15 +354,16 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
           allow(claim).to receive(:send_to_lighthouse!).and_return(nil)
         end
 
-        it 'logs invalid identifier details' do
+        it 'logs invalid identifier details with error class' do
           allow(Rails.logger).to receive(:error)
           expected_message = 'Invalid veteran identifiers: SSN must be 9 digits; ' \
                              'VA File Number must be 7-9 digits with optional leading C'
           claim.upload_to_vbms(user: upload_user)
           expect(Rails.logger).to have_received(:error).with(
-            'Error uploading VRE claim to Claims Evidence API.',
+            'VRE modular claim: error uploading to Claims Evidence API, falling back to Lighthouse/CMP',
             {
               user_uuid: upload_user.uuid,
+              error_class: 'RuntimeError',
               message: expected_message
             }
           )
@@ -364,12 +397,12 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
         claim.upload_to_vbms(user: upload_user)
       end
 
-      it 'calls upload_evidence with the correct parameters' do
+      it 'calls upload_evidence with integer doctype' do
         expect(ce_uploader).to receive(:upload_evidence).with(
           claim.id,
           file_path: Rails.root.join(form_path).to_s,
           form_id: '28-1900',
-          doctype: '1167'
+          doctype: 1167
         ).and_return('uuid-001')
 
         claim.upload_to_vbms(user: upload_user)
@@ -382,6 +415,21 @@ RSpec.describe VRE::VREVeteranReadinessEmploymentClaim do
 
         claim.upload_to_vbms(user: upload_user)
       end
+    end
+  end
+
+  describe '#log_to_statsd' do
+    it 'measures response time on success' do
+      expect(StatsD).to receive(:measure).with('api.1900.vbms.response_time', anything, tags: {})
+      claim.send(:log_to_statsd, 'vbms') { :ok }
+    end
+
+    it 'increments error metric and re-raises on failure' do
+      allow(StatsD).to receive(:increment)
+      expect do
+        claim.send(:log_to_statsd, 'vbms') { raise StandardError, 'upload failed' }
+      end.to raise_error(StandardError, 'upload failed')
+      expect(StatsD).to have_received(:increment).with('api.1900.vbms.error')
     end
   end
 end

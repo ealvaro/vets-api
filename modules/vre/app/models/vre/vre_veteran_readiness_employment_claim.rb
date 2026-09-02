@@ -5,6 +5,8 @@ require 'vre/ch31_form'
 
 module VRE
   class VREVeteranReadinessEmploymentClaim < ::SavedClaim
+    include ::VREClaimsEvidenceUpload
+
     FORM = Constants::FORM
     VBMS_CONFIRMATION = :confirmation_vbms
     LIGHTHOUSE_CONFIRMATION = :confirmation_lighthouse
@@ -93,24 +95,11 @@ module VRE
       end
     rescue => e
       service = use_claims_evidence ? 'Claims Evidence API' : 'VBMS'
-      Rails.logger.error("Error uploading VRE claim to #{service}.", { user_uuid: user&.uuid, message: e.message })
+      Rails.logger.error(
+        "VRE modular claim: error uploading to #{service}, falling back to Lighthouse/CMP",
+        { user_uuid: user&.uuid, error_class: e.class.name, message: e.message }
+      )
       send_to_lighthouse!(user)
-    end
-
-    def upload_to_claims_evidence_api(form_path:, va_file_number:, ssn:, user:, doc_type:)
-      folder_identifier = va_file_number.present? ? "VETERAN:FILENUMBER:#{va_file_number}" : "VETERAN:SSN:#{ssn}"
-      ce_uploader = ::ClaimsEvidenceApi::Uploader.new(folder_identifier)
-
-      log_to_statsd('claims_evidence_api') do
-        Rails.logger.info('Uploading VRE claim via Claims Evidence API', { user_uuid: user&.uuid })
-        file_uuid = ce_uploader.upload_evidence(
-          id,
-          file_path: Rails.root.join(form_path).to_s,
-          form_id: '28-1900',
-          doctype: doc_type
-        )
-        persist_document_id(file_uuid)
-      end
     end
 
     def upload_to_legacy_vbms(form_path:, va_file_number:, ssn:, user:, doc_type:)
@@ -291,6 +280,9 @@ module VRE
       yield
       elapsed_time = Time.current - start_time
       StatsD.measure("api.1900.#{service}.response_time", elapsed_time, tags: {})
+    rescue
+      StatsD.increment("api.1900.#{service}.error")
+      raise
     end
   end
 end
