@@ -83,17 +83,6 @@ RSpec.describe 'MyHealth::V1::Messaging::Preferences', type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
-    it 'returns a custom exception mapped from i18n when email contains spaces' do
-      VCR.use_cassette('sm_client/preferences/raises_a_backend_service_exception_when_email_includes_spaces') do
-        params = { email_address: 'kamyar karshenas@va.gov',
-                   frequency: 'daily' }
-        put '/my_health/v1/messaging/preferences', params:
-      end
-
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(JSON.parse(response.body)['errors'].first['code']).to eq('SM152')
-    end
-
     it 'responds to POST #update_triage_team_preferences' do
       VCR.use_cassette('sm_client/preferences/updates_triage_team_preferences') do
         params = { updated_triage_teams: [{ triage_team_id: 1_013_155, preferred_team: true }] }

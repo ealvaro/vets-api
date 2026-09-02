@@ -26,7 +26,7 @@ class MessagingPreference
     :email_address,
     presence: true,
     format: { with: VAProfile::Models::Email::VALID_EMAIL_REGEX },
-    length: { maximum: 255, minimum: 6 }
+    length: { maximum: 254, minimum: 6 }
   )
 
   def mhv_params

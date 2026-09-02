@@ -34,8 +34,80 @@ RSpec.describe VAProfile::Models::Email do
       end
     end
 
+    context 'when email contains spaces' do
+      let(:email_address) { 'email with spaces@example.com' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when the local part is longer than 64 characters' do
+      let(:email_address) { "#{'a' * 65}@example.com" }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
     context 'when email is missing a dot after @' do
       let(:email_address) { 'user@example' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when email has consecutive dots in the domain' do
+      let(:email_address) { 'email@domain..com' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when email contains an underscore in the domain' do
+      let(:email_address) { 'email@domain_name.com' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when a domain label starts with a hyphen' do
+      let(:email_address) { 'email@-domain.com' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when a domain label ends with a hyphen' do
+      let(:email_address) { 'email@domain-.com' }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when a domain label is longer than 63 characters' do
+      let(:email_address) { "email@#{'a' * 64}.com" }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when the TLD is longer than 63 characters' do
+      let(:email_address) { "email@example.#{'a' * 64}" }
+
+      it 'is not valid' do
+        expect(email).not_to be_valid
+      end
+    end
+
+    context 'when the TLD is only one character' do
+      let(:email_address) { 'email@example.c' }
 
       it 'is not valid' do
         expect(email).not_to be_valid
@@ -50,8 +122,8 @@ RSpec.describe VAProfile::Models::Email do
       end
     end
 
-    context 'when email is longer than 255 characters' do
-      let(:email_address) { "#{'a' * 250}@example.com" }
+    context 'when email is longer than 254 characters' do
+      let(:email_address) { "#{'a' * 64}@#{'a' * 63}.#{'a' * 63}.#{'a' * 63}.com" }
 
       it 'is not valid' do
         expect(email).not_to be_valid

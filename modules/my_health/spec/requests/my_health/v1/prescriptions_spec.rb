@@ -749,17 +749,6 @@ RSpec.describe 'MyHealth::V1::Prescriptions', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
       end
 
-      it 'returns a custom exception mapped from i18n when email contains spaces' do
-        VCR.use_cassette('rx_client/preferences/raises_a_backend_service_exception_when_email_includes_spaces') do
-          params = { email_address: 'kamyar karshenas@va.gov',
-                     rx_flag: false }
-          put '/my_health/v1/prescriptions/preferences', params:
-        end
-
-        expect(response).to have_http_status(:unprocessable_entity)
-        expect(JSON.parse(response.body)['errors'].first['code']).to eq('RX157')
-      end
-
       it 'includes prescription description fields' do
         VCR.use_cassette('rx_client/prescriptions/gets_a_single_grouped_prescription') do
           get '/my_health/v1/prescriptions/24891624'

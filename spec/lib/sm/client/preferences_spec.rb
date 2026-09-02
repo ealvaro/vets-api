@@ -44,11 +44,6 @@ describe 'sm client' do
         .to raise_error(Common::Exceptions::ValidationErrors)
     end
 
-    it 'raises a backend service exception when email includes spaces', :vcr do
-      expect { client.post_preferences(email_address: 'kamyar karshenas@va.gov', frequency: 'none') }
-        .to raise_error(Common::Exceptions::BackendServiceException)
-    end
-
     it 'fetches the signature preferences', :vcr do
       client_response = client.get_signature[:data]
       expect(client_response[:include_signature]).to be(true)

@@ -43,14 +43,6 @@ describe Rx::Client do
         expect(client_response.rx_flag).to be(true)
       end
     end
-
-    it 'raises a backend service exception when email includes spaces' do
-      cassette = 'raises_a_backend_service_exception_when_email_includes_spaces'
-      VCR.use_cassette("rx_client/preferences/#{cassette}") do
-        expect { client.post_preferences(email_address: 'kamyar karshenas@va.gov', rx_flag: false) }
-          .to raise_error(Common::Exceptions::BackendServiceException)
-      end
-    end
   end
 
   shared_examples 'prescriptions' do

@@ -9,7 +9,8 @@ module VAProfile
     class Email < Base
       include VAProfile::Concerns::Defaultable
       include VAProfile::Concerns::Expirable
-      VALID_EMAIL_REGEX = /.+@.+\..+/i
+
+      VALID_EMAIL_REGEX = /\A[a-zA-Z0-9+_.-]{1,64}@(?:(?!-)[A-Za-z0-9-]{0,62}[A-Za-z0-9]\.)+[A-Za-z0-9-]{2,63}\z/
 
       attribute :created_at, Vets::Type::ISO8601Time
       attribute :confirmation_date, Vets::Type::ISO8601Time
@@ -29,7 +30,7 @@ module VAProfile
         :email_address,
         presence: true,
         format: { with: VALID_EMAIL_REGEX },
-        length: { maximum: 255, minimum: 6 }
+        length: { maximum: 254, minimum: 6 }
       )
 
       # Converts an instance of the Email model to a JSON encoded string suitable for use in

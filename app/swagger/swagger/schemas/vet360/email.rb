@@ -14,7 +14,7 @@ module Swagger
                    type: :string,
                    example: 'john@example.com',
                    minLength: 6,
-                   maxLength: 255,
+                   maxLength: 254,
                    pattern: VAProfile::Models::Email::VALID_EMAIL_REGEX.inspect
           property :confirmation_date,
                    type: %i[string null],
@@ -30,7 +30,7 @@ module Swagger
                    type: :string,
                    example: 'john@example.com',
                    minLength: 6,
-                   maxLength: 255,
+                   maxLength: 254,
                    pattern: VAProfile::Models::Email::VALID_EMAIL_REGEX.inspect
           property :confirmation_date,
                    type: %i[string null],
