@@ -1197,6 +1197,7 @@ lib/search @software/va-platform-backend
 lib/search_click_tracking @software/va-platform-backend
 lib/search_gsa @software/va-platform-backend
 lib/search_kendra @software/ws3-intelligent-search
+lib/search_llm @software/ws3-intelligent-search
 lib/search/pii_redactor.rb @software/va-platform-backend
 lib/semantic_logger/pii_filtering_color_formatter.rb @software/va-platform-backend
 lib/semantic_logger/pii_filtering_formatter.rb @software/va-platform-backend

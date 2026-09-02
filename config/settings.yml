@@ -1451,6 +1451,9 @@ search_kendra:
   index_id: <%= ENV['search_kendra__index_id'] %>
   region: us-gov-west-1
   url: https://kendra.us-gov-west-1.amazonaws.com/
+search_llm:
+  prompt_arn: <%= ENV['search_llm__prompt_arn'] %>
+  region: us-gov-west-1
 secret_key_base: <%= ENV['secret_key_base'] %>
 sharepoint:
   mobile_survey_storage:

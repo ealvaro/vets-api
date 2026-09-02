@@ -3633,6 +3633,10 @@ features:
     actor_type: cookie_id
     description: If enabled, search queries are routed to Amazon Kendra.
     enable_in_development: false
+  search_generate_llm_response:
+    actor_type: cookie_id
+    description: If enabled, search queries and Kendra results are used to generate LLM response.
+    enable_in_development: false
   show_yellow_ribbon_table:
     actor_type: cookie_id
     description: Used to show yellow ribbon table in Comparison Tool
