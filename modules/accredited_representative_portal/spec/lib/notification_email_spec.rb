@@ -26,7 +26,7 @@ RSpec.describe AccreditedRepresentativePortal::NotificationEmail do
         saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
                                                      saved_claim_id: saved_claim.id)
         create_holder_registration(
-          type: :attorney,
+          type: :vso,
           registration_number: saved_claim_claimant_representative.accredited_individual_registration_number
         )
 
@@ -74,7 +74,7 @@ RSpec.describe AccreditedRepresentativePortal::NotificationEmail do
         saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
                                                      saved_claim: itf_saved_claim)
         create_holder_registration(
-          type: :attorney,
+          type: :vso,
           registration_number: saved_claim_claimant_representative.accredited_individual_registration_number
         )
 
@@ -114,6 +114,31 @@ RSpec.describe AccreditedRepresentativePortal::NotificationEmail do
         )
 
         described_class.new(itf_saved_claim.id).deliver(:itf_confirmation)
+      end
+    end
+
+    describe '#deliver when the representative has no email' do
+      it 'skips delivery gracefully without raising or notifying' do
+        saved_claim_claimant_representative = create(:saved_claim_claimant_representative,
+                                                     saved_claim_id: saved_claim.id)
+        create_holder_registration(
+          type: :vso,
+          registration_number: saved_claim_claimant_representative.accredited_individual_registration_number,
+          email: nil
+        )
+
+        expect(SavedClaim).to receive(:find).with(saved_claim.id).and_return(saved_claim)
+        expect(VaNotify::Service).not_to receive(:new)
+
+        allow(Rails.logger).to receive(:warn)
+        allow(StatsD).to receive(:increment)
+        expect(Rails.logger).to receive(:warn).with(/no email available for representative/)
+        expect(StatsD).to receive(:increment).with(
+          'accredited_representative_portal.notification_email.skipped_missing_email',
+          hash_including(tags: array_including('email_type:error'))
+        )
+
+        expect { described_class.new(saved_claim.id).deliver(:error) }.not_to raise_error
       end
     end
   end

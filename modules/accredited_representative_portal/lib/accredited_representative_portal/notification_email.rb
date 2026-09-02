@@ -11,11 +11,47 @@ module AccreditedRepresentativePortal
       'survivor' => 'Survivor benefits'
     }.freeze
 
+    # registration_number is only unique when scoped to individual_type (see the unique index on
+    # accredited_individuals), so the recipient's type must be included when resolving the record.
+    POA_HOLDER_TYPE_TO_INDIVIDUAL_TYPE = {
+      PowerOfAttorneyHolder::Types::VETERAN_SERVICE_ORGANIZATION =>
+        AccreditedIndividual::INDIVIDUAL_TYPE_VSO_REPRESENTATIVE,
+      PowerOfAttorneyHolder::Types::ATTORNEY => AccreditedIndividual::INDIVIDUAL_TYPE_ATTORNEY,
+      PowerOfAttorneyHolder::Types::CLAIMS_AGENT => AccreditedIndividual::INDIVIDUAL_TYPE_CLAIM_AGENT
+    }.freeze
+
     def initialize(saved_claim_id)
       super(saved_claim_id, service_name: 'accredited_representative_portal')
     end
 
     private
+
+    # Not all accredited representatives have an email on record (and some registration numbers may
+    # not resolve to a record at all). Sending is impossible in that case, so run the base class
+    # validations and only intercept the resulting `Missing email` failure: skip gracefully and emit
+    # a low-severity signal rather than letting it route through `send_failure` and generate error
+    # alerts for what is an expected data condition. Every other validation/guardrail is preserved.
+    def valid_attempt?(email_type, resend: false)
+      super
+    rescue VeteranFacingServices::NotificationEmail::FailureToSend => e
+      raise unless e.message == 'Missing email'
+
+      log_missing_representative_email(email_type)
+      false
+    end
+
+    def log_missing_representative_email(email_type)
+      poa_holder_type = saved_claim_claimant_representative&.power_of_attorney_holder_type
+      Rails.logger.warn(
+        "AccreditedRepresentativePortal::NotificationEmail: skipping #{email_type} delivery; " \
+        'no email available for representative (record unresolved or email missing) ' \
+        "(form_id: #{form_id}, saved_claim_id: #{claim.id}, poa_holder_type: #{poa_holder_type})"
+      )
+      StatsD.increment(
+        'accredited_representative_portal.notification_email.skipped_missing_email',
+        tags: ["email_type:#{email_type}", "form_id:#{form_id}"]
+      )
+    end
 
     def claim_class
       ::SavedClaim
@@ -45,9 +81,11 @@ module AccreditedRepresentativePortal
 
     def find_representative(rep_id)
       if AccreditedRepresentativePortal.use_accredited_models?
-        # registration_number uniqueness is scoped to individual_type, but it's unique in
-        # practice and only first_name/email are needed here, so resolving by it alone is fine.
-        AccreditedIndividual.find_by(registration_number: rep_id)
+        individual_type =
+          POA_HOLDER_TYPE_TO_INDIVIDUAL_TYPE[saved_claim_claimant_representative&.power_of_attorney_holder_type]
+        return if individual_type.blank?
+
+        AccreditedIndividual.find_by(registration_number: rep_id, individual_type:)
       else
         Veteran::Service::Representative.find_by(representative_id: rep_id)
       end
