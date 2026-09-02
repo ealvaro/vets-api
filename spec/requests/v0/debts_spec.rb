@@ -43,4 +43,30 @@ RSpec.describe 'V0::Debts', type: :request do
       end
     end
   end
+
+  context 'when the Debt Management Center fails' do
+    # An upstream failure must not be reported to the veteran as a client error.
+    # The rendered status comes from the DMC* mappings in exceptions.en.yml.
+    {
+      400 => { status: :bad_request, code: 'DMC400' },
+      404 => { status: :bad_gateway, code: 'DMC404' },
+      500 => { status: :bad_gateway, code: 'DMC500' },
+      502 => { status: :bad_gateway, code: 'DMC502' },
+      503 => { status: :service_unavailable, code: 'DMC503' },
+      nil => { status: :service_unavailable, code: 'DMC' }
+    }.each do |upstream_status, expected|
+      it "renders #{expected[:code]} when the upstream responds with #{upstream_status || 'no status'}" do
+        allow_any_instance_of(DebtManagementCenter::DebtsService).to receive(:perform).and_raise(
+          Common::Client::Errors::ClientError.new('upstream failure', upstream_status, 'upstream body')
+        )
+
+        VCR.use_cassette('bgs/people_service/person_data') do
+          get '/v0/debts'
+        end
+
+        expect(response).to have_http_status(expected[:status])
+        expect(response.parsed_body.dig('errors', 0, 'code')).to eq(expected[:code])
+      end
+    end
+  end
 end

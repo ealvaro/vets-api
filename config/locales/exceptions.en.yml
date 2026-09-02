@@ -772,12 +772,55 @@ en:
         code: 'CASEFLOWSTATUS502'
         detail: 'Received an invalid response from the upstream server'
         status: 502
+      # DMC (Debt Management Center) error mappings — DebtManagementCenter::BaseService
+      # raises "DMC#{upstream status}", so anything not listed here falls through to
+      # VA900 (400) and reports an upstream outage as a client error.
       DMC400:
         <<: *external_defaults
         title: 'Bad Request'
         code: 'DMC400'
         detail: 'Received a bad request response from the upstream server'
         status: 400
+      # Upstream 404 is the gateway reporting no route to DMC ("No listener for
+      # endpoint"), not a missing record — an absent debt is a 200 with an empty list.
+      DMC404:
+        <<: *external_defaults
+        title: 'Bad Gateway'
+        code: 'DMC404'
+        detail: 'Received an invalid response from the upstream server'
+        status: 502
+      DMC500: # Upstream 500 rendered as 502 — vets-api is proxying, not failing internally
+        <<: *external_defaults
+        title: 'Bad Gateway'
+        code: 'DMC500'
+        detail: 'The upstream server encountered an internal error'
+        status: 502
+      DMC502:
+        <<: *external_defaults
+        title: 'Bad Gateway'
+        code: 'DMC502'
+        detail: 'Received an invalid response from the upstream server'
+        status: 502
+      DMC503:
+        <<: *external_defaults
+        title: 'Service Unavailable'
+        code: 'DMC503'
+        detail: 'The upstream server is temporarily unavailable'
+        status: 503
+      DMC504:
+        <<: *external_defaults
+        title: 'Gateway Timeout'
+        code: 'DMC504'
+        detail: 'The upstream server did not respond in time'
+        status: 504
+      # A connection-level failure (DNS, TCP, TLS) carries no upstream status, so the
+      # raised key is bare "DMC".
+      DMC:
+        <<: *external_defaults
+        title: 'Service Unavailable'
+        code: 'DMC'
+        detail: 'Could not reach the upstream server'
+        status: 503
       GI404:
         <<: *external_defaults
         title: 'Record not found'
