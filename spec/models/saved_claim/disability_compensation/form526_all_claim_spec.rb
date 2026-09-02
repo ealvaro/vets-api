@@ -81,8 +81,8 @@ RSpec.describe SavedClaim::DisabilityCompensation::Form526AllClaim, type: :model
       allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_enforce).and_return(false)
       allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_logging).and_return(true)
 
-      schema_errors = [{ fragment: '/required', message: 'is required' }]
-      validation_errors = [{ fragment: '/foo', message: 'is invalid', errors: [] }]
+      schema_errors = [{ data_pointer: '/required', message: 'is required' }]
+      validation_errors = [{ data_pointer: '/foo', message: 'is invalid', errors: [] }]
 
       expect(claim).to receive(:validate_schema).with(strict_schema).and_return(schema_errors)
       expect(claim).to receive(:validate_form).with(strict_schema).and_return(validation_errors)
@@ -91,11 +91,11 @@ RSpec.describe SavedClaim::DisabilityCompensation::Form526AllClaim, type: :model
 
       expect(Rails.logger).to have_received(:error).with(
         'SavedClaim::DisabilityCompensation::Form526AllClaim HARDENED schema failed validation.',
-        { errors: schema_errors, form_id: claim.form_id, guid: claim.guid }
+        { errors: [{ message: 'is required', data_pointer: '/required' }], form_id: claim.form_id, guid: claim.guid }
       )
       expect(Rails.logger).to have_received(:error).with(
         'SavedClaim::DisabilityCompensation::Form526AllClaim form did not pass HARDENED validation',
-        { errors: validation_errors, form_id: claim.form_id, guid: claim.guid }
+        { errors: [{ message: 'is invalid', data_pointer: '/foo' }], form_id: claim.form_id, guid: claim.guid }
       )
     end
 
@@ -109,6 +109,54 @@ RSpec.describe SavedClaim::DisabilityCompensation::Form526AllClaim, type: :model
 
       expect(claim.form_matches_schema).to be true
       expect(Rails.logger).not_to have_received(:error)
+    end
+
+    it 'trims multiple hardened validation errors down to the allowed keys' do
+      allow_any_instance_of(SavedClaim).to receive(:form_matches_schema).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_enforce).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_logging).and_return(true)
+
+      validation_errors = [
+        {
+          data_pointer: '/disabilities/0/approximateDate',
+          message: 'The approximateDate (0) is not valid.',
+          errors: []
+        },
+        {
+          data_pointer: '/disabilities/1/approximateDate',
+          message: 'The approximateDate (1) is not valid.',
+          errors: []
+        }
+      ]
+
+      allow(claim).to receive(:validate_schema).with(strict_schema).and_return([])
+      expect(claim).to receive(:validate_form).with(strict_schema).and_return(validation_errors)
+
+      claim.form_matches_schema
+
+      expect(Rails.logger).to have_received(:error).with(
+        'SavedClaim::DisabilityCompensation::Form526AllClaim form did not pass HARDENED validation',
+        { errors: [
+          { message: 'The approximateDate (0) is not valid.', data_pointer: '/disabilities/0/approximateDate' },
+          { message: 'The approximateDate (1) is not valid.', data_pointer: '/disabilities/1/approximateDate' }
+        ], form_id: claim.form_id, guid: claim.guid }
+      )
+    end
+
+    it 'rescues logging errors and still returns the base validation result' do
+      allow_any_instance_of(SavedClaim).to receive(:form_matches_schema).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_enforce).and_return(false)
+      allow(Flipper).to receive(:enabled?).with(:disability_526_schema_hardening_logging).and_return(true)
+
+      allow(Rails.logger).to receive(:warn)
+      allow(claim).to receive(:validate_schema).with(strict_schema).and_raise(StandardError, 'schema validation error')
+
+      expect(claim.form_matches_schema).to be true
+
+      expect(Rails.logger).to have_received(:warn).with(
+        'SavedClaim::DisabilityCompensation::Form526AllClaim hardened-validation logging failed',
+        { error: 'schema validation error', form_id: claim.form_id, guid: claim.guid }
+      )
     end
   end
 end
