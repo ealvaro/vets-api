@@ -7,13 +7,18 @@ require 'sidekiq/testing'
 RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob, type: :job do
   subject { described_class.new }
 
+  let(:poa_request) { create(:power_of_attorney_request, :with_veteran_claimant) }
+  let(:claimant_icn) { '123498767V234859' }
+
   let(:poa_form_submission) do
-    create(:power_of_attorney_form_submission, service_id: '29b7c214-4a61-425e-97f2-1a56de869524')
+    create(:power_of_attorney_form_submission,
+           service_id: '29b7c214-4a61-425e-97f2-1a56de869524',
+           power_of_attorney_request: poa_request)
   end
 
   before do
     allow_any_instance_of(Auth::ClientCredentials::Service).to receive(:get_token).and_return('<TOKEN>')
-    poa_form_submission.power_of_attorney_request.claimant.update(icn: '123498767V234859')
+    poa_form_submission.power_of_attorney_request.claimant.update(icn: claimant_icn)
   end
 
   describe '#perform' do
@@ -118,6 +123,77 @@ RSpec.describe AccreditedRepresentativePortal::PowerOfAttorneyFormSubmissionJob,
         poa_form_submission.reload
         expect(poa_form_submission.error_message).to eq 'Resource not found'
         expect(poa_form_submission.status_updated_at).not_to be_nil
+      end
+    end
+
+    context 'when the claimant is a Veteran' do
+      let(:service) { instance_double(BenefitsClaims::Service) }
+      let(:cassette) { '200_updated_response' }
+      let(:service_response) do
+        File.read('modules/accredited_representative_portal/spec' \
+                  '/fixtures/power_of_attorney_form_submission/updated.json')
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+
+        allow(AccreditedRepresentativePortal::ClaimantLookupService).to receive(:get_icn)
+
+        allow(BenefitsClaims::Service).to receive(:new).and_return(service)
+        allow(service).to receive(:get_2122_submission).and_return(JSON.parse(service_response))
+      end
+
+      it 'does not call ClaimantLookupService.get_icn' do
+        expect(AccreditedRepresentativePortal::ClaimantLookupService).not_to receive(:get_icn)
+
+        use_cassette(cassette) do
+          subject.perform(poa_form_submission.id)
+        end
+      end
+
+      it 'calls BenefitsClaims::Service.new with the claimant (Veteran) ICN' do
+        expect(BenefitsClaims::Service).to receive(:new).with(claimant_icn)
+
+        use_cassette(cassette) do
+          subject.perform(poa_form_submission.id)
+        end
+      end
+    end
+
+    context 'when the claimant is a dependent' do
+      let(:poa_request) { create(:power_of_attorney_request, :with_dependent_claimant) }
+      let(:veteran_icn) { '1000000000V000000' }
+      let(:service) { instance_double(BenefitsClaims::Service) }
+      let(:cassette) { 'dependent_claimant/200_updated_response' }
+      let(:service_response) do
+        File.read('modules/accredited_representative_portal/spec' \
+                  '/fixtures/power_of_attorney_form_submission/updated.json')
+      end
+
+      before do
+        allow(Flipper).to receive(:enabled?).with(:form2122_non_veteran_digital_submit, any_args).and_return(true)
+
+        allow(AccreditedRepresentativePortal::ClaimantLookupService).to receive(:get_icn).and_return(veteran_icn)
+
+        allow(BenefitsClaims::Service).to receive(:new).and_return(service)
+        allow(service).to receive(:get_2122_submission).and_return(JSON.parse(service_response))
+      end
+
+      it 'calls ClaimantLookupService.get_icn with the proper Veteran arguments' do
+        expect(AccreditedRepresentativePortal::ClaimantLookupService).to receive(:get_icn)
+          .with('John', 'Doe', '123456789', '1980-12-31')
+
+        use_cassette(cassette) do
+          subject.perform(poa_form_submission.id)
+        end
+      end
+
+      it 'calls BenefitsClaims::Service.new with the Veteran ICN' do
+        expect(BenefitsClaims::Service).to receive(:new).with(veteran_icn)
+
+        use_cassette(cassette) do
+          subject.perform(poa_form_submission.id)
+        end
       end
     end
   end

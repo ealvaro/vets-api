@@ -2,7 +2,7 @@
 http_interactions:
 - request:
     method: get
-    uri: "<LIGHTHOUSE_DIRECT_DEPOSIT_HOST>/services/claims/v2/veterans/123498767V234859/power-of-attorney/491b878a-d977-40b8-8de9-7ba302307a48"
+    uri: "<LIGHTHOUSE_CLAIMS_API_HOST>/services/claims/v2/veterans/123498767V234859/power-of-attorney/491b878a-d977-40b8-8de9-7ba302307a48"
     body:
       encoding: US-ASCII
       string: ''
