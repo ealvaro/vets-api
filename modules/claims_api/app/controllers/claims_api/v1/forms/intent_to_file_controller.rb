@@ -54,7 +54,7 @@ module ClaimsApi
             ClaimsApi::IntentToFile::ITF_TYPES_TO_BGS_TYPES[active_param]
           )
           if bgs_response.blank?
-            message = "No Intent to file is on record for #{target_veteran_name} of type #{active_param}"
+            message = "No Intent to file is on record for the veteran of type #{active_param}"
             claims_v1_logging('itf_active', message:)
             raise ::Common::Exceptions::ResourceNotFound.new(detail: message)
           end
@@ -65,7 +65,7 @@ module ClaimsApi
                          bgs_response
                        end
           if bgs_active.blank?
-            message = "No Intent to file is on record for #{target_veteran_name} of type #{active_param}"
+            message = "No Intent to file is on record for the veteran of type #{active_param}"
             claims_v1_logging('itf_submit', message:)
             raise ::Common::Exceptions::ResourceNotFound.new(detail: message)
           end

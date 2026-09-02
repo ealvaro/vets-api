@@ -407,6 +407,39 @@ RSpec.describe 'ClaimsApi::V1::Forms::0966', type: :request do
         expect(response).to have_http_status(:bad_request)
       end
     end
+
+    context 'logging does not include the veteran name' do
+      it 'when no intent to file is on record at all' do
+        allow_any_instance_of(ClaimsApi::IntentToFileWebService)
+          .to receive(:find_intent_to_file_by_ptcpnt_id_itf_type_cd).and_return(nil)
+        allow(ClaimsApi::Logger).to receive(:log)
+
+        mock_acg(scopes) do |auth_header|
+          get "#{path}/active", params: { type: 'compensation' }, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:not_found)
+        end
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'itf_active', hash_including(message: 'No Intent to file is on record for the veteran of type compensation')
+        )
+      end
+
+      it 'when the itf on record has expired' do
+        allow_any_instance_of(ClaimsApi::IntentToFileWebService)
+          .to receive(:find_intent_to_file_by_ptcpnt_id_itf_type_cd)
+          .and_return({ itf_status_type_cd: 'Expired', exprtn_dt: '2019-01-01T00:00:00Z' })
+        allow(ClaimsApi::Logger).to receive(:log)
+
+        mock_acg(scopes) do |auth_header|
+          get "#{path}/active", params: { type: 'compensation' }, headers: headers.merge(auth_header)
+          expect(response).to have_http_status(:not_found)
+        end
+
+        expect(ClaimsApi::Logger).to have_received(:log).with(
+          'itf_submit', hash_including(message: 'No Intent to file is on record for the veteran of type compensation')
+        )
+      end
+    end
   end
 
   describe '#validate' do
