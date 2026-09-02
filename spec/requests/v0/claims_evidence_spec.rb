@@ -381,6 +381,36 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             )
           end
         end
+
+        # The breaker short-circuits inside the Faraday stack, so this context deliberately
+        # leaves Files#upload unstubbed: an open breaker means nothing reaches Claims Evidence.
+        context 'when the Claims Evidence breaker is open' do
+          let(:breakers_service) { ClaimsEvidenceApi::Configuration.instance.breakers_service }
+
+          before { breakers_service.begin_forced_outage! }
+
+          after { breakers_service.end_forced_outage! }
+
+          it 'returns 503 naming the outage' do
+            post_upload
+            expect(response).to have_http_status(:service_unavailable)
+            expect(error_detail).to match(/outage has been reported on the ClaimsEvidenceApi/)
+          end
+
+          it 'does not persist an EvidenceSubmission' do
+            expect { post_upload }.not_to change(EvidenceSubmission, :count)
+          end
+
+          it 'increments the upload failure counter with the outage error class' do
+            allow(StatsD).to receive(:increment).and_call_original
+            post_upload
+            expect(StatsD).to have_received(:increment).with(
+              'api.claims_evidence.upload.failure',
+              tags: ClaimsEvidence::Metrics::TAGS + ['error_class:Breakers::OutageException',
+                                                     "document_type_id:#{valid_doc_type_id}"]
+            )
+          end
+        end
       end
     end
   end

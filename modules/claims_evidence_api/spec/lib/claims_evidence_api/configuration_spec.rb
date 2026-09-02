@@ -56,6 +56,16 @@ RSpec.describe ClaimsEvidenceApi::Configuration do
     end
   end
 
+  describe '#breakers_service' do
+    # Without registration in config/initializers/breakers.rb the breakers middleware
+    # finds no matching service and passes every request straight through.
+    subject { described_class.instance }
+
+    it 'is registered on the global Breakers client' do
+      expect(Breakers.client.services).to include(subject.breakers_service)
+    end
+  end
+
   describe '#base_request_headers' do
     it 'returns expected headers' do
       expected = base.base_request_headers # no additional headers

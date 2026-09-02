@@ -4,6 +4,7 @@ require 'bb/configuration'
 require 'breakers/statsd_plugin'
 require 'caseflow/configuration'
 require 'central_mail/configuration'
+require 'claims_evidence_api/configuration'
 require 'debt_management_center/debts_configuration'
 require 'decision_review/configuration'
 require 'vye/dgib/service'
@@ -163,6 +164,7 @@ Rails.application.reloader.to_prepare do
     MDOT::Configuration.instance.breakers_service,
     Eps::Configuration.instance.breakers_service,
     Ccra::Configuration.instance.breakers_service,
+    ClaimsEvidenceApi::Configuration.instance.breakers_service,
     Apps::Configuration.instance.breakers_service,
     BenefitsIntakeService::Configuration.instance.breakers_service,
     BEP::Awards::Configuration.instance.breakers_service,
