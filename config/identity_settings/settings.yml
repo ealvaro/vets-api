@@ -111,7 +111,6 @@ sign_in:
   okta_client_id: okta_test
   sso_restricted_clients:
     - okta_test
-    - occ_localhost
   mock_redirect_uri: http://localhost:3000/v0/sign_in/callback
   mockdata_sync_api_key: ~
   sts_client:

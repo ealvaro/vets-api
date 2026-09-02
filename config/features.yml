@@ -1796,10 +1796,6 @@ features:
     actor_type: user
     description: Enable/disable re-sending in progress form reminders that VaNotify marks retryable
     enable_in_development: true
-  identity_auth_sso_enabled:
-    actor_type: user
-    description: Enables auth sso container stashing
-    enable_in_development: true
   identity_idme_ial2_enforcement:
     actor_type: user
     description: Enables IAL2 facial recognition on verified page

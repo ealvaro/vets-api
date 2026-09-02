@@ -62,10 +62,6 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
     end
 
     shared_examples 'a redirect to USIP' do
-      before do
-        allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
-      end
-
       let(:expected_redirect_uri) { 'http://localhost:3001/sign-in' }
       let(:expected_query_params) do
         authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query
@@ -183,7 +179,6 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
         before do
           request.cookies.clear
-          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
         end
 
         it 'does not raise a 500 and renders the sign-in error page' do
@@ -194,44 +189,24 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
         end
       end
 
-      context 'when redirecting to USIP and the identity_auth_sso_enabled flag is disabled' do
+      context 'when redirecting to USIP and the client is in sso_restricted_clients' do
         before do
           request.cookies.clear
-          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
+          allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([client_id])
         end
 
-        context 'and the client is in the sso_restricted_clients list' do
-          before do
-            allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([client_id])
-          end
+        let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
 
-          let(:expected_query_params) { authorize_sso_params.merge(oauth: true).to_query }
-
-          it 'redirects to USIP without stashing a container' do
-            expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
-            expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
-          end
-        end
-
-        context 'and the client is not in the sso_restricted_clients list' do
-          before do
-            allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([])
-          end
-
-          let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
-
-          it 'redirects to USIP and still stashes a container' do
-            expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
-            expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to have_attributes(client_id:)
-          end
+        it 'redirects to USIP without stashing a container' do
+          expect(subject).to redirect_to("http://localhost:3001/sign-in?#{expected_query_params}")
+          expect(SignIn::AuthorizeSSOContainer.find(authorize_sso_id)).to be_nil
         end
       end
 
-      context 'when redirecting to USIP and the client is in sso_restricted_clients but the flag is enabled' do
+      context 'when redirecting to USIP and the client is not in sso_restricted_clients' do
         before do
           request.cookies.clear
-          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(true)
-          allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([client_id])
+          allow(IdentitySettings.sign_in).to receive(:sso_restricted_clients).and_return([])
         end
 
         let(:expected_query_params) { authorize_sso_params.merge(oauth: true, authorize_sso_id:).to_query }
@@ -256,7 +231,6 @@ RSpec.describe V0::SignIn::AuthorizeSSOController, type: :controller do
 
         before do
           request.cookies.clear
-          allow(Flipper).to receive(:enabled?).with(:identity_auth_sso_enabled).and_return(false)
         end
 
         it 'does not consume the container, so a retry can still succeed' do

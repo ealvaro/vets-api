@@ -125,10 +125,6 @@ module V0
         redirect_to_usip
       end
 
-      def sso_restricted_client?
-        IdentitySettings.sign_in.sso_restricted_clients.include?(client_id)
-      end
-
       def redirect_to_usip
         stash_authorize_sso_request
 
@@ -145,7 +141,7 @@ module V0
       end
 
       def stash_authorize_sso_request
-        return unless stash_authorize_sso_request?
+        return if IdentitySettings.sign_in.sso_restricted_clients.include?(client_id)
 
         @authorize_sso_id = SecureRandom.uuid
 
@@ -203,10 +199,6 @@ module V0
 
       def authorize_sso_statsd_tags
         ["client_id:#{client_id}"]
-      end
-
-      def stash_authorize_sso_request?
-        !sso_restricted_client? || Flipper.enabled?(:identity_auth_sso_enabled)
       end
     end
   end
