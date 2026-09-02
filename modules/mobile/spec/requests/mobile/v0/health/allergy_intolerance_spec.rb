@@ -2,6 +2,7 @@
 
 require_relative '../../../../support/helpers/rails_helper'
 require 'unique_user_events'
+require 'mhv/aal/client'
 
 RSpec.describe 'Mobile::V0::Health::AllergyIntolerances', type: :request do
   let!(:user) { sis_user(icn: '32000225') }
@@ -172,6 +173,35 @@ RSpec.describe 'Mobile::V0::Health::AllergyIntolerances', type: :request do
           UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_ALLERGIES_ACCESSED
         ]
       )
+    end
+  end
+
+  describe 'AAL logging' do
+    it 'logs a mobile AAL "Allergy and Reactions" view entry on a successful fetch' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      expect_any_instance_of(Mobile::V0::AllergyIntolerancesController)
+        .to receive(:log_mhv_aal).with(Mobile::AALClientConcerns::ActivityTypes::ALLERGY_AND_REACTIONS)
+
+      VCR.use_cassette('rrd/lighthouse_allergy_intolerances') do
+        get '/mobile/v0/health/allergy-intolerances', headers: sis_headers
+      end
+    end
+
+    it 'does not affect the response when AAL logging fails (non-blocking)' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      failing_client = instance_double(AAL::MobileClient)
+      allow(AAL::MobileClient).to receive(:new).and_return(failing_client)
+      allow(failing_client).to receive(:authenticate).and_raise(StandardError.new('boom'))
+
+      VCR.use_cassette('rrd/lighthouse_allergy_intolerances') do
+        get '/mobile/v0/health/allergy-intolerances', headers: sis_headers
+      end
+
+      expect(response).to be_successful
     end
   end
 end

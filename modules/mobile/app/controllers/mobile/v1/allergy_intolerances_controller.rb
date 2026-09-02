@@ -14,6 +14,8 @@ module Mobile
     # mobile app.
     #
     class AllergyIntolerancesController < ApplicationController
+      include Mobile::AALClientConcerns
+
       service_tag 'mhv-medical-records'
 
       before_action :controller_enabled?
@@ -30,6 +32,7 @@ module Mobile
         # For now, just grab the records and return them
         paged, page_meta = paginate_allergies(result[:records])
         serialized_allergies = UnifiedHealthData::Serializers::AllergySerializer.new(paged, page_meta)
+        log_mhv_aal(Mobile::AALClientConcerns::ActivityTypes::ALLERGY_AND_REACTIONS)
         render json: serialized_allergies,
                status: :ok
       rescue Common::Exceptions::BackendServiceException => e

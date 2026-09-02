@@ -1103,6 +1103,8 @@ mhv:
     user_type: usertype
     x_api_key: fake-x-api-key
 mhv_mobile:
+  mr:
+    app_token: fake-app-token
   rx:
     app_token: fake-app-token
     x_api_key: fake-x-api-key

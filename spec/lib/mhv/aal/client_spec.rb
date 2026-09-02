@@ -51,7 +51,7 @@ RSpec.describe AAL::Client do
         expect(redis_ns).to receive(:exists?)
           .with(kind_of(String)).and_return(false)
         expect(redis_ns).to receive(:set)
-          .with(kind_of(String), true, nx: false, ex: REDIS_CONFIG[:mhv_aal_log_store][:each_ttl])
+          .with(kind_of(String), true, nx: false, ex: REDIS_CONFIG[:mhv_aal_mr_log_store][:each_ttl])
         expect(client).to receive(:perform)
           .with(:post, 'usermgmt/activity', { some: 'payload' }, anything)
 

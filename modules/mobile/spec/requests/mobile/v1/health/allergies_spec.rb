@@ -6,6 +6,7 @@ require 'support/shared_contexts/uhd_security_endpoint'
 
 require_relative '../../../../support/helpers/rails_helper'
 require_relative '../../../../support/helpers/committee_helper'
+require 'mhv/aal/client'
 
 RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, type: :request do
   include CommitteeHelper
@@ -111,6 +112,45 @@ RSpec.describe 'Mobile::V1::AllergyIntolerances', :skip_json_api_validation, typ
         get '/mobile/v1/health/allergy-intolerances', headers: sis_headers
         expect(response).to have_http_status(:not_found)
       end
+    end
+  end
+
+  describe 'AAL logging' do
+    it 'logs a mobile AAL "Allergy and Reactions" view entry on a successful fetch' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      # Restate the legacy security endpoint override from the 'uhd legacy security endpoint'
+      # shared context, since the blanket `and_call_original` stub above takes precedence over
+      # stubs configured earlier (e.g. in a `before` block) once no `.with` constraint is given.
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_uhd_api_gateway_security_endpoint).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      expect_any_instance_of(Mobile::V1::AllergyIntolerancesController)
+        .to receive(:log_mhv_aal).with(Mobile::AALClientConcerns::ActivityTypes::ALLERGY_AND_REACTIONS)
+
+      VCR.use_cassette('unified_health_data/get_allergies_200', match_requests_on: %i[method path]) do
+        get '/mobile/v1/health/allergy-intolerances', headers: sis_headers
+      end
+    end
+
+    it 'does not affect the response when AAL logging fails (non-blocking)' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      # Restate the legacy security endpoint override from the 'uhd legacy security endpoint'
+      # shared context, since the blanket `and_call_original` stub above takes precedence over
+      # stubs configured earlier (e.g. in a `before` block) once no `.with` constraint is given.
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_uhd_api_gateway_security_endpoint).and_return(false)
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      failing_client = instance_double(AAL::MobileClient)
+      allow(AAL::MobileClient).to receive(:new).and_return(failing_client)
+      allow(failing_client).to receive(:authenticate).and_raise(StandardError.new('boom'))
+
+      VCR.use_cassette('unified_health_data/get_allergies_200', match_requests_on: %i[method path]) do
+        get '/mobile/v1/health/allergy-intolerances', headers: sis_headers
+      end
+
+      expect(response).to be_successful
     end
   end
 end

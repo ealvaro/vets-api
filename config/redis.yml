@@ -74,18 +74,36 @@ development: &defaults
   mhv_aal_mr_session_lock:
     namespace: mhv-aal-mr-session-lock
     each_ttl: 10
+  mhv_aal_mr_log_store:
+    namespace: mhv-aal-mr-logs
+    each_ttl: 86400
+  aal_mobile_store:
+    namespace: aal-mobile-service
+    each_ttl: 600 # 10 minutes
+  mhv_aal_mobile_session_lock:
+    namespace: mhv-aal-mobile-session-lock
+    each_ttl: 10
+  mhv_aal_mobile_log_store:
+    namespace: mhv-aal-mobile-logs
+    each_ttl: 86400
   aal_rx_store:
     namespace: aal-rx-service
     each_ttl: 600 # 10 minutes
   mhv_aal_rx_session_lock:
     namespace: mhv-aal-rx-session-lock
     each_ttl: 10
+  mhv_aal_rx_log_store:
+    namespace: mhv-aal-rx-logs
+    each_ttl: 86400
   aal_sm_store:
     namespace: aal-sm-service
     each_ttl: 600 # 10 minutes
   mhv_aal_sm_session_lock:
     namespace: mhv-aal-sm-session-lock
     each_ttl: 10
+  mhv_aal_sm_log_store:
+    namespace: mhv-aal-sm-logs
+    each_ttl: 86400
   aal_store:
     namespace: aal-service
     each_ttl: 600 # 10 minutes

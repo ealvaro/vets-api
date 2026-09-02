@@ -74,6 +74,20 @@ module AAL
     end
   end
 
+  class MobileConfiguration < MRConfiguration
+    ##
+    # Distinct MHV app registration (app id 102) for the VA: Health and Benefits mobile
+    # app. Authenticating with this app's own token lets MHV identify mobile-originated
+    # AAL entries on its own, instead of relying on a value inside the AAL payload.
+    #
+    # Only app_token is overridden; x_api_key is inherited from MRConfiguration since
+    # it is the same API key used across all MHV medical records integrations.
+    #
+    def app_token
+      Settings.mhv_mobile.mr.app_token
+    end
+  end
+
   class RXConfiguration < Configuration
     def app_token
       Settings.mhv.rx.app_token

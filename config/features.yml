@@ -2404,6 +2404,10 @@ features:
     actor_type: user
     description: Enables/disables integration with MHV's AAL-creation endpoint
     enable_in_development: true
+  mhv_mobile_medical_records_aal_logging:
+    actor_type: user
+    description: Enables/disables server-side AAL logging for medical record access from the VA Health and Benefits mobile app
+    enable_in_development: true
   mhv_facility_logging:
     actor_type: user
     description: Enables per-facility logging in request payloads across all MHV health apps

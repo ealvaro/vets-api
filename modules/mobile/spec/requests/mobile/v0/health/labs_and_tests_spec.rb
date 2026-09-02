@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require 'mhv/aal/client'
 
 RSpec.describe 'Mobile::V0::Health::LabsAndTests', type: :request do
   let!(:user) { sis_user(icn: '32000225') }
@@ -62,6 +63,39 @@ RSpec.describe 'Mobile::V0::Health::LabsAndTests', type: :request do
 
     expect(response).to be_successful
     expect(response.parsed_body['data']).to eq(diagnostic_report_response)
+  end
+
+  describe 'AAL logging' do
+    it 'logs a mobile AAL "Lab and test results" view entry on a successful fetch' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      expect_any_instance_of(Mobile::V0::LabsAndTestsController)
+        .to receive(:log_mhv_aal).with(Mobile::AALClientConcerns::ActivityTypes::LAB_AND_TEST_RESULTS)
+
+      VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+        VCR.use_cassette('rrd/lighthouse_diagnostic_reports') do
+          get '/mobile/v0/health/labs-and-tests', headers: sis_headers
+        end
+      end
+    end
+
+    it 'does not affect the response when AAL logging fails (non-blocking)' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      failing_client = instance_double(AAL::MobileClient)
+      allow(AAL::MobileClient).to receive(:new).and_return(failing_client)
+      allow(failing_client).to receive(:authenticate).and_raise(StandardError.new('boom'))
+
+      VCR.use_cassette('mobile/lighthouse_disability_rating/introspect_active') do
+        VCR.use_cassette('rrd/lighthouse_diagnostic_reports') do
+          get '/mobile/v0/health/labs-and-tests', headers: sis_headers
+        end
+      end
+
+      expect(response).to be_successful
+    end
   end
 
   describe 'schema contract validation' do

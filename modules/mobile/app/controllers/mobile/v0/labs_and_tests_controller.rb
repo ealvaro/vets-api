@@ -10,6 +10,8 @@ module Mobile
     # the FHIR bundle.
     #
     class LabsAndTestsController < ApplicationController
+      include Mobile::AALClientConcerns
+
       service_tag 'mhv-medical-records'
 
       ##
@@ -24,6 +26,8 @@ module Mobile
         diagnostic_reports = body['entry'].map do |entry|
           Mobile::V0::Adapters::DiagnosticReport.new.parse(entry['resource'])
         end
+
+        log_mhv_aal(Mobile::AALClientConcerns::ActivityTypes::LAB_AND_TEST_RESULTS)
 
         render json: DiagnosticReportsSerializer.new(diagnostic_reports)
       end

@@ -7,6 +7,7 @@ require 'support/shared_contexts/uhd_security_endpoint'
 require_relative '../../../../support/helpers/rails_helper'
 require_relative '../../../../support/helpers/committee_helper'
 require 'support/shared_examples_for_labs_and_tests'
+require 'mhv/aal/client'
 
 RSpec.describe 'Mobile::V1::LabsAndTestsController', :skip_json_api_validation, type: :request do
   include_context 'uhd legacy security endpoint'
@@ -232,6 +233,38 @@ RSpec.describe 'Mobile::V1::LabsAndTestsController', :skip_json_api_validation, 
           expect(response).to have_http_status(:not_implemented)
         end
       end
+    end
+  end
+
+  describe 'AAL logging' do
+    before do
+      allow(Flipper).to receive(:enabled?).with(uhd_flipper, instance_of(User)).and_return(true)
+      allow(UniqueUserEvents).to receive(:log_events)
+    end
+
+    it 'logs a mobile AAL "Lab and test results" view entry on a successful fetch' do
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      expect_any_instance_of(Mobile::V1::LabsAndTestsController)
+        .to receive(:log_mhv_aal).with(Mobile::AALClientConcerns::ActivityTypes::LAB_AND_TEST_RESULTS)
+
+      VCR.use_cassette(labs_cassette) do
+        get path, headers: sis_headers, params: default_params
+      end
+    end
+
+    it 'does not affect the response when AAL logging fails (non-blocking)' do
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      failing_client = instance_double(AAL::MobileClient)
+      allow(AAL::MobileClient).to receive(:new).and_return(failing_client)
+      allow(failing_client).to receive(:authenticate).and_raise(StandardError.new('boom'))
+
+      VCR.use_cassette(labs_cassette) do
+        get path, headers: sis_headers, params: default_params
+      end
+
+      expect(response).to be_successful
     end
   end
 end

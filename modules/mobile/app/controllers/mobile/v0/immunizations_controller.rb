@@ -7,6 +7,8 @@ module Mobile
     # the Lighthouse Health service and adapted to the mobile response shape.
     #
     class ImmunizationsController < ApplicationController
+      include Mobile::AALClientConcerns
+
       service_tag 'mhv-medical-records'
 
       ##
@@ -17,6 +19,7 @@ module Mobile
       def index
         body = service.get_immunizations
         validate_response_schema(@current_user, body, 'lighthouse_get_immunizations')
+        log_mhv_aal(Mobile::AALClientConcerns::ActivityTypes::VACCINES)
         render json: Mobile::V0::ImmunizationSerializer.new(immunizations_adapter.parse(body))
       end
 

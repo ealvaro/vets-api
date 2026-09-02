@@ -39,6 +39,20 @@ RSpec.describe AAL::Configuration do
     end
   end
 
+  describe 'MobileConfiguration' do
+    it 'reads the mobile app token from the mhv_mobile.mr namespace' do
+      allow(Settings.mhv_mobile.mr).to receive(:app_token).and_return('mobile-token')
+
+      expect(AAL::MobileConfiguration.instance.app_token).to eq('mobile-token')
+    end
+
+    it 'inherits x_api_key from MRConfiguration (mhv.medical_records namespace)' do
+      allow(Settings.mhv.medical_records).to receive(:x_api_key).and_return('mr-api-key')
+
+      expect(AAL::MobileConfiguration.instance.x_api_key).to eq('mr-api-key')
+    end
+  end
+
   describe '#connection Betamocks wiring' do
     context 'when mhv.aal.mock is enabled' do
       before { allow(Settings.mhv.aal).to receive(:mock).and_return(true) }

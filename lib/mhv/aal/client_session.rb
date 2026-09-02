@@ -9,6 +9,12 @@ module AAL
     redis_key :user_id
   end
 
+  class MobileClientSession < Common::Client::Session
+    redis_store REDIS_CONFIG[:aal_mobile_store][:namespace]
+    redis_ttl REDIS_CONFIG[:aal_mobile_store][:each_ttl]
+    redis_key :user_id
+  end
+
   class RXClientSession < Common::Client::Session
     redis_store REDIS_CONFIG[:aal_rx_store][:namespace]
     redis_ttl REDIS_CONFIG[:aal_rx_store][:each_ttl]

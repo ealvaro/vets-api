@@ -11,6 +11,8 @@ module Mobile
     # with either the current or legacy adapter based on a feature flag.
     #
     class AllergyIntolerancesController < ApplicationController
+      include Mobile::AALClientConcerns
+
       service_tag 'mhv-medical-records'
 
       ##
@@ -35,6 +37,8 @@ module Mobile
             UniqueUserEvents::EventRegistry::MEDICAL_RECORDS_ALLERGIES_ACCESSED
           ]
         )
+
+        log_mhv_aal(Mobile::AALClientConcerns::ActivityTypes::ALLERGY_AND_REACTIONS)
 
         render json: AllergyIntoleranceSerializer.new(allergy_intolerances)
       end

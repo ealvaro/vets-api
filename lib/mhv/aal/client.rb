@@ -21,24 +21,10 @@ module AAL
     # @param [Vets::Type::UTCTime] session_id - Unique identifier for the user's VA.gov session, e.g. last_signed_in
     #
     def create_aal(attributes, once_per_session, session_id)
-      if once_per_session
-        if session_id.present?
-          # 1) Build a hash of everything except completion_time
-          redis_key = aal_redis_key(attributes, session_id)
-
-          # 2) If we already logged it this session, do not re-log
-          return if redis.exists?(redis_key)
-
-          # 3) Otherwise mark it sent for the duration of the session
-          redis.set(redis_key, true, nx: false, ex: REDIS_CONFIG[:mhv_aal_log_store][:each_ttl])
-        else
-          Rails.logger.warn('Skipping AAL per-session de-duplication: no session_id')
-        end
-      end
+      return if once_per_session && already_logged_this_session?(attributes, session_id)
 
       attributes[:user_profile_id] = session.user_id.to_s
       form = AAL::CreateAALForm.new(attributes)
-
       perform(:post, 'usermgmt/activity', form.params, token_headers) if Flipper.enabled?(:mhv_enable_aal_integration)
     end
 
@@ -62,6 +48,19 @@ module AAL
 
     private
 
+    def already_logged_this_session?(attributes, session_id)
+      if session_id.blank?
+        Rails.logger.warn('Skipping AAL per-session de-duplication: no session_id')
+        return false
+      end
+
+      redis_key = aal_redis_key(attributes, session_id)
+      return true if redis.exists?(redis_key)
+
+      redis.set(redis_key, true, nx: false, ex: REDIS_CONFIG[log_store_config_key][:each_ttl])
+      false
+    end
+
     ##
     # Build a unique key for this AAL, based on the user, unique VA.gov session ID, and AAL
     # attributes. Only some attributes apply towards the unique fingerprint. For example,
@@ -82,7 +81,17 @@ module AAL
     end
 
     def redis
-      Redis::Namespace.new(REDIS_CONFIG[:mhv_aal_log_store][:namespace], redis: $redis)
+      Redis::Namespace.new(REDIS_CONFIG[log_store_config_key][:namespace], redis: $redis)
+    end
+
+    ##
+    # The REDIS_CONFIG key used for once-per-session de-duplication. Subclasses should
+    # override this to use a client-specific namespace/TTL so that de-duplication does
+    # not collide across MHV products (e.g. mobile vs. web) that may share the same
+    # user_id and session_id.
+    #
+    def log_store_config_key
+      :mhv_aal_log_store
     end
 
     ##
@@ -116,6 +125,25 @@ module AAL
     def session_config_key
       :mhv_aal_mr_session_lock
     end
+
+    def log_store_config_key
+      :mhv_aal_mr_log_store
+    end
+  end
+
+  class MobileClient < Client
+    include Common::Client::Concerns::MHVSessionBasedClient
+
+    configuration AAL::MobileConfiguration
+    client_session AAL::MobileClientSession
+
+    def session_config_key
+      :mhv_aal_mobile_session_lock
+    end
+
+    def log_store_config_key
+      :mhv_aal_mobile_log_store
+    end
   end
 
   class RXClient < Client
@@ -127,6 +155,10 @@ module AAL
     def session_config_key
       :mhv_aal_rx_session_lock
     end
+
+    def log_store_config_key
+      :mhv_aal_rx_log_store
+    end
   end
 
   class SMClient < Client
@@ -137,6 +169,10 @@ module AAL
 
     def session_config_key
       :mhv_aal_sm_session_lock
+    end
+
+    def log_store_config_key
+      :mhv_aal_sm_log_store
     end
   end
 

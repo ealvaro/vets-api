@@ -16,6 +16,7 @@ module Mobile
     #
     class ImmunizationsController < ApplicationController
       include MedicalRecords::ErrorHandler
+      include Mobile::AALClientConcerns
 
       service_tag 'mhv-medical-records'
 
@@ -34,6 +35,8 @@ module Mobile
         return if performed? # ErrorHandler already rendered a response
 
         log_immunization_access
+
+        log_mhv_aal(Mobile::AALClientConcerns::ActivityTypes::VACCINES)
 
         # Sort in ascending order to send to the FE
         # Handle nil dates by sorting at the end of the list

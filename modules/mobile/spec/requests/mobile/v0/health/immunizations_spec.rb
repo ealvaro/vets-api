@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../../../support/helpers/rails_helper'
+require 'mhv/aal/client'
 
 RSpec.describe 'Mobile::V0::Health::Immunizations', :skip_json_api_validation, type: :request do
   include JsonSchemaMatchers
@@ -701,6 +702,35 @@ RSpec.describe 'Mobile::V0::Health::Immunizations', :skip_json_api_validation, t
                                      'INFLUENZA, SEASONAL, INJECTABLE, PRESERVATIVE FREE'])
         end
       end
+    end
+  end
+
+  describe 'AAL logging' do
+    it 'logs a mobile AAL "Vaccines" view entry on a successful fetch' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      expect_any_instance_of(Mobile::V0::ImmunizationsController)
+        .to receive(:log_mhv_aal).with(Mobile::AALClientConcerns::ActivityTypes::VACCINES)
+
+      VCR.use_cassette('mobile/lighthouse_health/get_immunizations_old', match_requests_on: %i[method uri]) do
+        get '/mobile/v0/health/immunizations', headers: sis_headers, params: nil
+      end
+    end
+
+    it 'does not affect the response when AAL logging fails (non-blocking)' do
+      allow(Flipper).to receive(:enabled?).and_call_original
+      allow(Flipper).to receive(:enabled?)
+        .with(:mhv_mobile_medical_records_aal_logging, anything).and_return(true)
+      failing_client = instance_double(AAL::MobileClient)
+      allow(AAL::MobileClient).to receive(:new).and_return(failing_client)
+      allow(failing_client).to receive(:authenticate).and_raise(StandardError.new('boom'))
+
+      VCR.use_cassette('mobile/lighthouse_health/get_immunizations_old', match_requests_on: %i[method uri]) do
+        get '/mobile/v0/health/immunizations', headers: sis_headers, params: nil
+      end
+
+      expect(response).to have_http_status(:ok)
     end
   end
 end
