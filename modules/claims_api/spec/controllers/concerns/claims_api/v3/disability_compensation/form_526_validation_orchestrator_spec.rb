@@ -152,6 +152,28 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Form526ValidationOrchestra
       end
     end
 
+    context 'with claimInformation errors' do
+      it 'surfaces claim information errors in the output' do
+        brd_lookup = instance_double(
+          ClaimsApi::V3::DisabilityCompensation::Services::BrdLookup,
+          active_classification_ids: [],
+          classification_end_date_for: nil
+        )
+        allow(ClaimsApi::V3::DisabilityCompensation::Services::BrdLookup).to receive(:new).and_return(brd_lookup)
+
+        attrs = { 'claimInformation' => [{ 'approximateDate' => '2099-01' }] }
+        result = described_class.new(attrs).validate
+
+        expect(result).to be_an(Array)
+        expect(result).to include(
+          hash_including(
+            source: '/claimInformation/0/approximateDate',
+            detail: 'approximateDate must be a date in the past.'
+          )
+        )
+      end
+    end
+
     context 'service after 13th birthday (cross-section rule)' do
       it 'adds an error when entryDate is before 13th birthday' do
         attrs = {

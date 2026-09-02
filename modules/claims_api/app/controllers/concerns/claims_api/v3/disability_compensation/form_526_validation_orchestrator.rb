@@ -34,6 +34,7 @@ module ClaimsApi
 
           errors.merge(claim_date_errors)
           errors.merge(validate_veteran_identification)
+          errors.merge(validate_claim_information)
           errors.merge(validate_service_information)
 
           validate_claim_date_to_end_date(errors, claim_date)
@@ -55,6 +56,17 @@ module ClaimsApi
           Sections::ClaimDate.new(
             @form_attributes['claimDate']
           ).validate
+        end
+
+        def validate_claim_information
+          Sections::ClaimInformation.new(
+            @form_attributes['claimInformation'],
+            brd_lookup:
+          ).validate
+        end
+
+        def brd_lookup
+          @brd_lookup ||= Services::BrdLookup.new
         end
 
         def validate_service_information
