@@ -40,6 +40,12 @@ module DependentsBenefits
       submission_id
       tags
       non_blank_dlvs
+      messages
+      severity
+      text
+      http_status
+      key
+      timestamp
     ].freeze
 
     # @param claim_id [Integer, nil] optional SavedClaim id used to inspect claim for tags
