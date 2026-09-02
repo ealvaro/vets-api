@@ -49,7 +49,7 @@ module MedicalExpenseReports
             key: 'form1[0].#subform[9].TextField1[7]'
           },
           'street2' => {
-            limit: 5,
+            limit: 13,
             question_num: 2,
             question_suffix: 'B',
             question_label: 'Mailing Address Apt/Unit',
