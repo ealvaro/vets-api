@@ -47,7 +47,7 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Form526ValidationOrchestra
       end
 
       context 'with an invalid claimDate' do
-        it 'raises a JsonFormValidationError instead of collecting other section errors' do
+        it 'raises JsonFormValidationError instead of validating other sections' do
           attrs = {
             'claimDate' => '2022-13-01',
             'veteranIdentification' => {
@@ -55,27 +55,15 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Form526ValidationOrchestra
               'serviceNumber' => '1234567890'
             }
           }
-          expect { described_class.new(attrs).validate }
-            .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError)
+          expect { described_class.new(attrs).validate }.to raise_error(
+            ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError
+          )
         end
       end
     end
 
     describe 'validations by section' do
-      # claimDate is not required, so stubbing to return an empty errors tuple
-      before do
-        allow_any_instance_of(described_class).to receive(
-          :validate_claim_date
-        ).and_return([nil, ClaimsApi::V3::DisabilityCompensation::Errors.new])
-      end
-
       describe 'Claim Date' do
-        before do
-          allow_any_instance_of(described_class).to receive(
-            :validate_claim_date
-          ).and_call_original
-        end
-
         context 'with a valid payload' do
           it 'returns nil' do
             attrs = {
@@ -107,10 +95,11 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Form526ValidationOrchestra
         end
 
         context 'with an invalid claimDate format' do
-          it 'raises a JsonFormValidationError' do
+          it 'raises JsonFormValidationError' do
             attrs = { 'claimDate' => '2021-02-30' }
-            expect { described_class.new(attrs).validate }
-              .to raise_error(ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError)
+            expect { described_class.new(attrs).validate }.to raise_error(
+              ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError
+            )
           end
         end
       end

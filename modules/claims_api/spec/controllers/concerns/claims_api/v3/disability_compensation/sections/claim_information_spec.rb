@@ -13,11 +13,10 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ClaimInformation
 
   describe '#validate' do
     context 'when the payload is nil' do
-      it 'returns an empty Errors instance' do
+      it 'returns an empty array' do
         result = described_class.new(nil, brd_lookup:).validate
 
-        expect(result).to be_a(ClaimsApi::V3::DisabilityCompensation::Errors)
-        expect(result.any?).to be(false)
+        expect(result).to eq([])
       end
     end
 
@@ -25,8 +24,8 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ClaimInformation
       it 'adds one error at the item-indexed source' do
         result = described_class.new([{ 'approximateDate' => '2099-01' }], brd_lookup:).validate
 
-        expect(result.messages.size).to eq(1)
-        expect(result.messages.first).to include(
+        expect(result.size).to eq(1)
+        expect(result.first).to include(
           source: '/claimInformation/0/approximateDate',
           detail: 'approximateDate must be a date in the past.'
         )
@@ -42,8 +41,8 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ClaimInformation
           brd_lookup:
         ).validate
 
-        expect(result.messages.size).to eq(1)
-        expect(result.messages.first).to include(
+        expect(result.size).to eq(1)
+        expect(result.first).to include(
           source: '/claimInformation/0/classificationCode',
           detail: 'classificationCode must match an active code returned from the /disabilities endpoint ' \
                   'of the Benefits Reference Data API.'
@@ -58,8 +57,8 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ClaimInformation
           brd_lookup:
         ).validate
 
-        expect(result.messages.size).to eq(1)
-        expect(result.messages.first).to include(
+        expect(result.size).to eq(1)
+        expect(result.first).to include(
           source: '/claimInformation/0/serviceRelevanceExplanation/approximateDate',
           detail: 'approximateDate must be a date in the past.'
         )

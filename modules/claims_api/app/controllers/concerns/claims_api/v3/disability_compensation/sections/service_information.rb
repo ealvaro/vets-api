@@ -11,11 +11,11 @@ module ClaimsApi
 
           def validate
             errors = Errors.new(base_source: '/serviceInformation')
-            return errors if @payload.empty?
+            return errors.messages if @payload.empty?
 
             validate_service_periods(errors)
 
-            errors
+            errors.messages
           end
 
           private

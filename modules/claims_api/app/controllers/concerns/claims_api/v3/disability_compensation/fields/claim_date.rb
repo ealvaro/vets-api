@@ -16,7 +16,16 @@ module ClaimsApi
             @source = source
           end
 
+          # like other Fields::*, #validate reports validity (raises here, rather
+          # than adding to an errors collector) and its return value is unused.
+          # Use #parse to get the actual parsed date, mirroring Fields::FullDate.
           def validate
+            format_field_to_date
+            nil
+          end
+
+          # returns the claim_date
+          def parse
             format_field_to_date
           end
 
@@ -25,10 +34,14 @@ module ClaimsApi
           def format_field_to_date
             Date.iso8601(@raw_field.to_s)
           rescue ArgumentError, TypeError
-            # If the date is invalid, raise immediatly to prevent downstream errors
+            # If the date is invalid, raise immediately to prevent downstream errors
             raise ::ClaimsApi::Common::Exceptions::Lighthouse::JsonFormValidationError, [
-              { title: 'Unprocessable Entity', status: '422',
-                source: '/claimDate', detail: "#{@raw_field} is not a valid date." }
+              {
+                title: 'Unprocessable Entity',
+                status: '422',
+                source: @source,
+                detail: "#{@raw_field} is not a valid date."
+              }
             ]
           end
         end

@@ -12,6 +12,11 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ServiceInformati
     expect(result.any?).to be(false)
   end
 
+  it 'returns a plain Array (new contract)' do
+    result = validate({})
+    expect(result).to be_an(Array)
+  end
+
   it 'returns no errors for a valid payload' do
     result = validate(
       'servicePeriods' => [
@@ -28,7 +33,7 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ServiceInformati
         { 'entryDate' => '2015-01-01', 'exitDate' => '2014-01-01' }
       ]
     )
-    expect(result.messages.any? { |e| e[:detail].include?('exitDate') }).to be(true)
+    expect(result.any? { |e| e[:detail].include?('exitDate') }).to be(true)
   end
 
   it 'prepends /serviceInformation to all sources' do
@@ -37,7 +42,7 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ServiceInformati
         { 'entryDate' => '2015-01-01', 'exitDate' => '2014-01-01' }
       ]
     )
-    result.messages.each do |msg|
+    result.each do |msg|
       expect(msg[:source]).to start_with('/serviceInformation')
     end
   end
@@ -53,7 +58,7 @@ RSpec.describe ClaimsApi::V3::DisabilityCompensation::Sections::ServiceInformati
         { 'entryDate' => '2010-01-01', 'exitDate' => '2014-01-01' }
       end
       result = validate('servicePeriods' => periods)
-      expect(result.messages.any? { |e| e[:detail].include?('101') }).to be(true)
+      expect(result.any? { |e| e[:detail].include?('101') }).to be(true)
     end
   end
 end

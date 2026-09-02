@@ -30,14 +30,21 @@ module ClaimsApi
           return if @form_attributes.empty?
 
           errors = Errors.new
-          claim_date, claim_date_errors = validate_claim_date
 
-          errors.merge(claim_date_errors)
-          errors.merge(validate_veteran_identification)
-          errors.merge(validate_claim_information)
-          errors.merge(validate_service_information)
+          # Unlike other sections, ClaimDate's instance is held onto (not called
+          # inline like `Sections::X.new(...).validate`) because its parsed date
+          # is needed afterward by validate_claim_date_to_end_date below. Sections
+          # only return Array<Hash> errors, so #claim_date is read off the instance
+          # rather than threaded through the return value.
+          claim_date_section = Sections::ClaimDate.new(@form_attributes['claimDate'])
+          claim_date_errors = claim_date_section.validate
 
-          validate_claim_date_to_end_date(errors, claim_date)
+          errors.messages.concat(claim_date_errors)
+          errors.messages.concat(validate_veteran_identification)
+          errors.messages.concat(validate_claim_information)
+          errors.messages.concat(validate_service_information)
+
+          validate_claim_date_to_end_date(errors, claim_date_section.claim_date)
           validate_service_after_13th_birthday(errors)
 
           errors.presence
@@ -49,12 +56,6 @@ module ClaimsApi
           Sections::VeteranIdentification.new(
             @form_attributes['veteranIdentification'],
             valid_countries:
-          ).validate
-        end
-
-        def validate_claim_date
-          Sections::ClaimDate.new(
-            @form_attributes['claimDate']
           ).validate
         end
 

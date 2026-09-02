@@ -12,7 +12,7 @@ module ClaimsApi
 
           def validate
             errors = Errors.new(base_source: '/veteranIdentification')
-            return errors if @payload.empty?
+            return errors.messages if @payload.empty?
 
             Fields::Address.new(
               @payload['mailingAddress'],
@@ -24,7 +24,7 @@ module ClaimsApi
               source: '/serviceNumber'
             ).validate(errors:)
 
-            errors
+            errors.messages
           end
         end
       end

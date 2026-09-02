@@ -31,7 +31,7 @@ module ClaimsApi
                 errors:
               )
             end
-            errors
+            errors.messages
           end
         end
       end
