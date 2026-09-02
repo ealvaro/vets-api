@@ -35,6 +35,7 @@ module BBInternal
       birthDate
       gender
       bloodType
+      organDonor
       isOrganDonor
       maritalStatus
       isPatient
@@ -44,6 +45,7 @@ module BBInternal
       isHealthCareProvider
       isServiceMember
       isOther
+      occupation
       currentOccupation
       contact
       address

@@ -148,6 +148,12 @@ RSpec.describe 'MyHealth::V1::MedicalRecords::SelfEntered', type: :request do
       expect(demographics.keys & sensitive_keys).to be_empty
 
       expect(demographics.keys).to all(be_in(BBInternal::Client::DEMOGRAPHICS_ALLOWED_KEYS))
+      expect(demographics).to include(
+        'organDonor' => true,
+        'isOrganDonor' => nil,
+        'occupation' => nil,
+        'currentOccupation' => nil
+      )
     end
 
     # Test that the :mhv_xml_html_errors middleware is bypassed
