@@ -10,12 +10,12 @@ module ClaimsApi
     # @param power_of_attorney_id [String] Unique identifier of the submitted POA
     def perform(power_of_attorney_id, action = 'post')
       power_of_attorney = ClaimsApi::PowerOfAttorney.find(power_of_attorney_id)
-      uploader = ClaimsApi::PowerOfAttorneyUploader.new(power_of_attorney_id)
-      uploader.retrieve_from_store!(power_of_attorney.file_data['filename'])
-      file_path = fetch_file_path(uploader)
       # update the POA assignment before uploading to Benefits Documents
       run_update_poa_job(power_of_attorney)
 
+      uploader = ClaimsApi::PowerOfAttorneyUploader.new(power_of_attorney_id)
+      uploader.retrieve_from_store!(power_of_attorney.file_data['filename'])
+      file_path = fetch_file_path(uploader)
       benefits_doc_upload(poa: power_of_attorney, pdf_path: file_path, action:, doc_type: 'L075')
     rescue Errno::ENOENT
       rescue_file_not_found(power_of_attorney)
