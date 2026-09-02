@@ -1180,7 +1180,7 @@ GEM
       ffi
     ssrf_filter (1.5.0)
     staccato (0.5.3)
-    statsd-instrument (3.11.1)
+    statsd-instrument (3.11.2)
     stringio (3.2.0)
     stringio (3.2.0-java)
     strong_migrations (2.8.0)
