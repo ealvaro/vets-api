@@ -1166,7 +1166,7 @@ GEM
     sign_in_service (0.4.0)
       faraday (~> 2.7)
       jwt (~> 2.8)
-    simplecov (1.0.3)
+    simplecov (1.1.1)
     simplecov_json_formatter (0.1.4)
     simpleidn (0.2.3)
     slack-notify (0.6.0)
