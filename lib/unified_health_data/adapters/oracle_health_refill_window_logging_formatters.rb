@@ -45,7 +45,7 @@ module UnifiedHealthData
         when 4..7 then '4-7'
         when 8..14 then '8-14'
         when 15..30 then '15-30'
-        else '30+'
+        else '30_plus'
         end
       end
 

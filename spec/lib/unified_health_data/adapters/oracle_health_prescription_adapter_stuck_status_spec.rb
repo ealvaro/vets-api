@@ -53,7 +53,10 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
         'api.uhd.prescriptions.stuck.submitted',
         tags: array_including('source_ehr:OH', 'days_bucket:15-30')
       )
-      expect(payload).to include(metric: 'submitted', source_ehr: 'OH', days_stuck: 16)
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.submitted_total', tags: ['source_ehr:OH']
+      )
+      expect(payload).to include(metric: 'submitted', source_ehr: 'OH', days_stuck: 16, days_bucket: '15-30')
       expect(payload[:rx_id_hash]).to eq(Digest::SHA256.hexdigest('12345'))
     end
 
@@ -63,6 +66,16 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
 
       expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted', anything)
+    end
+
+    it 'still counts an in-window requested Task toward the submitted total' do
+      travel_to(now) do
+        subject.parse(fhir_resource_with_task(task_status: 'requested', task_date: '2025-06-25T00:00:00Z'))
+      end
+
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.submitted_total', tags: ['source_ehr:OH']
+      )
     end
 
     it 'does not emit when a subsequent dispense has fulfilled the refill' do
@@ -76,6 +89,7 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
 
       expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted', anything)
+      expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted_total', anything)
     end
 
     it 'does not emit when the flag is disabled' do
@@ -86,6 +100,7 @@ describe UnifiedHealthData::Adapters::OracleHealthPrescriptionAdapter do
       end
 
       expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted', any_args)
+      expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted_total', any_args)
     end
   end
 end

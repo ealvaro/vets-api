@@ -19,6 +19,7 @@ module UnifiedHealthData
     # - @current_user
     module OracleHealthStuckStatusLoggingHelper
       STUCK_SUBMITTED_STATSD = 'api.uhd.prescriptions.stuck.submitted'
+      STUCK_SUBMITTED_TOTAL_STATSD = 'api.uhd.prescriptions.stuck.submitted_total'
       STUCK_LOG_MESSAGE = 'UHD prescription stuck status'
 
       # @param resource [Hash] FHIR MedicationRequest resource
@@ -34,6 +35,10 @@ module UnifiedHealthData
         submit_date = task.dig('executionPeriod', 'start')
         return unless valid_task_date?(submit_date)
         return if subsequent_dispense?(submit_date, dispenses_data)
+
+        # Count every in-flight OH "submitted" refill here (the post-adapter scan can't: OH drops
+        # the submit date), so the OH stuck rate's numerator and denominator share one producer.
+        StatsD.increment(STUCK_SUBMITTED_TOTAL_STATSD, tags: ['source_ehr:OH'])
 
         days = days_between(parse_date_or_epoch(submit_date), Time.current)
         return unless days && days > OracleHealthTaskHelper::REFILL_IN_FLIGHT_WINDOW_DAYS
@@ -58,6 +63,7 @@ module UnifiedHealthData
           rx_id_hash: rx_id_hash(resource['id']),
           station_number: extract_station_number(resource),
           days_stuck: days,
+          days_bucket: bucket_days(days),
           user_uuid: @current_user&.uuid
         )
       end

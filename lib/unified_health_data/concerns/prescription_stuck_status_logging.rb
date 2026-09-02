@@ -10,7 +10,7 @@ module UnifiedHealthData
     # expected windows:
     #   - "Active: Submitted" stuck longer than SUBMITTED_STUCK_DAYS (never dispensed)
     #   - "Active: Refill in Process" stuck longer than REFILL_IN_PROCESS_STUCK_DAYS
-    #     after a dispense date is available
+    #     since the refill was requested
     #
     # Caveats surfaced during design:
     #   - Refill-in-process without tracking is not necessarily "stuck": an in-person
@@ -30,7 +30,10 @@ module UnifiedHealthData
       # (its OH-specific equivalent). Kept separate because this scan also covers VistA;
       # the two must stay in sync.
       SUBMITTED_STUCK_DAYS = 3
-      REFILL_IN_PROCESS_STUCK_DAYS = 5
+      # Kept below PrescriptionsAdapter::CMOP_IN_PROCESS_WINDOW_DEFAULT_DAYS (15) so a
+      # bridge-driven refill in process is still observable before the bridge flips it back
+      # to "Active"; also mirrors the frontend's 7-day "taking longer than expected" window.
+      REFILL_IN_PROCESS_STUCK_DAYS = 7
 
       STUCK_LOG_MESSAGE = 'UHD prescription stuck status'
 
@@ -75,7 +78,9 @@ module UnifiedHealthData
 
       # Emits the count of all "submitted" prescriptions per source.
       def emit_stuck_submitted_totals(list)
-        emit_status_totals(list, STATUS_SUBMITTED, STATSD_SUBMITTED_TOTAL)
+        # OH "submitted" is counted at parse time (submit date dropped post-parse); skip it here.
+        non_oh = list.reject { |rx| rx.source_ehr == UnifiedHealthData::Prescription::SOURCE_EHR_ORACLE_HEALTH }
+        emit_status_totals(non_oh, STATUS_SUBMITTED, STATSD_SUBMITTED_TOTAL)
       end
 
       # Emits the count of all "refill in process" prescriptions per source.
@@ -103,6 +108,7 @@ module UnifiedHealthData
           rx_id_hash: stuck_rx_id_hash(rx.id),
           station_number: rx.station_number,
           days_stuck: days,
+          days_bucket: stuck_days_bucket(days),
           user_uuid: @user&.uuid
         )
       end
@@ -122,15 +128,18 @@ module UnifiedHealthData
         days_since(parse_stuck_date(rx.refill_submit_date))
       end
 
-      # "Active: Refill in Process" that has aged past the window after a dispense date
-      # became available. VistA counts mail/CMOP fills only (window pickups never get
-      # tracking); OH is counted but tagged separately (no CMOP signal available yet).
+      # "Active: Refill in Process" that has aged past the window since the refill was
+      # requested. Anchored on the refill-request date (not the previous dispense) so a
+      # routine refill cadence is not miscounted as stuck. VistA counts mail/CMOP fills
+      # only (window pickups never get tracking); OH is counted but tagged separately (no
+      # CMOP signal available yet).
       def refill_in_process_stuck?(rx)
         return false unless rx.refill_status == STATUS_REFILL_IN_PROCESS
+        # A future expected fill date (VistA projected refill_date) means scheduled, not stuck.
+        return false if refill_scheduled_for_future?(rx)
 
-        dispensed_date = parse_stuck_date(stuck_dispensed_date(rx))
-        return false unless dispensed_date
-        return false unless days_since(dispensed_date) > REFILL_IN_PROCESS_STUCK_DAYS
+        anchor_date = refill_in_process_anchor_date(rx)
+        return false unless anchor_date && days_since(anchor_date) > REFILL_IN_PROCESS_STUCK_DAYS
 
         return mail_fill?(rx) if vista_source?(rx)
 
@@ -138,11 +147,19 @@ module UnifiedHealthData
       end
 
       def refill_in_process_stuck_days(rx)
-        days_since(parse_stuck_date(stuck_dispensed_date(rx)))
+        days_since(refill_in_process_anchor_date(rx))
       end
 
-      def stuck_dispensed_date(rx)
-        rx.sorted_dispensed_date.presence || rx.dispensed_date
+      # Best available "refill requested" anchor for how long an in-process refill has waited.
+      # Prefers the per-fill refill record date (mirrors
+      # PrescriptionsAdapter#most_recent_rf_submit_date, the date its CMOP in-process bridge
+      # uses), then the aggregate submit date. Falls back to the last dispense date only when no
+      # submit date exists (e.g. Oracle Health drops refill_submit_date after its 3-day in-flight
+      # window) so that source still emits, tagged separately.
+      def refill_in_process_anchor_date(rx)
+        refill_record_submit_date(rx) ||
+          parse_stuck_date(rx.refill_submit_date) ||
+          parse_stuck_date(stuck_dispensed_date(rx))
       end
 
       def dispensed_on_or_after?(rx, submit_date)

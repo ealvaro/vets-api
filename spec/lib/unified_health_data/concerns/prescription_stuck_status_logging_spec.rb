@@ -74,7 +74,7 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
     end
   end
 
-  describe 'refill in process stuck > 5 days' do
+  describe 'refill in process stuck > 7 days' do
     it 'counts a VistA CMOP/mail fill aged past the window' do
       emit([prescription(id: '1', source_ehr: 'vista',
                          refill_status: 'refillinprocess', sorted_dispensed_date: '2025-06-18',
@@ -84,6 +84,42 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
         'api.uhd.prescriptions.stuck.refill_in_process',
         tags: array_including('source_ehr:vista', 'days_bucket:8-14')
       )
+    end
+
+    it 'anchors on the refill-submit date, not the last dispense date' do
+      # Submitted 8 days ago but last dispensed ~100 days ago: without submit-anchoring this
+      # would bucket as 30_plus; anchored on the request it is 8-14.
+      emit([prescription(id: '1', source_ehr: 'vista', refill_status: 'refillinprocess',
+                         refill_submit_date: '2025-06-18T00:00:00Z',
+                         sorted_dispensed_date: '2025-03-18',
+                         cmop_ndc_number: '00113002240')])
+
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.refill_in_process',
+        tags: array_including('source_ehr:vista', 'days_bucket:8-14')
+      )
+    end
+
+    it 'prefers the per-fill refill record submit date over the aggregate submit date' do
+      emit([prescription(id: '1', source_ehr: 'vista', refill_status: 'refillinprocess',
+                         refill_submit_date: '2025-03-01T00:00:00Z',
+                         dispenses: [{ refill_submit_date: '2025-06-18T00:00:00Z' }],
+                         sorted_dispensed_date: '2025-03-18',
+                         cmop_ndc_number: '00113002240')])
+
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.refill_in_process',
+        tags: array_including('source_ehr:vista', 'days_bucket:8-14')
+      )
+    end
+
+    it 'does not count a refill submitted within the 7-day window even if dispensed long ago' do
+      emit([prescription(id: '1', source_ehr: 'vista', refill_status: 'refillinprocess',
+                         refill_submit_date: '2025-06-20T00:00:00Z',
+                         sorted_dispensed_date: '2025-03-18',
+                         cmop_ndc_number: '00113002240')])
+
+      expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.refill_in_process', anything)
     end
 
     it 'excludes a VistA fill with no CMOP signal (in-person counter pickup)' do
@@ -103,11 +139,36 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
       )
     end
 
-    it 'does not count a fill still within the 5-day window' do
+    it 'does not count a fill still within the 7-day window' do
       emit([prescription(id: '1', source_ehr: 'OH', refill_status: 'refillinprocess',
-                         sorted_dispensed_date: '2025-06-24')])
+                         sorted_dispensed_date: '2025-06-20')])
 
       expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.refill_in_process', anything)
+    end
+
+    it 'excludes a refill with a future expected fill date (scheduled, not stuck)' do
+      # Aged past the window and CMOP-signalled, but VistA projects a future refill_date,
+      # so the refill is on schedule rather than stuck.
+      emit([prescription(id: '1', source_ehr: 'vista', refill_status: 'refillinprocess',
+                         refill_submit_date: '2025-06-18T00:00:00Z',
+                         refill_date: '2025-08-01',
+                         sorted_dispensed_date: '2025-03-18',
+                         cmop_ndc_number: '00113002240')])
+
+      expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.refill_in_process', anything)
+    end
+
+    it 'still counts a refill whose expected fill date is in the past' do
+      emit([prescription(id: '1', source_ehr: 'vista', refill_status: 'refillinprocess',
+                         refill_submit_date: '2025-06-18T00:00:00Z',
+                         refill_date: '2025-06-24',
+                         sorted_dispensed_date: '2025-03-18',
+                         cmop_ndc_number: '00113002240')])
+
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.refill_in_process',
+        tags: array_including('source_ehr:vista')
+      )
     end
   end
 
@@ -136,6 +197,21 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
         'api.uhd.prescriptions.stuck.refill_in_process_total', any_args
       )
     end
+
+    it 'excludes OH from the submitted total (the adapter emits it at parse time instead)' do
+      emit([prescription(id: '1', source_ehr: 'OH', refill_status: 'submitted', refill_submit_date: nil)])
+
+      expect(StatsD).not_to have_received(:increment).with('api.uhd.prescriptions.stuck.submitted_total', any_args)
+    end
+
+    it 'still counts OH toward the refill_in_process total' do
+      emit([prescription(id: '1', source_ehr: 'OH', refill_status: 'refillinprocess',
+                         sorted_dispensed_date: '2025-06-24')])
+
+      expect(StatsD).to have_received(:increment).with(
+        'api.uhd.prescriptions.stuck.refill_in_process_total', 1, tags: array_including('source_ehr:OH')
+      )
+    end
   end
 
   describe 'privacy' do
@@ -148,7 +224,8 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
       emit([prescription(id: '1', source_ehr: 'vista', station_number: '648',
                          refill_status: 'submitted', refill_submit_date: '2025-06-10T00:00:00Z')])
 
-      expect(captured).to include(source_ehr: 'vista', station_number: '648', metric: 'submitted')
+      expect(captured).to include(source_ehr: 'vista', station_number: '648', metric: 'submitted',
+                                  days_bucket: '15-30')
       expect(captured[:rx_id_hash]).to eq(Digest::SHA256.hexdigest('1'))
       expect(captured).not_to have_key(:prescription_name)
     end
@@ -164,7 +241,7 @@ RSpec.describe UnifiedHealthData::Concerns::PrescriptionStuckStatusLogging, type
       expect(formatter.stuck_days_bucket(4)).to eq('4-7')
       expect(formatter.stuck_days_bucket(8)).to eq('8-14')
       expect(formatter.stuck_days_bucket(15)).to eq('15-30')
-      expect(formatter.stuck_days_bucket(31)).to eq('30+')
+      expect(formatter.stuck_days_bucket(31)).to eq('30_plus')
       expect(formatter.stuck_days_bucket(nil)).to eq('unknown')
     end
   end
