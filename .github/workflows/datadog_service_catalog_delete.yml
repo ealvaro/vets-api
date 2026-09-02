@@ -64,13 +64,13 @@ jobs:
 
       - name: 'Get service name from file'
         id: parse_service_name
-        uses: mikefarah/yq@e2f1d5ccf73239195bf92280cd47596751492449 # master
+        uses: mikefarah/yq@8b5af0694bb82b41d4ae180fac9972029066f90a # master
         with:
           cmd: yq -o=json '.dd-service' ${{matrix.file}}
 
       - name: 'Get schema version from file'
         id: parse_schema_version
-        uses: mikefarah/yq@e2f1d5ccf73239195bf92280cd47596751492449 # master
+        uses: mikefarah/yq@8b5af0694bb82b41d4ae180fac9972029066f90a # master
         with:
           cmd: yq -o=json '.schema-version' ${{matrix.file}}
 
