@@ -12,7 +12,7 @@ module Burials
     # The Burial claim controller that handles form submissions
     #
     class ClaimsController < ApplicationController
-      include BPDS::SubmissionHandler
+      include ::BPDS::SubmissionHandler
 
       skip_before_action :authenticate, except: :create
       before_action :load_user, only: :create

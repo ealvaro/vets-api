@@ -11,7 +11,7 @@ module IncomeAndAssets
     # The Income and Assets claim controller that handles form submissions
     #
     class ClaimsController < ClaimsBaseController
-      include BPDS::SubmissionHandler
+      include ::BPDS::SubmissionHandler
 
       before_action :authenticate, only: :create
       before_action :check_flipper_flag

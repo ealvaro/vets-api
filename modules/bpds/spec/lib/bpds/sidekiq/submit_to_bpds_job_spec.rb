@@ -28,6 +28,7 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
     allow(BPDS::Monitor).to receive(:new).and_return(monitor)
     allow(monitor).to receive(:track_submit_success)
     allow(monitor).to receive(:track_submit_failure)
+    allow(monitor).to receive(:track_formatter_load_failure)
     allow(BPDS::Service).to receive(:new).and_return(service)
     allow(service).to receive(:submit_json).and_return(response)
     allow(Flipper).to receive(:enabled?).with(:bpds_service_enabled).and_return(true)
@@ -194,6 +195,72 @@ RSpec.describe BPDS::Sidekiq::SubmitToBPDSJob, type: :job do
         identifiers = { 'participant_id' => participant_id }
         expect(service).to have_received(:submit_json).with(formatted_data, '21P-534EZ', identifiers,
                                                             attachments:)
+      end
+    end
+
+    context 'when a registered formatter cannot be resolved' do
+      let(:burial_claim) { create(:burials_saved_claim) }
+
+      before do
+        allow(SavedClaim).to receive(:find).with(burial_claim.id).and_return(burial_claim)
+        allow(BPDS::Submission).to receive(:find_or_create_by).and_return(bpds_submission)
+        hide_const('Burials::BPDS::Formatter')
+      end
+
+      it 'falls back to the parsed_form and tracks the load failure' do
+        described_class.new.perform(burial_claim.id, encrypted_payload)
+
+        identifiers = { 'participant_id' => participant_id }
+        expect(service).to have_received(:submit_json).with(burial_claim.parsed_form, '21P-530EZ', identifiers,
+                                                            attachments: nil)
+        expect(monitor).to have_received(:track_formatter_load_failure).with(
+          burial_claim.id, '21P-530EZ', 'Burials::BPDS::Formatter', instance_of(NameError)
+        )
+      end
+    end
+
+    # NoMethodError is a subclass of NameError, so a rescue spanning the formatter's own work would
+    # catch a bug inside the formatter and report it as a class that would not load - sending
+    # whoever is on call after the wrong cause. The two must stay distinguishable, and only the
+    # load failure falls back.
+    context 'when a resolved formatter raises while building the payload' do
+      let(:burial_claim) { create(:burials_saved_claim) }
+      let(:formatter) { instance_double(Burials::BPDS::Formatter) }
+      let(:error) { NoMethodError.new("undefined method 'foo' for nil") }
+
+      before do
+        allow(SavedClaim).to receive(:find).with(burial_claim.id).and_return(burial_claim)
+        allow(BPDS::Submission).to receive(:find_or_create_by).and_return(bpds_submission)
+        allow(monitor).to receive(:track_formatter_runtime_error)
+        allow(Burials::BPDS::Formatter).to receive(:new).and_return(formatter)
+        allow(formatter).to receive(:respond_to?).with(:attachments).and_return(false)
+        allow(formatter).to receive(:format).and_raise(error)
+      end
+
+      it 'tracks a runtime error rather than a load failure' do
+        expect do
+          described_class.new.perform(burial_claim.id, encrypted_payload)
+        end.to raise_error(NoMethodError)
+
+        expect(monitor).to have_received(:track_formatter_runtime_error).with(
+          burial_claim.id, '21P-530EZ', 'Burials::BPDS::Formatter', error
+        )
+        expect(monitor).not_to have_received(:track_formatter_load_failure)
+      end
+
+      # The point of re-raising: BPDS is never given a record built from raw parsed_form under a
+      # submitted status, and a transient cause gets the same retries any other failure gets.
+      it 'sends nothing to BPDS and records the attempt as a failure' do
+        expect do
+          described_class.new.perform(burial_claim.id, encrypted_payload)
+        end.to raise_error(NoMethodError)
+
+        expect(service).not_to have_received(:submit_json)
+        expect(bpds_submission.submission_attempts).to have_received(:create).with(
+          status: 'failure',
+          error_message: error.message
+        )
+        expect(monitor).to have_received(:track_submit_failure).with(burial_claim.id, '21P-530EZ', error)
       end
     end
 

@@ -23,6 +23,16 @@ module SurvivorsBenefits
       end
     end
 
+    # The BPDS formatter is resolved by name (BPDS::Sidekiq::SubmitToBPDSJob::FORMATTERS) and lives
+    # under modules/survivors_benefits/lib, which an engine puts on $LOAD_PATH but not on the
+    # autoload path. Without this require the constantize raises NameError, the job's rescue
+    # swallows it, and BPDS silently receives the raw parsed_form instead of structured data.
+    initializer 'survivors_benefits.bpds.require_formatter' do |app|
+      app.config.to_prepare do
+        require 'survivors_benefits/bpds/formatter'
+      end
+    end
+
     initializer 'survivors_benefits.benefits_intake.register_handler' do |app|
       app.config.to_prepare do
         require 'lighthouse/benefits_intake/sidekiq/submission_status_job'

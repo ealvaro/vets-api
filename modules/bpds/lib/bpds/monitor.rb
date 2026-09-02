@@ -31,6 +31,7 @@ module BPDS
       claim_has_user_account_id
       claim_has_user_account
       form_id
+      formatter_class_name
     ].freeze
 
     def initialize
@@ -104,6 +105,63 @@ module BPDS
         :error,
         "#{SERVICE_NAME} submit failed for saved_claim ##{claim_id}",
         "#{STATSD_KEY_PREFIX}.submit_json.failure",
+        call_location: caller_locations.first,
+        **context
+      )
+    end
+
+    # Track a registered formatter that could not be resolved. The job falls back to the raw
+    # parsed_form so submission still succeeds, which means this is the only signal that BPDS
+    # received unformatted data.
+    #
+    # @param claim_id [Integer] the SavedClaim id
+    # @param form_id [String] the SavedClaim form id
+    # @param formatter_class_name [String] the formatter class name that failed to resolve
+    # @param e [Error] the error which occurred
+    def track_formatter_load_failure(claim_id, form_id, formatter_class_name, e)
+      context = {
+        claim_id:,
+        form_id:,
+        formatter_class_name:,
+        error: e&.message
+      }
+      track_request(
+        :error,
+        "#{SERVICE_NAME} formatter #{formatter_class_name} failed to load for saved_claim ##{claim_id}, " \
+        'falling back to unformatted parsed_form',
+        "#{STATSD_KEY_PREFIX}.submit_json.formatter_load_failure",
+        call_location: caller_locations.first,
+        **context
+      )
+    end
+
+    # Track a formatter that resolved but raised while building the payload. Distinct from
+    # #track_formatter_load_failure because the remedy is different: this is a bug inside the
+    # formatter, not a class that would not load. NoMethodError is a subclass of NameError, so
+    # without a separate metric every nil traversal inside a formatter would be reported as a
+    # loading problem and send whoever is on call after the wrong cause.
+    #
+    # Unlike a load failure this does not fall back: the caller re-raises, so the attempt is
+    # recorded as a failure and Sidekiq retries. A class that will not load is not transient and
+    # retrying it is noise, but a formatter raising often is, and BPDS is better left without a
+    # record than given one built from raw parsed_form under a submitted status.
+    #
+    # @param claim_id [Integer] the SavedClaim id
+    # @param form_id [String] the SavedClaim form id
+    # @param formatter_class_name [String] the formatter class name that raised
+    # @param e [Error] the error which occurred
+    def track_formatter_runtime_error(claim_id, form_id, formatter_class_name, e)
+      context = {
+        claim_id:,
+        form_id:,
+        formatter_class_name:,
+        error: e&.message
+      }
+      track_request(
+        :error,
+        "#{SERVICE_NAME} formatter #{formatter_class_name} raised while building the payload " \
+        "for saved_claim ##{claim_id}",
+        "#{STATSD_KEY_PREFIX}.submit_json.formatter_runtime_error",
         call_location: caller_locations.first,
         **context
       )

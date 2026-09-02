@@ -15,13 +15,18 @@ module BPDS
   #
   # @example Include in a controller
   #   class MyClaimsController < ApplicationController
-  #     include BPDS::SubmissionHandler
+  #     include ::BPDS::SubmissionHandler
   #
   #     def create
   #       claim = create_claim(params)
   #       submit_claim_to_bpds(claim.id, claim.form_id, current_user) if claim.save
   #     end
   #   end
+  #
+  # Always qualify with the leading `::`, as every including controller now does. A controller
+  # nested in a module that defines its own BPDS namespace - as Burials and SurvivorsBenefits do,
+  # for their formatters - otherwise resolves BPDS to that inner module and raises at class load.
+  # Qualifying unconditionally means adding a formatter to an engine cannot break its controller.
   #
   module SubmissionHandler
     extend ActiveSupport::Concern

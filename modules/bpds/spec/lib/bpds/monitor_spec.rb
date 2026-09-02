@@ -99,6 +99,44 @@ RSpec.describe BPDS::Monitor do
     end
   end
 
+  describe '#track_formatter_load_failure' do
+    let(:formatter_class_name) { 'SurvivorsBenefits::BPDS::Formatter' }
+
+    it 'tracks the formatter load failure event' do
+      expect(monitor).to receive(:track_request).with(
+        :error,
+        "#{BPDS::Monitor::SERVICE_NAME} formatter #{formatter_class_name} failed to load for " \
+        "saved_claim ##{claim_id}, falling back to unformatted parsed_form",
+        'api.bpds_service.submit_json.formatter_load_failure',
+        call_location: instance_of(Thread::Backtrace::Location),
+        claim_id:,
+        form_id:,
+        formatter_class_name:,
+        error: error.message
+      )
+      monitor.track_formatter_load_failure(claim_id, form_id, formatter_class_name, error)
+    end
+  end
+
+  describe '#track_formatter_runtime_error' do
+    let(:formatter_class_name) { 'SurvivorsBenefits::BPDS::Formatter' }
+
+    it 'tracks the formatter runtime error under its own metric' do
+      expect(monitor).to receive(:track_request).with(
+        :error,
+        "#{BPDS::Monitor::SERVICE_NAME} formatter #{formatter_class_name} raised while building " \
+        "the payload for saved_claim ##{claim_id}",
+        'api.bpds_service.submit_json.formatter_runtime_error',
+        call_location: instance_of(Thread::Backtrace::Location),
+        claim_id:,
+        form_id:,
+        formatter_class_name:,
+        error: error.message
+      )
+      monitor.track_formatter_runtime_error(claim_id, form_id, formatter_class_name, error)
+    end
+  end
+
   describe '#track_get_json_begun' do
     it 'tracks the get_json begun event' do
       expect(monitor).to receive(:track_request).with(

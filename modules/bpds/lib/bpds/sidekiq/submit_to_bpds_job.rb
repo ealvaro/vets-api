@@ -112,12 +112,55 @@ module BPDS
 
         return [claim.parsed_form, nil] unless formatter_class_name
 
-        formatter = formatter_class_name.constantize.new(claim.parsed_form)
+        formatter_class = resolve_formatter(formatter_class_name, claim)
+        return [claim.parsed_form, nil] unless formatter_class
+
+        build_payload(formatter_class, formatter_class_name, claim)
+      end
+
+      # Resolves a registered formatter's class name. Kept separate from #build_payload so the
+      # NameError rescue covers only the constant lookup: NoMethodError is a subclass of NameError,
+      # so a rescue spanning the formatter's own work would catch any nil traversal inside it and
+      # report a runtime bug as a class that would not load.
+      #
+      # @param formatter_class_name [String] the registered formatter class name
+      # @param claim [SavedClaim] the claim being formatted
+      # @return [Class, nil] the formatter class, or nil when it will not resolve
+      def resolve_formatter(formatter_class_name, claim)
+        formatter_class_name.constantize
+      rescue NameError => e
+        # A registered formatter that will not resolve means BPDS receives the raw parsed_form with
+        # no attachments. The fallback stays because a class that will not load is not transient,
+        # so raising would only spend 16 Sidekiq retries to reach the same place. Make the
+        # degradation loud instead - a silent rescue here looks like a successful submission
+        # downstream. #build_payload does raise, for the opposite reason.
+        @monitor.track_formatter_load_failure(claim.id, claim.form_id, formatter_class_name, e)
+        nil
+      end
+
+      # Builds the [payload, attachments] pair from a resolved formatter. A formatter that raises
+      # is tracked under its own metric and re-raised, so #perform records the attempt as a failure
+      # and Sidekiq retries.
+      #
+      # It deliberately does not fall back the way a load failure does. Formatters reach outside
+      # themselves - SurvivorsBenefits::BPDS::Formatter selects its structured data service through
+      # Flipper.enabled? - so a raise here is often transient, and falling back would hand BPDS a
+      # payload built from raw parsed_form under a submitted status. Nothing downstream can tell
+      # that record from a formatted one. Claim submission is unaffected either way: this job is
+      # enqueued with perform_async, and the synchronous half is already wrapped by the callers
+      # (see SurvivorsBenefits::V0::ClaimsController#submit_claim_to_bpds_safely).
+      #
+      # @param formatter_class [Class] the resolved formatter class
+      # @param formatter_class_name [String] the registered name, for tracking
+      # @param claim [SavedClaim] the claim being formatted
+      # @return [Array(Hash, Array<Hash>|nil)] the [payload, attachments] pair
+      def build_payload(formatter_class, formatter_class_name, claim)
+        formatter = formatter_class.new(claim.parsed_form)
         attachments = formatter.respond_to?(:attachments) ? formatter.attachments : nil
         [formatter.format, attachments]
-      rescue NameError
-        # Formatter class not found - fall back to unformatted parsed_form
-        [claim.parsed_form, nil]
+      rescue => e
+        @monitor.track_formatter_runtime_error(claim.id, claim.form_id, formatter_class_name, e)
+        raise
       end
     end
   end

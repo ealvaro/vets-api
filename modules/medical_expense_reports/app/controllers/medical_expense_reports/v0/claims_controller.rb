@@ -13,7 +13,7 @@ module MedicalExpenseReports
     #
     class ClaimsController < ClaimsBaseController
       include PdfS3Operations
-      include BPDS::SubmissionHandler
+      include ::BPDS::SubmissionHandler
 
       before_action :check_flipper_flag
       skip_after_action :set_csrf_header, only: [:create]
