@@ -759,6 +759,10 @@ features:
     actor_type: user
     description: Enables mocking responses for the Lighthouse Claims API v3 submit endpoint
     enable_in_development: true
+  lighthouse_claims_api_v3_526_validate:
+    actor_type: user
+    description: Enable payload validation via Form526ValidationOrchestrator for v3 disability compensation submit endpoint
+    enable_in_development: true
   confirmation_page_new:
     actor_type: user
     description: Enables the 2024 version of the confirmation page view in simple forms

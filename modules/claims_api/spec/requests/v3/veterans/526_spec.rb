@@ -17,7 +17,9 @@ RSpec.describe 'ClaimsApi::V3::Veterans::526', type: :request do
       allow_any_instance_of(ClaimsApi::V3::Veterans::DisabilityCompensationController)
         .to receive(:authenticate).and_return(true)
 
-      post submit_path
+      post submit_path,
+           params: { data: { attributes: {} } }.to_json,
+           headers: { 'CONTENT_TYPE' => 'application/json' }
 
       expect(response).to have_http_status(:not_implemented)
       parsed = JSON.parse(response.body)
@@ -40,7 +42,9 @@ RSpec.describe 'ClaimsApi::V3::Veterans::526', type: :request do
       allow_any_instance_of(ClaimsApi::V3::Veterans::DisabilityCompensationController)
         .to receive(:authenticate).and_return(true)
 
-      post generate_pdf_path
+      post generate_pdf_path,
+           params: { data: { attributes: {} } }.to_json,
+           headers: { 'CONTENT_TYPE' => 'application/json' }
 
       expect(response).to have_http_status(:not_implemented)
       parsed = JSON.parse(response.body)
