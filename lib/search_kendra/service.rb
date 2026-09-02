@@ -56,7 +56,11 @@ module SearchKendra
         index_id: config.index_id,
         page_number:,
         page_size:,
-        query_text: processed_query
+        query_result_type_filter: 'DOCUMENT',
+        query_text: processed_query,
+        spell_correction_configuration: {
+          include_query_spell_check_suggestions: true
+        }
       }
     end
 

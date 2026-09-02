@@ -225,6 +225,18 @@ describe SearchKendra::Service do
       expect(params[:page_size]).to eq(Search::Pagination::ENTRIES_PER_PAGE)
     end
 
+    it 'includes the DOCUMENT result type filter' do
+      params = subject.send(:query_params)
+
+      expect(params[:query_result_type_filter]).to eq('DOCUMENT')
+    end
+
+    it 'includes spell correction' do
+      params = subject.send(:query_params)
+
+      expect(params[:spell_correction_configuration][:include_query_spell_check_suggestions]).to be(true)
+    end
+
     context 'page_number' do
       it 'defaults to 1 when no page is given' do
         params = subject.send(:query_params)
