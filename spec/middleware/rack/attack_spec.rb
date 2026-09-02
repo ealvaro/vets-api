@@ -539,4 +539,40 @@ RSpec.describe Rack::Attack do
       end
     end
   end
+
+  describe 'profile/address_validation/ip' do
+    # An invalid (empty) address returns 422 before any external call, so these
+    # pre-throttle requests never reach VA-Profile.
+    let(:endpoint) { '/v0/profile/address_validation' }
+    let(:headers) { { 'X-Real-Ip' => '1.2.3.4', 'CONTENT_TYPE' => 'application/json' } }
+    let(:params) { { address: {} }.to_json }
+    let(:limit) { 30 }
+
+    before do
+      limit.times do
+        post endpoint, params, headers
+        expect(last_response).not_to have_http_status(:too_many_requests)
+      end
+    end
+
+    it 'throttles with status 429' do
+      post endpoint, params, headers
+
+      expect(last_response).to have_http_status(:too_many_requests)
+    end
+
+    it 'does not throttle a different IP' do
+      other_headers = { 'X-Real-Ip' => '4.3.2.1', 'CONTENT_TYPE' => 'application/json' }
+
+      post endpoint, params, other_headers
+
+      expect(last_response).not_to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles a format-suffixed path so it cannot be used to bypass the limit' do
+      post "#{endpoint}.json", params, headers
+
+      expect(last_response).to have_http_status(:too_many_requests)
+    end
+  end
 end

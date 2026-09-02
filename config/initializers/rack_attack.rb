@@ -92,6 +92,13 @@ class Rack::Attack
     req.remote_ip if req.path.starts_with?('/v0/form212680') && req.post?
   end
 
+  # Rate-limit the unauthenticated address_validation endpoint, which proxies to
+  # VA-Profile where international lookups incur per-request fees (financial/DoS vector).
+  # Match an optional format suffix (e.g. `.json`) so it can't be used to bypass the check.
+  throttle('profile/address_validation/ip', limit: 30, period: 1.minute) do |req|
+    req.remote_ip if req.path.match?(%r{\A/v0/profile/address_validation(?:\.[^/]+)?\z}) && req.post?
+  end
+
   # VAOS Request Limits
   throttle('appointments/post', limit: 30, period: 1.minute) do |req|
     req.remote_ip if req.path.starts_with?('/vaos/v2/appointments') && req.post?
