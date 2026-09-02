@@ -4,4 +4,8 @@ FactoryBot.define do
   factory :va10272, class: 'SavedClaim::EducationBenefits::VA10272', parent: :education_benefits do
     form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '10272', 'minimal.json').read }
   end
+
+  factory :va10272_overflow, class: 'SavedClaim::EducationBenefits::VA10272', parent: :education_benefits do
+    form { Rails.root.join('spec', 'fixtures', 'education_benefits_claims', '10272', 'overflow.json').read }
+  end
 end

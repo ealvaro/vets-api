@@ -7,6 +7,37 @@ module PdfFill
 
       BENEFIT_PROGRAMS = %w[chapter30 chapter33 chapter35 chapter1606].freeze
 
+      # Template PDF is 3 pages; overflow pages start at page 4.
+      START_PAGE = 4
+
+      # question_number matches the real printed question number on the 22-0810 form.
+      QUESTION_KEY = [
+        { question_number: '1', question_text: "Applicant's Name" },
+        { question_number: '2', question_text: "Applicant's Mailing Address" },
+        { question_number: '3', question_text: "Applicant's Email Address" },
+        { question_number: '7', question_text: 'Name of Exam' },
+        { question_number: '8', question_text: 'Name and Address of Organization Giving Exam' },
+        { question_number: '11', question_text: 'Remarks' },
+        { question_number: '12', question_text: 'Signature of Applicant' }
+      ].freeze
+
+      # Groups overflow questions under the printed form's Part heading so the overflow
+      # page renders a section header above each entry.
+      SECTIONS = [
+        {
+          label: 'Part I - Identification Information',
+          question_nums: %w[1 2 3]
+        },
+        {
+          label: 'Part III - Exam Information',
+          question_nums: %w[7 8 11]
+        },
+        {
+          label: 'Part IV - Certification and Signature of Applicant',
+          question_nums: %w[12]
+        }
+      ].freeze
+
       # rubocop:disable Layout/LineLength
       KEY = {
         'vaBenefitProgram' => {

@@ -15,4 +15,27 @@ class SavedClaim::EducationBenefits::VA0989 < SavedClaim::EducationBenefits
     # 22-0989 is delivered via the nightly education spool file, not Benefits Intake.
     # PdfFill::Forms::Va220989 remains available for QA and possible future veteran PDF download.
   end
+
+  # Uses the V2 extras generator (header/footer/page numbers on overflow pages). Also opts
+  # into the "additional page" wording (vs. the default "attachment" wording) for overflow
+  # placeholder text and header.
+  def to_pdf(file_name = nil, fill_options = {})
+    return super(file_name) unless extras_redesign_enabled?
+
+    fill_options = {
+      extras_redesign: true,
+      omit_esign_stamp: true,
+      omit_footer: true,
+      placeholder_text: 'See additional page',
+      header_label: 'ADDITIONAL PAGE'
+    }.merge(fill_options)
+
+    PdfFill::Filler.fill_form(self, file_name, fill_options)
+  end
+
+  private
+
+  def extras_redesign_enabled?
+    Settings.vsp_environment == 'staging' || Rails.env.development? || Rails.env.test?
+  end
 end

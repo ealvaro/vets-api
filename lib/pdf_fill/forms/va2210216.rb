@@ -7,6 +7,16 @@ module PdfFill
 
       ITERATOR = PdfFill::HashConverter::ITERATOR
 
+      # Template PDF is 2 pages; overflow pages start at page 3.
+      START_PAGE = 3
+
+      QUESTION_KEY = [
+        { question_number: '1', question_text: 'Institution Name' },
+        { question_number: '8', question_text: 'School Official Printed Name' },
+        { question_number: '9', question_text: 'School Official Title' },
+        { question_number: '10', question_text: 'Signature of School Official' }
+      ].freeze
+
       KEY = {
         'institutionDetails' => {
           'institutionName' => {
