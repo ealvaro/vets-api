@@ -156,7 +156,7 @@ app/controllers/v0/user @software/octo-identity
 app/controllers/v0/user_actions_controller.rb @software/octo-identity
 app/controllers/v0/users_controller.rb @software/octo-identity
 app/controllers/v0/veteran_onboardings_controller.rb @software/va-core-veteran-experiences
-app/controllers/v0/veteran_readiness_employment_claims_controller.rb @software/govcio-vfep-codereviewers
+app/controllers/v0/veteran_readiness_employment_claims_controller.rb @software/reapers-vre
 app/controllers/v0/veteran_status_cards_controller.rb @software/mobile-api-team
 app/controllers/v1/apidocs_controller.rb @software/va-platform-backend
 app/controllers/v1/gids @software/govcio-vfep-codereviewers
@@ -392,7 +392,7 @@ app/models/saved_claim/form21p530a.rb @software/benefits-optimization-aquia
 app/models/saved_claim/higher_level_review.rb @software/benefits-decision-reviews-be
 app/models/saved_claim/notice_of_disagreement.rb @software/benefits-decision-reviews-be
 app/models/saved_claim/supplemental_claim.rb @software/benefits-decision-reviews-be
-app/models/saved_claim/veteran_readiness_employment_claim.rb @software/govcio-vfep-codereviewers
+app/models/saved_claim/veteran_readiness_employment_claim.rb @software/reapers-vre
 app/models/schema_contract @software/va-platform-backend
 app/models/secondary_appeal_form.rb @software/benefits-decision-reviews-be
 app/models/session.rb @software/octo-identity
@@ -641,9 +641,9 @@ app/sidekiq/user_actions_cleanup_job.rb @software/octo-identity
 app/sidekiq/va_notify_dd_email_job.rb @software/va-notify-write
 app/sidekiq/va_notify_email_job.rb @software/va-notify-write
 app/sidekiq/vha_notification/send_mst_consent_job.rb @software/disability-benefits
-app/sidekiq/vre_vbms_document_upload_job.rb @software/govcio-vfep-codereviewers
-app/sidekiq/vre_vbms_document_upload_log_job.rb @software/govcio-vfep-codereviewers
-app/sidekiq/vre/submit1900_job.rb @software/benefits-non-disability
+app/sidekiq/vre_vbms_document_upload_job.rb @software/reapers-vre
+app/sidekiq/vre_vbms_document_upload_log_job.rb @software/reapers-vre
+app/sidekiq/vre/submit1900_job.rb @software/reapers-vre
 app/swagger/readme.md @software/va-platform-backend
 app/swagger/swagger/requests/backend_statuses.rb @software/va-platform-backend
 app/swagger/swagger/requests/banners.rb @software/va-platform-backend
@@ -700,7 +700,7 @@ app/swagger/swagger/requests/terms_of_use_agreements.rb @software/octo-identity
 app/swagger/swagger/requests/travel_pay.rb @software/travel-pay-integration
 app/swagger/swagger/requests/upload_supporting_evidence.rb @software/disability-benefits
 app/swagger/swagger/requests/user.rb @software/octo-identity
-app/swagger/swagger/requests/veteran_readiness_employment_claims.rb @software/govcio-vfep-codereviewers
+app/swagger/swagger/requests/veteran_readiness_employment_claims.rb @software/reapers-vre
 app/swagger/swagger/requests/veteran_status_cards.rb @software/mobile-api-team
 app/swagger/swagger/responses/authentication_error.rb @software/octo-identity
 app/swagger/swagger/responses/service_unavailable_error.rb @software/va-platform-backend
@@ -838,7 +838,7 @@ config/form_profile_mappings/26-1880.yml @software/health-apps-backend
 config/form_profile_mappings/26-1880v2.yml @software/va-core-veteran-experiences
 config/form_profile_mappings/26-1880v3.yml @software/va-core-veteran-experiences
 config/form_profile_mappings/26-4555.yml @software/platform-va-product-forms
-config/form_profile_mappings/28-1900.yml @software/benefits-non-disability
+config/form_profile_mappings/28-1900.yml @software/reapers-vre
 config/form_profile_mappings/28-8832.yml @software/benefits-non-disability
 config/form_profile_mappings/28-8832v2.yml @software/benefits-non-disability
 config/form_profile_mappings/40-10007.yml @software/bah-mbs-selfserv @software/va-platform-backend
@@ -1157,7 +1157,7 @@ lib/pdf_fill/forms/pdfs/22-10216.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/22-10272.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/22-10275.pdf @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/pdfs/22-10278.pdf @software/govcio-vfep-codereviewers
-lib/pdf_fill/forms/pdfs/28-1900.pdf @software/benefits-non-disability
+lib/pdf_fill/forms/pdfs/28-1900.pdf @software/reapers-vre
 lib/pdf_fill/forms/pdfs/28-8832.pdf @software/benefits-non-disability
 lib/pdf_fill/forms/pdfs/686C-674.pdf @software/benefits-lifestage
 lib/pdf_fill/forms/va210779.rb @software/benefits-optimization-aquia
@@ -1174,7 +1174,7 @@ lib/pdf_fill/forms/va2210272.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va2210275.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va2210278.rb @software/govcio-vfep-codereviewers
 lib/pdf_fill/forms/va228794.rb @software/govcio-vfep-codereviewers
-lib/pdf_fill/forms/va281900.rb @software/benefits-non-disability
+lib/pdf_fill/forms/va281900.rb @software/reapers-vre @software/benefits-non-disability
 lib/pdf_fill/forms/va288832.rb @software/benefits-non-disability
 lib/pdf_fill/forms/va686c674.rb @software/benefits-lifestage
 lib/pdf_fill/processors/va220976_processor.rb @software/govcio-vfep-codereviewers
@@ -1327,7 +1327,7 @@ modules/vaos/app/services/vaos/v2 @software/vfs-vaos
 modules/vass @software/vsa-healthcare-health-quest-1-backend @software/patient-check-in
 modules/vba_documents @software/lighthouse-banana-peels
 modules/veteran @software/lighthouse-dash @software/lighthouse-pivot @software/accredited-representative-crew
-modules/vre @software/govcio-vfep-codereviewers
+modules/vre @software/reapers-vre
 modules/vye @software/govcio-vfep-codereviewers
 postman/Dockerfile @software/va-platform-backend
 postman/vets-api.pm-collection.json @software/va-platform-backend
@@ -1359,9 +1359,9 @@ rakelib/mockdata_synchronize.rake @software/octo-identity
 rakelib/payment_history_status.rake @software/benefits-management-tools-be @software/vsa-debt-resolution
 rakelib/piilog_repl @software/va-platform-backend
 rakelib/prod @software/vfs-vaos
-rakelib/prod/reupload_vre_claims_with_corrected_signature_dates.rake @software/govcio-vfep-codereviewers
+rakelib/prod/reupload_vre_claims_with_corrected_signature_dates.rake @software/reapers-vre
 rakelib/prod/user_credential.rake @software/octo-identity
-rakelib/prod/vre_claims_batch_log.rake @software/govcio-vfep-codereviewers
+rakelib/prod/vre_claims_batch_log.rake @software/reapers-vre
 rakelib/remediation_batch_upload.rake @software/octo-benefits-portfolio-code-reviewers
 rakelib/remove_va1995s_records.rake @software/govcio-vfep-codereviewers
 rakelib/routes_csv.rake @software/va-platform-backend
@@ -1450,7 +1450,7 @@ spec/controllers/v0/user @software/octo-identity
 spec/controllers/v0/user_actions_controller_spec.rb @software/octo-identity
 spec/controllers/v0/users_controller_spec.rb @software/octo-identity
 spec/controllers/v0/veteran_onboardings_controller_spec.rb @software/va-core-veteran-experiences
-spec/controllers/v0/veteran_readiness_employment_claims_controller_spec.rb @software/govcio-vfep-codereviewers
+spec/controllers/v0/veteran_readiness_employment_claims_controller_spec.rb @software/reapers-vre
 spec/controllers/v1/gids @software/govcio-vfep-codereviewers
 spec/controllers/v1/medical_copays_controller_spec.rb @software/vsa-debt-resolution
 spec/controllers/v1/post911_gi_bill_statuses_controller_spec.rb @software/govcio-vfep-codereviewers
@@ -1593,7 +1593,7 @@ spec/factories/va526ez.rb @software/govcio-vfep-codereviewers
 spec/factories/va5490.rb @software/govcio-vfep-codereviewers
 spec/factories/va8794.rb @software/govcio-vfep-codereviewers
 spec/factories/veteran_onboardings.rb @software/va-core-veteran-experiences
-spec/factories/veteran_readiness_employment_claim.rb @software/govcio-vfep-codereviewers
+spec/factories/veteran_readiness_employment_claim.rb @software/reapers-vre
 spec/fixtures/bgs @software/benefits-lifestage
 spec/fixtures/carma @software/health-apps-backend
 spec/fixtures/carma/10-10CG_f6056cff-d4cb-4058-8fb0-42296e12698f.pdf @software/health-apps-backend
@@ -1658,7 +1658,7 @@ spec/fixtures/pdf_fill/22-10272 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10275 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-1919 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/26-1880 @software/health-apps-backend
-spec/fixtures/pdf_fill/28-1900 @software/benefits-non-disability
+spec/fixtures/pdf_fill/28-1900 @software/reapers-vre
 spec/fixtures/pdf_fill/28-8832 @software/benefits-non-disability
 spec/fixtures/pdf_fill/5655 @software/vsa-debt-resolution
 spec/fixtures/pdf_fill/686C-674 @software/benefits-lifestage
@@ -2085,11 +2085,11 @@ spec/rakelib/persistent_attachment_remediation_spec.rb @software/va-notify-write
 spec/rakelib/piilog_repl @software/va-platform-backend
 spec/rakelib/piilog_repl/piilog_helpers_spec.rb @software/va-platform-backend
 spec/rakelib/remediation_batch_upload_spec.rb @software/octo-benefits-portfolio-code-reviewers
-spec/rakelib/reupload_vre_claims_with_corrected_signature_dates_rake_spec.rb @software/govcio-vfep-codereviewers
+spec/rakelib/reupload_vre_claims_with_corrected_signature_dates_rake_spec.rb @software/reapers-vre
 spec/rakelib/secure_messaging_spec.rb @software/mhv-secure-messaging-fe
 spec/rakelib/user_credential_spec.rb @software/octo-identity
 spec/rakelib/vet360_spec.rb @software/vfs-authenticated-experience-backend
-spec/rakelib/vre_claims_batch_log_rake_spec.rb @software/govcio-vfep-codereviewers
+spec/rakelib/vre_claims_batch_log_rake_spec.rb @software/reapers-vre
 spec/requests/admin_controller_spec.rb @software/va-platform-backend
 spec/requests/authentication/standard_authentication_spec.rb @software/octo-identity
 spec/requests/breakers_integration_spec.rb @software/va-platform-backend
@@ -2355,9 +2355,9 @@ spec/sidekiq/va_notify_dd_email_job_spec.rb @software/va-notify-write
 spec/sidekiq/va_notify_email_job_spec.rb @software/va-notify-write
 spec/sidekiq/va_notify/v2/queue_email_job_spec.rb @software/va-notify-write
 spec/sidekiq/vha_notification/send_mst_consent_job_spec.rb @software/disability-benefits
-spec/sidekiq/vre/submit1900_job_spec.rb @software/benefits-non-disability
-spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/govcio-vfep-codereviewers
-spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/govcio-vfep-codereviewers
+spec/sidekiq/vre/submit1900_job_spec.rb @software/reapers-vre
+spec/sidekiq/vrevbms_document_upload_job_spec.rb @software/reapers-vre
+spec/sidekiq/vrevbms_document_upload_log_job_spec.rb @software/reapers-vre
 spec/simple_cov_helper_spec.rb @software/va-platform-backend
 spec/simplecov_helper.rb @software/va-platform-backend
 spec/spec_helper.rb @software/va-platform-backend
@@ -2556,7 +2556,7 @@ spec/support/schemas/user_loa3.json @software/octo-identity
 spec/support/schemas/va_profile @software/vfs-authenticated-experience-backend
 spec/support/schemas/vaos @software/vfs-vaos
 spec/support/schemas/veteran_verification @software/vfs-authenticated-experience-backend
-spec/support/schemas/vre @software/govcio-vfep-codereviewers
+spec/support/schemas/vre @software/reapers-vre
 spec/support/serializer_spec_helper.rb @software/va-platform-backend
 spec/support/shared_contexts/facility_locator_kill_switches.rb @software/vfs-facilities-frontend
 spec/support/shared_contexts/uhd_security_endpoint.rb @software/vfs-mhv-integration
@@ -2717,11 +2717,11 @@ spec/support/vcr_cassettes/veteran @software/lighthouse-dash
 spec/support/vcr_cassettes/veteran_enrollment_system @software/health-apps-backend
 spec/support/vcr_cassettes/veteran_enrollment_system/enrollment_periods @software/va-core-veteran-experiences
 spec/support/vcr_cassettes/veteran_enrollment_system/form1095_b @software/va-core-veteran-experiences
-spec/support/vcr_cassettes/veteran_readiness_employment @software/benefits-non-disability
+spec/support/vcr_cassettes/veteran_readiness_employment @software/benefits-non-disability @software/reapers-vre
 spec/support/vcr_cassettes/vetext @software/mobile-api-team
 spec/support/vcr_cassettes/vha/sharepoint/update_list_item_fields_400.yml @software/vsa-debt-resolution
 spec/support/vcr_cassettes/vha/sharepoint/upload_pdf_400_response.yml @software/vsa-debt-resolution
-spec/support/vcr_cassettes/vre @software/govcio-vfep-codereviewers
+spec/support/vcr_cassettes/vre @software/reapers-vre
 spec/support/vcr_multipart_matcher_helper.rb @software/va-platform-backend
 spec/support/vcr.rb @software/va-platform-backend
 spec/swagger_helper.rb @software/va-platform-backend
