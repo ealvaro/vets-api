@@ -66,33 +66,25 @@ module SearchKendra
     RELEVANCE_TUNING_CONFIG = [
       {
         name: '_source_uri',
-        relevance: { importance: 7, value_importance_map: {} }
-      },
-      {
-        name: 'crawl_depth',
-        relevance: { importance: 3, rank_order: 'DESCENDING' }
-      },
-      {
-        name: 'document_title',
         relevance: { importance: 5, value_importance_map: {} }
       },
       {
         name: 'domain',
         relevance: {
           importance: 1,
-          value_importance_map: { 'www.va.gov' => 9 }
+          value_importance_map: { 'www.va.gov' => 8 }
         }
       },
       {
         name: 'location',
         relevance: {
           importance: 1,
-          value_importance_map: { 'NONE' => 7 }
+          value_importance_map: { 'NONE' => 8 }
         }
       },
       {
         name: 'path_depth',
-        relevance: { importance: 3, rank_order: 'DESCENDING' }
+        relevance: { importance: 2, rank_order: 'DESCENDING' }
       }
     ].freeze
 
