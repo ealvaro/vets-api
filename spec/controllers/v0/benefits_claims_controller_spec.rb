@@ -24,6 +24,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       .with("api.benefits_claims.#{endpoint}", expected_calls, tags: expected_tags)
   end
 
+  def stub_title_generator(enabled)
+    allow(Flipper).to receive(:enabled?)
+      .with(V0::BenefitsClaimsController::FEATURE_USE_TITLE_GENERATOR_WEB).and_return(enabled)
+  end
+
   before do
     user.user_account_uuid = user_account.id
     user.save!
@@ -42,7 +47,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
     allow(Flipper).to receive(:enabled?)
       .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, instance_of(User))
       .and_return(true)
-    allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+    stub_title_generator(true)
     allow(Flipper).to receive(:enabled?).with(:cst_suppress_evidence_requests_website).and_return(true)
     allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, anything).and_return(false)
 
@@ -81,7 +86,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       end
 
       it 'returns claimType language modifications' do
-        allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(false)
+        stub_title_generator(false)
         VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
           get(:index)
         end
@@ -91,6 +96,74 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
           .select { |claim| claim['attributes']['claimType'] == 'expenses related to death or burial' }.count).to eq 1
         expect(parsed_body['data']
           .select { |claim| claim['attributes']['claimType'] == 'Death' }.count).to eq 0
+      end
+
+      it 'logs one claim type detail per returned claim and no evidence request logs' do
+        VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+          get(:index)
+        end
+
+        expect(response).to have_http_status(:ok)
+        parsed_body = JSON.parse(response.body)
+        returned_claim_ids = parsed_body['data'].map { |claim| claim['id'] }
+
+        expect(returned_claim_ids.size).to eq(6)
+
+        returned_claim_ids.each do |returned_claim_id|
+          expect(Rails.logger)
+            .to have_received(:info)
+            .with('Claim Type Details', hash_including(
+                                          message_type: 'lh.cst.claim_types',
+                                          source: 'index',
+                                          claim_id: returned_claim_id
+                                        ))
+        end
+
+        expect(Rails.logger)
+          .to have_received(:info)
+          .with('Claim Type Details', hash_excluding(:num_contentions, :current_phase_back, :latest_phase_type))
+          .exactly(returned_claim_ids.size).times
+
+        expect(Rails.logger).not_to have_received(:info).with('Evidence Request Types', anything)
+      end
+
+      it 'logs mapped claim type values for index telemetry' do
+        stub_title_generator(false)
+
+        VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+          get(:index)
+        end
+
+        expect(response).to have_http_status(:ok)
+        expect(Rails.logger)
+          .to have_received(:info)
+          .with('Claim Type Details', hash_including(
+                                        message_type: 'lh.cst.claim_types',
+                                        source: 'index',
+                                        claim_type: 'expenses related to death or burial'
+                                      ))
+      end
+
+      it 'logs provider and title fields for index telemetry' do
+        stub_title_generator(true)
+
+        VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+          get(:index)
+        end
+
+        expect(response).to have_http_status(:ok)
+        expect(Rails.logger)
+          .to have_received(:info)
+          .with('Claim Type Details', hash_including(
+                                        message_type: 'lh.cst.claim_types',
+                                        source: 'index',
+                                        provider: 'lighthouse',
+                                        multi_claim_provider_enabled: true,
+                                        title_generator_enabled: true,
+                                        display_title: 'Claim for compensation',
+                                        claim_type_base: 'compensation claim'
+                                      ))
+          .at_least(:once)
       end
 
       it 'adds correct displayTitle and claimTypeBase attributes to all claims' do
@@ -108,7 +181,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       end
 
       it 'sets correct titles for Compensation claims' do
-        allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+        stub_title_generator(true)
         VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
           get(:index)
         end
@@ -124,7 +197,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       end
 
       it 'sets correct titles for Death claims using special case transformation' do
-        allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(false)
+        stub_title_generator(false)
         VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
           get(:index)
         end
@@ -137,7 +210,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
       end
 
       it 'sets correct display title and claim type base for Death claims using title generator' do
-        allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+        stub_title_generator(true)
         VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
           get(:index)
         end
@@ -296,7 +369,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         end
 
         it 'sets correct disability compensation titles when flag is enabled' do
-          allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+          stub_title_generator(true)
           allow_any_instance_of(BenefitsClaims::Service).to receive(:get_claims).and_return(mock_disability_claim)
 
           get(:index)
@@ -311,7 +384,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         end
 
         it 'does not set displayTitle and claimTypeBase when flag is disabled' do
-          allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(false)
+          stub_title_generator(false)
           allow_any_instance_of(BenefitsClaims::Service).to receive(:get_claims).and_return(mock_disability_claim)
 
           get(:index)
@@ -875,15 +948,33 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         end
       end
     end
+
+    context "when 'cst_multi_claim_provider' is disabled" do
+      before do
+        allow(Flipper).to receive(:enabled?)
+          .with(V0::BenefitsClaimsController::FEATURE_MULTI_CLAIM_PROVIDER, anything).and_return(false)
+      end
+
+      it 'logs a nil provider alongside the disabled flag' do
+        VCR.use_cassette('lighthouse/benefits_claims/index/200_response') do
+          get(:index)
+        end
+
+        expect(response).to have_http_status(:ok)
+        expect(Rails.logger)
+          .to have_received(:info)
+          .with('Claim Type Details', hash_including(
+                                        source: 'index',
+                                        provider: nil,
+                                        multi_claim_provider_enabled: false
+                                      ))
+          .at_least(:once)
+      end
+    end
   end
 
   describe '#show' do
     context 'when cst_multi_claim_provider is enabled with single provider' do
-      before do
-        allow(Flipper).to receive(:enabled?).and_call_original
-        allow(Flipper).to receive(:enabled?).with(:cst_surface_closed_tracked_items, anything).and_return(false)
-      end
-
       it 'modifies the claim data to include additional, human-readable fields' do
         VCR.use_cassette('lighthouse/benefits_claims/show/200_response') do
           get(:show, params: { id: '600383363' })
@@ -1569,7 +1660,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         expect(Rails.logger)
           .to have_received(:info)
           .with('Claim Type Details',
-                { message_type: 'lh.cst.claim_types',
+                hash_including(
+                  message_type: 'lh.cst.claim_types',
+                  source: 'show',
+                  provider: 'lighthouse',
+                  multi_claim_provider_enabled: true,
                   claim_type: 'Compensation',
                   claim_type_code: '020NEW',
                   claim_date: '2022-09-27',
@@ -1579,7 +1674,11 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
                   latest_phase_type: 'GATHERING_OF_EVIDENCE',
                   decision_letter_sent: false,
                   development_letter_sent: true,
-                  claim_id: '600383363' })
+                  display_title: 'Claim for disability compensation',
+                  claim_type_base: 'disability compensation claim',
+                  title_generator_enabled: true,
+                  claim_id: '600383363'
+                ))
       end
 
       it 'logs evidence requests/tracked items details' do
@@ -1652,7 +1751,7 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
 
       context 'claim title generator' do
         it 'returns claimType language modifications' do
-          allow(Flipper).to receive(:enabled?).with(:cst_use_claim_title_generator_web).and_return(true)
+          stub_title_generator(true)
           VCR.use_cassette('lighthouse/benefits_claims/show/200_death_claim_response') do
             get(:show, params: { id: '600229972' })
           end
@@ -1704,7 +1803,9 @@ RSpec.describe V0::BenefitsClaimsController, type: :controller do
         expect(Rails.logger)
           .to have_received(:info)
           .with('Claim Type Details',
-                hash_including(num_contentions: nil, current_phase_back: nil, latest_phase_type: nil))
+                hash_including(source: 'show', num_contentions: nil, current_phase_back: nil,
+                               latest_phase_type: nil))
+        expect(Rails.logger).not_to have_received(:info).with('Evidence Request Types', anything)
       end
 
       it 'returns tracked items with content override fields from TrackedItemContent' do

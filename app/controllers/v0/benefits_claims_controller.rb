@@ -79,23 +79,19 @@ module V0
                else
                  service.get_claims
                end
-      champva_cst_file_uploader_docs_only_resubmission_enabled =
-        Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
+      claims_data = claims['data']
 
       check_for_birls_id
       check_for_file_number
 
-      claims['data'].each do |claim|
-        update_claim_type_language(claim)
-        add_upload_metadata(claim, champva_cst_file_uploader_docs_only_resubmission_enabled:)
-      end
+      prepare_index_claims(claims_data)
 
-      claim_ids = claims['data'].map { |claim| claim['id'] }
+      claim_ids = claims_data.map { |claim| claim['id'] }
       evidence_submissions = fetch_evidence_submissions(claim_ids, 'index')
 
-      add_evidence_submissions_to_claims(claims['data'], evidence_submissions, 'index')
+      add_evidence_submissions_to_claims(claims_data, evidence_submissions, 'index')
 
-      tap_claims(claims['data'])
+      tap_claims(claims_data)
 
       report_evidence_submission_metrics('index', evidence_submissions)
 
@@ -110,24 +106,26 @@ module V0
                 # Legacy single-provider path: Apply Lighthouse-specific transforms here
                 get_legacy_claim(params[:id])
               end
+      claim_data = claim['data']
       champva_cst_file_uploader_docs_only_resubmission_enabled =
-        Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
-      update_claim_type_language(claim['data'])
-      add_upload_metadata(claim['data'], champva_cst_file_uploader_docs_only_resubmission_enabled:)
+        champva_cst_file_uploader_docs_only_resubmission_enabled?
+      title_generator_enabled = title_generator_enabled?
+      update_claim_type_language(claim_data, title_generator_enabled:)
+      add_upload_metadata(claim_data, champva_cst_file_uploader_docs_only_resubmission_enabled:)
 
       # Document uploads to EVSS require a birls_id; This restriction should
       # be removed when we move to Lighthouse Benefits Documents for document uploads
-      claim['data']['attributes']['canUpload'] = !@current_user.birls_id.nil?
+      claim_data['attributes']['canUpload'] = !@current_user.birls_id.nil?
 
-      evidence_submissions = fetch_evidence_submissions(claim['data']['id'], 'show')
+      evidence_submissions = fetch_evidence_submissions(claim_data['id'], 'show')
 
-      update_evidence_submissions_for_claim(claim['data']['id'], evidence_submissions)
-      add_evidence_submissions_to_claims([claim['data']], evidence_submissions, 'show')
+      update_evidence_submissions_for_claim(claim_data['id'], evidence_submissions)
+      add_evidence_submissions_to_claims([claim_data], evidence_submissions, 'show')
 
       # We want to log some details about claim type patterns to track in DataDog
-      log_claim_details(claim['data']['attributes'])
+      log_show_claim_details(claim_data, params[:id], title_generator_enabled:)
 
-      tap_claims([claim['data']])
+      tap_claims([claim_data])
 
       report_evidence_submission_metrics('show', evidence_submissions)
 
@@ -199,6 +197,21 @@ module V0
       legacy_claim
     end
 
+    def prepare_index_claims(claims)
+      champva_cst_file_uploader_docs_only_resubmission_enabled =
+        champva_cst_file_uploader_docs_only_resubmission_enabled?
+      title_generator_enabled = title_generator_enabled?
+      multi_claim_provider_enabled = Flipper.enabled?(FEATURE_MULTI_CLAIM_PROVIDER, @current_user)
+
+      claims.each do |claim|
+        update_claim_type_language(claim, title_generator_enabled:)
+        add_upload_metadata(claim, champva_cst_file_uploader_docs_only_resubmission_enabled:)
+        log_claim_type_details(claim['attributes'], claim['id'], source: 'index',
+                                                                 title_generator_enabled:,
+                                                                 multi_claim_provider_enabled:)
+      end
+    end
+
     def tap_claims(claims)
       claims.each do |claim|
         record = claims_scope.where(evss_id: claim['id']).first
@@ -218,8 +231,8 @@ module V0
       end
     end
 
-    def update_claim_type_language(claim)
-      if Flipper.enabled?(:cst_use_claim_title_generator_web)
+    def update_claim_type_language(claim, title_generator_enabled:)
+      if title_generator_enabled
         # Adds displayTitle and claimTypeBase to the claim response object
         BenefitsClaims::TitleGenerator.update_claim_title(claim)
       end
@@ -268,6 +281,10 @@ module V0
 
     def champva_cst_file_uploader_docs_only_resubmission_enabled?
       Flipper.enabled?(:champva_cst_file_uploader_docs_only_resubmission, @current_user)
+    end
+
+    def title_generator_enabled?
+      Flipper.enabled?(FEATURE_USE_TITLE_GENERATOR_WEB)
     end
 
     def classify_tracked_items_by_list?
@@ -339,24 +356,55 @@ module V0
         va_notify_status: evidence_submission.va_notify_status }
     end
 
-    def log_claim_details(claim_info)
-      ::Rails.logger.info('Claim Type Details',
-                          { message_type: 'lh.cst.claim_types',
-                            claim_type: claim_info['claimType'],
-                            claim_type_code: claim_info['claimTypeCode'],
-                            claim_date: claim_info['claimDate'],
-                            num_contentions: claim_info['contentions']&.count,
-                            ep_code: claim_info['endProductCode'],
-                            current_phase_back: claim_info.dig('claimPhaseDates', 'currentPhaseBack'),
-                            latest_phase_type: claim_info.dig('claimPhaseDates', 'latestPhaseType'),
-                            decision_letter_sent: claim_info['decisionLetterSent'],
-                            development_letter_sent: claim_info['developmentLetterSent'],
-                            claim_id: params[:id] })
-      log_evidence_requests(params[:id], claim_info)
+    def log_show_claim_details(claim_data, requested_claim_id, title_generator_enabled:)
+      log_claim_type_details(
+        claim_data['attributes'], requested_claim_id,
+        source: 'show',
+        title_generator_enabled:,
+        multi_claim_provider_enabled: Flipper.enabled?(FEATURE_MULTI_CLAIM_PROVIDER, @current_user)
+      )
+      log_evidence_requests(requested_claim_id, claim_data['attributes'])
+    end
+
+    def log_claim_type_details(claim_info, claim_id, source:, title_generator_enabled:,
+                               multi_claim_provider_enabled:)
+      # `provider` is nil in two cases and `multi_claim_provider_enabled` tells them apart: with the
+      # flag off nothing stamps it, with the flag on a nil means a provider failed to label its claims.
+      payload = {
+        message_type: 'lh.cst.claim_types',
+        source:,
+        provider: claim_info['provider'],
+        multi_claim_provider_enabled:,
+        claim_type: claim_info['claimType'],
+        claim_type_code: claim_info['claimTypeCode'],
+        claim_date: claim_info['claimDate'],
+        ep_code: claim_info['endProductCode'],
+        decision_letter_sent: claim_info['decisionLetterSent'],
+        development_letter_sent: claim_info['developmentLetterSent'],
+        display_title: claim_info['displayTitle'],
+        claim_type_base: claim_info['claimTypeBase'],
+        title_generator_enabled:,
+        claim_id:
+      }
+
+      payload.merge!(claim_detail_only_fields(claim_info)) if source == 'show'
+
+      ::Rails.logger.info('Claim Type Details', payload)
+    end
+
+    # Absent from the list response, which has no `contentions` and exposes only `phaseChangeDate`.
+    def claim_detail_only_fields(claim_info)
+      {
+        num_contentions: claim_info['contentions']&.count,
+        current_phase_back: claim_info.dig('claimPhaseDates', 'currentPhaseBack'),
+        latest_phase_type: claim_info.dig('claimPhaseDates', 'latestPhaseType')
+      }
     end
 
     def log_evidence_requests(claim_id, claim_info)
       tracked_items = claim_info['trackedItems']
+      return if tracked_items.blank?
+
       # Logged alongside the value so a nil `is_first_party` can be told apart: with the flag off it
       # is simply not set, but with the flag on it means the field was lost in transit.
       # Read once here rather than in the loop below, which would cost one flag lookup per item.
