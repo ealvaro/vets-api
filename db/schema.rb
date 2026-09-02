@@ -566,7 +566,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_26_120000) do
   end
 
   create_table "bpds_submissions", force: :cascade do |t|
-    t.string "benefits_intake_uuid", comment: "Lighthouse benefits_intake_uuid identifying the VBMS eFolder document, for BPDS<->VBMS correlation"
     t.datetime "created_at", null: false
     t.text "encrypted_kms_key", comment: "KMS key used to encrypt the reference data"
     t.string "form_id", null: false, comment: "form type of the submission"
@@ -576,7 +575,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_26_120000) do
     t.integer "saved_claim_id", comment: "ID of the saved claim in vets-api"
     t.datetime "updated_at", null: false
     t.string "va_claim_id", comment: "claim ID in VA (non-vets-api) systems"
-    t.index ["benefits_intake_uuid"], name: "index_bpds_submissions_on_benefits_intake_uuid", where: "(benefits_intake_uuid IS NOT NULL)"
     t.index ["needs_kms_rotation"], name: "index_bpds_submissions_on_needs_kms_rotation"
   end
 
