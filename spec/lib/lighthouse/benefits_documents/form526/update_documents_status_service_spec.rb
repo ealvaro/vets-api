@@ -56,6 +56,40 @@ RSpec.describe BenefitsDocuments::Form526::UpdateDocumentsStatusService do
 
       it_behaves_like 'document status updater', 'completed',
                       'api.form526.lighthouse_document_upload_processing_status.veteran_upload.complete'
+
+      context 'when document classification is enabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:enable_document_classification).and_return(true)
+        end
+
+        it 'enqueues classification for the completed Veteran upload' do
+          expect(DocumentClassifier::ClassificationJob).to receive(:perform_async).with(pending_document_upload.id)
+
+          described_class.call(uploads, status_response)
+        end
+
+        context 'when the completed document is not a Veteran upload' do
+          let(:pending_document_upload) { create(:lighthouse526_document_upload, document_type: 'BDD Instructions') }
+
+          it 'does not enqueue classification' do
+            expect(DocumentClassifier::ClassificationJob).not_to receive(:perform_async)
+
+            described_class.call(uploads, status_response)
+          end
+        end
+      end
+
+      context 'when document classification is disabled' do
+        before do
+          allow(Flipper).to receive(:enabled?).with(:enable_document_classification).and_return(false)
+        end
+
+        it 'does not enqueue classification' do
+          expect(DocumentClassifier::ClassificationJob).not_to receive(:perform_async)
+
+          described_class.call(uploads, status_response)
+        end
+      end
     end
 
     context 'when a Lighthouse526DocumentUpload fails in Lighthouse processing' do

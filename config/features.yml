@@ -938,6 +938,9 @@ features:
     actor_type: user
     description: When enabled, periodically checks the Benefits Intake Platform for status updates on submitted digital forms and records whether each was accepted or rejected
     enable_in_development: false
+  enable_document_classification:
+    actor_type: user
+    description: Enables document classification functionality
   communication_preferences:
     actor_type: user
     description: Allow user to access backend communication_preferences API

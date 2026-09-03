@@ -521,6 +521,28 @@ app/serializers/user_action_event_serializer.rb @software/octo-identity
 app/serializers/user_action_serializer.rb @software/octo-identity
 app/serializers/user_serializer.rb @software/octo-identity
 app/serializers/user_verification_serializer.rb @software/octo-identity
+app/serializers/valid_va_file_number_serializer.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+app/services/bgs/awards_service.rb @software/backend-review-group
+app/services/bgs/dependency_verification_service.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/dependent_service.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/payment_service.rb @software/vsa-debt-resolution @software/backend-review-group
+app/services/bgs/people/service.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/people/request.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/uploaded_document_service.rb @software/benefits-dependents-management @software/backend-review-group
+app/services/bgs/dependents_veteran_identifiers.md @software/benefits-dependents-management @software/backend-review-group
+app/services/claim_fast_tracking @software/disability-benefits @software/backend-review-group
+app/services/claim_fast_tracking/constants.rb @software/disability-benefits @software/backend-review-group
+app/services/claim_fast_tracking/diagnostic_codes.rb @software/disability-benefits @software/backend-review-group
+app/services/debt_transaction_log_service.rb @software/vsa-debt-resolution @software/backend-review-group
+app/services/debt_transaction_log/ @software/vsa-debt-resolution @software/backend-review-group
+app/services/document_classifier/ @software/benefits-employee-exp-engineers @software/backend-review-group
+app/services/email_verification_callback.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+app/services/email_verification_service.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+app/services/evss_claim_service.rb @software/benefits-management-tools-be @software/backend-review-group
+app/services/feature_toggles_service.rb @software/backend-review-group
+app/services/form1010_ezr_attachments/file_type_validator.rb @software/health-apps-backend @software/backend-review-group
+app/services/form1010cg/ @software/health-apps-backend @software/backend-review-group
+app/services/hca/overrides_parser.rb @software/health-apps-backend @software/backend-review-group
 app/serializers/valid_va_file_number_serializer.rb @software/vfs-authenticated-experience-backend
 app/services/bgs/awards_service.rb @software/va-platform-backend
 app/services/bgs/constants.rb @software/benefits-lifestage
@@ -572,6 +594,7 @@ app/sidekiq/delete_in_progress_form_job.rb @software/health-apps-backend
 app/sidekiq/delete_old_pii_logs_job.rb @software/va-platform-backend
 app/sidekiq/delete_old_transactions_job.rb @software/vfs-authenticated-experience-backend
 app/sidekiq/dependents/form_686c_674_failure_email_job.rb @software/benefits-non-disability
+app/sidekiq/document_classifier/ @software/benefits-employee-exp-engineers @software/backend-review-group
 app/sidekiq/education_form @software/govcio-vfep-codereviewers
 app/sidekiq/email_verification_job.rb @software/vfs-authenticated-experience-backend
 app/sidekiq/event_bus_gateway/ @software/benefits-management-tools-be
@@ -2241,6 +2264,19 @@ spec/serializers/supporting_evidence_attachment_serializer_spec.rb @software/dis
 spec/serializers/tooltip_serializer_spec.rb @software/vfs-mhv-integration
 spec/serializers/user_serializer_spec.rb @software/octo-identity
 spec/serializers/user_verification_serializer_spec.rb @software/octo-identity
+spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+spec/services/bgs @software/benefits-dependents-management @software/backend-review-group
+spec/services/bgs/payment_service_spec.rb @software/vsa-debt-resolution @software/backend-review-group
+spec/services/claim_fast_tracking @software/disability-benefits @software/backend-review-group
+spec/services/debt_transaction_log_service_spec.rb @software/vsa-debt-resolution @software/backend-review-group
+spec/services/document_classifier/ @software/benefits-employee-exp-engineers @software/backend-review-group
+spec/services/email_verification_callback_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+spec/services/email_verification_service_spec.rb @software/vfs-authenticated-experience-backend @software/backend-review-group
+spec/services/evss_claim_service_spec.rb @software/benefits-management-tools-be @software/backend-review-group
+spec/services/feature_toggles_service_spec.rb @software/backend-review-group
+spec/services/form1010_ezr_attachments/file_type_validator_spec.rb @software/health-apps-backend @software/backend-review-group
+spec/services/form1010cg @software/health-apps-backend @software/backend-review-group
+spec/services/hca/overrides_parser_spec.rb @software/health-apps-backend @software/backend-review-group
 spec/serializers/valid_va_file_number_serializer_spec.rb @software/vfs-authenticated-experience-backend
 spec/services/bgs @software/benefits-lifestage
 spec/services/bgs/payment_service_spec.rb @software/vsa-debt-resolution
@@ -2283,6 +2319,7 @@ spec/sidekiq/delete_in_progress_form_job_spec.rb @software/health-apps-backend
 spec/sidekiq/delete_old_pii_logs_job_spec.rb @software/va-platform-backend
 spec/sidekiq/delete_old_transactions_job_spec.rb @software/vfs-authenticated-experience-backend
 spec/sidekiq/dependents/form686c674_failure_email_job_spec.rb @software/benefits-non-disability
+spec/sidekiq/document_classifier/ @software/benefits-employee-exp-engineers @software/backend-review-group
 spec/sidekiq/education_form @software/govcio-vfep-codereviewers
 spec/sidekiq/email_verification_job_spec.rb @software/vfs-authenticated-experience-backend
 spec/sidekiq/event_bus_gateway/ @software/benefits-management-tools-be

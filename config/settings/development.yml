@@ -421,6 +421,15 @@ dmc:
   mock_debts: false
   mock_fsr: false
   url: https://fwdproxy-dev.vfs.va.gov:4465/api/v1/digital-services/
+document_classifier:
+  va_gpt:
+    api_key: fake-api-key
+    api_version: 2025-04-01-preview
+    base_url: https://example.va.gov/foundry/openai/
+    model: gpt-5.4
+    open_timeout: 10
+    read_timeout: 60
+    responses_path: responses
 dogstatsd:
   enabled: false
 edu:

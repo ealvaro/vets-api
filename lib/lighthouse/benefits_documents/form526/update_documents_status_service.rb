@@ -87,6 +87,7 @@ module BenefitsDocuments
         if document_upload.completed?
           # ex. 'api.form526.lighthouse_document_upload_processing_status.bdd_instructions.complete'
           StatsD.increment("#{@statsd_document_base_key}.#{STATSD_DOCUMENT_COMPLETE_KEY}")
+          enqueue_document_classification(document_upload)
         elsif document_upload.failed?
           log_failure(status_updater, document_upload)
         elsif status_updater.processing_timeout?
@@ -98,6 +99,13 @@ module BenefitsDocuments
 
       def statsd_document_base_key(statsd_document_type_key)
         @statsd_document_base_key ||= "#{STATSD_BASE_KEY}.#{statsd_document_type_key}"
+      end
+
+      def enqueue_document_classification(document_upload)
+        return unless document_upload.document_type == Lighthouse526DocumentUpload::VETERAN_UPLOAD_DOCUMENT_TYPE
+        return unless Flipper.enabled?(:enable_document_classification)
+
+        DocumentClassifier::ClassificationJob.perform_async(document_upload.id)
       end
 
       def log_failure(status_updater, document_upload)

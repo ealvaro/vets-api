@@ -422,6 +422,15 @@ dmc:
   mock_debts: <%= ENV['dmc__mock_debts'] %>
   mock_fsr: <%= ENV['dmc__mock_fsr'] %>
   url: <%= ENV['dmc__url'] %>
+document_classifier:
+  va_gpt:
+    api_key: <%= ENV['document_classifier__va_gpt__api_key'] %>
+    api_version: 2025-04-01-preview
+    base_url: <%= ENV['document_classifier__va_gpt__base_url'] %>
+    model: gpt-5.4
+    open_timeout: 10
+    read_timeout: 60
+    responses_path: responses
 dogstatsd:
   enabled: true
 edu:
