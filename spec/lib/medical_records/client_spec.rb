@@ -546,10 +546,22 @@ describe MedicalRecords::Client do
 
     describe '#handle_api_errors' do
       context 'when response is successful' do
-        let(:result) { OpenStruct.new(code: 200) }
+        let(:result) { OpenStruct.new(code: 200, resource: FHIR::Bundle.new) }
 
         it 'does not raise an exception' do
           expect { client.handle_api_errors(result) }.not_to raise_error
+        end
+      end
+
+      context 'when response has no error code but the resource is nil' do
+        let(:result) { OpenStruct.new(code: 200, resource: nil, body: {}.to_json) }
+
+        it 'raises a BackendServiceException as an upstream bad gateway' do
+          client.handle_api_errors(result)
+        rescue Common::Exceptions::BackendServiceException => e
+          expect(e.key).to eq('MEDICALRECORDS_502')
+        else
+          raise 'expected BackendServiceException to be raised'
         end
       end
 
@@ -598,13 +610,13 @@ describe MedicalRecords::Client do
         end
       end
 
-      it 'does not raise when result code is nil' do
-        result = OpenStruct.new(code: nil)
+      it 'does not raise when result code is nil and a resource is present' do
+        result = OpenStruct.new(code: nil, resource: FHIR::Bundle.new)
         expect { client.send(:handle_api_errors, result) }.not_to raise_error
       end
 
-      it 'does not raise for status codes below 400' do
-        result = OpenStruct.new(code: 200)
+      it 'does not raise for status codes below 400 when a resource is present' do
+        result = OpenStruct.new(code: 200, resource: FHIR::Bundle.new)
         expect { client.send(:handle_api_errors, result) }.not_to raise_error
       end
 

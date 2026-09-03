@@ -279,18 +279,20 @@ module MedicalRecords
     end
 
     def handle_api_errors(result)
-      if result.code.present? && result.code >= 400
-        diagnostics = parse_error_diagnostics(result.body)
-        diagnostics = "Error fetching data#{": #{diagnostics}" if diagnostics}"
+      return unless (result.code.present? && result.code >= 400) || result.resource.nil?
 
-        # Default exception handling
-        raise Common::Exceptions::BackendServiceException.new(
-          "MEDICALRECORDS_#{result.code}",
-          status: result.code,
-          detail: diagnostics,
-          source: self.class.to_s
-        )
-      end
+      # An error code bubbles up as-is; a nil resource with no error code means the
+      # upstream returned an empty/invalid body, which we report as a bad gateway.
+      status_code = result.code.present? && result.code >= 400 ? result.code : 502
+      diagnostics = parse_error_diagnostics(result.body)
+      diagnostics = "Error fetching data#{": #{diagnostics}" if diagnostics}"
+
+      raise Common::Exceptions::BackendServiceException.new(
+        "MEDICALRECORDS_#{status_code}",
+        status: status_code,
+        detail: diagnostics,
+        source: self.class.to_s
+      )
     end
 
     def parse_error_diagnostics(body)

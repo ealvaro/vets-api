@@ -583,6 +583,21 @@ en:
         code: "MEDICALRECORDS_404"
         detail: "The resource could not be found"
         status: 404
+      MEDICALRECORDS_500: # Upstream 500 rendered as 502 — vets-api is proxying, not failing internally
+        <<: *external_defaults
+        code: "MEDICALRECORDS_500"
+        detail: "Upstream medical records service encountered an internal error"
+        status: 502
+      MEDICALRECORDS_502:
+        <<: *external_defaults
+        code: "MEDICALRECORDS_502"
+        detail: "Received an invalid response from the upstream medical records service"
+        status: 502
+      MEDICALRECORDS_503:
+        <<: *external_defaults
+        code: "MEDICALRECORDS_503"
+        detail: "Upstream medical records service is temporarily unavailable"
+        status: 503
       BBINTERNAL_400:
         <<: *external_defaults
         code: "BBINTERNAL_400"
