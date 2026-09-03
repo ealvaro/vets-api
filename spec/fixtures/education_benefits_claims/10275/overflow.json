@@ -1,0 +1,182 @@
+{
+  "agreementType": "newCommitment",
+  "mainInstitution": {
+    "facilityCode": "US123456",
+    "institutionName": "Springfield University",
+    "institutionAddress": {
+      "street": "123 College Ave",
+      "street2": "Building A",
+      "city": "Springfield",
+      "state": "IL",
+      "country": "USA",
+      "postalCode": "62704"
+    }
+  },
+  "additionalInstitutions": [
+    {
+      "facilityCode": "US654321",
+      "institutionName": "Springfield Technical Institute",
+      "institutionAddress": {
+        "street": "456 Tech Park Dr",
+        "street2": "Suite 200",
+        "city": "Springfield",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "62703"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Jane",
+          "middle": "A",
+          "last": "Doe"
+        },
+        "email": "jane.doe@sti.edu"
+      }
+    },
+    {
+      "facilityCode": "US789012",
+      "institutionName": "Capital City Community College",
+      "institutionAddress": {
+        "street": "1200 Statehouse Blvd",
+        "city": "Springfield",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "62701"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Marcus",
+          "last": "Alvarez"
+        },
+        "email": "malvarez@capitalcitycc.edu"
+      }
+    },
+    {
+      "facilityCode": "US345678",
+      "institutionName": "Riverbend School of Nursing",
+      "institutionAddress": {
+        "street": "88 Riverbend Way",
+        "street2": "Floor 3",
+        "city": "Chatham",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "62629"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Priya",
+          "middle": "K",
+          "last": "Natarajan"
+        },
+        "email": "pnatarajan@riverbendnursing.edu"
+      }
+    },
+    {
+      "facilityCode": "US901234",
+      "institutionName": "Lincoln Trail Aviation Academy",
+      "institutionAddress": {
+        "street": "77 Airport Rd",
+        "city": "Decatur",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "62521"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Cedric",
+          "last": "Ombeng"
+        },
+        "email": "combeng@lincolntrailaviation.edu"
+      }
+    },
+    {
+      "facilityCode": "US567890",
+      "institutionName": "Prairie State Culinary Institute",
+      "institutionAddress": {
+        "street": "34 Market St",
+        "street2": "Unit 6",
+        "city": "Bloomington",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "61701"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Danielle",
+          "last": "Vasquez"
+        },
+        "email": "dvasquez@prairiestateculinary.edu"
+      }
+    },
+    {
+      "facilityCode": "US123789",
+      "institutionName": "Great Lakes Maritime College",
+      "institutionAddress": {
+        "street": "2 Harbor Point",
+        "city": "Waukegan",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "60085"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Owen",
+          "middle": "T",
+          "last": "Fitzgerald"
+        },
+        "email": "ofitzgerald@greatlakesmaritime.edu"
+      }
+    },
+    {
+      "facilityCode": "US456123",
+      "institutionName": "Heartland Welding & Trades Center",
+      "institutionAddress": {
+        "street": "910 Industrial Pkwy",
+        "street2": "Building C",
+        "city": "Peoria",
+        "state": "IL",
+        "country": "USA",
+        "postalCode": "61602"
+      },
+      "pointOfContact": {
+        "fullName": {
+          "first": "Lucia",
+          "last": "Moreno"
+        },
+        "email": "lmoreno@heartlandweldingtrades.edu"
+      }
+    }
+  ],
+  "authorizedOfficial": {
+    "fullName": {
+      "first": "Robert",
+      "last": "Smith"
+    },
+    "title": "Vice President of Academic Affairs",
+    "usPhone": "2175551234",
+    "email": "robert.smith@springfield.edu"
+  },
+  "newCommitment": {
+    "principlesOfExcellencePointOfContact": {
+      "fullName": {
+        "first": "Emily",
+        "last": "Johnson"
+      },
+      "title": "Director of Compliance",
+      "usPhone": "2175555678",
+      "email": "emily.johnson.director.of.veterans.institutional.compliance@springfieldcommunitycollegeandtechnicalinstitute.edu"
+    },
+    "schoolCertifyingOfficial": {
+      "fullName": {
+        "first": "Michael",
+        "last": "Brown"
+      },
+      "title": "Registrar",
+      "usPhone": "2175559876",
+      "email": "michael.brown@springfield.edu"
+    }
+  },
+  "privacyAgreementAccepted": true,
+  "statementOfTruthSignature": "Robert Smith",
+  "dateSigned": "2025-09-10"
+}

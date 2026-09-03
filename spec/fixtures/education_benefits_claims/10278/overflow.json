@@ -1,0 +1,70 @@
+{
+  "claimantPersonalInformation": {
+    "fullName": {
+      "first": "John",
+      "middle": "Quincy",
+      "last": "Doe"
+    },
+    "ssn": "123456789",
+    "vaFileNumber": "987654321",
+    "dateOfBirth": "1980-01-01"
+  },
+  "claimantAddress": {
+    "street": "123 Main St",
+    "city": "Anytown",
+    "state": "NY",
+    "postalCode": "12345",
+    "country": "USA"
+  },
+  "claimantContactInformation": {
+    "phoneNumber": "5551234567",
+    "emailAddress": "john.quincy.doe.veteran.education.benefits.claimant@example-university.edu"
+  },
+  "discloseInformation": {
+    "authorize": "person"
+  },
+  "thirdPartyPersonName": {
+    "first": "Bartholomew",
+    "middle": "Alexander",
+    "last": "Worthington-Fitzgerald"
+  },
+  "thirdPartyPersonAddress": {
+    "street": "456 Elm St",
+    "city": "Othertown",
+    "state": "CA",
+    "postalCode": "90210",
+    "country": "USA"
+  },
+  "thirdPartyOrganizationInformation": {
+    "organizationName": "Association for the Advancement of Veterans Educational Benefits Counseling",
+    "organizationAddress": {
+      "street": "789 Oak Ave",
+      "city": "Big City",
+      "state": "TX",
+      "postalCode": "75001",
+      "country": "USA"
+    }
+  },
+  "organizationRepresentatives": [
+    { "fullName": { "first": "Rep", "last": "One" } },
+    { "fullName": { "first": "Rep", "last": "Two" } }
+  ],
+  "claimInformation": {
+    "statusOfClaim": true,
+    "paymentHistory": true
+  },
+  "lengthOfRelease": {
+    "lengthOfRelease": "date",
+    "date": "2025-12-31"
+  },
+  "securityQuestion": {
+    "question": "petName"
+  },
+  "securityAnswer": {
+    "securityAnswerText": "Dr. Cuddles"
+  },
+  "privacyAgreementAccepted": true,
+  "statementOfTruthSignature": "John Quincy Worthington-Fitzgerald-Abernathy Doe III",
+  "dateSigned": "2023-10-27",
+  "isAuthenticated": true
+}

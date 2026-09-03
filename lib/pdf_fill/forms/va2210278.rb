@@ -8,6 +8,40 @@ module PdfFill
     class Va2210278 < FormBase
       ITERATOR = PdfFill::HashConverter::ITERATOR
 
+      # Template PDF is 5 pages (2 pages of static instructions, 2 fillable pages, 1 page of
+      # static privacy act info); overflow pages start at page 6.
+      START_PAGE = 6
+
+      # Section I (Claimant's Identifying Information) has no fields that can realistically
+      # overflow (see QUESTION_KEY comment below), so it's omitted here; empty sections never
+      # render a header on the extras page since headers only render for sections with content.
+      SECTIONS = [
+        {
+          label: "Section II - Contact's Information",
+          question_nums: %w[7 8a 8c]
+        },
+        {
+          label: 'Section III - Declaration of Intent',
+          question_nums: %w[13]
+        }
+      ].freeze
+
+      # question_number values match the real printed question numbers on the 22-10278 form.
+      # Only fields that can realistically overflow (per vets-json-schema maxLength/maxItems
+      # constraints) are included: SSNs, VA file numbers, dates, and phone numbers have fixed
+      # formats; the claim-information checkboxes and security question fields have no
+      # character limit configured; and claimantAddress, thirdPartyPersonAddress (8B),
+      # organizationAddress (8D), organizationRepresentatives, and otherText all have PDF field
+      # limits that meet or exceed what the schema allows a real submission to contain (e.g.
+      # claimantAddress's combined address lines cap out around 422 realistic characters,
+      # under its 500-char PDF limit), so none of those can overflow.
+      QUESTION_KEY = [
+        { question_number: '7', question_text: 'Email Address' },
+        { question_number: '8a', question_text: 'Name of Person to Receive Information' },
+        { question_number: '8c', question_text: 'Name of Organization to Receive Information' },
+        { question_number: '13', question_text: 'Claimant Signature' }
+      ].freeze
+
       KEY = {
         'claimantPersonalInformation' => {
           'fullName' => {
@@ -58,26 +92,34 @@ module PdfFill
           key: 'thirdPartyPersonName',
           limit: 12,
           question_num: 8,
-          question_text: 'NAME OF PERSON TO RECEIVE INFORMATION'
+          question_suffix: 'A',
+          question_text: 'NAME OF PERSON TO RECEIVE INFORMATION',
+          show_suffix: true
         },
         'thirdPartyPersonAddress' => {
           key: 'thirdPartyPersonAddress',
           limit: 500,
-          question_num: 9,
-          question_text: 'ADDRESS OF PERSON TO RECEIVE INFORMATION'
+          question_num: 8,
+          question_suffix: 'B',
+          question_text: 'ADDRESS OF PERSON TO RECEIVE INFORMATION',
+          show_suffix: true
         },
         'thirdPartyOrganizationInformation' => {
           'organizationName' => {
             key: 'organizationName',
             limit: 30,
-            question_num: 10,
-            question_text: 'NAME OF ORGANIZATION TO RECEIVE INFORMATION'
+            question_num: 8,
+            question_suffix: 'C',
+            question_text: 'NAME OF ORGANIZATION TO RECEIVE INFORMATION',
+            show_suffix: true
           },
           'organizationAddress' => {
             key: 'organizationAddress',
             limit: 300,
-            question_num: 11,
-            question_text: 'ADDRESS OF ORGANIZATION TO RECEIVE INFORMATION'
+            question_num: 8,
+            question_suffix: 'D',
+            question_text: 'ADDRESS OF ORGANIZATION TO RECEIVE INFORMATION',
+            show_suffix: true
           }
         },
         'organizationRepresentatives' => {
@@ -87,105 +129,107 @@ module PdfFill
             key: "organizationRepresentatives#{ITERATOR}",
             limit: 160,
             question_num: 12,
-            question_text: 'ORGANIZATION REPRESENTATIVES'
+            question_text: 'ADDITIONAL ORGANIZATION REPRESENTATIVES (ITEM 8C CONTINUED)'
             # iterator: ITERATOR
           }
         },
         'claimInformation' => {
           'statusOfClaim' => {
             key: 'statusOfClaim',
-            question_num: 13,
+            question_num: 10,
             question_text: 'STATUS OF CLAIM'
           },
           'currentBenefit' => {
             key: 'currentBenefit',
-            question_num: 14,
+            question_num: 10,
             question_text: 'CURRENT BENEFIT'
           },
           'paymentHistory' => {
             key: 'paymentHistory',
-            question_num: 15,
+            question_num: 10,
             question_text: 'PAYMENT HISTORY'
           },
           'amountOwed' => {
             key: 'amountOwed',
-            question_num: 16,
+            question_num: 10,
             question_text: 'AMOUNT OWED'
           },
           'minor' => {
             key: 'minor',
-            question_num: 17,
+            question_num: 10,
             question_text: 'MINOR'
           },
           'other' => {
             key: 'other',
-            question_num: 18,
+            question_num: 10,
             question_text: 'OTHER'
           },
           'otherText' => {
             key: 'otherText',
             limit: 30,
-            question_num: 19,
+            question_num: 10,
             question_text: 'OTHER TEXT'
           }
         },
         'isLimited' => {
           key: 'isLimited',
-          question_num: 20,
+          question_num: 9,
           question_text: 'IS LIMITED'
         },
         'isNotLimited' => {
           key: 'isNotLimited',
-          question_num: 21,
+          question_num: 9,
           question_text: 'IS NOT LIMITED'
         },
         'lengthOfRelease' => {
           'isOngoing' => {
             key: 'isOngoing',
-            question_num: 22,
+            question_num: 11,
             question_text: 'IS ONGOING'
           },
           'isDated' => {
             key: 'isDated',
-            question_num: 23,
+            question_num: 11,
             question_text: 'IS DATED'
           },
           'releaseDate' => {
             key: 'releaseDate',
-            question_num: 24,
+            question_num: 11,
             question_text: 'RELEASE DATE'
           }
         },
         'securityQuestion' => {
           key: 'question',
-          question_num: 25,
+          question_num: 12,
+          question_suffix: 'A',
           question_text: 'SECURITY QUESTION'
         },
         'securityAnswer' => {
           key: 'answer',
-          question_num: 26,
+          question_num: 12,
+          question_suffix: 'B',
           question_text: 'SECURITY ANSWER'
         },
         'statementOfTruthSignature' => {
           key: 'statementOfTruthSignature',
           limit: 50,
-          question_num: 27,
+          question_num: 13,
           question_text: 'STATEMENT OF TRUTH SIGNATURE'
         },
         'dateSigned' => {
           key: 'dateSigned',
           limit: 20,
-          question_num: 28,
+          question_num: 14,
           question_text: 'DATE SIGNED'
         },
         'ssn2' => {
           key: 'ssn2',
-          question_num: 29,
+          question_num: 2,
           question_text: 'SSN PART 2'
         },
         'ssn3' => {
           key: 'ssn3',
-          question_num: 30,
+          question_num: 2,
           question_text: 'SSN PART 3'
         }
       }.freeze

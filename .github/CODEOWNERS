@@ -380,6 +380,7 @@ app/models/saved_claim/education_benefits/va_10275.rb @software/govcio-vfep-code
 app/models/saved_claim/education_benefits/va_10278.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_10282.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_10297.rb @software/govcio-vfep-codereviewers
+app/models/saved_claim/education_benefits/va_1919.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_1990.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_1995.rb @software/govcio-vfep-codereviewers
 app/models/saved_claim/education_benefits/va_5490.rb @software/govcio-vfep-codereviewers
@@ -1658,6 +1659,7 @@ spec/fixtures/pdf_fill/22-10215 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10216 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10272 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-10275 @software/govcio-vfep-codereviewers
+spec/fixtures/pdf_fill/22-10278 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/22-1919 @software/govcio-vfep-codereviewers
 spec/fixtures/pdf_fill/26-1880 @software/health-apps-backend
 spec/fixtures/pdf_fill/28-1900 @software/reapers-vre

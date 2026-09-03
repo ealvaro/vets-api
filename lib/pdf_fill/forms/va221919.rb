@@ -10,6 +10,51 @@ module PdfFill
       FORMATTER = PdfFill::Forms::Formatters::Va221919
       ITERATOR = PdfFill::HashConverter::ITERATOR
 
+      # Template PDF is 1 page; overflow pages start at page 2.
+      START_PAGE = 2
+
+      SECTIONS = [
+        {
+          label: 'Name and Address of Institution',
+          question_nums: %w[1a 2a]
+        },
+        {
+          label: '(1) Proprietary Profit Schools Only',
+          question_nums: %w[8a 10a]
+        },
+        {
+          label: '(2) All Proprietary Schools (Excludes Public Schools)',
+          question_nums: %w[13a 17a]
+        },
+        {
+          label: 'Certification',
+          question_nums: %w[4a 21a]
+        }
+      ].freeze
+
+      # This form has no numbered printed questions, so hide_question_num suppresses the
+      # normally auto-rendered "N. " prefix on the extras page in favor of plain descriptive
+      # labels. Only fields that can realistically overflow (per vets-json-schema
+      # maxLength constraints) are included: facility code, dates, VA file numbers, and the
+      # yes/no/association checkboxes have fixed formats or short enum values that can't
+      # overflow, so they're excluded.
+      QUESTION_KEY = [
+        { question_number: '1a', question_text: 'Institution Name', hide_question_num: true },
+        { question_number: '2a', question_text: 'Institution Address', hide_question_num: true },
+        { question_number: '8a', question_text: 'Proprietary Profit School Conflict - Employee Name and Title (1)',
+          hide_question_num: true },
+        { question_number: '10a', question_text: 'Proprietary Profit School Conflict - Employee Name and Title (2)',
+          hide_question_num: true },
+        { question_number: '13a',
+          question_text: 'All Proprietary Schools Conflict - Certifying Official Name and Title (1)',
+          hide_question_num: true },
+        { question_number: '17a',
+          question_text: 'All Proprietary Schools Conflict - Certifying Official Name and Title (2)',
+          hide_question_num: true },
+        { question_number: '4a', question_text: 'Certifying Official Name', hide_question_num: true },
+        { question_number: '21a', question_text: 'Statement of Truth Signature', hide_question_num: true }
+      ].freeze
+
       KEY = {
         'isAuthenticated' => {
           key: 'isAuthenticated',

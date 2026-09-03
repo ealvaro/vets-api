@@ -8,6 +8,26 @@ module PdfFill
 
       ITERATOR = PdfFill::HashConverter::ITERATOR
 
+      # Template PDF is 3 pages (2 fillable + 1 page of static instructions);
+      # overflow pages start at page 4.
+      START_PAGE = 4
+
+      # question_number values match the real printed question numbers on the 22-10275 form.
+      # Only fields that can realistically overflow are included: facility codes are fixed
+      # 8-character codes, phone numbers/date signed have fixed formats, and the signature
+      # (80) and authorizing official's title (140) limits are too generous to realistically
+      # overflow, so none of those are listed here.
+      QUESTION_KEY = [
+        { question_number: '1', question_text: 'Name of Educational Training Institution' },
+        { question_number: '3', question_text: 'Mailing Address of Educational Training Institution' },
+        { question_number: '5', question_text: 'Participating Location' },
+        { question_number: '6', question_text: 'Principles of Excellence Point of Contact, Name' },
+        { question_number: '8', question_text: 'Principles of Excellence Point of Contact, Email' },
+        { question_number: '9', question_text: 'School Certifying Official, Name' },
+        { question_number: '11', question_text: 'School Certifying Official, Email' },
+        { question_number: '13', question_text: 'Print Name of Authorizing Official' }
+      ].freeze
+
       KEY = {
         'mainInstitution' => {
           'institutionName' => {

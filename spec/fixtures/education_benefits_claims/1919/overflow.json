@@ -1,0 +1,71 @@
+{
+  "certifyingOfficial": {
+    "first": "Bartholomeus-Alexanderivichoni",
+    "last": "VonHapsburgenstein-Castellanas",
+    "role": {
+      "level": "certifying official"
+    }
+  },
+  "aboutYourInstitution": true,
+  "institutionDetails": {
+    "facilityCode": "12345678",
+    "institutionName": "The International Academy of Advanced Aeronautical Engineering, Culinary Arts, and Applied Veterinary Sciences",
+    "institutionAddress": {
+      "country": "USA",
+      "state": "CA",
+      "city": "Rancho Santa Margarita de las Flores",
+      "street": "45678 West Independence Boulevard, Building C, Suite 210, Innovation Business Park",
+      "postalCode": "92688-1234"
+    }
+  },
+  "isProprietaryProfit": true,
+  "isProfitConflictOfInterest": true,
+  "proprietaryProfitConflicts": [
+    {
+      "affiliatedIndividuals": {
+        "first": "Christopherson-Alexandravich",
+        "last": "Worthington-Fitzgeraldsen",
+        "title": "Senior Compliance Officer",
+        "individualAssociationType": "va"
+      }
+    },
+    {
+      "affiliatedIndividuals": {
+        "first": "Marguerite-Anastasiya",
+        "last": "Castellanos-Montgomery",
+        "title": "Dep. Dir. Regulatory Affrs",
+        "individualAssociationType": "saa"
+      }
+    }
+  ],
+  "allProprietaryConflictOfInterest": true,
+  "allProprietaryProfitConflicts": [
+    {
+      "certifyingOfficial": {
+        "first": "Alexandriana-Bartholomew",
+        "last": "Winterbourne-Hollingsworth",
+        "title": "VP Academic Affairs Compl."
+      },
+      "fileNumber": "123456789",
+      "enrollmentPeriod": {
+        "from": "2023-01-01",
+        "to": "2023-12-31"
+      }
+    },
+    {
+      "certifyingOfficial": {
+        "first": "Demetrius-Wolfgangston",
+        "last": "Abernathy-Kowalczykowski",
+        "title": "Chief Admin & Fin. Officer"
+      },
+      "fileNumber": "987654321",
+      "enrollmentPeriod": {
+        "from": "2022-06-01",
+        "to": "2023-05-31"
+      }
+    }
+  ],
+  "statementOfTruthSignature": "Bartholomeus-Alexanderivichoni VonHapsburgenstein-Castellanas",
+  "dateSigned": "2023-10-27",
+  "isAuthenticated": true
+}
