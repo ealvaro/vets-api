@@ -1361,6 +1361,7 @@ Procfile.dev @software/va-platform-backend
 public/ @software/va-platform-backend
 Rakefile @software/va-platform-backend
 rakelib/ @software/va-platform-backend
+rakelib/backfill_accredited_acceptance_from_legacy.rake @software/accredited-representative-crew
 rakelib/breakers_outage.rake @software/va-platform-backend
 rakelib/config_settings.rake @software/va-platform-backend
 rakelib/connectivity.rake @software/octo-identity
@@ -2100,6 +2101,7 @@ spec/policies/sign_in/ @software/octo-identity
 spec/policies/vet360_policy_spec.rb @software/vfs-authenticated-experience-backend
 spec/policies/vye_policy_spec.rb @software/govcio-vfep-codereviewers
 spec/rails_helper.rb @software/va-platform-backend
+spec/rakelib/backfill_accredited_acceptance_from_legacy_spec.rb @software/accredited-representative-crew
 spec/rakelib/credential_uuid_icn_lookup_spec.rb @software/octo-identity
 spec/rakelib/decision_reviews_recovered_failures_remediation_spec.rb @software/benefits-decision-reviews-be
 spec/rakelib/disability_compensation @software/disability-benefits
