@@ -1,5 +1,56 @@
 {
   "data": {
+    "sensitivityInfo": {
+      "sensitivityFlag": false,
+      "sensitivityChangeSource": "HEC",
+      "sensitivityChangeSite": "742 - VETERANS COMMUNITY CARE"
+    },
+    "demographics": {
+      "contactInfo": {
+        "addresses": [
+          {
+            "line1": "123 EXAMPLE ST",
+            "city": "BRANDON",
+            "county": "HILLSBOROUGH",
+            "state": "FL",
+            "zipCode": "33511",
+            "zipPlus4": "2216",
+            "country": "USA",
+            "addressTypeCode": "Permanent",
+            "addressChangeDateTime": "2023-06-25T17:42:44Z",
+            "addressChangeSource": "Veterans Affairs Medical Center",
+            "addressChangeSite": "987 - CHEY6"
+          },
+          {
+            "line1": "123 EXAMPLE ST",
+            "city": "BRANDON",
+            "state": "FL",
+            "zipCode": "33511",
+            "zipPlus4": "2216",
+            "country": "USA",
+            "addressTypeCode": "Residential",
+            "addressChangeDateTime": "2023-06-25T16:42:43Z",
+            "addressChangeSource": "Health Eligibility Center",
+            "addressChangeSite": "742 - VETERANS COMMUNITY CARE"
+          }
+        ]
+      },
+      "maritalStatus": "Never Married",
+      "preferredFacility": "987 - CHEY6",
+      "appointmentRequestResponse": false,
+      "appointmentRequestChangeDate": "2023-06-25T16:42:46Z",
+      "originalAppointmentRequestResponse": false,
+      "originalAppointmentRequestChangeDate": "2023-06-25T16:42:46Z",
+      "assignmentDate": "2023-06-25T16:42:46Z",
+      "preferredLanguage": "en - English",
+      "preferredLanguageEntryDate": "2023-06-25T16:41:38Z",
+      "preferredFacilities": [
+        {
+          "preferredFacility": "987 - CHEY6",
+          "assignmentDate": "2023-06-25T16:42:46Z"
+        }
+      ]
+    },
     "vfmpProgramsInfo": {
       "relationships": [
         {
@@ -24,6 +75,7 @@
                 {
                   "institution": "Example University",
                   "fullTime": true,
+                  "attendanceBreak": false,
                   "estimatedGraduationDate": "20240619",
                   "enrollmentDate": "20231101",
                   "completedDate": "20240601"

@@ -191,6 +191,66 @@ module IvcChampva
     end
 
     ##
+    # Logs a failed VES call for any operation, with the reason as a Datadog tag.
+    #
+    # Separate from track_ves_response, which is keyed on an application UUID and worded for form
+    # submissions. This one covers reads, where there is no submission and the useful pivot is
+    # which operation failed and why. Tags rather than log context carry the pivot dimensions
+    # because Logging::Monitor builds the StatsD tags before filtering the context, so tags
+    # survive regardless of this monitor's allowlist.
+    #
+    # @param [String] operation VES operation that failed (e.g., 'ee_summary', 'icn_lookup')
+    # @param [String, Symbol] reason Normalized reason (e.g., :upstream_timeout, :upstream_error)
+    # @param [StandardError, nil] error The exception raised, when there was one
+    def track_ves_call_failure(operation, reason, error = nil)
+      additional_context = {
+        operation: operation.to_s,
+        reason: reason.to_s,
+        error_class: error&.class&.name,
+        error_message: error&.message
+      }.compact
+      tags = ["ves_operation:#{operation}", "reason:#{reason}"]
+      tags << "error_class:#{error.class.name}" if error
+
+      track_request('error', "IVC ChampVa Forms - VES #{operation} call failed: #{reason}",
+                    "#{STATS_KEY}.ves_call.failure",
+                    call_location: caller_locations.first, tags:, **additional_context)
+    end
+
+    ##
+    # Logs a successful GET of benefits card data. Exists so the rejection and failure counters
+    # have a denominator; without it Datadog cannot express a card success rate. Shared by the
+    # digital and physical flows — this endpoint returns data, it does not issue a card.
+    def track_get_benefits_card
+      track_request('info', 'IVC ChampVA Forms - benefits card data retrieved',
+                    "#{STATS_KEY}.benefits_card.get",
+                    call_location: caller_locations.first)
+    end
+
+    ##
+    # Logs a benefits card request that did not return a card, tagged so Datadog can pivot on
+    # which kind of rejection or failure it was.
+    #
+    # 5xx increments .failed and logs at error: something upstream broke and someone should look.
+    # 4xx increments .rejected and logs at warn: the request was answered correctly and the
+    # caller is simply not getting a card. Splitting them keeps a spike in ineligible
+    # beneficiaries from firing the same alerts as VES going down.
+    #
+    # @param [String, Symbol] reason Why no card was returned (e.g., 'expired', 'upstream_error')
+    # @param [Integer] http_status Status rendered to the caller
+    # @param [Hash] context Additional PII-free fields
+    def track_benefits_card_error(reason, http_status, context = {})
+      failed = http_status >= 500
+      additional_context = { reason: reason.to_s, http_status:, **context }.compact
+
+      track_request(failed ? 'error' : 'warn',
+                    "IVC ChampVA Forms - benefits card #{failed ? 'failed' : 'rejected'}: #{reason}",
+                    "#{STATS_KEY}.benefits_card.#{failed ? 'failed' : 'rejected'}",
+                    call_location: caller_locations.first,
+                    tags: ["reason:#{reason}", "http_status:#{http_status}"], **additional_context)
+    end
+
+    ##
     # Logs when an MPI profile is successfully found
     #
     # @param [String] person_type Type of person ('applicant' or 'veteran')

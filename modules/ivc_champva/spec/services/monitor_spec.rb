@@ -544,4 +544,110 @@ RSpec.describe IvcChampva::Monitor do
       expect(Rails.logger).to have_received(:warn)
     end
   end
+
+  # These assert through to StatsD rather than mocking track_request, because the behavior worth
+  # protecting is that the pivot dimensions arrive as tags. Logging::Monitor builds the tags before
+  # it filters the log context, so tags reach Datadog unredacted while context does not; a spec
+  # that stopped at track_request would not catch a regression that moved them into context.
+  describe '#track_ves_call_failure' do
+    before do
+      allow(StatsD).to receive(:increment)
+      allow(Rails.logger).to receive(:error)
+    end
+
+    it 'increments the failure metric tagged with the operation, reason, and error class' do
+      monitor.track_ves_call_failure('ee_summary', :upstream_error, StandardError.new('boom'))
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.ves_call.failure",
+        tags: array_including('ves_operation:ee_summary', 'reason:upstream_error', 'error_class:StandardError')
+      )
+      expect(Rails.logger).to have_received(:error).with(
+        'IVC ChampVa Forms - VES ee_summary call failed: upstream_error',
+        hash_including(statsd: "#{IvcChampva::Monitor::STATS_KEY}.ves_call.failure")
+      )
+    end
+
+    it 'omits the error class tag when no exception is supplied' do
+      monitor.track_ves_call_failure('icn_lookup', :upstream_timeout)
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.ves_call.failure",
+        tags: array_including('ves_operation:icn_lookup', 'reason:upstream_timeout')
+      )
+      expect(StatsD).not_to have_received(:increment).with(
+        anything, tags: array_including(/\Aerror_class:/)
+      )
+    end
+  end
+
+  describe '#track_get_benefits_card' do
+    it 'increments the get metric' do
+      allow(StatsD).to receive(:increment)
+      allow(Rails.logger).to receive(:info)
+
+      monitor.track_get_benefits_card
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.get",
+        tags: array_including('service:veteran-ivc-champva-forms')
+      )
+      expect(Rails.logger).to have_received(:info).with('IVC ChampVA Forms - benefits card data retrieved', anything)
+    end
+  end
+
+  describe '#track_benefits_card_error' do
+    before do
+      allow(StatsD).to receive(:increment)
+      allow(Rails.logger).to receive(:warn)
+      allow(Rails.logger).to receive(:error)
+    end
+
+    it 'increments the rejected metric at warn for a 4xx' do
+      monitor.track_benefits_card_error('expired', 404)
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.rejected",
+        tags: array_including('reason:expired', 'http_status:404')
+      )
+      expect(Rails.logger).to have_received(:warn).with(
+        'IVC ChampVA Forms - benefits card rejected: expired', anything
+      )
+      expect(Rails.logger).not_to have_received(:error)
+    end
+
+    it 'increments the failed metric at error for a 5xx' do
+      monitor.track_benefits_card_error('upstream_error', 502)
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.failed",
+        tags: array_including('reason:upstream_error', 'http_status:502')
+      )
+      expect(Rails.logger).to have_received(:error).with(
+        'IVC ChampVA Forms - benefits card failed: upstream_error', anything
+      )
+      expect(Rails.logger).not_to have_received(:warn)
+    end
+
+    it 'keeps the two severities on separate metrics so alerting can target only failures' do
+      monitor.track_benefits_card_error('not_enrolled', 404)
+      monitor.track_benefits_card_error('upstream_timeout', 504)
+
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.rejected", anything
+      ).once
+      expect(StatsD).to have_received(:increment).with(
+        "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.failed", anything
+      ).once
+    end
+
+    it 'merges extra context into the log payload' do
+      monitor.track_benefits_card_error('upstream_error', 502, { error_class: 'IvcChampva::VesApi::VesApiError' })
+
+      expect(Rails.logger).to have_received(:error).with(
+        anything,
+        hash_including(statsd: "#{IvcChampva::Monitor::STATS_KEY}.benefits_card.failed")
+      )
+    end
+  end
 end

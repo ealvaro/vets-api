@@ -786,19 +786,99 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
     end
   end
 
-  describe '.benefits_card_for' do
-    let(:ves_client) { instance_double(IvcChampva::VesApi::Client) }
-    let(:user) { instance_double(User, icn: '0000001200603250V008079000000', first_name: 'Alex', last_name: 'Doe') }
-    let(:as_of) { Date.new(2026, 6, 15) }
+  describe '.determine_role' do
+    it 'is :beneficiary when the payload carries a CHAMPVA eligibility' do
+      relationships = [{ 'champvaEligibilities' => [{ 'status' => 'Eligible' }] }]
+      data = { 'vfmpProgramsInfo' => { 'relationships' => relationships } }
 
-    def ee_summary_with_dates(periods)
-      {
+      expect(described_class.determine_role(data)).to eq(:beneficiary)
+    end
+
+    it 'is :beneficiary when only a later relationship carries an eligibility' do
+      data = {
         'vfmpProgramsInfo' => {
           'relationships' => [
-            { 'champvaEligibilities' => [{ 'eligibilityDates' => periods }] }
+            { 'champvaEligibilities' => [] },
+            { 'champvaEligibilities' => [{ 'status' => 'Eligible' }] }
           ]
         }
       }
+
+      expect(described_class.determine_role(data)).to eq(:beneficiary)
+    end
+
+    # A veteran/sponsor and a person with no CHAMPVA record both land here: VES returns empty
+    # data for both, so :veteran means only "not a beneficiary".
+    it 'is :veteran for the empty payload VES returns for a non-beneficiary' do
+      expect(described_class.determine_role({})).to eq(:veteran)
+    end
+
+    it 'is :veteran when relationships carry no eligibilities' do
+      data = { 'vfmpProgramsInfo' => { 'relationships' => [{ 'relationshipType' => 'Child' }] } }
+
+      expect(described_class.determine_role(data)).to eq(:veteran)
+    end
+
+    it 'is :veteran when relationships is not an array' do
+      expect(described_class.determine_role({ 'vfmpProgramsInfo' => { 'relationships' => 'none' } })).to eq(:veteran)
+    end
+
+    it 'is :veteran when the response is not a hash' do
+      expect(described_class.determine_role(nil)).to eq(:veteran)
+    end
+  end
+
+  describe '.benefits_card_for' do
+    let(:ves_client) { instance_double(IvcChampva::VesApi::Client) }
+    let(:user) do
+      instance_double(
+        User,
+        icn: '0000001200603250V008079000000',
+        first_name: 'Alex',
+        last_name: 'Doe',
+        birth_date: '1990-01-15'
+      )
+    end
+    let(:as_of) { Date.new(2026, 6, 15) }
+
+    def ee_summary_with_dates(periods, status: 'Eligible')
+      {
+        'vfmpProgramsInfo' => {
+          'relationships' => [
+            { 'champvaEligibilities' => [{ 'status' => status, 'eligibilityDates' => periods }] }
+          ]
+        }
+      }
+    end
+
+    # Eligible over a window covering as_of, so the enrichment gate is open. `extra` merges in
+    # top-level blocks such as demographics or sensitivityInfo.
+    def eligible_ee_summary(extra = {})
+      ee_summary_with_dates([{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }]).merge(extra)
+    end
+
+    def card_for(data)
+      allow(ves_client).to receive(:get_ee_summary).and_return(data)
+      described_class.benefits_card_for(user, ves_client:, as_of:)
+    end
+
+    def info_for(data)
+      card_for(data)[:attributes][:beneficiary_infos].first
+    end
+
+    def with_addresses(*addresses)
+      { 'demographics' => { 'contactInfo' => { 'addresses' => addresses } } }
+    end
+
+    def address(type_code, line1, extra = {})
+      {
+        'addressTypeCode' => type_code,
+        'line1' => line1,
+        'city' => 'AUSTIN',
+        'state' => 'TX',
+        'zipCode' => '78701',
+        'country' => 'USA'
+      }.merge(extra)
     end
 
     it 'queries the ChampvaDigitalCardData dataset with the user ICN' do
@@ -809,59 +889,64 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       described_class.benefits_card_for(user, ves_client:, as_of:)
     end
 
-    it 'returns formatted card attributes for a covering period' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates([{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }])
-      )
-
-      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+    it 'returns a beneficiary_infos array for an eligible covering period' do
+      result = card_for(eligible_ee_summary)
 
       expect(result).to eq(
         status: :ok,
         attributes: {
-          full_name: 'Alex Doe',
-          effective_date: '01/2026',
-          expiration_date: '01/2028'
+          role: 'beneficiary',
+          beneficiary_infos: [
+            {
+              icn: '0000001200603250V008079000000',
+              full_name: 'Alex Doe',
+              date_of_birth: '1990-01-15',
+              mailing_address: nil,
+              enrollment_status: 'eligible',
+              eligibility_status: 'Eligible',
+              eligibility_reason: nil,
+              sensitive_record: nil,
+              relationship_type: nil,
+              effective_date: '2026/01/15',
+              expiration_date: '2028/01/31'
+            }
+          ]
         }
       )
     end
 
-    it 'returns ok with a nil expiration_date when endDate is omitted' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates([{ 'startDate' => '2020-01-01' }])
+    it 'passes the VES status and reason through untouched for frontend messaging' do
+      data = ee_summary_with_dates([{ 'startDate' => '2026-01-15' }])
+      data['vfmpProgramsInfo']['relationships'][0]['champvaEligibilities'][0]['reason'] = 'P&T'
+      data['vfmpProgramsInfo']['relationships'][0]['relationshipType'] = 'Spouse'
+
+      expect(info_for(data)).to include(
+        eligibility_status: 'Eligible',
+        eligibility_reason: 'P&T',
+        relationship_type: 'Spouse'
       )
+    end
 
-      result = described_class.benefits_card_for(user, ves_client:, as_of:)
+    it 'returns ok with a nil expiration_date when endDate is omitted' do
+      info = info_for(ee_summary_with_dates([{ 'startDate' => '2020-01-01' }]))
 
-      expect(result[:status]).to eq(:ok)
-      expect(result[:attributes][:expiration_date]).to be_nil
-      expect(result[:attributes][:effective_date]).to eq('01/2020')
+      expect(info[:enrollment_status]).to eq('eligible')
+      expect(info[:expiration_date]).to be_nil
+      expect(info[:effective_date]).to eq('2020/01/01')
     end
 
     it 'returns not_enrolled when relationships are empty' do
-      allow(ves_client).to receive(:get_ee_summary).and_return({ 'vfmpProgramsInfo' => { 'relationships' => [] } })
-
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+      expect(card_for({ 'vfmpProgramsInfo' => { 'relationships' => [] } })).to eq(status: :not_enrolled)
     end
 
-    it 'returns not_enrolled when the period is expired' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates([{ 'startDate' => '2020-01-01', 'endDate' => '2021-01-31' }])
-      )
-
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
-    end
-
-    it 'returns not_enrolled when the period starts in the future' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates([{ 'startDate' => '2027-01-01', 'endDate' => '2028-01-31' }])
-      )
-
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+    # The sponsor flow needs a roster endpoint VES has not delivered yet, so a non-beneficiary
+    # is reported as not enrolled rather than branching into it.
+    it 'returns not_enrolled for the empty payload VES returns for a non-beneficiary' do
+      expect(card_for({})).to eq(status: :not_enrolled)
     end
 
     it 'picks the covering period with the latest startDate' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
+      info = info_for(
         ee_summary_with_dates(
           [
             { 'startDate' => '2011-01-01', 'endDate' => '2028-01-31' },
@@ -870,36 +955,299 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
         )
       )
 
-      result = described_class.benefits_card_for(user, ves_client:, as_of:)
-
-      expect(result[:attributes][:effective_date]).to eq('06/2024')
-      expect(result[:attributes][:expiration_date]).to eq('12/2028')
+      expect(info[:effective_date]).to eq('2024/06/01')
+      expect(info[:expiration_date]).to eq('2028/12/31')
     end
 
     it 'treats a single eligibilityDates hash as one covering period' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates({ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' })
-      )
+      info = info_for(ee_summary_with_dates({ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }))
 
-      result = described_class.benefits_card_for(user, ves_client:, as_of:)
-
-      expect(result[:status]).to eq(:ok)
-      expect(result[:attributes][:effective_date]).to eq('01/2026')
-      expect(result[:attributes][:expiration_date]).to eq('01/2028')
+      expect(info[:enrollment_status]).to eq('eligible')
+      expect(info[:effective_date]).to eq('2026/01/15')
+      expect(info[:expiration_date]).to eq('2028/01/31')
     end
 
-    it 'returns not_enrolled when eligibilityDates is neither an array nor a hash' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(ee_summary_with_dates('2026-01-15'))
+    describe 'the reported status' do
+      it 'is :ok for an eligible beneficiary' do
+        expect(card_for(eligible_ee_summary)[:status]).to eq(:ok)
+      end
 
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+      # Distinct from :not_enrolled so the controller can render the two differently: this is a
+      # record that does not qualify, that one is no record at all.
+      it 'is :ineligible when VES denies the beneficiary' do
+        data = ee_summary_with_dates([{ 'startDate' => '2026-01-15' }], status: 'Ineligible')
+
+        expect(card_for(data)).to include(status: :ineligible, enrollment_status: 'ineligible')
+      end
+
+      it 'is :ineligible with the specific verdict when the window has closed' do
+        data = ee_summary_with_dates([{ 'startDate' => '2020-01-01', 'endDate' => '2021-01-31' }])
+
+        expect(card_for(data)).to include(status: :ineligible, enrollment_status: 'expired')
+      end
+
+      it 'is :ineligible with the specific verdict when the window has not opened' do
+        data = ee_summary_with_dates([{ 'startDate' => '2027-01-01', 'endDate' => '2028-01-31' }])
+
+        expect(card_for(data)).to include(status: :ineligible, enrollment_status: 'not_yet_effective')
+      end
+
+      # The controller withholds these today, so moving ineligibility off a 404 is a controller
+      # change rather than a service one.
+      it 'still returns the card attributes alongside an :ineligible status' do
+        data = ee_summary_with_dates([{ 'startDate' => '2026-01-15' }], status: 'Ineligible')
+
+        expect(card_for(data)[:attributes][:beneficiary_infos].first).to include(
+          enrollment_status: 'ineligible',
+          effective_date: '2026/01/15'
+        )
+      end
     end
 
-    it 'returns not_enrolled when startDate cannot be parsed' do
-      allow(ves_client).to receive(:get_ee_summary).and_return(
-        ee_summary_with_dates([{ 'startDate' => 'not-a-date', 'endDate' => '2028-01-31' }])
-      )
+    describe 'enrollment_status' do
+      it 'is expired when the window has closed, and still reports the closed window' do
+        info = info_for(ee_summary_with_dates([{ 'startDate' => '2020-01-01', 'endDate' => '2021-01-31' }]))
 
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :not_enrolled)
+        expect(info).to include(
+          enrollment_status: 'expired',
+          effective_date: '2020/01/01',
+          expiration_date: '2021/01/31'
+        )
+      end
+
+      it 'is not_yet_effective when the window has not opened' do
+        info = info_for(ee_summary_with_dates([{ 'startDate' => '2027-01-01', 'endDate' => '2028-01-31' }]))
+
+        expect(info).to include(
+          enrollment_status: 'not_yet_effective',
+          effective_date: '2027/01/01',
+          expiration_date: '2028/01/31'
+        )
+      end
+
+      # Before this ticket the verdict was the date window alone, so an ineligible person inside
+      # a live window was issued a card.
+      it 'is ineligible when VES denies a beneficiary whose window covers today' do
+        info = info_for(
+          ee_summary_with_dates([{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }], status: 'Ineligible')
+        )
+
+        expect(info).to include(enrollment_status: 'ineligible', eligibility_status: 'Ineligible')
+      end
+
+      it 'is ineligible when VES omits the status' do
+        info = info_for(ee_summary_with_dates([{ 'startDate' => '2026-01-15' }], status: nil))
+
+        expect(info[:enrollment_status]).to eq('ineligible')
+      end
+
+      it 'accepts an eligible status in any casing' do
+        info = info_for(ee_summary_with_dates([{ 'startDate' => '2026-01-15' }], status: 'ELIGIBLE'))
+
+        expect(info[:enrollment_status]).to eq('eligible')
+      end
+
+      it 'is ineligible when eligibilityDates is neither an array nor a hash' do
+        expect(info_for(ee_summary_with_dates('2026-01-15'))).to include(
+          enrollment_status: 'ineligible',
+          effective_date: nil,
+          expiration_date: nil
+        )
+      end
+
+      # Unparseable is not the same as expired, so it reports ineligible rather than guessing.
+      it 'is ineligible when startDate cannot be parsed' do
+        info = info_for(ee_summary_with_dates([{ 'startDate' => 'not-a-date', 'endDate' => '2028-01-31' }]))
+
+        expect(info).to include(enrollment_status: 'ineligible', effective_date: nil)
+      end
+    end
+
+    describe 'enrichment gating' do
+      it 'populates name, date of birth, and address for an eligible beneficiary' do
+        info = info_for(eligible_ee_summary(with_addresses(address('Permanent', '1 MAIN ST'))))
+
+        expect(info[:full_name]).to eq('Alex Doe')
+        expect(info[:date_of_birth]).to eq('1990-01-15')
+        expect(info[:mailing_address]).to include(line1: '1 MAIN ST')
+      end
+
+      # The frontend only offers a card to eligible people, so the sponsor flow must not pay an
+      # MPI call per ineligible beneficiary. Nothing is saved in the beneficiary flow, where the
+      # identity is already resolved for the session, but the shape is what the sponsor flow needs.
+      it 'leaves name, date of birth, and address null for an ineligible beneficiary' do
+        data = ee_summary_with_dates(
+          [{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }], status: 'Ineligible'
+        ).merge(with_addresses(address('Permanent', '1 MAIN ST')))
+
+        expect(info_for(data)).to include(full_name: nil, date_of_birth: nil, mailing_address: nil)
+      end
+
+      it 'still returns the ICN, dates, and VES status for an ineligible beneficiary' do
+        data = ee_summary_with_dates(
+          [{ 'startDate' => '2026-01-15', 'endDate' => '2028-01-31' }], status: 'Ineligible'
+        )
+
+        expect(info_for(data)).to include(
+          icn: '0000001200603250V008079000000',
+          eligibility_status: 'Ineligible',
+          effective_date: '2026/01/15',
+          expiration_date: '2028/01/31'
+        )
+      end
+    end
+
+    describe 'mailing address selection' do
+      it 'is nil when the dataset carries no demographics' do
+        expect(info_for(eligible_ee_summary)[:mailing_address]).to be_nil
+      end
+
+      it 'is nil when demographics carries no addresses' do
+        data = eligible_ee_summary('demographics' => { 'contactInfo' => {} })
+
+        expect(info_for(data)[:mailing_address]).to be_nil
+      end
+
+      it 'maps every address field VES supplies' do
+        entry = address(
+          'Permanent', '123 MAIN ST',
+          'line2' => 'APT 4', 'line3' => 'BLDG C', 'provinceCode' => 'ON',
+          'zipPlus4' => '0001', 'postalCode' => 'K1A0B1'
+        )
+
+        expect(info_for(eligible_ee_summary(with_addresses(entry)))[:mailing_address]).to eq(
+          line1: '123 MAIN ST',
+          line2: 'APT 4',
+          line3: 'BLDG C',
+          city: 'AUSTIN',
+          state: 'TX',
+          province_code: 'ON',
+          zip_code: '78701',
+          zip_plus4: '0001',
+          postal_code: 'K1A0B1',
+          country: 'USA'
+        )
+      end
+
+      # VES returns one address per type rather than a history, so type decides, not recency.
+      it 'prefers the permanent address even when the residential one changed more recently' do
+        data = eligible_ee_summary(
+          with_addresses(
+            address('Permanent', '1 PERMANENT ST', 'addressChangeDateTime' => '2020-01-01T00:00:00.000-05:00'),
+            address('Residential', '2 RESIDENTIAL ST', 'addressChangeDateTime' => '2025-06-18T16:24:03.000-05:00')
+          )
+        )
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('1 PERMANENT ST')
+      end
+
+      # VES writes single letters on submit and full words on read, and only one read sample
+      # exists, so both spellings are matched.
+      it 'accepts the single-letter address type codes' do
+        data = eligible_ee_summary(with_addresses(address('R', '2 RESIDENTIAL ST'), address('P', '1 PERMANENT ST')))
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('1 PERMANENT ST')
+      end
+
+      it 'falls back to the residential address when there is no permanent one' do
+        data = eligible_ee_summary(with_addresses(address('Residential', '2 RESIDENTIAL ST')))
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('2 RESIDENTIAL ST')
+      end
+
+      it 'falls back to the only remaining address when its type is unrecognized' do
+        data = eligible_ee_summary(with_addresses(address('Correspondence', '3 OTHER ST')))
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('3 OTHER ST')
+      end
+
+      # This feeds a physical mailing, so a known-undeliverable address is worse than none.
+      it 'rejects an address VES has flagged as bad' do
+        data = eligible_ee_summary(
+          with_addresses(
+            address('Permanent', '1 BAD ST', 'badAddressReason' => 'UNDELIVERABLE'),
+            address('Residential', '2 GOOD ST')
+          )
+        )
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('2 GOOD ST')
+      end
+
+      it 'rejects an address whose endDate has passed' do
+        data = eligible_ee_summary(
+          with_addresses(
+            address('Permanent', '1 OLD ST', 'endDate' => '2020-01-01'),
+            address('Residential', '2 CURRENT ST')
+          )
+        )
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('2 CURRENT ST')
+      end
+
+      # endDate has no documented format and is absent from real data, so an unparseable value
+      # keeps the address rather than discarding a usable one.
+      it 'keeps an address whose endDate cannot be parsed' do
+        data = eligible_ee_summary(with_addresses(address('Permanent', '1 MAIN ST', 'endDate' => 'unknown')))
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('1 MAIN ST')
+      end
+
+      it 'breaks a same-type tie on the most recent addressChangeDateTime' do
+        data = eligible_ee_summary(
+          with_addresses(
+            address('Permanent', '1 OLDER ST', 'addressChangeDateTime' => '2020-01-01T00:00:00.000-05:00'),
+            address('Permanent', '2 NEWER ST', 'addressChangeDateTime' => '2025-06-18T16:24:03.000-05:00')
+          )
+        )
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('2 NEWER ST')
+      end
+
+      it 'tolerates an unparseable addressChangeDateTime' do
+        data = eligible_ee_summary(with_addresses(address('Permanent', '1 MAIN ST', 'addressChangeDateTime' => 'x')))
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('1 MAIN ST')
+      end
+
+      # Time.zone.parse returns nil for junk like "x" and raises ArgumentError for an
+      # out-of-range calendar date. Both must be treated as "no timestamp" so a bad
+      # VES value cannot blow up the lookup or win a tiebreak.
+      it 'treats an out-of-range addressChangeDateTime as missing rather than failing' do
+        data = eligible_ee_summary(
+          with_addresses(
+            address('Permanent', '1 BAD TIME ST', 'addressChangeDateTime' => '2020-13-45'),
+            address('Permanent', '2 GOOD TIME ST', 'addressChangeDateTime' => '2025-06-18T16:24:03.000-05:00')
+          )
+        )
+
+        expect(info_for(data)[:mailing_address][:line1]).to eq('2 GOOD TIME ST')
+      end
+    end
+
+    describe 'sensitive_record' do
+      it 'is true when VES sets the flag' do
+        data = eligible_ee_summary('sensitivityInfo' => { 'sensitivityFlag' => true })
+
+        expect(info_for(data)[:sensitive_record]).to be(true)
+      end
+
+      it 'is false when VES clears the flag' do
+        data = eligible_ee_summary('sensitivityInfo' => { 'sensitivityFlag' => false })
+
+        expect(info_for(data)[:sensitive_record]).to be(false)
+      end
+
+      it 'casts the string VES may send instead of a boolean' do
+        data = eligible_ee_summary('sensitivityInfo' => { 'sensitivityFlag' => 'true' })
+
+        expect(info_for(data)[:sensitive_record]).to be(true)
+      end
+
+      # Defaulting an unknown flag to "not sensitive" is the unsafe direction, and the sponsor
+      # flow filters beneficiaries on this value.
+      it 'stays nil rather than false when the dataset omits sensitivityInfo' do
+        expect(info_for(eligible_ee_summary)[:sensitive_record]).to be_nil
+      end
     end
 
     it 'returns not_enrolled when VES data is still pending' do
@@ -913,14 +1261,49 @@ RSpec.describe IvcChampva::ChampvaEligibilityService do
       allow(ves_client).to receive(:get_ee_summary)
         .and_raise(IvcChampva::VesApi::VesApiTimeoutError, 'timeout')
 
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :upstream_timeout)
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:))
+        .to eq(status: :upstream_timeout, error_class: 'IvcChampva::VesApi::VesApiTimeoutError')
     end
 
     it 'returns upstream_error when VES fails' do
       allow(ves_client).to receive(:get_ee_summary)
         .and_raise(IvcChampva::VesApi::VesApiError, 'response code: 500')
 
-      expect(described_class.benefits_card_for(user, ves_client:, as_of:)).to eq(status: :upstream_error)
+      expect(described_class.benefits_card_for(user, ves_client:, as_of:))
+        .to eq(status: :upstream_error, error_class: 'IvcChampva::VesApi::VesApiError')
+    end
+
+    context 'when reporting the failure to Datadog' do
+      let(:monitor) { instance_double(IvcChampva::Monitor, track_ves_call_failure: nil) }
+
+      before { allow(IvcChampva::Monitor).to receive(:new).and_return(monitor) }
+
+      it 'tracks the VES call failure, since the rendered error is generic' do
+        error = IvcChampva::VesApi::VesApiError.new('response code: 403')
+        allow(ves_client).to receive(:get_ee_summary).and_raise(error)
+
+        described_class.benefits_card_for(user, ves_client:, as_of:)
+
+        expect(monitor).to have_received(:track_ves_call_failure).with('ee_summary', :upstream_error, error)
+      end
+
+      it 'tracks the VES call failure when VES times out' do
+        error = IvcChampva::VesApi::VesApiTimeoutError.new('timeout')
+        allow(ves_client).to receive(:get_ee_summary).and_raise(error)
+
+        described_class.benefits_card_for(user, ves_client:, as_of:)
+
+        expect(monitor).to have_received(:track_ves_call_failure).with('ee_summary', :upstream_timeout, error)
+      end
+
+      it 'does not track a VES failure for a pending application, which is an expected outcome' do
+        allow(ves_client).to receive(:get_ee_summary)
+          .and_raise(IvcChampva::VesApi::VesApplicationPendingError, 'pending')
+
+        described_class.benefits_card_for(user, ves_client:, as_of:)
+
+        expect(monitor).not_to have_received(:track_ves_call_failure)
+      end
     end
   end
 end

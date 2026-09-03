@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ves_api/client'
+require 'ivc_champva/monitor'
 require 'ivc_champva/config_file_loader'
 require 'benefits_claims/providers/ivc_champva/repeat_ineligibility_letter_activity'
 
@@ -22,6 +23,11 @@ module IvcChampva
   #         for applicants not yet marked eligible, since their status and reason can
   #         change over time; the controller's rate limit guards against excessive
   #         requests.
+  #
+  # The class methods are a separate, read-only concern: they build the CHAMPVA benefits
+  # card from a single EE Summary lookup and persist nothing. They live here for the shared
+  # eligibility parsing rather than in their own service.
+  # rubocop:disable Metrics/ClassLength
   class ChampvaEligibilityService
     STATS_KEY = 'ivc_champva.eligibility'
     # Terminal outcome of a single #call, tagged status:success/pending/error -- 'pending'
@@ -70,33 +76,68 @@ module IvcChampva
     DOCUMENTS_REQUESTED_REASONS =
       DOCUMENTS_REQUESTED_CONFIG.fetch('reasons', []).to_set { |r| r.to_s.downcase.strip }.freeze
 
+    # Card enrollment verdicts. ELIGIBLE is the only one a card is issued for; the rest
+    # tell the frontend why one was not.
+    ENROLLMENT_ELIGIBLE = 'eligible'
+    ENROLLMENT_INELIGIBLE = 'ineligible'
+    ENROLLMENT_EXPIRED = 'expired'
+    ENROLLMENT_NOT_YET_EFFECTIVE = 'not_yet_effective'
+
+    # VES writes addressTypeCode as a single letter on submit and as a full word on read,
+    # and only one read sample exists, so both spellings are matched. Permanent is the
+    # mailing address; residential is the fallback the physical card can still reach.
+    MAILING_ADDRESS_TYPE_CODES = %w[p permanent].freeze
+    RESIDENTIAL_ADDRESS_TYPE_CODES = %w[r residential].freeze
+
     class << self
       # Builds CHAMPVA card attributes for a logged-in user from EE Summary.
+      #
+      # The attributes carry a `beneficiary_infos` array rather than a single card so one
+      # frontend call serves both the digital and physical card flows. The array holds one
+      # entry today; the sponsor flow will return one per beneficiary.
       #
       # @param user [User]
       # @param ves_client [IvcChampva::VesApi::Client]
       # @param as_of [Date]
-      # @return [Hash] { status: :ok, attributes: } or { status: :not_enrolled|:upstream_timeout|:upstream_error }
+      # @return [Hash] { status: :ok, attributes: }, { status: :ineligible, enrollment_status:, attributes: },
+      #   or { status: :not_enrolled|:upstream_timeout|:upstream_error }
       def benefits_card_for(user, ves_client: IvcChampva::VesApi::Client.new, as_of: Date.current)
         data = ves_client.get_ee_summary(icn: user.icn, dataset: 'ChampvaDigitalCardData')
-        eligibility = extract_champva_eligibility(data)
-        period = covering_period(eligibility, as_of:)
-        return { status: :not_enrolled } if period.blank?
+        role = determine_role(data)
+        # The sponsor flow needs a roster endpoint VES has not delivered yet, so a
+        # non-beneficiary is reported as not enrolled for now. When that endpoint lands,
+        # this branch calls it and maps its beneficiaries through beneficiary_info instead.
+        return { status: :not_enrolled } unless role == :beneficiary
 
-        {
-          status: :ok,
-          attributes: {
-            full_name: [user.first_name, user.last_name].compact.join(' '),
-            effective_date: format_card_date(period['startDate']),
-            expiration_date: format_card_date(period['endDate'])
-          }
-        }
+        info = beneficiary_info(data, identity: session_identity(user), as_of:)
+        attributes = { role: role.to_s, beneficiary_infos: [info] }
+        return { status: :ok, attributes: } if info[:enrollment_status] == ENROLLMENT_ELIGIBLE
+
+        # Reported separately from :ok so the controller decides the HTTP shape rather than
+        # this method. The attributes still come back, so surfacing them later is a controller
+        # change only. One entry means one verdict; the sponsor flow will filter its array
+        # instead, since a mixed one has no single verdict to report this way.
+        { status: :ineligible, enrollment_status: info[:enrollment_status], attributes: }
       rescue IvcChampva::VesApi::VesApplicationPendingError
         { status: :not_enrolled }
-      rescue IvcChampva::VesApi::VesApiTimeoutError
-        { status: :upstream_timeout }
-      rescue IvcChampva::VesApi::VesApiError
-        { status: :upstream_error }
+      rescue IvcChampva::VesApi::VesApiTimeoutError => e
+        ves_call_failed(:upstream_timeout, e)
+      rescue IvcChampva::VesApi::VesApiError => e
+        ves_call_failed(:upstream_error, e)
+      end
+
+      # Whether the person the EE Summary was queried for is a CHAMPVA beneficiary or the
+      # veteran they claim through. VES returns champvaEligibilities only for a
+      # beneficiary; a veteran querying their own ICN gets an empty `{"data":{}}`.
+      #
+      # A person with no CHAMPVA record is indistinguishable from a veteran here, since
+      # both come back empty, so :veteran means only "not a beneficiary". The sponsor flow
+      # will need a positive signal from the roster endpoint rather than this inference.
+      #
+      # @param data [Hash, nil]
+      # @return [Symbol] :beneficiary or :veteran
+      def determine_role(data)
+        champva_relationship(data).present? ? :beneficiary : :veteran
       end
 
       # Digs the first CHAMPVA eligibility entry out of the EE Summary response.
@@ -104,17 +145,192 @@ module IvcChampva
       # @param data [Hash, nil]
       # @return [Hash, nil]
       def extract_champva_eligibility(data)
+        champva_relationship(data)&.fetch(:eligibility)
+      end
+
+      private
+
+      # The card's enrollment verdict: eligible requires both an eligible VES status and a
+      # date window covering today. A window that does not cover today reports why (expired
+      # or not yet effective) even when VES also calls the person ineligible, since those
+      # dates are the more specific explanation; the raw VES status travels alongside as
+      # eligibility_status.
+      #
+      # @param eligibility [Hash, nil] a single CHAMPVA eligibility entry
+      # @param as_of [Date]
+      # @return [String] one of the ENROLLMENT_* values
+      def enrollment_status(eligibility, as_of:)
+        window = window_status(eligibility, as_of:)
+        return window unless window == ENROLLMENT_ELIGIBLE
+        return ENROLLMENT_INELIGIBLE unless eligible_ves_status?(eligibility['status'])
+
+        ENROLLMENT_ELIGIBLE
+      end
+
+      # The mailing address for the physical card, or nil when the dataset carries none.
+      # VES returns one address per type rather than a history, so selection is by type:
+      # undeliverable and ended entries are dropped, permanent is preferred over
+      # residential, and any remaining tie goes to the most recently changed entry.
+      #
+      # @param data [Hash, nil]
+      # @param as_of [Date]
+      # @return [Hash, nil]
+      def mailing_address(data, as_of:)
+        usable = usable_addresses(data, as_of:)
+        return nil if usable.empty?
+
+        address = preferred_addresses(usable)
+                  .max_by { |entry| parse_address_change_time(entry['addressChangeDateTime']) || Time.zone.at(0) }
+        formatted_address(address)
+      end
+
+      # Whether VES has flagged this record as sensitive. Absent stays nil rather than
+      # false: defaulting an unknown flag to "not sensitive" is the unsafe direction, and
+      # the sponsor flow filters beneficiaries on this value.
+      #
+      # @param data [Hash, nil]
+      # @return [Boolean, nil]
+      def sensitive_record(data)
+        return nil unless data.is_a?(Hash)
+
+        flag = data.dig('sensitivityInfo', 'sensitivityFlag')
+        return nil if flag.nil?
+
+        ActiveModel::Type::Boolean.new.cast(flag)
+      end
+
+      # Records the VES failure and builds the result for it. Tracked as a VES-level failure
+      # rather than a card-level one because the same EE Summary call backs the eligibility sync
+      # and, later, the sponsor roster lookup, so its health is worth watching per operation
+      # instead of per endpoint. The controller tracks the card-level outcome separately, and
+      # error_class rides along so it can tag that metric too.
+      def ves_call_failed(code, error)
+        monitor.track_ves_call_failure('ee_summary', code, error)
+        { status: code, error_class: error.class.name }
+      end
+
+      # Not memoized: these are class methods, so an ivar here would live on the singleton and be
+      # shared across threads. The monitor is stateless and cheap to build.
+      def monitor
+        IvcChampva::Monitor.new
+      end
+
+      # The first CHAMPVA eligibility entry paired with the relationship it came from,
+      # since the card renders the relationship descriptor next to the eligibility.
+      #
+      # @param data [Hash, nil]
+      # @return [Hash, nil] { relationship:, eligibility: }
+      def champva_relationship(data)
         return nil unless data.is_a?(Hash)
 
         relationships = data.dig('vfmpProgramsInfo', 'relationships')
         return nil unless relationships.is_a?(Array)
 
-        relationships
-          .flat_map { |relationship| eligibility_entries(relationship) }
-          .first
+        relationships.each do |relationship|
+          eligibility = eligibility_entries(relationship).first
+          return { relationship:, eligibility: } if eligibility.present?
+        end
+
+        nil
       end
 
-      private
+      # One beneficiary_infos entry. The enrollment verdict is settled before any
+      # enrichment runs, so name, date of birth, and address stay nil for anyone the
+      # frontend will not offer a card to.
+      #
+      # @param data [Hash] the EE Summary response
+      # @param identity [Hash] { icn:, full_name:, date_of_birth: }
+      # @param as_of [Date]
+      # @return [Hash]
+      def beneficiary_info(data, identity:, as_of:)
+        pair = champva_relationship(data)
+        eligibility = pair[:eligibility]
+        status = enrollment_status(eligibility, as_of:)
+        period = display_period(eligibility, as_of:)
+
+        info = {
+          icn: identity[:icn],
+          full_name: nil,
+          date_of_birth: nil,
+          mailing_address: nil,
+          enrollment_status: status,
+          eligibility_status: eligibility['status'],
+          eligibility_reason: eligibility['reason'],
+          sensitive_record: sensitive_record(data),
+          relationship_type: pair[:relationship]['relationshipType'],
+          effective_date: format_card_date(period['startDate']),
+          expiration_date: format_card_date(period['endDate'])
+        }
+        return info unless status == ENROLLMENT_ELIGIBLE
+
+        info.merge(enrich(data, identity:, as_of:))
+      end
+
+      # The fields only an eligible beneficiary's card needs. This costs nothing extra in
+      # the beneficiary flow, where the identity is already resolved for the session, but
+      # it is where the sponsor flow's per-beneficiary MPI call will land — hence keeping
+      # it behind the eligibility gate now rather than restructuring later.
+      #
+      # @param identity [Hash] { icn:, full_name:, date_of_birth: }
+      # @return [Hash]
+      def enrich(data, identity:, as_of:)
+        {
+          full_name: identity[:full_name],
+          date_of_birth: identity[:date_of_birth],
+          mailing_address: mailing_address(data, as_of:)
+        }
+      end
+
+      # The beneficiary flow's identity source. EE Summary carries no name, date of birth,
+      # or subject ICN, so these come from the session — which resolves them from the MPI
+      # profile UserLoader already fetched and cached, costing no upstream call. The
+      # sponsor flow will build the same hash from an explicit MPI lookup per beneficiary.
+      #
+      # @param user [User]
+      # @return [Hash]
+      def session_identity(user)
+        {
+          icn: user.icn,
+          full_name: [user.first_name, user.last_name].compact.join(' ').presence,
+          date_of_birth: user.birth_date
+        }
+      end
+
+      # The date-window half of the enrollment verdict. An entry with no parseable window
+      # is ineligible rather than expired, since we cannot say which.
+      #
+      # @return [String] one of the ENROLLMENT_* values
+      def window_status(eligibility, as_of:)
+        return ENROLLMENT_ELIGIBLE if covering_period(eligibility, as_of:).present?
+
+        start_dates = eligibility_date_periods(eligibility)
+                      .select { |period| period.is_a?(Hash) }
+                      .filter_map { |period| parse_card_date(period['startDate']) }
+        return ENROLLMENT_INELIGIBLE if start_dates.empty?
+        return ENROLLMENT_NOT_YET_EFFECTIVE if start_dates.min > as_of
+
+        ENROLLMENT_EXPIRED
+      end
+
+      # Exact match, not a substring one: "Ineligible" contains "eligible".
+      def eligible_ves_status?(status)
+        status.to_s.downcase.strip == ENROLLMENT_ELIGIBLE
+      end
+
+      # The window whose dates the card shows: the one covering today when there is one,
+      # otherwise the most recent, so an expired or future beneficiary still sees the dates
+      # behind their verdict. Always a Hash so callers can read it unconditionally.
+      #
+      # @return [Hash]
+      def display_period(eligibility, as_of:)
+        covering_period(eligibility, as_of:) || latest_period(eligibility) || {}
+      end
+
+      def latest_period(eligibility)
+        eligibility_date_periods(eligibility)
+          .select { |period| period.is_a?(Hash) }
+          .max_by { |period| parse_card_date(period['startDate']) || Date.new(0) }
+      end
 
       def eligibility_entries(relationship)
         return [] unless relationship.is_a?(Hash)
@@ -159,7 +375,59 @@ module IvcChampva
       end
 
       def format_card_date(value)
-        parse_card_date(value)&.strftime('%m/%Y')
+        parse_card_date(value)&.strftime('%Y/%m/%d')
+      end
+
+      def usable_addresses(data, as_of:)
+        return [] unless data.is_a?(Hash)
+
+        Array(data.dig('demographics', 'contactInfo', 'addresses'))
+          .select { |address| usable_address?(address, as_of:) }
+      end
+
+      # Drops addresses the physical card could not reach: VES marks known-undeliverable
+      # ones with a badAddressReason, and an entry whose window has closed is stale.
+      # endDate has no documented format and is absent from real data, so an unparseable
+      # value keeps the address rather than discarding a usable one.
+      def usable_address?(address, as_of:)
+        return false unless address.is_a?(Hash)
+        return false if address['badAddressReason'].present?
+
+        end_date = parse_card_date(address['endDate'])
+        end_date.nil? || end_date >= as_of
+      end
+
+      def preferred_addresses(addresses)
+        addresses_of_type(addresses, MAILING_ADDRESS_TYPE_CODES).presence ||
+          addresses_of_type(addresses, RESIDENTIAL_ADDRESS_TYPE_CODES).presence ||
+          addresses
+      end
+
+      def addresses_of_type(addresses, codes)
+        addresses.select { |address| codes.include?(address['addressTypeCode'].to_s.downcase.strip) }
+      end
+
+      def formatted_address(address)
+        {
+          line1: address['line1'],
+          line2: address['line2'],
+          line3: address['line3'],
+          city: address['city'],
+          state: address['state'],
+          province_code: address['provinceCode'],
+          zip_code: address['zipCode'],
+          zip_plus4: address['zipPlus4'],
+          postal_code: address['postalCode'],
+          country: address['country']
+        }
+      end
+
+      def parse_address_change_time(value)
+        return nil if value.blank?
+
+        Time.zone.parse(value.to_s)
+      rescue ArgumentError, TypeError
+        nil
       end
     end
 
@@ -672,4 +940,5 @@ module IvcChampva
       @mpi_service ||= IvcChampva::MPIService.new
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

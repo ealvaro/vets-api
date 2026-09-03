@@ -46,7 +46,7 @@ The VES integration follows a specific workflow:
 ### CHAMPVA Benefits Card
 Authenticated `GET /ivc_champva/v1/champva_card` returns card metadata for the logged-in user. The frontend generates the printable PDF client-side from this JSON. Not `/v0/champva_card`.
 
-Gated by Flipper `champva_benefits_card` (disabled → `404` `{ "error_message": "Not found" }`). Session ICN is sent to VES EE Summary (`ChampvaEligibilityService.benefits_card_for`). Name comes from the session, not VES.
+Gated by Flipper `champva_benefits_card` (disabled → `404` `{ "error_message": "Not found" }`). Session ICN is sent to VES EE Summary (`ChampvaEligibilityService.benefits_card_for`). One call serves both the digital and physical card flows.
 
 Success `200`:
 
@@ -55,26 +55,82 @@ Success `200`:
   "data": {
     "type": "champva_card",
     "attributes": {
-      "full_name": "Alex Doe",
-      "effective_date": "01/2026",
-      "expiration_date": "01/2028"
+      "role": "beneficiary",
+      "beneficiary_infos": [
+        {
+          "icn": "1234567890V123456",
+          "full_name": "Alex Doe",
+          "date_of_birth": "1990-01-15",
+          "mailing_address": {
+            "line1": "123 Main St", "line2": null, "line3": null,
+            "city": "Austin", "state": "TX", "province_code": null,
+            "zip_code": "78701", "zip_plus4": null,
+            "postal_code": null, "country": "USA"
+          },
+          "enrollment_status": "eligible",
+          "eligibility_status": "Eligible",
+          "eligibility_reason": "P&T",
+          "sensitive_record": false,
+          "relationship_type": "Child",
+          "effective_date": "2020/02/01",
+          "expiration_date": "2024/06/01"
+        }
+      ]
     }
   }
 }
 ```
 
-`X-Key-Inflection: camel` → `fullName`, `effectiveDate`, `expirationDate`. Dates are `%m/%Y` from `eligibilityDates[].startDate` / `endDate` (`endDate` may be `null`). A period covers today when `startDate <= today` and (`endDate` blank or `>= today`); several covering periods → latest `startDate`.
+`X-Key-Inflection: camel` camelizes every key (`beneficiaryInfos`, `fullName`, `zipPlus4`, ...). `beneficiary_infos` is an array so the shape does not change when the sponsor flow returns one entry per beneficiary; today it always holds exactly one.
+
+Field sources — VES EE Summary carries no name, date of birth, or subject ICN, so identity comes from the session (which resolves it from the MPI profile `UserLoader` already cached, costing no extra call):
+
+| Field | Source |
+|------|------|
+| `icn`, `full_name`, `date_of_birth` | session |
+| `mailing_address` | `demographics.contactInfo.addresses[]` |
+| `sensitive_record` | `sensitivityInfo.sensitivityFlag` (`null` when absent — unknown, not false) |
+| `eligibility_status` / `eligibility_reason` | `champvaEligibilities[].status` / `.reason`, passed through raw |
+| `effective_date` / `expiration_date` | `eligibilityDates[].startDate` / `.endDate`, `%Y/%m/%d` |
+| `relationship_type` | `relationships[].relationshipType` |
+
+VES added `demographics` and `sensitivityInfo` to the dataset in Aug 2026, so every field above is populated in SQA. `mailing_address` is still `null` when VES omits `demographics`, when every address is filtered out, or when the beneficiary is ineligible — all three are optional/gated, not error cases.
+
+Address selection: reject `badAddressReason` and past `endDate`, prefer `addressTypeCode` `P`/`Permanent` over `R`/`Residential`, tiebreak on latest `addressChangeDateTime`. VES returns one entry per type rather than a change history, so type decides and the tiebreak is defensive only. Real responses omit empty members entirely (`line2`, `line3`, `provinceCode`, `postalCode` were all absent from the SQA sample), and supply `county`, `addressChangeSource`, and `addressChangeSite`, which we ignore.
+
+A `200` therefore always means "eligible, here is the card." Only `eligible` entries are enriched — `full_name`, `date_of_birth`, and `mailing_address` would be `null` otherwise, since the frontend renders nothing for them and the sponsor flow would otherwise pay an MPI call per beneficiary it discards.
+
+Anyone else gets a `404`, under one of two distinct codes:
+
+- **`ineligible`** — VES has a CHAMPVA record for this person but will not issue a card. `enrollment_status` carries the specific verdict. Per frontend preference the business logic stays on the backend and the UI renders static content, so no card data is returned; the service still computes it, so moving this to a `200` is a one-branch change in `render_ineligible`. **Whether this stays a 404 is still open.**
+- **`not_enrolled`** — VES returned an empty payload. That covers both a veteran/sponsor querying their own ICN and a person with no CHAMPVA record; VES returns `{"data":{}}` for both, so they cannot be told apart (`determine_role`). The sponsor flow is disabled until VES ships a roster endpoint; when it does, empty becomes the positive signal to call it rather than a 404.
+
+`enrollment_status` is our derived verdict, and `eligible` requires **both** an eligible VES status and a date window covering today:
+
+| Value | Meaning | Result |
+|------|------|------|
+| `eligible` | VES says eligible and a window covers today | `200` + card |
+| `ineligible` | VES denies, or no usable date window | `404` `ineligible` |
+| `expired` | every window closed before today | `404` `ineligible` |
+| `not_yet_effective` | every window opens after today | `404` `ineligible` |
+
+Requiring the VES status closed a real hole: the shipped test fixture is `status: "Ineligible"` inside a live 2002 → 2024 window, so on the date-window logic alone that person was issued a card.
 
 | Scenario | Status | Body |
 |------|--------|------|
 | Not signed in | `401` | existing auth error |
 | Flipper off | `404` | `{ "error_message": "Not found" }` |
+| Not LOA3 | `403` | `{ "error": { "code": "not_verified", "message": "..." } }` |
 | No ICN | `422` | `{ "error": { "code": "missing_icn", "message": "..." } }` |
-| No record, expired, or future start | `404` | `{ "error": { "code": "not_enrolled", "message": "..." } }` |
+| Eligible beneficiary | `200` | card payload above |
+| Ineligible / expired / not yet effective | `404` | `{ "error": { "code": "ineligible", "message": "...", "enrollment_status": "expired" } }` |
+| Empty VES payload (veteran/sponsor or no record) | `404` | `{ "error": { "code": "not_enrolled", "message": "..." } }` |
 | VES timeout | `504` | `{ "error": { "code": "upstream_timeout", "message": "..." } }` |
 | Other VES / non-200 | `502` | `{ "error": { "code": "upstream_error", "message": "..." } }` |
 
-Dataset: card flow passes the dedicated `ChampvaDigitalCardData` dataset into `get_ee_summary` (a smaller subset than `allEEData`); existing eligibility persist keeps the method default `CSTChampvaEligibility`. Out of scope: family/sponsor lookup, Payor ID, PDF generation. Confirm with VES if printed-card expiration differs from `endDate`.
+LOA3 is required because `MPIData#profile` returns `nil` below it, leaving name, date of birth, and ICN all `nil` — without the guard an unverified user would get the misleading `missing_icn`.
+
+Dataset: card flow passes the dedicated `ChampvaDigitalCardData` dataset into `get_ee_summary` (a smaller subset than `allEEData`); existing eligibility persist keeps the method default `CSTChampvaEligibility`. Out of scope: sponsor/beneficiary roster lookup, the physical-card request endpoint, Payor ID, PDF generation. Confirm with VES if printed-card expiration differs from `endDate`, and whether `confidentialAddressCategories` suppresses display of an address.
 
 ### Retry Mechanisms
 The module implements a robust retry mechanism with configurable parameters for failed operations. An `IvcChampva::Retry` service handles retrying problematic operations with configurable max retries, delay, and condition-based retry logic. The system automatically retries when specific error messages occur during form processing.
