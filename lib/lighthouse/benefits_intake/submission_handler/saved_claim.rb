@@ -26,6 +26,11 @@ module BenefitsIntake
         []
       end
 
+      # Define in subclasses to determine whether success/failure until Benefits Intake includes final_status: true
+      def self.await_final_status?
+        false
+      end
+
       # respond to result of a submission status
       #
       # @param result [String] the resulting state of a submission
@@ -53,6 +58,12 @@ module BenefitsIntake
       # @param submission_attempt [Object] The submission attempt record to be updated. Must respond to
       #   `lighthouse_updated_at=`, `error_message=`, `fail!`, and `vbms!`.
       def update_attempt_record(status, submission, submission_attempt)
+        if self.class.await_final_status?
+          final_status = submission.dig('attributes', 'final_status')
+          # treat as pending if status not final
+          return unless final_status == true
+        end
+
         submission_attempt.lighthouse_updated_at = submission.dig('attributes', 'updated_at')
 
         case status

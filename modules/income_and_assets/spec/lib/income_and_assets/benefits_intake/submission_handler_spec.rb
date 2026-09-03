@@ -43,6 +43,28 @@ Rspec.describe IncomeAndAssets::BenefitsIntake::SubmissionHandler do
     end
   end
 
+  describe '.await_final_status?' do
+    context 'when flipper disabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lifestage_benefits_await_final_bia_status).and_return(false)
+      end
+
+      it 'returns false' do
+        expect(handler.await_final_status?).to be false
+      end
+    end
+
+    context 'when flipper enabled' do
+      before do
+        allow(Flipper).to receive(:enabled?).with(:lifestage_benefits_await_final_bia_status).and_return(true)
+      end
+
+      it 'returns true' do
+        expect(handler.await_final_status?).to be true
+      end
+    end
+  end
+
   describe '#on_failure' do
     it 'logs silent failure avoided' do
       expect(notification).to receive(:deliver).with(:error).and_return true

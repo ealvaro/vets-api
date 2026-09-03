@@ -28,6 +28,7 @@ RSpec.describe 'Pensions End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
     # TODO: Update after Part #2 of V2 migration PR merged
     allow(Flipper).to receive(:enabled?).with(:pension_pdf_form_alignment).and_return false
+    allow(Flipper).to receive(:enabled?).with(:lifestage_benefits_await_final_bia_status).and_return false
     sign_in(user)
   end
 

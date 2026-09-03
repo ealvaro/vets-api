@@ -23,6 +23,7 @@ RSpec.describe 'Dependents benefits intake status flow', type: :job do
   before do
     allow(Flipper).to receive(:enabled?).with(anything).and_call_original
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return(true)
+    allow(Flipper).to receive(:enabled?).with(:lifestage_benefits_await_final_bia_status).and_return(false)
     allow(BenefitsIntake::Service).to receive(:new).and_return(service)
     allow(DependentsBenefits::NotificationEmail).to receive(:new).with(claim.id).and_return(notification_email)
 

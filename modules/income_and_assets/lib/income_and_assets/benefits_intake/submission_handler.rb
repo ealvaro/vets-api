@@ -18,6 +18,11 @@ module IncomeAndAssets
                                             'lighthouse_submissions.form_id' => IncomeAndAssets::FORM_ID)
       end
 
+      # Whether to wait to determine if submission is success/failure until Benefits Intake includes final_status: true
+      def self.await_final_status?
+        Flipper.enabled?(:lifestage_benefits_await_final_bia_status) || false
+      end
+
       private
 
       # BenefitsIntake::SubmissionHandler::SavedClaim#claim_class

@@ -13,6 +13,18 @@ Rspec.describe BenefitsIntake::SubmissionHandler::SavedClaim do
     allow(ZeroSilentFailures::Monitor).to receive(:new).with('lighthouse-benefits-intake').and_return monitor
   end
 
+  describe '.pending_attempts' do
+    it 'returns empty array' do
+      expect(handler.pending_attempts).to eq([])
+    end
+  end
+
+  describe '.await_final_status?' do
+    it 'returns false' do
+      expect(handler.await_final_status?).to be false
+    end
+  end
+
   describe '#on_failure' do
     it 'logs silent failure avoided' do
       instance = handler.new('fake-claim-id')

@@ -37,6 +37,7 @@ module BenefitsIntake
       form_id
       saved_claim_id
       status
+      final_status
       result
       uuid
     ].freeze
@@ -158,12 +159,13 @@ module BenefitsIntake
 
         # Log the status for debugging
         status = submission.dig('attributes', 'status')
+        final_status = submission.dig('attributes', 'final_status') == true
         log(:info, "Processing submission UUID: #{uuid}, Status: #{status}", submission:)
 
         update_attempt_record(uuid, status, submission)
-        monitor_attempt_status(uuid, status)
+        monitor_attempt_status(uuid, status, final_status:)
 
-        handle_attempt_result(uuid, status)
+        handle_attempt_result(uuid, status, final_status:)
       end
     end
 
@@ -192,8 +194,9 @@ module BenefitsIntake
     #
     # @param uuid [UUID] the benefits_intake_uuid being processed
     # @param status [String] the returned status
-    def monitor_attempt_status(uuid, status)
-      context = attempt_status_result_context(uuid, status)
+    # @param final_status [Boolean] whether status is final
+    def monitor_attempt_status(uuid, status, final_status: false)
+      context = attempt_status_result_context(uuid, status, final_status:)
       result = context[:result]
 
       metric = "#{STATS_KEY}.#{context[:form_id]}.#{result}"
@@ -209,8 +212,9 @@ module BenefitsIntake
     #
     # @param uuid [UUID] the benefits_intake_uuid being processed
     # @param status [String] the returned status
-    def handle_attempt_result(uuid, status)
-      context = attempt_status_result_context(uuid, status)
+    # @param final_status [Boolean] whether status is final
+    def handle_attempt_result(uuid, status, final_status: false)
+      context = attempt_status_result_context(uuid, status, final_status:)
 
       # double check for valid handler, should have been filtered in `perform`
       if (handler = FORM_HANDLERS[context[:form_id]])
@@ -226,9 +230,11 @@ module BenefitsIntake
     #
     # @param uuid [UUID] the benefits_intake_uuid being processed
     # @param status [String] the returned status
+    # @param final_status [Boolean] whether status is final
     #
     # @return [Hash] context of attempt result, payload suited for logging and handlers
-    def attempt_status_result_context(uuid, status)
+    # rubocop:disable Metrics/MethodLength
+    def attempt_status_result_context(uuid, status, final_status: false)
       submission_attempt = pending_attempts_hash[uuid]
       if submission_attempt.is_a?(Lighthouse::SubmissionAttempt)
         submission = submission_attempt.submission
@@ -238,11 +244,17 @@ module BenefitsIntake
         form_id = submission.form_type
       end
 
+      handler = FORM_HANDLERS[form_id]
+      result = if handler&.await_final_status? && final_status == false
+                 'pending'
+               else
+                 STATUS_RESULT_MAP[status.to_sym] || 'pending'
+               end
+
       queue_time = (Time.zone.now - submission_attempt.created_at).truncate
-      result = STATUS_RESULT_MAP[status.to_sym] || 'pending'
       result = 'stale' if queue_time > STALE_SLA.days && result == 'pending'
 
-      {
+      context = {
         form_id:,
         saved_claim_id: submission.saved_claim_id,
         uuid:,
@@ -251,7 +263,9 @@ module BenefitsIntake
         queue_time:,
         error_message: submission_attempt.error_message
       }
+      handler&.await_final_status? ? context.merge(final_status:) : context
     end
+    # rubocop:enable Metrics/MethodLength
 
     # @return [Logging::Monitor] the monitor used for tracking
     def monitor

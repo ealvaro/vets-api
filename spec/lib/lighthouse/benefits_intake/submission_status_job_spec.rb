@@ -107,24 +107,96 @@ RSpec.describe BenefitsIntake::SubmissionStatusJob, type: :job do
       before do
         job.instance_variable_set(:@pending_attempts, [attempt])
         job.instance_variable_set(:@pah, { 'uuid-1' => attempt })
-        stub_const('BenefitsIntake::SubmissionStatusJob::STALE_SLA', 1)
         allow(Time.zone).to receive(:now).and_return(Time.zone.now)
+        stub_const('BenefitsIntake::SubmissionStatusJob::FORM_HANDLERS', { 'FORM1' => handler_class })
       end
 
-      it 'returns context with mapped result' do
-        context = job.send(:attempt_status_result_context, 'uuid-1', 'vbms')
-        expect(context[:form_id]).to eq('FORM1')
-        expect(context[:saved_claim_id]).to eq(123)
-        expect(context[:uuid]).to eq('uuid-1')
-        expect(context[:status]).to eq('vbms')
-        expect(context[:result]).to eq('success')
-        expect(context[:error_message]).to eq('err')
+      context 'when final_status: false' do
+        context 'when handler does not await final status' do
+          let(:handler_class) { double('HandlerClass', await_final_status?: false) }
+
+          it 'returns context with mapped result' do
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'vbms', final_status: false)
+            expect(context[:form_id]).to eq('FORM1')
+            expect(context[:saved_claim_id]).to eq(123)
+            expect(context[:uuid]).to eq('uuid-1')
+            expect(context[:status]).to eq('vbms')
+            expect(context[:result]).to eq('success')
+            expect(context[:error_message]).to eq('err')
+            expect(context.key?(:final_status)).to be false
+          end
+
+          it 'returns stale if queue_time exceeds SLA and result is pending' do
+            allow(attempt).to receive(:created_at).and_return(11.days.ago)
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'pending', final_status: false)
+            expect(context[:result]).to eq('stale')
+          end
+        end
+
+        context 'when handler awaits final status' do
+          let(:handler_class) { double('HandlerClass', await_final_status?: true) }
+
+          it 'returns context with pending result regardless of status' do
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'vbms', final_status: false)
+            expect(context[:form_id]).to eq('FORM1')
+            expect(context[:saved_claim_id]).to eq(123)
+            expect(context[:uuid]).to eq('uuid-1')
+            expect(context[:status]).to eq('vbms')
+            expect(context[:result]).to eq('pending')
+            expect(context[:error_message]).to eq('err')
+            expect(context[:final_status]).to be false
+          end
+
+          it 'returns stale if queue_time exceeds SLA and result is pending' do
+            allow(attempt).to receive(:created_at).and_return(11.days.ago)
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'pending', final_status: false)
+            expect(context[:result]).to eq('stale')
+          end
+        end
       end
 
-      it 'returns stale if queue_time exceeds SLA and result is pending' do
-        allow(attempt).to receive(:created_at).and_return(10.days.ago)
-        context = job.send(:attempt_status_result_context, 'uuid-1', 'pending')
-        expect(context[:result]).to eq('stale')
+      context 'when final_status: true' do
+        context 'when handler does not await final status' do
+          let(:handler_class) { double('HandlerClass', await_final_status?: false) }
+
+          it 'returns context with mapped result' do
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'vbms', final_status: true)
+            expect(context[:form_id]).to eq('FORM1')
+            expect(context[:saved_claim_id]).to eq(123)
+            expect(context[:uuid]).to eq('uuid-1')
+            expect(context[:status]).to eq('vbms')
+            expect(context[:result]).to eq('success')
+            expect(context[:error_message]).to eq('err')
+            expect(context.key?(:final_status)).to be false
+          end
+
+          it 'returns stale if queue_time exceeds SLA and result is pending' do
+            allow(attempt).to receive(:created_at).and_return(11.days.ago)
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'pending', final_status: true)
+            expect(context[:result]).to eq('stale')
+          end
+        end
+
+        context 'when handler awaits final status' do
+          let(:handler_class) { double('HandlerClass', await_final_status?: true) }
+
+          it 'returns context with mapped result and preserves status' do
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'vbms', final_status: true)
+            expect(context[:form_id]).to eq('FORM1')
+            expect(context[:saved_claim_id]).to eq(123)
+            expect(context[:uuid]).to eq('uuid-1')
+            expect(context[:status]).to eq('vbms')
+            expect(context[:result]).to eq('success')
+            expect(context[:error_message]).to eq('err')
+            expect(context[:final_status]).to be true
+          end
+
+          it 'returns stale if queue_time exceeds SLA and result is pending' do
+            allow(attempt).to receive(:created_at).and_return(11.days.ago)
+            context = job.send(:attempt_status_result_context, 'uuid-1', 'pending', final_status: true)
+            expect(context[:result]).to eq('stale')
+          end
+        end
       end
     end
 
@@ -144,18 +216,30 @@ RSpec.describe BenefitsIntake::SubmissionStatusJob, type: :job do
         allow(job).to receive(:log)
       end
 
-      it 'processes each submission in response_data' do
-        data = [{ 'id' => 'uuid-1', 'attributes' => { 'status' => 'vbms' } }]
-        expect(job).to receive(:update_attempt_record).with('uuid-1', 'vbms', data.first)
-        expect(job).to receive(:monitor_attempt_status).with('uuid-1', 'vbms')
-        expect(job).to receive(:handle_attempt_result).with('uuid-1', 'vbms')
-        job.send(:handle_response, data)
-      end
-
       it 'skips if uuid not found in pending_attempts_hash' do
         data = [{ 'id' => 'not-found', 'attributes' => { 'status' => 'vbms' } }]
         expect(job).not_to receive(:update_attempt_record)
         job.send(:handle_response, data)
+      end
+
+      context 'when final_status: false' do
+        it 'processes each submission in response_data' do
+          data = [{ 'id' => 'uuid-1', 'attributes' => { 'status' => 'vbms', 'final_status' => false } }]
+          expect(job).to receive(:update_attempt_record).with('uuid-1', 'vbms', data.first)
+          expect(job).to receive(:monitor_attempt_status).with('uuid-1', 'vbms', final_status: false)
+          expect(job).to receive(:handle_attempt_result).with('uuid-1', 'vbms', final_status: false)
+          job.send(:handle_response, data)
+        end
+      end
+
+      context 'when final_status: true' do
+        it 'processes each submission in response_data' do
+          data = [{ 'id' => 'uuid-1', 'attributes' => { 'status' => 'vbms', 'final_status' => true } }]
+          expect(job).to receive(:update_attempt_record).with('uuid-1', 'vbms', data.first)
+          expect(job).to receive(:monitor_attempt_status).with('uuid-1', 'vbms', final_status: true)
+          expect(job).to receive(:handle_attempt_result).with('uuid-1', 'vbms', final_status: true)
+          job.send(:handle_response, data)
+        end
       end
     end
 
@@ -227,19 +311,32 @@ RSpec.describe BenefitsIntake::SubmissionStatusJob, type: :job do
         allow(job).to receive(:log)
       end
 
-      it 'increments StatsD metrics and logs info' do
-        expect(StatsD).to receive(:increment).with("#{stats_key}.FORM1.success")
-        expect(StatsD).to receive(:increment).with("#{stats_key}.all_forms.success")
-        expect(job).to receive(:log).with(:info, /UUID: uuid-1/, hash_including(result: 'success'))
-        job.send(:monitor_attempt_status, 'uuid-1', 'vbms')
-      end
-
       it 'logs error if result is failure' do
         context[:result] = 'failure'
         expect(StatsD).to receive(:increment).with("#{stats_key}.FORM1.failure")
         expect(StatsD).to receive(:increment).with("#{stats_key}.all_forms.failure")
         expect(job).to receive(:log).with(:error, /UUID: uuid-1/, hash_including(result: 'failure'))
         job.send(:monitor_attempt_status, 'uuid-1', 'error')
+      end
+
+      context 'when final_status: false' do
+        it 'increments StatsD metrics and logs info' do
+          expect(StatsD).to receive(:increment).with("#{stats_key}.FORM1.success")
+          expect(StatsD).to receive(:increment).with("#{stats_key}.all_forms.success")
+          expect(job).to receive(:log).with(:info, /UUID: uuid-1/, hash_including(result: 'success'))
+          expect(job).to receive(:attempt_status_result_context).with('uuid-1', 'vbms', final_status: false)
+          job.send(:monitor_attempt_status, 'uuid-1', 'vbms', final_status: false)
+        end
+      end
+
+      context 'when final_status: true' do
+        it 'increments StatsD metrics and logs info' do
+          expect(StatsD).to receive(:increment).with("#{stats_key}.FORM1.success")
+          expect(StatsD).to receive(:increment).with("#{stats_key}.all_forms.success")
+          expect(job).to receive(:log).with(:info, /UUID: uuid-1/, hash_including(result: 'success'))
+          expect(job).to receive(:attempt_status_result_context).with('uuid-1', 'vbms', final_status: true)
+          job.send(:monitor_attempt_status, 'uuid-1', 'vbms', final_status: true)
+        end
       end
     end
 
@@ -263,13 +360,32 @@ RSpec.describe BenefitsIntake::SubmissionStatusJob, type: :job do
         stub_const('BenefitsIntake::SubmissionStatusJob::FORM_HANDLERS', { 'FORM1' => handler_class })
       end
 
-      it 'calls handle on the handler' do
-        expect(handler_class).to receive(:new).with(1).and_return(handler_instance)
-        expect(handler_instance).to receive(:handle).with('success',
-                                                          hash_including(:call_location, :form_id, :uuid, :result,
-                                                                         :status, :queue_time, :error_message,
-                                                                         :saved_claim_id))
-        job.send(:handle_attempt_result, 'uuid-1', 'vbms')
+      context 'when final_status: false' do
+        it 'calls handle on the handler' do
+          expect(handler_class).to receive(:new).with(1).and_return(handler_instance)
+          expect(handler_instance).to receive(:handle).with('success',
+                                                            hash_including(:call_location, :form_id, :uuid, :result,
+                                                                           :status, :queue_time, :error_message,
+                                                                           :saved_claim_id))
+          expect(job).to receive(:attempt_status_result_context).with(
+            'uuid-1', 'vbms', final_status: false
+          )
+          job.send(:handle_attempt_result, 'uuid-1', 'vbms', final_status: false)
+        end
+      end
+
+      context 'when final_status: true' do
+        it 'calls handle on the handler' do
+          expect(handler_class).to receive(:new).with(1).and_return(handler_instance)
+          expect(handler_instance).to receive(:handle).with('success',
+                                                            hash_including(:call_location, :form_id, :uuid, :result,
+                                                                           :status, :queue_time, :error_message,
+                                                                           :saved_claim_id))
+          expect(job).to receive(:attempt_status_result_context).with(
+            'uuid-1', 'vbms', final_status: true
+          )
+          job.send(:handle_attempt_result, 'uuid-1', 'vbms', final_status: true)
+        end
       end
 
       it 'logs error if handler raises' do

@@ -27,6 +27,7 @@ RSpec.describe 'Income and Assets End to End', type: :request do
     allow(Flipper).to receive(:enabled?).with(:income_and_assets_kafka_event_enabled).and_return false
     allow(Flipper).to receive(:enabled?).with(:income_and_assets_submitted_email_notification).and_return true
     allow(Flipper).to receive(:enabled?).with(:benefits_intake_submission_status_job).and_return true
+    allow(Flipper).to receive(:enabled?).with(:lifestage_benefits_await_final_bia_status).and_return false
     sign_in(user)
   end
 
