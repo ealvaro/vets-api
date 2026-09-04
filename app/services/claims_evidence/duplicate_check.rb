@@ -5,19 +5,16 @@ require 'lighthouse/benefits_documents/constants'
 module ClaimsEvidence
   # Rejects the same file being uploaded twice, in two layers:
   #
-  #   presumed_duplicate? - matches prior SUCCESS rows, so it only catches repeats once an
-  #                         earlier upload has landed.
-  #   acquire_lock        - a short Redis lock covering the window before that row exists.
-  #                         The frontend uploads files in parallel, so two copies of one
-  #                         file can clear the first layer at the same moment.
+  #   presumed_duplicate? - prior SUCCESS rows, so it only catches repeats once one has landed.
+  #   acquire_lock        - a Redis lock for the window before that row exists; the frontend
+  #                         uploads in parallel, so two copies can clear the first layer at once.
   #
-  # A file is identified by (user, claim, document type, name, size). Content is not
-  # hashed, so a renamed file slips through — a deliberate tradeoff. Both layers fail
-  # open: a Redis outage must not stop a Veteran filing evidence.
+  # A file is identified by (user, claim, document type, name, size) — content is not hashed, so a
+  # renamed file slips through. Both layers fail open: a Redis outage must not stop a Veteran
+  # filing evidence.
   class DuplicateCheck
     LOCK_NAMESPACE = 'claims-evidence-upload'
-    # Only has to cover one upload request — tempfile copy, PDF unlock, virus scan, CE call,
-    # DB insert.
+    # Only has to cover one upload request.
     LOCK_TTL = 2.minutes
     LOCK_UNAVAILABLE_MESSAGE = 'ClaimsEvidence::DuplicateCheck lock unavailable, failing open'
     LOCK_RELEASE_FAILED_MESSAGE = 'ClaimsEvidence::DuplicateCheck lock release failed, it will expire on its own'
@@ -51,19 +48,16 @@ module ClaimsEvidence
       lock_unavailable
     rescue => e
       # RedisCacheStore's failsafe covers Redis and connection pool errors, but the cache is
-      # injectable and any other store makes no such promise. Fail open rather than let our
-      # own dedupe 500 an upload.
+      # injectable and another store makes no such promise.
       lock_unavailable(e)
     end
 
-    # Best effort. By the time anything releases the lock the file is in the eFolder, so a
-    # cache error here must not fail the request; the lock just expires on its own instead.
+    # Best effort: a stranded lock expires within the TTL, so a cache error must not fail a
+    # request that has already done everything else.
     #
-    # @param retry_blocked [Boolean] whether stranding the lock blocks a legitimate retry.
-    #   True when no EvidenceSubmission row was written, so presumed_duplicate? has nothing to
-    #   fall back on and the Veteran gets a 422 until the TTL expires. False when the row does
-    #   exist, since the first layer then rejects repeats on its own. Required rather than
-    #   defaulted: it drives the monitor, so a new call site has to decide which case it is.
+    # @param retry_blocked [Boolean] whether stranding the lock blocks a legitimate retry. True
+    #   when no SUCCESS row exists, so presumed_duplicate? cannot catch the repeat and the Veteran
+    #   gets a 422 until the TTL expires. Required rather than defaulted: it drives the monitor.
     def release_lock(retry_blocked:)
       @cache.delete(lock_key, namespace: LOCK_NAMESPACE)
     rescue => e
@@ -91,9 +85,8 @@ module ClaimsEvidence
       )
     end
 
-    # Guards both levels: a non-object payload, and a personalisation key holding something
-    # other than an object. The inner check matters because a String there would raise
-    # NoMethodError, which the JSON::ParserError rescue does not catch.
+    # Guards both levels: a non-object payload, and a personalisation key holding a non-object --
+    # a String there raises NoMethodError, which the JSON::ParserError rescue does not catch.
     def parse_personalisation(submission)
       parsed = JSON.parse(submission.template_metadata.to_s)
       personalisation = parsed.is_a?(Hash) ? parsed['personalisation'] : nil

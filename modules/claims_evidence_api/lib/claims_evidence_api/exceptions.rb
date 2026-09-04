@@ -16,6 +16,7 @@ module ClaimsEvidenceApi
       DATA_NOT_FOUND_FOR_CURRENT_VERSION = 'VEFSERR40403' # Requested data could not be found for current version of UUID %s
       DISABLED_IDENTIFIER = 'VEFSERR40059'                # Identifier %s is not enabled
       DOES_NOT_CONFORM_TO_SCHEMA = 'VEFSERR40001'         # Error message
+      DUPLICATE_CONTENT_NAME = 'VEFSERR40018'             # Document already exists by ownerId and contentName combination; undocumented in the CE spec
       DUPLICATE_PROVIDERDATA_KEYS = 'VEFSERR40002'        # Duplicate key: providerData contained duplicate keys %s
       INVALID_EVALUATION_TYPE = 'VEFSERR50015'            # Error encountered processing - %s is not a valid filter evaluation type for %s
       INVALID_JWT = 'VEFSERR40009'                        # JWT provided does not contain expected claims, or contains invalid claim value(s).

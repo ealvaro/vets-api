@@ -262,6 +262,28 @@ RSpec.describe 'V0::ClaimsEvidence', type: :request do
             expect(error_detail).to eq('DOC_UPLOAD_DUPLICATE')
           end
 
+          it 'answers DOC_UPLOAD_UNSUPPORTED_NAME when the filename has no ASCII equivalent' do
+            allow(ClaimsEvidence::ContentName).to receive(:sanitize)
+              .and_raise(ClaimsEvidence::ContentName::Unsupported)
+
+            post_upload
+
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(error_detail).to eq('DOC_UPLOAD_UNSUPPORTED_NAME')
+          end
+
+          # The name belongs to a different document in the eFolder, which only the Veteran can
+          # resolve -- unhandled this would be a 500 with no indication of what to do.
+          it 'answers DOC_UPLOAD_NAME_TAKEN when the name belongs to another document' do
+            allow_any_instance_of(ClaimsEvidence::UploadEvidence)
+              .to receive(:upload_document).and_raise(ClaimsEvidence::UploadEvidence::ContentNameTaken)
+
+            post_upload
+
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(error_detail).to eq('DOC_UPLOAD_NAME_TAKEN')
+          end
+
           it 'does not emit an error-level failure log for a duplicate' do
             post_upload
 

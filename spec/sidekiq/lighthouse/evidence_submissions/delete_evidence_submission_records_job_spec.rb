@@ -26,7 +26,7 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
           .with('worker.cst.delete_evidence_submission_records.count', 0, tags: ['status:failed'])
         expect(Rails.logger)
           .to receive(:info)
-          .with("#{subject} deleted 2 of 2 EvidenceSubmission records (2 success, 0 failed)")
+          .with("#{subject} deleted 2 of 2 EvidenceSubmission records (2 success, 0 failed, 0 created)")
 
         subject.new.perform
 
@@ -45,7 +45,7 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
           .with('worker.cst.delete_evidence_submission_records.count', 1, tags: ['status:failed'])
         expect(Rails.logger)
           .to receive(:info)
-          .with("#{subject} deleted 1 of 1 EvidenceSubmission records (0 success, 1 failed)")
+          .with("#{subject} deleted 1 of 1 EvidenceSubmission records (0 success, 1 failed, 0 created)")
 
         subject.new.perform
 
@@ -63,7 +63,7 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
           .with('worker.cst.delete_evidence_submission_records.count', 0, tags: ['status:failed'])
         expect(Rails.logger)
           .to receive(:info)
-          .with("#{subject} deleted 0 of 1 EvidenceSubmission records (0 success, 0 failed)")
+          .with("#{subject} deleted 0 of 1 EvidenceSubmission records (0 success, 0 failed, 0 created)")
 
         subject.new.perform
 
@@ -85,7 +85,7 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
           .with('worker.cst.delete_evidence_submission_records.count', 1, tags: ['status:failed'])
         expect(Rails.logger)
           .to receive(:info)
-          .with("#{subject} deleted 2 of 3 EvidenceSubmission records (1 success, 1 failed)")
+          .with("#{subject} deleted 2 of 3 EvidenceSubmission records (1 success, 1 failed, 0 created)")
 
         subject.new.perform
 
@@ -127,7 +127,7 @@ RSpec.describe Lighthouse::EvidenceSubmissions::DeleteEvidenceSubmissionRecordsJ
           .with('worker.cst.delete_evidence_submission_records.count', 0, tags: ['status:failed'])
         expect(Rails.logger)
           .to receive(:info)
-          .with("#{subject} deleted 2 of 2 EvidenceSubmission records (2 success, 0 failed)")
+          .with("#{subject} deleted 2 of 2 EvidenceSubmission records (2 success, 0 failed, 0 created)")
 
         subject.new.perform
 

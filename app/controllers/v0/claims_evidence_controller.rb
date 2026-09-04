@@ -11,6 +11,9 @@ module V0
 
     MAX_FILE_SIZE = 99.megabytes
     ALLOWED_EXTENSIONS = %w[bmp jpeg jpg pdf png tif tiff txt].freeze
+    CODED_FAILURES = [ClaimsEvidence::UploadEvidence::DuplicateUpload,
+                      ClaimsEvidence::UploadEvidence::ContentNameTaken,
+                      ClaimsEvidence::ContentName::Unsupported].freeze
 
     def create
       # Separate locals, not one struct: if a later parse fails, the failure log still
@@ -29,9 +32,9 @@ module V0
     rescue ClaimsEvidenceApi::Service::Files::VirusFound => e
       log_upload_failure(e, uploaded_file, doc_type_id, sc_id)
       raise Common::Exceptions::UnprocessableEntity.new(detail: 'DOC_UPLOAD_SCAN_FAILED', source: self.class.name)
-    rescue ClaimsEvidence::UploadEvidence::DuplicateUpload
-      # Translate the internal signal into the response; unhandled it would render a 500.
-      raise Common::Exceptions::UnprocessableEntity.new(detail: 'DOC_UPLOAD_DUPLICATE', source: self.class.name)
+    rescue *CODED_FAILURES => e
+      # Translate the internal signals into responses; unhandled they would render a 500.
+      raise_unprocessable(e.code)
     rescue ClaimsEvidence::PdfUnlocker::Rejected => e
       raise_validation_failure(e.reason, e.code)
     rescue => e
@@ -52,6 +55,10 @@ module V0
         file_name: File.basename(uploaded_file.original_filename.to_s),
         file_size: uploaded_file.tempfile.size
       )
+    end
+
+    def raise_unprocessable(detail)
+      raise Common::Exceptions::UnprocessableEntity.new(detail:, source: self.class.name)
     end
 
     def raise_validation_failure(reason, code)

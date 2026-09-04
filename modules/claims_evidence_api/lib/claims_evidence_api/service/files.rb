@@ -13,13 +13,15 @@ module ClaimsEvidenceApi
       #
       # @param file_path [String] the path to the file to upload
       # @param provider_data [Hash] metadata to be associated with the file
-      def upload(file_path, provider_data:)
+      # @param content_name [String] name to file the document under; defaults to the file's own
+      #   basename. Supply it when the name the document should carry is not the name on disk.
+      def upload(file_path, provider_data:, content_name: nil)
         raise UndefinedXFolderURI unless folder_identifier
 
         validate_folder_identifier(folder_identifier)
 
         headers = { 'X-Folder-URI' => folder_identifier, 'Content-Type' => 'multipart/form-data' }
-        params = post_params(file_path, provider_data)
+        params = post_params(file_path, provider_data, content_name:)
 
         perform :post, 'files', params, headers
       end
@@ -96,11 +98,11 @@ module ClaimsEvidenceApi
       #
       # @param file_path [String] the path to the file to upload
       # @param provider_data [Hash] metadata to be associated with the file
-      def post_params(file_path, provider_data)
+      def post_params(file_path, provider_data, content_name: nil)
         raise FileNotFound, file_path unless File.exist?(file_path)
         raise VirusFound, file_path unless Common::VirusScan.scan(file_path)
 
-        file_name = File.basename(file_path)
+        file_name = content_name.presence || File.basename(file_path)
         mime_type = Marcel::MimeType.for(file_path)
         payload = validate_upload_payload(file_name, provider_data)
 

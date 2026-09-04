@@ -28,16 +28,14 @@ module Lighthouse
           BenefitsDocuments::Constants::UPLOAD_STATUS[:FAILED]
         )
 
-        total_deleted = deleted_success_count + deleted_failed_count
-
-        StatsD.increment("#{STATSD_KEY_PREFIX}.count", deleted_success_count, tags: ['status:success'])
-        StatsD.increment("#{STATSD_KEY_PREFIX}.count", deleted_failed_count, tags: ['status:failed'])
-        Rails.logger.info(
-          "#{self.class} deleted #{total_deleted} of #{record_count} EvidenceSubmission records " \
-          "(#{deleted_success_count} success, #{deleted_failed_count} failed)"
+        # CREATED means the outcome of the upload was never established. Scoped to Caseflow
+        # supplemental-claim rows only.
+        deleted_created_count = delete_records_by_status(
+          BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED],
+          EvidenceSubmission.where.not(caseflow_claim_id: nil)
         )
 
-        nil
+        report(record_count, deleted_success_count, deleted_failed_count, deleted_created_count)
       rescue => e
         StatsD.increment("#{STATSD_KEY_PREFIX}.error")
         Rails.logger.error("#{self.class} error: ", e.message)
@@ -45,9 +43,20 @@ module Lighthouse
 
       private
 
-      def delete_records_by_status(status)
+      def report(record_count, success, failed, created)
+        StatsD.increment("#{STATSD_KEY_PREFIX}.count", success, tags: ['status:success'])
+        StatsD.increment("#{STATSD_KEY_PREFIX}.count", failed, tags: ['status:failed'])
+        StatsD.increment("#{STATSD_KEY_PREFIX}.count", created, tags: ['status:created'])
+        Rails.logger.info(
+          "#{self.class} deleted #{success + failed + created} of #{record_count} " \
+          "EvidenceSubmission records (#{success} success, #{failed} failed, #{created} created)"
+        )
+        nil
+      end
+
+      def delete_records_by_status(status, relation = EvidenceSubmission.all)
         deleted_count = 0
-        EvidenceSubmission.where(
+        relation.where(
           delete_date: ..DateTime.current,
           upload_status: status
         ).in_batches(of: BATCH_SIZE) do |batch|

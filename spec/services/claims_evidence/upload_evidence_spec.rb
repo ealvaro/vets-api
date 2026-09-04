@@ -49,7 +49,7 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
         .with(anything, provider_data: hash_including(
           contentSource: ClaimsEvidenceApi::CONTENT_SOURCE,
           documentTypeId: doc_type_id
-        ))
+        ), content_name: anything)
         .and_return(ce_success)
       service.call
     end
@@ -58,7 +58,8 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
       Timecop.freeze(Time.utc(2026, 3, 15, 2, 0, 0)) do
         expect_any_instance_of(ClaimsEvidenceApi::Service::Files)
           .to receive(:upload)
-          .with(anything, provider_data: hash_including(dateVaReceivedDocument: '2026-03-14'))
+          .with(anything, provider_data: hash_including(dateVaReceivedDocument: '2026-03-14'),
+                          content_name: anything)
           .and_return(ce_success)
         service.call
       end
@@ -100,12 +101,13 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
         expect(duplicate_check).to have_received(:release_lock).with(retry_blocked: true).once
       end
 
-      it 'holds the lock when the document was filed but no row was written' do
-        allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom'))
+      it 'releases with retry_blocked true when the outcome is unknown' do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
+          .to receive(:upload).and_raise(Faraday::TimeoutError)
 
-        service.call
+        expect { service.call }.to raise_error(Faraday::TimeoutError)
 
-        expect(duplicate_check).not_to have_received(:release_lock)
+        expect(duplicate_check).to have_received(:release_lock).with(retry_blocked: true).once
       end
     end
 
@@ -141,8 +143,151 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
       end
     end
 
-    # The upload is done and the record is saved before this telemetry runs, so a broken
-    # metric or log must not fail the call or report it as a failure.
+    describe 'the record lifecycle' do
+      def last_status = EvidenceSubmission.last&.upload_status
+
+      # Retention runs from successful submission, not creation, so a document filed later than
+      # the row was written keeps a full 60 days from the moment it landed.
+      it 'anchors the delete date to the successful submission', run_at: '2026-01-01T12:00:00Z' do
+        filed_at = Time.zone.parse('2026-01-01T15:00:00Z')
+
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload) do
+          Timecop.freeze(filed_at)
+          ce_success
+        end
+
+        service.call
+
+        expect(EvidenceSubmission.last.delete_date).to be_within(1.minute).of(filed_at + 60.days)
+      end
+
+      it 'writes the record as CREATED before the upload and SUCCESS after it' do
+        seen = nil
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload) do
+          seen = last_status
+          ce_success
+        end
+
+        service.call
+
+        expect(seen).to eq(BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED])
+        expect(last_status).to eq(BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS])
+      end
+
+      it 'records the sanitized contentName so the document can be found again' do
+        service.call
+
+        metadata = JSON.parse(EvidenceSubmission.last.template_metadata)
+        expect(metadata.dig('personalisation', 'content_name')).to eq('doctors-note.pdf')
+        expect(metadata.dig('personalisation', 'file_name')).to eq('doctors-note.pdf')
+      end
+
+      it 'does not send anything to Claims Evidence if the record cannot be written' do
+        allow(EvidenceSubmission).to receive(:create!).and_raise(ActiveRecord::RecordNotSaved)
+        expect_any_instance_of(ClaimsEvidenceApi::Service::Files).not_to receive(:upload)
+
+        expect { service.call }.to raise_error(ActiveRecord::RecordNotSaved)
+      end
+
+      # A 4xx is Claims Evidence telling us the document was not filed.
+      it 'deletes the record when Claims Evidence rejects the upload' do
+        rejection = Common::Client::Errors::ClientError.new('VEFSERR40012', 400, { 'code' => 'VEFSERR40012' })
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload).and_raise(rejection)
+
+        expect { service.call }.to raise_error(Common::Client::Errors::ClientError)
+          .and(not_change(EvidenceSubmission, :count))
+      end
+
+      # All reach the service as a ClientError alongside the 4xx above; the status separates them.
+      describe 'when the outcome of the upload is unknown' do
+        def expect_record_left_created(error)
+          allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload).and_raise(error)
+
+          expect { service.call }.to raise_error(error.class)
+            .and(change(EvidenceSubmission, :count).by(1))
+
+          expect(last_status).to eq(BenefitsDocuments::Constants::UPLOAD_STATUS[:CREATED])
+        end
+
+        it 'leaves the record CREATED when Claims Evidence fails' do
+          expect_record_left_created(build(:claims_evidence_service_files_error, :error)) # 503
+        end
+
+        it 'leaves the record CREATED when the connection drops without a status' do
+          expect_record_left_created(Common::Client::Errors::ClientError.new('Connection failed'))
+        end
+
+        # The document is filed; only the answer describing it was unreadable.
+        it 'leaves the record CREATED when the response cannot be parsed' do
+          expect_record_left_created(Common::Client::Errors::ParsingError.new('unparseable', 200))
+        end
+
+        # Common::Client::Base raises this rather than letting Faraday::TimeoutError escape.
+        it 'leaves the record CREATED when the request times out' do
+          expect_record_left_created(Common::Exceptions::GatewayTimeout.new)
+        end
+      end
+
+      it 'still returns the result when only the status update fails' do
+        allow(StatsD).to receive(:increment).and_call_original
+        allow_any_instance_of(EvidenceSubmission).to receive(:update!).and_raise(StandardError.new('boom'))
+
+        expect(service.call.status).to eq(200)
+
+        expect(StatsD).to have_received(:increment)
+          .with('api.claims_evidence.persist.failure', tags: base_tags + ['error_class:StandardError'])
+      end
+    end
+
+    describe 'when Claims Evidence says the name is taken' do
+      let(:collision) do
+        Common::Client::Errors::ClientError.new(
+          'VEFSERR40018', 400,
+          { 'code' => 'VEFSERR40018', 'message' => 'Document already exists by ownerId and contentName' }
+        )
+      end
+
+      before do
+        allow_any_instance_of(ClaimsEvidenceApi::Service::Files).to receive(:upload).and_raise(collision)
+      end
+
+      it 'raises ContentNameTaken and leaves no record behind' do
+        expect { service.call }.to raise_error(described_class::ContentNameTaken)
+          .and(not_change(EvidenceSubmission, :count))
+      end
+
+      it 'counts the failure' do
+        allow(StatsD).to receive(:increment).and_call_original
+
+        expect { service.call }.to raise_error(described_class::ContentNameTaken)
+
+        expect(StatsD).to have_received(:increment).with(
+          'api.claims_evidence.upload.failure',
+          tags: base_tags + ['reason:content_name_taken', "document_type_id:#{doc_type_id}"]
+        )
+      end
+    end
+
+    context 'when the filename has no usable ASCII equivalent' do
+      let(:upload) do
+        ClaimsEvidence::UploadRequest.new(
+          file:, doc_type_id:, sc_id:, file_name: '日本語.pdf', file_size: file.size
+        )
+      end
+
+      it 'counts the failure and writes no record' do
+        allow(StatsD).to receive(:increment).and_call_original
+
+        expect { service.call }.to raise_error(ClaimsEvidence::ContentName::Unsupported)
+          .and(not_change(EvidenceSubmission, :count))
+
+        expect(StatsD).to have_received(:increment).with(
+          'api.claims_evidence.upload.failure',
+          tags: base_tags + ['reason:unsupported_name', "document_type_id:#{doc_type_id}"]
+        )
+      end
+    end
+
     context 'when the success telemetry itself fails' do
       it 'counts the success once and no failure when the logger raises after the counter' do
         allow(StatsD).to receive(:increment).and_call_original
@@ -190,10 +335,9 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
     end
 
     # No row was written, so the Redis lock is the only thing that knows the upload happened.
-    context 'when a prior attempt filed the document but failed to persist the row' do
+    context 'when a parallel request holds the lock' do
       before do
-        allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom'))
-        service.call
+        allow_any_instance_of(ClaimsEvidence::DuplicateCheck).to receive(:acquire_lock).and_return(false)
       end
 
       it 'raises DuplicateUpload tagged detected_by:in_flight' do
@@ -302,78 +446,6 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
       end
     end
 
-    context 'when persisting the EvidenceSubmission fails' do
-      before { allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom')) }
-
-      it 'still returns the result because the document is already in the eFolder' do
-        expect(service.call.status).to eq(200)
-      end
-
-      it 'increments the persistence failure counter tagged with the error class' do
-        allow(StatsD).to receive(:increment).and_call_original
-        service.call
-        expect(StatsD).to have_received(:increment)
-          .with('api.claims_evidence.persist.failure', tags: base_tags + ['error_class:StandardError'])
-      end
-
-      it 'logs the failure with a scrubbed message and error_class' do
-        allow(Logging::Helper::DataScrubber).to receive(:scrub).and_return('[scrubbed]')
-        allow(Rails.logger).to receive(:error)
-
-        service.call
-
-        expect(Logging::Helper::DataScrubber).to have_received(:scrub).with('boom')
-        expect(Rails.logger).to have_received(:error).with(
-          'ClaimsEvidenceController#persist_evidence_submission failed',
-          hash_including(document_type_id: doc_type_id, supplemental_claim_id: sc_id,
-                         error_class: 'StandardError', error: '[scrubbed]')
-        )
-      end
-
-      it 'captures the data needed to recreate the EvidenceSubmission by hand' do
-        expect { service.call }.to change(PersonalInformationLog, :count).by(1)
-
-        pii_log = PersonalInformationLog.last
-        expect(pii_log.error_class).to eq('ClaimsEvidenceController#persist_evidence_submission')
-        expect(pii_log.data).to include(
-          'caseflow_claim_id' => sc_id,
-          'user_account_id' => current_user.user_account_uuid,
-          'icn' => current_user.icn,
-          'document_type_id' => doc_type_id,
-          'document_type' => 'Correspondence',
-          'file_name' => 'doctors-note.pdf',
-          'upload_status' => BenefitsDocuments::Constants::UPLOAD_STATUS[:SUCCESS],
-          'claims_evidence_uuid' => ce_success.body['uuid'],
-          'claims_evidence_current_version_uuid' => ce_success.body['currentVersionUuid']
-        )
-        expect(pii_log.data['file_size']).to be > 0
-      end
-
-      context 'and the backfill capture also fails' do
-        before { allow(PersonalInformationLog).to receive(:create).and_raise(StandardError.new('db down')) }
-
-        it 'still returns the result rather than failing a document that was filed successfully' do
-          expect(service.call.status).to eq(200)
-        end
-
-        it 'increments the unrecoverable counter and logs the CE uuid so the document can still be traced' do
-          allow(StatsD).to receive(:increment).and_call_original
-          allow(Rails.logger).to receive(:error)
-
-          service.call
-
-          expect(StatsD).to have_received(:increment)
-            .with('api.claims_evidence.persist.unrecoverable', tags: base_tags + ['error_class:StandardError'])
-          expect(Rails.logger).to have_received(:error).with(
-            'ClaimsEvidenceController#capture_submission_for_backfill failed',
-            hash_including(supplemental_claim_id: sc_id, user_account_uuid: current_user.user_account_uuid,
-                           document_type_id: doc_type_id, claims_evidence_uuid: ce_success.body['uuid'],
-                           error_class: 'StandardError')
-          )
-        end
-      end
-    end
-
     context 'when the response body cannot be read but the row was written' do
       let(:malformed_response) { double(reason_phrase: 'OK', status: 200, body: 'not-a-hash') }
 
@@ -396,83 +468,6 @@ RSpec.describe ClaimsEvidence::UploadEvidence do
 
       it 'still persists the EvidenceSubmission because the document is already in the eFolder' do
         expect { service.call }.to raise_error(TypeError).and(change(EvidenceSubmission, :count).by(1))
-      end
-    end
-
-    # The file is in the eFolder but nothing recorded it, so the lock is the only thing
-    # standing between the Veteran and a duplicate. It must survive the error.
-    context 'when the response body cannot be read and the row was not written' do
-      let(:malformed_response) { double(reason_phrase: 'OK', status: 200, body: 'not-a-hash') }
-
-      before do
-        allow(EvidenceSubmission).to receive(:create!).and_raise(StandardError.new('boom'))
-        allow_any_instance_of(ClaimsEvidenceApi::Service::Files)
-          .to receive(:upload).and_return(malformed_response)
-      end
-
-      it 'raises, and keeps the lock so a retry is refused rather than uploaded twice' do
-        expect { service.call }.to raise_error(TypeError)
-
-        expect { described_class.new(current_user:, upload:, password:).call }
-          .to raise_error(described_class::DuplicateUpload)
-      end
-
-      it 'counts the upload as a failure rather than a success' do
-        allow(StatsD).to receive(:increment).and_call_original
-
-        expect { service.call }.to raise_error(TypeError)
-
-        expect(StatsD).to have_received(:increment).with(
-          'api.claims_evidence.upload.failure',
-          tags: base_tags + ['error_class:TypeError', "document_type_id:#{doc_type_id}"]
-        )
-        expect(StatsD).not_to have_received(:increment).with('api.claims_evidence.upload.success', anything)
-      end
-
-      it 'still captures the submission, with no uuid to record' do
-        expect { service.call }.to raise_error(TypeError)
-          .and(change(PersonalInformationLog, :count).by(1))
-
-        pii_log = PersonalInformationLog.last
-        expect(pii_log.data).to include(
-          'caseflow_claim_id' => sc_id,
-          'icn' => current_user.icn,
-          'document_type_id' => doc_type_id,
-          'file_name' => 'doctors-note.pdf',
-          'claims_evidence_uuid' => nil,
-          'claims_evidence_current_version_uuid' => nil
-        )
-      end
-
-      it 'does not report the capture as unrecoverable' do
-        allow(StatsD).to receive(:increment).and_call_original
-
-        expect { service.call }.to raise_error(TypeError)
-
-        expect(StatsD).not_to have_received(:increment).with(
-          'api.claims_evidence.persist.unrecoverable', anything
-        )
-      end
-
-      # Everything that can fail has: the row, the capture, and the body. The last-resort
-      # handler has to report that rather than raise a second error on its way out.
-      context 'and the backfill capture also fails' do
-        before { allow(PersonalInformationLog).to receive(:create).and_raise(StandardError.new('db down')) }
-
-        it 'reports it as unrecoverable and lets the original error surface' do
-          allow(StatsD).to receive(:increment).and_call_original
-          allow(Rails.logger).to receive(:error)
-
-          expect { service.call }.to raise_error(TypeError)
-
-          expect(StatsD).to have_received(:increment)
-            .with('api.claims_evidence.persist.unrecoverable', tags: base_tags + ['error_class:StandardError'])
-          expect(Rails.logger).to have_received(:error).with(
-            'ClaimsEvidenceController#capture_submission_for_backfill failed',
-            hash_including(supplemental_claim_id: sc_id, claims_evidence_uuid: nil,
-                           error_class: 'StandardError')
-          )
-        end
       end
     end
 
