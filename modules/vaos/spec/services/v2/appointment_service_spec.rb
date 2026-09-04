@@ -246,6 +246,54 @@ describe VAOS::V2::AppointmentsService do
             subject.post_appointment(va_proposed_clinic_request_body)
           end
         end
+
+        context 'when the facility is undergoing an OH migration' do
+          it 'records the cutover metric when the facility is within the eligibility cutover window' do
+            with_post_appointment_vcr_cassettes do
+              allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+                '983' => { migration_days: 10, migration_date: Date.current, disable_eligibility: true,
+                           cancellation_disabled: false }
+              )
+
+              allow(StatsD).to receive(:increment)
+              expect(StatsD).to receive(:increment).with(
+                'api.vaos.post_appointment.creation_at_oh_site_during_cutover',
+                tags: array_including('facility_id:983')
+              )
+
+              subject.post_appointment(va_booked_request_body)
+            end
+          end
+
+          it 'does not record the cutover metric when the facility is outside the eligibility cutover window' do
+            with_post_appointment_vcr_cassettes do
+              allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+                '983' => { migration_days: 100, migration_date: Date.current, disable_eligibility: false,
+                           cancellation_disabled: false }
+              )
+
+              allow(StatsD).to receive(:increment)
+              expect(StatsD).not_to receive(:increment).with(
+                'api.vaos.post_appointment.creation_at_oh_site_during_cutover', anything
+              )
+
+              subject.post_appointment(va_booked_request_body)
+            end
+          end
+
+          it 'does not record the cutover metric when the facility has no active migration' do
+            with_post_appointment_vcr_cassettes do
+              allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return({})
+
+              allow(StatsD).to receive(:increment)
+              expect(StatsD).not_to receive(:increment).with(
+                'api.vaos.post_appointment.creation_at_oh_site_during_cutover', anything
+              )
+
+              subject.post_appointment(va_booked_request_body)
+            end
+          end
+        end
       end
 
       context 'when cc appointment create request is valid' do
@@ -1667,6 +1715,46 @@ describe VAOS::V2::AppointmentsService do
         timezone = subject.send(:get_facility_timezone, facility_location_id)
         expect(timezone).to be_nil
       end
+    end
+  end
+
+  describe '#oh_cutover_facility?' do
+    it 'returns false when facility_id is blank' do
+      expect(subject.send(:oh_cutover_facility?, nil)).to be(false)
+      expect(subject.send(:oh_cutover_facility?, '')).to be(false)
+    end
+
+    it "returns false when facility_id is 'unknown'" do
+      expect(subject.send(:oh_cutover_facility?, 'unknown')).to be(false)
+    end
+
+    it 'returns false when the parent facility has no migration entry' do
+      allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return({})
+      expect(subject.send(:oh_cutover_facility?, '983')).to be(false)
+    end
+
+    it 'returns false when the parent facility migration is outside the eligibility cutover window' do
+      allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+        '983' => { migration_days: 100, migration_date: Date.current, disable_eligibility: false,
+                   cancellation_disabled: false }
+      )
+      expect(subject.send(:oh_cutover_facility?, '983')).to be(false)
+    end
+
+    it 'returns true when the parent facility migration is within the eligibility cutover window' do
+      allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+        '983' => { migration_days: 10, migration_date: Date.current, disable_eligibility: true,
+                   cancellation_disabled: false }
+      )
+      expect(subject.send(:oh_cutover_facility?, '983')).to be(true)
+    end
+
+    it 'matches on the parent facility id (first 3 characters)' do
+      allow(VAOS::OhMigrationsHelper).to receive(:get_migrations).with(user:).and_return(
+        '983' => { migration_days: 10, migration_date: Date.current, disable_eligibility: true,
+                   cancellation_disabled: false }
+      )
+      expect(subject.send(:oh_cutover_facility?, '983GB')).to be(true)
     end
   end
 

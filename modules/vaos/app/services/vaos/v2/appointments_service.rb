@@ -2036,6 +2036,24 @@ module VAOS
       def log_post_appointment_success(context)
         tags = build_metric_tags(context)
         StatsD.increment("#{POST_APPOINTMENT_METRIC}.success", tags:)
+
+        if oh_cutover_facility?(context[:facility_id])
+          StatsD.increment("#{POST_APPOINTMENT_METRIC}.creation_at_oh_site_during_cutover", tags:)
+        end
+      end
+
+      ##
+      # Determines whether the given facility is currently within the eligibility cutover
+      # window for an OH migration. Used to alert on appointments created during that window.
+      #
+      # @param facility_id [String] the facility id from the appointment context
+      # @return [Boolean] true if the facility's parent station is in an active cutover window
+      #
+      def oh_cutover_facility?(facility_id)
+        return false if facility_id.blank? || facility_id == 'unknown'
+
+        migration = VAOS::OhMigrationsHelper.get_migrations(user:)[facility_id[0, 3]]
+        migration.present? && migration[:disable_eligibility]
       end
 
       ##
