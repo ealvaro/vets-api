@@ -47,5 +47,30 @@ RSpec.describe V0::BenefitsReferenceDataController, type: :controller do
         }.deep_stringify_keys
       )
     end
+
+    it 'rejects a path containing an absolute URL to prevent SSRF' do
+      get(:get_data, params: { path: 'https://attacker.example.com/steal' })
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects a scheme-relative path to prevent SSRF' do
+      get(:get_data, params: { path: '//attacker.example.com/steal' })
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects a path containing dot-dot traversal segments' do
+      get(:get_data, params: { path: '../../etc/passwd' })
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it 'rejects a percent-encoded absolute URL' do
+      # Rack percent-decodes the path before the controller sees it, so in a real
+      # request this arrives as 'https://attacker.example.com/steal' and is rejected
+      # for its scheme punctuation. Controller specs skip that decoding, so the
+      # literal '%' is what gets validated here. The allowlist rejects both forms,
+      # which is the point: there is no decoding order that lets this through.
+      get(:get_data, params: { path: 'https%3A%2F%2Fattacker.example.com%2Fsteal' })
+      expect(response).to have_http_status(:bad_request)
+    end
   end
 end
